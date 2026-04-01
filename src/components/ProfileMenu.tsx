@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 interface ProfileMenuProps {
   isOpen: boolean
@@ -112,7 +114,14 @@ export function ProfileMenu({ isOpen, onClose, userName, patientName }: ProfileM
         </div>
 
         <div className="p-3 pt-0 border-t border-white/[0.06]">
-          <button className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-white/[0.04] transition-colors w-full animate-press">
+          <button
+            onClick={async () => {
+              const supabase = createClient()
+              await supabase.auth.signOut()
+              window.location.href = '/login'
+            }}
+            className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-white/[0.04] transition-colors w-full animate-press"
+          >
             <svg width="18" height="18" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
             </svg>
