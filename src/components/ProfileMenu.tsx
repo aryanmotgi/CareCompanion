@@ -52,7 +52,7 @@ const MENU_ITEMS = [
   },
 ]
 
-export function ProfileMenu({ isOpen, onClose, userName, patientName, relationship }: ProfileMenuProps) {
+export function ProfileMenu({ isOpen, onClose, userName, patientName }: ProfileMenuProps) {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()

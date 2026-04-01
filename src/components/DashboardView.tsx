@@ -2,6 +2,7 @@
 
 import { PriorityCard } from './PriorityCard'
 
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 interface DashboardViewProps {
   patientName: string
   medications: any[]

@@ -1,5 +1,6 @@
 'use client'
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { SegmentControl } from './SegmentControl'

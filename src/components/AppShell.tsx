@@ -11,16 +11,15 @@ interface AppShellProps {
   patientAge?: number | null
   relationship?: string
   userName: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   notifications: any[]
 }
 
 export function AppShell({
   children,
   patientName,
-  patientAge,
   relationship,
   userName,
-  notifications,
 }: AppShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
 
