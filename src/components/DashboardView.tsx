@@ -10,8 +10,6 @@ interface DashboardViewProps {
   patientName: string
   medications: Medication[]
   appointments: Appointment[]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  notifications: any[]
   labResults: LabResult[]
   claims: Claim[]
 }

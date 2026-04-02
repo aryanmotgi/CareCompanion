@@ -39,9 +39,22 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
     },
   });
 
+  // Allowlisted prompts for auto-send from URL
+  const ALLOWED_PROMPTS = new Set([
+    'Prepare for my appointment',
+    'Explain my lab results',
+    'What should I ask my doctor?',
+    'How are my vitals?',
+    'Prepare for my next appointment',
+    'Explain my medications',
+  ])
+
+  const isAllowedPrompt = (prompt: string) =>
+    ALLOWED_PROMPTS.has(prompt) || prompt.startsWith('Help me prepare for my ')
+
   // Auto-send prompt from URL (from dashboard quick prompts)
   useEffect(() => {
-    if (promptFromUrl && messages.length === 0) {
+    if (promptFromUrl && messages.length === 0 && isAllowedPrompt(promptFromUrl)) {
       sendMessage({ text: promptFromUrl });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

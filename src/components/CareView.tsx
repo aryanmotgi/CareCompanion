@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { SegmentControl } from './SegmentControl'
 import { ExpandableCard } from './ExpandableCard'
 import { BottomSheet } from './BottomSheet'
+import { useToast } from './ToastProvider'
 import type { Medication, Appointment, Doctor } from '@/lib/types'
 
 interface CareViewProps {
@@ -15,6 +16,7 @@ interface CareViewProps {
 }
 
 export function CareView({ profileId, medications: initialMeds, appointments: initialAppts, doctors }: CareViewProps) {
+  const { showToast } = useToast()
   const [activeSegment, setActiveSegment] = useState(0)
   const [medications, setMedications] = useState(initialMeds)
   const [appointments, setAppointments] = useState(initialAppts)
@@ -60,46 +62,74 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
 
   const handleAddMed = async () => {
     if (!medName) return
-    const supabase = createClient()
-    const { data } = await supabase.from('medications').insert({
-      care_profile_id: profileId,
-      name: medName,
-      dose: medDose,
-      frequency: medFreq,
-    }).select().single()
-    if (data) setMedications([...medications, data])
-    setMedName(''); setMedDose(''); setMedFreq('')
-    setShowMedForm(false)
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase.from('medications').insert({
+        care_profile_id: profileId,
+        name: medName,
+        dose: medDose,
+        frequency: medFreq,
+      }).select().single()
+      if (error) throw error
+      if (data) setMedications([...medications, data])
+      setMedName(''); setMedDose(''); setMedFreq('')
+      setShowMedForm(false)
+      showToast('Medication added', 'success')
+    } catch (err) {
+      console.error('[CareView] Failed to add medication:', err)
+      showToast('Failed to add medication', 'error')
+    }
   }
 
   const handleAddAppt = async () => {
     if (!apptDoctor || !apptDate) return
-    const supabase = createClient()
-    const { data } = await supabase.from('appointments').insert({
-      care_profile_id: profileId,
-      doctor_name: apptDoctor,
-      specialty: apptSpecialty,
-      date_time: new Date(apptDate).toISOString(),
-      location: apptLocation,
-      purpose: apptPurpose,
-    }).select().single()
-    if (data) setAppointments([...appointments, data])
-    setApptDoctor(''); setApptSpecialty(''); setApptDate(''); setApptLocation(''); setApptPurpose('')
-    setShowApptForm(false)
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase.from('appointments').insert({
+        care_profile_id: profileId,
+        doctor_name: apptDoctor,
+        specialty: apptSpecialty,
+        date_time: new Date(apptDate).toISOString(),
+        location: apptLocation,
+        purpose: apptPurpose,
+      }).select().single()
+      if (error) throw error
+      if (data) setAppointments([...appointments, data])
+      setApptDoctor(''); setApptSpecialty(''); setApptDate(''); setApptLocation(''); setApptPurpose('')
+      setShowApptForm(false)
+      showToast('Appointment added', 'success')
+    } catch (err) {
+      console.error('[CareView] Failed to add appointment:', err)
+      showToast('Failed to add appointment', 'error')
+    }
   }
 
   const handleDeleteMed = async (id: string) => {
-    const supabase = createClient()
-    await supabase.from('medications').delete().eq('id', id)
-    setMedications(medications.filter((m) => m.id !== id))
-    setExpandedId(null)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.from('medications').delete().eq('id', id)
+      if (error) throw error
+      setMedications(medications.filter((m) => m.id !== id))
+      setExpandedId(null)
+      showToast('Medication removed', 'success')
+    } catch (err) {
+      console.error('[CareView] Failed to delete medication:', err)
+      showToast('Failed to remove medication', 'error')
+    }
   }
 
   const handleDeleteAppt = async (id: string) => {
-    const supabase = createClient()
-    await supabase.from('appointments').delete().eq('id', id)
-    setAppointments(appointments.filter((a) => a.id !== id))
-    setExpandedId(null)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.from('appointments').delete().eq('id', id)
+      if (error) throw error
+      setAppointments(appointments.filter((a) => a.id !== id))
+      setExpandedId(null)
+      showToast('Appointment removed', 'success')
+    } catch (err) {
+      console.error('[CareView] Failed to delete appointment:', err)
+      showToast('Failed to remove appointment', 'error')
+    }
   }
 
   const renderMedCard = (med: Medication, i: number) => {

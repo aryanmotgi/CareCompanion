@@ -28,12 +28,24 @@ export function ExpandableCard({
     }
   }, [expanded, expandedContent])
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onToggle()
+    }
+  }
+
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-expanded={expanded}
       onClick={onToggle}
+      onKeyDown={handleKeyDown}
       className={`
         bg-white/[0.04] border rounded-xl p-4 cursor-pointer
         transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#22d3ee]/50
         ${expanded ? 'border-[rgba(34,211,238,0.2)]' : 'border-white/[0.06]'}
         ${className}
       `}
@@ -41,7 +53,7 @@ export function ExpandableCard({
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">{children}</div>
-        <span className={`text-lg transition-transform duration-300 ${expanded ? 'rotate-90 text-[#22d3ee]' : 'text-[#64748b]'}`}>
+        <span className={`text-lg transition-transform duration-300 ${expanded ? 'rotate-90 text-[#22d3ee]' : 'text-[#64748b]'}`} aria-hidden="true">
           ▸
         </span>
       </div>

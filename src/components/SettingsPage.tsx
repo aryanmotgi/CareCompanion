@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useToast } from './ToastProvider'
 import type { UserSettings, ConnectedApp } from '@/lib/types'
 
 interface SettingsPageProps {
@@ -13,9 +14,11 @@ interface SettingsPageProps {
 function Toggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
   return (
     <button
+      role="switch"
+      aria-checked={enabled}
       onClick={onToggle}
-      className={`w-[42px] h-6 rounded-full relative transition-colors duration-200 ${
-        enabled ? 'bg-gradient-to-r from-indigo-500 to-cyan-400' : 'bg-white/[0.1]'
+      className={`w-[42px] h-6 rounded-full relative transition-colors duration-200 min-w-[44px] min-h-[44px] flex items-center ${
+        enabled ? 'bg-[#22d3ee]' : 'bg-white/[0.1]'
       }`}
     >
       <div
@@ -72,45 +75,70 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 export function SettingsPage({ settings: initialSettings, connectedApps }: SettingsPageProps) {
   const router = useRouter()
+  const { showToast } = useToast()
   const [settings, setSettings] = useState<UserSettings | null>(initialSettings)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [saving, setSaving] = useState(false)
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
 
-  const toggleSetting = async (key: keyof UserSettings) => {
+  const toggleSetting = (key: keyof UserSettings) => {
     if (!settings) return
-    const supabase = createClient()
     const newValue = !settings[key]
     setSettings({ ...settings, [key]: newValue })
-    await supabase
-      .from('user_settings')
-      .update({ [key]: newValue, updated_at: new Date().toISOString() })
-      .eq('user_id', settings.user_id)
+    // Debounce DB update
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const supabase = createClient()
+        const { error } = await supabase
+          .from('user_settings')
+          .update({ [key]: newValue, updated_at: new Date().toISOString() })
+          .eq('user_id', settings.user_id)
+        if (error) throw error
+      } catch (err) {
+        console.error('[Settings] Failed to update setting:', err)
+        showToast('Failed to save setting', 'error')
+        setSettings({ ...settings, [key]: !newValue })
+      }
+    }, 500)
   }
 
   const handleChangePassword = async () => {
     if (!newPassword || newPassword.length < 6) return
     setSaving(true)
-    const supabase = createClient()
-    await supabase.auth.updateUser({ password: newPassword })
-    setNewPassword('')
-    setShowPasswordForm(false)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+      setNewPassword('')
+      setShowPasswordForm(false)
+      showToast('Password updated', 'success')
+    } catch (err) {
+      console.error('[Settings] Failed to update password:', err)
+      showToast('Failed to update password', 'error')
+    }
     setSaving(false)
   }
 
   const handleDeleteAccount = async () => {
     setSaving(true)
-    const res = await fetch('/api/delete-account', { method: 'POST' })
-    if (res.ok) {
+    try {
+      const res = await fetch('/api/delete-account', { method: 'POST' })
+      if (!res.ok) throw new Error('Delete failed')
       window.location.href = '/login'
+    } catch (err) {
+      console.error('[Settings] Failed to delete account:', err)
+      showToast('Failed to delete account', 'error')
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   const handleExport = async () => {
-    const res = await fetch('/api/export-data')
-    if (res.ok) {
+    try {
+      const res = await fetch('/api/export-data')
+      if (!res.ok) throw new Error('Export failed')
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -118,6 +146,10 @@ export function SettingsPage({ settings: initialSettings, connectedApps }: Setti
       a.download = 'carecompanion-data.json'
       a.click()
       URL.revokeObjectURL(url)
+      showToast('Data exported', 'success')
+    } catch (err) {
+      console.error('[Settings] Failed to export data:', err)
+      showToast('Failed to export data', 'error')
     }
   }
 
@@ -229,9 +261,9 @@ export function SettingsPage({ settings: initialSettings, connectedApps }: Setti
       )}
 
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title">
           <div className="bg-[#1e293b] rounded-xl p-6 mx-5 max-w-sm w-full">
-            <h3 className="text-[#f1f5f9] text-lg font-bold mb-2">Delete Account</h3>
+            <h3 id="delete-dialog-title" className="text-[#f1f5f9] text-lg font-bold mb-2">Delete Account</h3>
             <p className="text-[#94a3b8] text-sm mb-4">
               This will permanently delete your account and all your data. This cannot be undone.
             </p>
