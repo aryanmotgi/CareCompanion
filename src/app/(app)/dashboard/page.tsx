@@ -1,8 +1,10 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { DashboardView } from '@/components/DashboardView';
+import { DashboardSkeleton } from '@/components/skeletons/DashboardSkeleton';
 
-export default async function DashboardPage() {
+async function DashboardContent() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -21,13 +23,11 @@ export default async function DashboardPage() {
   const [
     { data: medications },
     { data: appointments },
-    { data: notifications },
     { data: labResults },
     { data: claims },
   ] = await Promise.all([
     supabase.from('medications').select('*').eq('care_profile_id', profile.id),
     supabase.from('appointments').select('*').eq('care_profile_id', profile.id).order('date_time', { ascending: true }),
-    supabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false).order('created_at', { ascending: false }).limit(10),
     supabase.from('lab_results').select('*').eq('user_id', user.id).order('date_taken', { ascending: false }).limit(5),
     supabase.from('claims').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
   ]);
@@ -39,9 +39,16 @@ export default async function DashboardPage() {
       patientName={patientName}
       medications={medications || []}
       appointments={appointments || []}
-      notifications={notifications || []}
       labResults={labResults || []}
       claims={claims || []}
     />
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardContent />
+    </Suspense>
   );
 }

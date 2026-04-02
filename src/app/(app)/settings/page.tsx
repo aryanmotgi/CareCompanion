@@ -1,8 +1,10 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { SettingsPage } from '@/components/SettingsPage'
+import { SettingsSkeleton } from '@/components/skeletons/SettingsSkeleton'
 
-export default async function SettingsRoute() {
+async function SettingsContent() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -33,5 +35,13 @@ export default async function SettingsRoute() {
       settings={settings}
       connectedApps={connectedApps || []}
     />
+  )
+}
+
+export default function SettingsRoute() {
+  return (
+    <Suspense fallback={<SettingsSkeleton />}>
+      <SettingsContent />
+    </Suspense>
   )
 }

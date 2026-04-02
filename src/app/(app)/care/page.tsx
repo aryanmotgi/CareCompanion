@@ -1,8 +1,10 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { CareView } from '@/components/CareView'
+import { CareSkeleton } from '@/components/skeletons/CareSkeleton'
 
-export default async function CarePage() {
+async function CareContent() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -28,5 +30,13 @@ export default async function CarePage() {
       appointments={appointments || []}
       doctors={doctors || []}
     />
+  )
+}
+
+export default function CarePage() {
+  return (
+    <Suspense fallback={<CareSkeleton />}>
+      <CareContent />
+    </Suspense>
   )
 }

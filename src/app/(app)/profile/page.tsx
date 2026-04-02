@@ -1,8 +1,10 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { ProfileDashboard } from '@/components/ProfileDashboard'
+import { ProfileSkeleton } from '@/components/skeletons/ProfileSkeleton'
 
-export default async function ProfilePage() {
+async function ProfileContent() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -17,7 +19,7 @@ export default async function ProfilePage() {
 
   const [{ data: doctors }, { data: labResults }] = await Promise.all([
     supabase.from('doctors').select('*').eq('care_profile_id', profile.id),
-    supabase.from('lab_results').select('*').eq('user_id', user.id).order('date_taken', { ascending: false }),
+    supabase.from('lab_results').select('*').eq('user_id', user.id).order('date_taken', { ascending: false }).limit(50),
   ])
 
   return (
@@ -26,5 +28,13 @@ export default async function ProfilePage() {
       doctors={doctors || []}
       labResults={labResults || []}
     />
+  )
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<ProfileSkeleton />}>
+      <ProfileContent />
+    </Suspense>
   )
 }

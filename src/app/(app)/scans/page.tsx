@@ -1,8 +1,10 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { ScanCenter } from '@/components/ScanCenter'
+import { ScansSkeleton } from '@/components/skeletons/ScansSkeleton'
 
-export default async function ScansPage() {
+async function ScansContent() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -25,4 +27,12 @@ export default async function ScansPage() {
   }
 
   return <ScanCenter documents={documents} />
+}
+
+export default function ScansPage() {
+  return (
+    <Suspense fallback={<ScansSkeleton />}>
+      <ScansContent />
+    </Suspense>
+  )
 }
