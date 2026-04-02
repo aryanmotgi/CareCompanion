@@ -75,52 +75,87 @@ function TiltCard({ children, className = '' }: { children: React.ReactNode; cla
    ─────────────────────────────────────────── */
 function PhoneMockup() {
   return (
-    <div className="relative mt-16 mx-auto" style={{ perspective: '1000px' }}>
+    <div className="relative mt-12 mx-auto" style={{ perspective: '1200px' }}>
       {/* Glow */}
-      <div className="absolute inset-0 bg-blue-500/20 rounded-[40px] blur-[60px] animate-[glow-pulse_4s_ease-in-out_infinite]" />
-      {/* Phone */}
+      <div className="absolute -inset-8 bg-blue-500/15 rounded-full blur-[80px] animate-[glow-pulse_4s_ease-in-out_infinite]" />
+      {/* Phone frame */}
       <div
-        className="relative w-[280px] h-[560px] bg-[#1e293b] rounded-[40px] border-2 border-white/10 overflow-hidden shadow-2xl animate-[phone-float_6s_ease-in-out_infinite]"
-        style={{ transform: 'rotateY(-5deg) rotateX(5deg)' }}
+        className="relative w-[260px] h-[520px] bg-gradient-to-b from-[#131825] to-[#0f172a] rounded-[36px] border border-white/[0.08] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5),0_0_40px_rgba(59,130,246,0.1)] animate-[phone-float_6s_ease-in-out_infinite]"
       >
-        {/* Notch */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-[#0f172a] rounded-b-2xl z-10" />
+        {/* Dynamic Island */}
+        <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-24 h-[22px] bg-black rounded-full z-10" />
+        {/* Status bar */}
+        <div className="flex justify-between items-center px-6 pt-3 pb-0">
+          <span className="text-white/40 text-[8px] font-medium">9:41</span>
+          <div className="flex items-center gap-1">
+            <div className="flex gap-[2px]">{[1,2,3,4].map(i => <div key={i} className="w-[3px] h-[3px] rounded-[1px] bg-white/40" />)}</div>
+            <div className="w-4 h-2 rounded-[2px] border border-white/30 relative"><div className="absolute inset-[1px] right-[2px] bg-white/40 rounded-[1px]" /></div>
+          </div>
+        </div>
+        {/* App header */}
+        <div className="flex items-center justify-between px-4 pt-2 pb-1">
+          <span className="text-white/90 text-[11px] font-bold">CareCompanion</span>
+          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-400 to-cyan-400 flex items-center justify-center">
+            <span className="text-[6px] text-white font-bold">AM</span>
+          </div>
+        </div>
         {/* Screen content */}
-        <div className="pt-10 px-4 space-y-3">
-          <div className="text-white/60 text-[10px]">Good afternoon</div>
-          <div className="text-white text-sm font-bold">Mom&apos;s Care Summary</div>
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2.5">
-            <div className="flex items-center gap-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
-              <span className="text-red-300 text-[8px] font-semibold">NEEDS ATTENTION</span>
-            </div>
-            <div className="text-white text-[11px] font-medium mt-1">Lisinopril refill due tomorrow</div>
+        <div className="px-3.5 pt-2 space-y-2">
+          <div>
+            <div className="text-white/40 text-[9px]">Good afternoon</div>
+            <div className="text-white text-[13px] font-bold tracking-tight">Mom&apos;s Care Summary</div>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-lg p-2.5">
-            <div className="flex items-center gap-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-              <span className="text-cyan-300 text-[8px] font-semibold">UPCOMING</span>
+          {/* Urgent card */}
+          <div className="bg-gradient-to-r from-red-500/[0.12] to-red-500/[0.04] rounded-[10px] p-2.5 border border-red-500/15">
+            <div className="flex items-center gap-1 mb-0.5">
+              <div className="w-[5px] h-[5px] rounded-full bg-red-400 shadow-[0_0_6px_rgba(239,68,68,0.5)]" />
+              <span className="text-red-300/90 text-[7px] font-semibold tracking-wider">NEEDS ATTENTION</span>
             </div>
-            <div className="text-white text-[11px] font-medium mt-1">Dr. Patel — Thursday 2:30 PM</div>
+            <div className="text-white/90 text-[10px] font-medium">Lisinopril refill due tomorrow</div>
+            <div className="text-white/30 text-[8px] mt-0.5">10mg · Once daily · Dr. Patel</div>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-lg p-2.5">
-            <div className="flex items-center gap-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-              <span className="text-amber-300 text-[8px] font-semibold">ALERT</span>
+          {/* Upcoming card */}
+          <div className="bg-white/[0.04] rounded-[10px] p-2.5 border border-white/[0.06]">
+            <div className="flex items-center gap-1 mb-0.5">
+              <div className="w-[5px] h-[5px] rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.4)]" />
+              <span className="text-cyan-300/90 text-[7px] font-semibold tracking-wider">UPCOMING</span>
             </div>
-            <div className="text-white text-[11px] font-medium mt-1">LDL Cholesterol flagged high</div>
+            <div className="text-white/90 text-[10px] font-medium">Dr. Patel — Thursday 2:30 PM</div>
+            <div className="text-white/30 text-[8px] mt-0.5">Cardiology · Heart & Vascular Center</div>
           </div>
-          <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-2.5 text-center">
-            <div className="text-indigo-300 text-[8px]">QUICK ASK</div>
-            <div className="text-white/80 text-[10px] mt-1">What should I ask Dr. Patel?</div>
+          {/* Alert card */}
+          <div className="bg-white/[0.04] rounded-[10px] p-2.5 border border-white/[0.06]">
+            <div className="flex items-center gap-1 mb-0.5">
+              <div className="w-[5px] h-[5px] rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.4)]" />
+              <span className="text-amber-300/90 text-[7px] font-semibold tracking-wider">LAB ALERT</span>
+            </div>
+            <div className="text-white/90 text-[10px] font-medium">LDL Cholesterol flagged high</div>
+            <div className="text-white/30 text-[8px] mt-0.5">165 mg/dL · Reference: &lt; 100</div>
+          </div>
+          {/* Quick ask */}
+          <div className="bg-gradient-to-r from-indigo-500/[0.08] to-cyan-500/[0.05] rounded-[10px] p-2.5 border border-indigo-500/15 text-center">
+            <div className="text-indigo-300/70 text-[7px] font-semibold tracking-wider">💬 QUICK ASK</div>
+            <div className="text-white/70 text-[9px] mt-0.5">What should I ask Dr. Patel on Thursday?</div>
           </div>
         </div>
         {/* Bottom tab bar */}
-        <div className="absolute bottom-0 left-0 right-0 bg-[#0f172a] border-t border-white/10 flex justify-around py-2.5 px-3">
-          <div className="flex flex-col items-center gap-0.5"><div className="w-4 h-4 rounded bg-cyan-400/20" /><span className="text-[7px] text-cyan-400">Home</span></div>
-          <div className="flex flex-col items-center gap-0.5"><div className="w-4 h-4 rounded bg-white/10" /><span className="text-[7px] text-white/30">Chat</span></div>
-          <div className="flex flex-col items-center gap-0.5"><div className="w-4 h-4 rounded bg-white/10" /><span className="text-[7px] text-white/30">Care</span></div>
-          <div className="flex flex-col items-center gap-0.5"><div className="w-4 h-4 rounded bg-white/10" /><span className="text-[7px] text-white/30">Scan</span></div>
+        <div className="absolute bottom-0 left-0 right-0 bg-[#0f172a]/95 backdrop-blur border-t border-white/[0.06] flex justify-around items-center py-2 pb-4 px-2">
+          <div className="flex flex-col items-center gap-[2px]">
+            <svg width="14" height="14" fill="none" stroke="#38bdf8" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /></svg>
+            <span className="text-[7px] text-cyan-400 font-semibold">Home</span>
+          </div>
+          <div className="flex flex-col items-center gap-[2px]">
+            <svg width="14" height="14" fill="none" stroke="#475569" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
+            <span className="text-[7px] text-white/25">Chat</span>
+          </div>
+          <div className="flex flex-col items-center gap-[2px]">
+            <svg width="14" height="14" fill="none" stroke="#475569" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>
+            <span className="text-[7px] text-white/25">Care</span>
+          </div>
+          <div className="flex flex-col items-center gap-[2px]">
+            <svg width="14" height="14" fill="none" stroke="#475569" strokeWidth="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /></svg>
+            <span className="text-[7px] text-white/25">Scan</span>
+          </div>
         </div>
       </div>
     </div>
