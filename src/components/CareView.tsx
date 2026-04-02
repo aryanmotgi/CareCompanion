@@ -1,262 +1,274 @@
 'use client'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { SegmentControl } from './SegmentControl'
+import { ExpandableCard } from './ExpandableCard'
 import { BottomSheet } from './BottomSheet'
-import { AnimatedNumber } from './AnimatedNumber'
+import type { Medication, Appointment, Doctor } from '@/lib/types'
 
 interface CareViewProps {
   profileId: string
-  medications: any[]
-  appointments: any[]
+  medications: Medication[]
+  appointments: Appointment[]
+  doctors: Doctor[]
 }
 
-export function CareView({ profileId, medications: initialMeds, appointments: initialAppts }: CareViewProps) {
+export function CareView({ profileId, medications: initialMeds, appointments: initialAppts, doctors }: CareViewProps) {
   const [activeSegment, setActiveSegment] = useState(0)
   const [medications, setMedications] = useState(initialMeds)
   const [appointments, setAppointments] = useState(initialAppts)
-  const [selectedMed, setSelectedMed] = useState<any>(null)
-  const [selectedAppt, setSelectedAppt] = useState<any>(null)
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [showMedForm, setShowMedForm] = useState(false)
+  const [showApptForm, setShowApptForm] = useState(false)
 
+  // Form state for adding
   const [medName, setMedName] = useState('')
-  const [medDosage, setMedDosage] = useState('')
-  const [medFrequency, setMedFrequency] = useState('')
-  const [medRefillDate, setMedRefillDate] = useState('')
-
+  const [medDose, setMedDose] = useState('')
+  const [medFreq, setMedFreq] = useState('')
   const [apptDoctor, setApptDoctor] = useState('')
   const [apptSpecialty, setApptSpecialty] = useState('')
-  const [apptDateTime, setApptDateTime] = useState('')
+  const [apptDate, setApptDate] = useState('')
   const [apptLocation, setApptLocation] = useState('')
+  const [apptPurpose, setApptPurpose] = useState('')
 
-  const supabase = createClient()
+  const inputClass = 'w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-[#e2e8f0] text-sm outline-none placeholder:text-[#64748b] mb-3'
+
   const now = new Date()
 
-  const needsRefill = medications.filter((m) => {
-    if (!m.refill_date) return false
-    const diff = (new Date(m.refill_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-    return diff <= 3
-  })
-  const activeMeds = medications.filter((m) => !needsRefill.includes(m))
-
-  const futureAppts = appointments.filter((a) => a.date_time && new Date(a.date_time) >= now)
-  const endOfWeek = new Date(now)
-  endOfWeek.setDate(endOfWeek.getDate() + (7 - endOfWeek.getDay()))
-  endOfWeek.setHours(23, 59, 59, 999)
-  const thisWeekAppts = futureAppts.filter((a) => new Date(a.date_time) <= endOfWeek)
-  const laterAppts = futureAppts.filter((a) => new Date(a.date_time) > endOfWeek)
-
   const daysUntil = (dateStr: string) => {
-    const diff = Math.ceil((new Date(dateStr).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    if (diff <= 0) return 'Today'
-    if (diff === 1) return 'Tomorrow'
-    return `In ${diff} days`
+    const d = new Date(dateStr)
+    return Math.ceil((d.getTime() - now.getTime()) / 86400000)
   }
+
+  // Lookup doctor phone by name
+  const getDoctorPhone = (doctorName: string | null) => {
+    if (!doctorName) return null
+    const doc = doctors.find((d) => d.name.toLowerCase() === doctorName.toLowerCase())
+    return doc?.phone || null
+  }
+
+  const needsRefill = medications.filter((m) => m.refill_date && daysUntil(m.refill_date) <= 3)
+  const activeMeds = medications.filter((m) => !m.refill_date || daysUntil(m.refill_date) > 3)
+
+  const thisWeekAppts = appointments.filter((a) => {
+    if (!a.date_time) return false
+    const days = daysUntil(a.date_time)
+    return days >= 0 && days <= 7
+  })
+  const upcomingAppts = appointments.filter((a) => a.date_time && daysUntil(a.date_time) > 7)
 
   const handleAddMed = async () => {
     if (!medName) return
-    setSaving(true)
-    const { data } = await supabase
-      .from('medications')
-      .insert({ care_profile_id: profileId, name: medName, dosage: medDosage, frequency: medFrequency, refill_date: medRefillDate || null })
-      .select()
-      .single()
-    if (data) {
-      setMedications([...medications, data].sort((a, b) => a.name.localeCompare(b.name)))
-      setMedName(''); setMedDosage(''); setMedFrequency(''); setMedRefillDate('')
-      setShowAddForm(false)
-    }
-    setSaving(false)
+    const supabase = createClient()
+    const { data } = await supabase.from('medications').insert({
+      care_profile_id: profileId,
+      name: medName,
+      dose: medDose,
+      frequency: medFreq,
+    }).select().single()
+    if (data) setMedications([...medications, data])
+    setMedName(''); setMedDose(''); setMedFreq('')
+    setShowMedForm(false)
   }
 
   const handleAddAppt = async () => {
-    if (!apptDoctor || !apptDateTime) return
-    setSaving(true)
-    const { data } = await supabase
-      .from('appointments')
-      .insert({ care_profile_id: profileId, doctor_name: apptDoctor, specialty: apptSpecialty, date_time: apptDateTime, location: apptLocation })
-      .select()
-      .single()
-    if (data) {
-      setAppointments([...appointments, data].sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime()))
-      setApptDoctor(''); setApptSpecialty(''); setApptDateTime(''); setApptLocation('')
-      setShowAddForm(false)
-    }
-    setSaving(false)
+    if (!apptDoctor || !apptDate) return
+    const supabase = createClient()
+    const { data } = await supabase.from('appointments').insert({
+      care_profile_id: profileId,
+      doctor_name: apptDoctor,
+      specialty: apptSpecialty,
+      date_time: new Date(apptDate).toISOString(),
+      location: apptLocation,
+      purpose: apptPurpose,
+    }).select().single()
+    if (data) setAppointments([...appointments, data])
+    setApptDoctor(''); setApptSpecialty(''); setApptDate(''); setApptLocation(''); setApptPurpose('')
+    setShowApptForm(false)
   }
 
   const handleDeleteMed = async (id: string) => {
+    const supabase = createClient()
     await supabase.from('medications').delete().eq('id', id)
     setMedications(medications.filter((m) => m.id !== id))
-    setSelectedMed(null)
+    setExpandedId(null)
   }
 
   const handleDeleteAppt = async (id: string) => {
+    const supabase = createClient()
     await supabase.from('appointments').delete().eq('id', id)
     setAppointments(appointments.filter((a) => a.id !== id))
-    setSelectedAppt(null)
+    setExpandedId(null)
   }
 
-  const inputClass = "w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-sm text-[#e2e8f0] placeholder-[#475569] outline-none focus:border-[#38bdf8]/50"
+  const renderMedCard = (med: Medication, i: number) => {
+    const refillSoon = med.refill_date && daysUntil(med.refill_date) <= 3
+    const lowQty = (med.quantity_remaining ?? 999) <= 5
+    return (
+      <ExpandableCard
+        key={med.id}
+        expanded={expandedId === med.id}
+        onToggle={() => setExpandedId(expandedId === med.id ? null : med.id)}
+        className="animate-press"
+        style={{ animation: `card-stagger-in 0.4s cubic-bezier(0.4,0,0.2,1) both`, animationDelay: `${i * 60}ms` }}
+        expandedContent={
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div><span className="text-[#64748b]">Doctor:</span> <span className="text-[#e2e8f0]">{med.prescribing_doctor || '—'}</span></div>
+              <div><span className="text-[#64748b]">Refill:</span> <span className={refillSoon ? 'text-[#ef4444]' : 'text-[#e2e8f0]'}>{med.refill_date ? new Date(med.refill_date).toLocaleDateString() : '—'}</span></div>
+              <div><span className="text-[#64748b]">Remaining:</span> <span className={lowQty ? 'text-[#fbbf24]' : 'text-[#e2e8f0]'}>{med.quantity_remaining ?? '—'}</span></div>
+              <div><span className="text-[#64748b]">Frequency:</span> <span className="text-[#e2e8f0]">{med.frequency || '—'}</span></div>
+            </div>
+            <div className="flex gap-2">
+              {med.pharmacy_phone && (
+                <a href={`tel:${med.pharmacy_phone}`} className="flex-1 text-center py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-xs font-semibold animate-press">
+                  Call Pharmacy
+                </a>
+              )}
+              <button
+                onClick={() => handleDeleteMed(med.id)}
+                className="flex-1 py-2 rounded-lg bg-white/[0.06] border border-white/[0.1] text-[#e2e8f0] text-xs font-semibold animate-press"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        }
+      >
+        <div>
+          <div className="text-[#f1f5f9] text-[15px] font-semibold">{med.name}</div>
+          <div className="text-[#94a3b8] text-xs">{med.dose}{med.frequency ? ` • ${med.frequency}` : ''}</div>
+        </div>
+      </ExpandableCard>
+    )
+  }
+
+  const renderApptCard = (appt: Appointment, i: number) => {
+    const apptDateTime = new Date(appt.date_time ?? '')
+    const timeStr = apptDateTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    const dateStr = apptDateTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+    const doctorPhone = getDoctorPhone(appt.doctor_name)
+
+    return (
+      <ExpandableCard
+        key={appt.id}
+        expanded={expandedId === appt.id}
+        onToggle={() => setExpandedId(expandedId === appt.id ? null : appt.id)}
+        className="animate-press"
+        style={{ animation: `card-stagger-in 0.4s cubic-bezier(0.4,0,0.2,1) both`, animationDelay: `${i * 60}ms` }}
+        expandedContent={
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div><span className="text-[#64748b]">Location:</span> <span className="text-[#e2e8f0]">{appt.location || '—'}</span></div>
+              <div><span className="text-[#64748b]">Purpose:</span> <span className="text-[#e2e8f0]">{appt.purpose || '—'}</span></div>
+            </div>
+            <div className="flex gap-2">
+              {doctorPhone && (
+                <a href={`tel:${doctorPhone}`} className="flex-1 text-center py-2 rounded-lg bg-white/[0.06] border border-white/[0.1] text-[#e2e8f0] text-xs font-semibold animate-press">
+                  Call Office
+                </a>
+              )}
+              {appt.location && (
+                <a href={`https://maps.google.com/?q=${encodeURIComponent(appt.location)}`} target="_blank" rel="noopener noreferrer" className="flex-1 text-center py-2 rounded-lg bg-white/[0.06] border border-white/[0.1] text-[#e2e8f0] text-xs font-semibold animate-press">
+                  Directions
+                </a>
+              )}
+              <a href={`/chat?prompt=${encodeURIComponent(`Help me prepare for my ${appt.specialty} appointment with ${appt.doctor_name}`)}`} className="flex-1 text-center py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-xs font-semibold animate-press">
+                Prepare
+              </a>
+              <button
+                onClick={() => handleDeleteAppt(appt.id)}
+                className="flex-1 py-2 rounded-lg bg-white/[0.06] border border-white/[0.1] text-[#e2e8f0] text-xs font-semibold animate-press"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        }
+      >
+        <div>
+          <div className="text-[#f1f5f9] text-[15px] font-semibold">{appt.doctor_name}</div>
+          <div className="text-[#94a3b8] text-xs">{appt.specialty} • {dateStr} at {timeStr}</div>
+        </div>
+      </ExpandableCard>
+    )
+  }
 
   return (
-    <div className="px-5 py-4">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[#f1f5f9] text-xl font-bold">Care</h2>
-        <button onClick={() => setShowAddForm(true)} className="w-8 h-8 rounded-full bg-[#38bdf8]/10 flex items-center justify-center animate-press">
-          <svg width="16" height="16" fill="none" stroke="#38bdf8" strokeWidth="2" viewBox="0 0 24 24">
-            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        </button>
-      </div>
-
-      <div className="mb-5">
-        <SegmentControl segments={['Medications', 'Appointments']} activeIndex={activeSegment} onChange={setActiveSegment} />
-      </div>
+    <div className="px-5 py-6">
+      <SegmentControl
+        segments={['Medications', 'Appointments']}
+        activeIndex={activeSegment}
+        onChange={(idx) => { setActiveSegment(idx); setExpandedId(null) }}
+      />
 
       {activeSegment === 0 && (
-        <div>
+        <div className="mt-5 space-y-5">
           {needsRefill.length > 0 && (
-            <>
-              <div className="text-[10px] text-[#64748b] font-semibold tracking-wider mb-2">REFILL NEEDED</div>
-              {needsRefill.map((med, i) => (
-                <button
-                  key={med.id}
-                  onClick={() => setSelectedMed(med)}
-                  className="w-full text-left gradient-border-card bg-[#1e293b] border border-red-500/20 rounded-xl p-3.5 mb-2 flex justify-between items-center card-hover-lift animate-press"
-                  style={{ animation: `card-stagger-in 0.4s cubic-bezier(0.4,0,0.2,1) ${i * 100}ms both, glow-pulse 2s ease-in-out infinite` }}
-                >
-                  <div>
-                    <div className="text-[#f1f5f9] text-sm font-semibold">{med.name} {med.dosage}</div>
-                    <div className="text-[#94a3b8] text-[11px] mt-0.5">{med.frequency}</div>
-                    <div className="text-[#fca5a5] text-[11px] mt-0.5">Refill {daysUntil(med.refill_date).toLowerCase()}</div>
-                  </div>
-                  <div className="bg-red-500/10 rounded-lg px-2.5 py-1.5">
-                    <span className="text-[#fca5a5] text-[11px] font-semibold">Refill</span>
-                  </div>
-                </button>
-              ))}
-            </>
+            <div>
+              <div className="text-[#ef4444] text-[11px] uppercase tracking-wider font-semibold mb-2">Needs Refill</div>
+              <div className="space-y-2">{needsRefill.map((m, i) => renderMedCard(m, i))}</div>
+            </div>
           )}
-
-          {activeMeds.length > 0 && (
-            <>
-              <div className="text-[10px] text-[#64748b] font-semibold tracking-wider mb-2 mt-4">ACTIVE</div>
-              {activeMeds.map((med, i) => (
-                <button
-                  key={med.id}
-                  onClick={() => setSelectedMed(med)}
-                  className="w-full text-left gradient-border-card bg-[#1e293b] border border-white/[0.06] rounded-xl p-3.5 mb-2 flex justify-between items-center animate-card-in card-hover-lift animate-press"
-                  style={{ animationDelay: `${(needsRefill.length + i) * 100}ms` }}
-                >
-                  <div>
-                    <div className="text-[#f1f5f9] text-sm font-semibold">{med.name} {med.dosage}</div>
-                    <div className="text-[#94a3b8] text-[11px] mt-0.5">{med.frequency}</div>
-                    {med.refill_date && (
-                      <div className="text-[#22c55e] text-[11px] mt-0.5">
-                        Refill in <AnimatedNumber value={Math.max(0, Math.ceil((new Date(med.refill_date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))} suffix=" days" />
-                      </div>
-                    )}
-                  </div>
-                  <svg width="16" height="16" fill="none" stroke="#475569" strokeWidth="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" /></svg>
-                </button>
-              ))}
-            </>
-          )}
-
-          {medications.length === 0 && (
-            <div className="text-center py-12 text-[#64748b] text-sm">No medications yet. Tap + to add one.</div>
-          )}
+          <div>
+            <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2">Active Medications</div>
+            {activeMeds.length === 0 && needsRefill.length === 0 ? (
+              <div className="text-center py-8 text-[#64748b] text-sm">No medications added yet</div>
+            ) : (
+              <div className="space-y-2">{activeMeds.map((m, i) => renderMedCard(m, i + needsRefill.length))}</div>
+            )}
+          </div>
+          <button
+            onClick={() => setShowMedForm(true)}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-sm font-semibold animate-press"
+          >
+            + Add Medication
+          </button>
         </div>
       )}
 
       {activeSegment === 1 && (
-        <div>
+        <div className="mt-5 space-y-5">
           {thisWeekAppts.length > 0 && (
-            <>
-              <div className="text-[10px] text-[#64748b] font-semibold tracking-wider mb-2">THIS WEEK</div>
-              {thisWeekAppts.map((appt, i) => (
-                <button key={appt.id} onClick={() => setSelectedAppt(appt)} className="w-full text-left gradient-border-card bg-[#1e293b] border border-white/[0.06] rounded-xl p-3.5 mb-2 animate-card-in card-hover-lift animate-press" style={{ animationDelay: `${i * 100}ms` }}>
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#38bdf8]" />
-                    <span className="text-[#38bdf8] text-[10px] font-semibold">{daysUntil(appt.date_time).toUpperCase()}</span>
-                  </div>
-                  <div className="text-[#f1f5f9] text-sm font-semibold">{appt.doctor_name || 'Appointment'}</div>
-                  {appt.specialty && <div className="text-[#94a3b8] text-[11px] mt-0.5">{appt.specialty}</div>}
-                  <div className="text-[#64748b] text-[11px] mt-0.5">
-                    {new Date(appt.date_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at{' '}
-                    {new Date(appt.date_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                  </div>
-                </button>
-              ))}
-            </>
+            <div>
+              <div className="text-[#22d3ee] text-[11px] uppercase tracking-wider font-semibold mb-2">This Week</div>
+              <div className="space-y-2">{thisWeekAppts.map((a, i) => renderApptCard(a, i))}</div>
+            </div>
           )}
-
-          {laterAppts.length > 0 && (
-            <>
-              <div className="text-[10px] text-[#64748b] font-semibold tracking-wider mb-2 mt-4">UPCOMING</div>
-              {laterAppts.map((appt, i) => (
-                <button key={appt.id} onClick={() => setSelectedAppt(appt)} className="w-full text-left gradient-border-card bg-[#1e293b] border border-white/[0.06] rounded-xl p-3.5 mb-2 animate-card-in card-hover-lift animate-press" style={{ animationDelay: `${(thisWeekAppts.length + i) * 100}ms` }}>
-                  <div className="text-[#f1f5f9] text-sm font-semibold">{appt.doctor_name || 'Appointment'}</div>
-                  {appt.specialty && <div className="text-[#94a3b8] text-[11px] mt-0.5">{appt.specialty}</div>}
-                  <div className="text-[#64748b] text-[11px] mt-0.5">
-                    {new Date(appt.date_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at{' '}
-                    {new Date(appt.date_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                  </div>
-                </button>
-              ))}
-            </>
-          )}
-
-          {futureAppts.length === 0 && (
-            <div className="text-center py-12 text-[#64748b] text-sm">No upcoming appointments. Tap + to add one.</div>
-          )}
+          <div>
+            <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2">Upcoming</div>
+            {upcomingAppts.length === 0 && thisWeekAppts.length === 0 ? (
+              <div className="text-center py-8 text-[#64748b] text-sm">No appointments scheduled</div>
+            ) : (
+              <div className="space-y-2">{upcomingAppts.map((a, i) => renderApptCard(a, i + thisWeekAppts.length))}</div>
+            )}
+          </div>
+          <button
+            onClick={() => setShowApptForm(true)}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-sm font-semibold animate-press"
+          >
+            + Add Appointment
+          </button>
         </div>
       )}
 
-      <BottomSheet isOpen={!!selectedMed} onClose={() => setSelectedMed(null)} title={selectedMed?.name}>
-        {selectedMed && (
-          <div className="space-y-4">
-            <div><div className="text-[10px] text-[#64748b] font-semibold tracking-wider">DOSAGE</div><div className="text-[#e2e8f0] text-sm mt-1">{selectedMed.dosage || 'Not specified'}</div></div>
-            <div><div className="text-[10px] text-[#64748b] font-semibold tracking-wider">FREQUENCY</div><div className="text-[#e2e8f0] text-sm mt-1">{selectedMed.frequency || 'Not specified'}</div></div>
-            {selectedMed.refill_date && <div><div className="text-[10px] text-[#64748b] font-semibold tracking-wider">REFILL DATE</div><div className="text-[#e2e8f0] text-sm mt-1">{new Date(selectedMed.refill_date).toLocaleDateString()}</div></div>}
-            <button onClick={() => handleDeleteMed(selectedMed.id)} className="w-full mt-4 py-2.5 rounded-lg bg-red-500/10 text-[#ef4444] text-sm font-semibold animate-press">Remove Medication</button>
-          </div>
-        )}
+      {/* Add Medication Form */}
+      <BottomSheet isOpen={showMedForm} onClose={() => setShowMedForm(false)} title="Add Medication">
+        <input className={inputClass} placeholder="Medication name" value={medName} onChange={(e) => setMedName(e.target.value)} />
+        <input className={inputClass} placeholder="Dose (e.g., 10mg)" value={medDose} onChange={(e) => setMedDose(e.target.value)} />
+        <input className={inputClass} placeholder="Frequency (e.g., Once daily)" value={medFreq} onChange={(e) => setMedFreq(e.target.value)} />
+        <button onClick={handleAddMed} className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-sm font-semibold">Save</button>
       </BottomSheet>
 
-      <BottomSheet isOpen={!!selectedAppt} onClose={() => setSelectedAppt(null)} title={selectedAppt?.doctor_name || 'Appointment'}>
-        {selectedAppt && (
-          <div className="space-y-4">
-            {selectedAppt.specialty && <div><div className="text-[10px] text-[#64748b] font-semibold tracking-wider">SPECIALTY</div><div className="text-[#e2e8f0] text-sm mt-1">{selectedAppt.specialty}</div></div>}
-            <div><div className="text-[10px] text-[#64748b] font-semibold tracking-wider">DATE & TIME</div><div className="text-[#e2e8f0] text-sm mt-1">{new Date(selectedAppt.date_time).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} at {new Date(selectedAppt.date_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div></div>
-            {selectedAppt.location && <div><div className="text-[10px] text-[#64748b] font-semibold tracking-wider">LOCATION</div><div className="text-[#e2e8f0] text-sm mt-1">{selectedAppt.location}</div></div>}
-            <button onClick={() => handleDeleteAppt(selectedAppt.id)} className="w-full mt-4 py-2.5 rounded-lg bg-red-500/10 text-[#ef4444] text-sm font-semibold animate-press">Cancel Appointment</button>
-          </div>
-        )}
-      </BottomSheet>
-
-      <BottomSheet isOpen={showAddForm} onClose={() => setShowAddForm(false)} title={activeSegment === 0 ? 'Add Medication' : 'Add Appointment'}>
-        {activeSegment === 0 ? (
-          <div className="space-y-3">
-            <input placeholder="Medication name" value={medName} onChange={(e) => setMedName(e.target.value)} className={inputClass} />
-            <input placeholder="Dosage (e.g. 10mg)" value={medDosage} onChange={(e) => setMedDosage(e.target.value)} className={inputClass} />
-            <input placeholder="Frequency (e.g. Once daily)" value={medFrequency} onChange={(e) => setMedFrequency(e.target.value)} className={inputClass} />
-            <div><label className="text-[10px] text-[#64748b] font-semibold tracking-wider">REFILL DATE</label><input type="date" value={medRefillDate} onChange={(e) => setMedRefillDate(e.target.value)} className={`mt-1 ${inputClass}`} /></div>
-            <button onClick={handleAddMed} disabled={!medName || saving} className="w-full py-2.5 rounded-lg bg-[#38bdf8] text-[#0f172a] text-sm font-semibold disabled:opacity-50 animate-press">{saving ? 'Saving...' : 'Add Medication'}</button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <input placeholder="Doctor name" value={apptDoctor} onChange={(e) => setApptDoctor(e.target.value)} className={inputClass} />
-            <input placeholder="Specialty (e.g. Cardiology)" value={apptSpecialty} onChange={(e) => setApptSpecialty(e.target.value)} className={inputClass} />
-            <div><label className="text-[10px] text-[#64748b] font-semibold tracking-wider">DATE & TIME</label><input type="datetime-local" value={apptDateTime} onChange={(e) => setApptDateTime(e.target.value)} className={`mt-1 ${inputClass}`} /></div>
-            <input placeholder="Location (optional)" value={apptLocation} onChange={(e) => setApptLocation(e.target.value)} className={inputClass} />
-            <button onClick={handleAddAppt} disabled={!apptDoctor || !apptDateTime || saving} className="w-full py-2.5 rounded-lg bg-[#38bdf8] text-[#0f172a] text-sm font-semibold disabled:opacity-50 animate-press">{saving ? 'Saving...' : 'Add Appointment'}</button>
-          </div>
-        )}
+      {/* Add Appointment Form */}
+      <BottomSheet isOpen={showApptForm} onClose={() => setShowApptForm(false)} title="Add Appointment">
+        <input className={inputClass} placeholder="Doctor name" value={apptDoctor} onChange={(e) => setApptDoctor(e.target.value)} />
+        <input className={inputClass} placeholder="Specialty" value={apptSpecialty} onChange={(e) => setApptSpecialty(e.target.value)} />
+        <input className={inputClass} type="datetime-local" value={apptDate} onChange={(e) => setApptDate(e.target.value)} />
+        <input className={inputClass} placeholder="Location" value={apptLocation} onChange={(e) => setApptLocation(e.target.value)} />
+        <input className={inputClass} placeholder="Purpose" value={apptPurpose} onChange={(e) => setApptPurpose(e.target.value)} />
+        <button onClick={handleAddAppt} className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-sm font-semibold">Save</button>
       </BottomSheet>
     </div>
   )
