@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 
-// Single global scroll observer — watches ALL reveal elements on the page
+/* ───────────────────────────────────────────
+   Global scroll observer
+   ─────────────────────────────────────────── */
 function useGlobalScrollReveal() {
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -17,42 +19,152 @@ function useGlobalScrollReveal() {
       { threshold: 0.1, rootMargin: '0px 0px -30px 0px' }
     );
 
-    // Find every element on the page that needs scroll animation
-    const selectors = '.scroll-reveal, .scroll-reveal-stagger, .scroll-reveal-scale, .scroll-reveal-left, .scroll-reveal-right';
+    const selectors = '.scroll-reveal, .scroll-reveal-stagger, .scroll-reveal-scale, .scroll-reveal-left, .scroll-reveal-right, .scroll-reveal-step';
     document.querySelectorAll(selectors).forEach((el) => observer.observe(el));
 
     return () => observer.disconnect();
   }, []);
 }
 
-function Typewriter({ text, delay = 0 }: { text: string; delay?: number }) {
-  const [displayed, setDisplayed] = useState('');
-  const [started, setStarted] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setStarted(true), delay);
-    return () => clearTimeout(timer);
-  }, [delay]);
-
-  useEffect(() => {
-    if (!started) return;
-    let i = 0;
-    const interval = setInterval(() => {
-      setDisplayed(text.slice(0, i + 1));
-      i++;
-      if (i >= text.length) clearInterval(interval);
-    }, 50);
-    return () => clearInterval(interval);
-  }, [started, text]);
-
+/* ───────────────────────────────────────────
+   WordReveal — word-by-word fade up
+   ─────────────────────────────────────────── */
+function WordReveal({ text, className = '' }: { text: string; className?: string }) {
   return (
-    <span>
-      {displayed}
-      {displayed.length < text.length && <span className="typewriter-cursor">&nbsp;</span>}
+    <span className={className}>
+      {text.split(' ').map((word, i) => (
+        <span
+          key={i}
+          className="inline-block opacity-0 translate-y-4 animate-[word-reveal_0.5s_ease_forwards]"
+          style={{ animationDelay: `${i * 100}ms` }}
+        >
+          {word}&nbsp;
+        </span>
+      ))}
     </span>
   );
 }
 
+/* ───────────────────────────────────────────
+   TiltCard — 3D tilt on hover
+   ─────────────────────────────────────────── */
+function TiltCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    ref.current.style.transform = `perspective(600px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) scale(1.02)`;
+  };
+
+  const handleMouseLeave = () => {
+    if (ref.current) ref.current.style.transform = 'perspective(600px) rotateY(0deg) rotateX(0deg) scale(1)';
+  };
+
+  return (
+    <div ref={ref} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} className={`transition-transform duration-300 ease-out ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+/* ───────────────────────────────────────────
+   PhoneMockup — 3D floating phone
+   ─────────────────────────────────────────── */
+function PhoneMockup() {
+  return (
+    <div className="relative mt-16 mx-auto" style={{ perspective: '1000px' }}>
+      {/* Glow */}
+      <div className="absolute inset-0 bg-blue-500/20 rounded-[40px] blur-[60px] animate-[glow-pulse_4s_ease-in-out_infinite]" />
+      {/* Phone */}
+      <div
+        className="relative w-[280px] h-[560px] bg-[#1e293b] rounded-[40px] border-2 border-white/10 overflow-hidden shadow-2xl animate-[phone-float_6s_ease-in-out_infinite]"
+        style={{ transform: 'rotateY(-5deg) rotateX(5deg)' }}
+      >
+        {/* Notch */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-[#0f172a] rounded-b-2xl z-10" />
+        {/* Screen content */}
+        <div className="pt-10 px-4 space-y-3">
+          <div className="text-white/60 text-[10px]">Good afternoon</div>
+          <div className="text-white text-sm font-bold">Mom&apos;s Care Summary</div>
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2.5">
+            <div className="flex items-center gap-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+              <span className="text-red-300 text-[8px] font-semibold">NEEDS ATTENTION</span>
+            </div>
+            <div className="text-white text-[11px] font-medium mt-1">Lisinopril refill due tomorrow</div>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-lg p-2.5">
+            <div className="flex items-center gap-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+              <span className="text-cyan-300 text-[8px] font-semibold">UPCOMING</span>
+            </div>
+            <div className="text-white text-[11px] font-medium mt-1">Dr. Patel — Thursday 2:30 PM</div>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-lg p-2.5">
+            <div className="flex items-center gap-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+              <span className="text-amber-300 text-[8px] font-semibold">ALERT</span>
+            </div>
+            <div className="text-white text-[11px] font-medium mt-1">LDL Cholesterol flagged high</div>
+          </div>
+          <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-2.5 text-center">
+            <div className="text-indigo-300 text-[8px]">QUICK ASK</div>
+            <div className="text-white/80 text-[10px] mt-1">What should I ask Dr. Patel?</div>
+          </div>
+        </div>
+        {/* Bottom tab bar */}
+        <div className="absolute bottom-0 left-0 right-0 bg-[#0f172a] border-t border-white/10 flex justify-around py-2.5 px-3">
+          <div className="flex flex-col items-center gap-0.5"><div className="w-4 h-4 rounded bg-cyan-400/20" /><span className="text-[7px] text-cyan-400">Home</span></div>
+          <div className="flex flex-col items-center gap-0.5"><div className="w-4 h-4 rounded bg-white/10" /><span className="text-[7px] text-white/30">Chat</span></div>
+          <div className="flex flex-col items-center gap-0.5"><div className="w-4 h-4 rounded bg-white/10" /><span className="text-[7px] text-white/30">Care</span></div>
+          <div className="flex flex-col items-center gap-0.5"><div className="w-4 h-4 rounded bg-white/10" /><span className="text-[7px] text-white/30">Scan</span></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────────────────────────
+   DrawLine — SVG connecting line that draws
+   itself when scrolled into view
+   ─────────────────────────────────────────── */
+function DrawLine() {
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          el.classList.add('draw-active');
+        }
+      },
+      { threshold: 0.2 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <svg ref={svgRef} className="draw-line absolute left-7 top-0 bottom-0 w-[2px] z-0" style={{ height: '100%' }} preserveAspectRatio="none" viewBox="0 0 2 100">
+      <line x1="1" y1="0" x2="1" y2="100" stroke="url(#line-grad)" strokeWidth="2" strokeDasharray="100" strokeDashoffset="100" className="connecting-line" />
+      <defs>
+        <linearGradient id="line-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="rgba(59,130,246,0.5)" />
+          <stop offset="100%" stopColor="rgba(99,102,241,0.5)" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+/* ───────────────────────────────────────────
+   Particles
+   ─────────────────────────────────────────── */
 function Particles() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -74,6 +186,9 @@ function Particles() {
   );
 }
 
+/* ───────────────────────────────────────────
+   Counter — counts up on scroll
+   ─────────────────────────────────────────── */
 function Counter({ target, suffix = '' }: { target: number; suffix?: string }) {
   const [count, setCount] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
@@ -104,6 +219,9 @@ function Counter({ target, suffix = '' }: { target: number; suffix?: string }) {
   return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
 }
 
+/* ═══════════════════════════════════════════
+   MAIN PAGE
+   ═══════════════════════════════════════════ */
 export default function LandingPage() {
   useGlobalScrollReveal();
   const [navScrolled, setNavScrolled] = useState(false);
@@ -116,7 +234,128 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#0A0C10] overflow-hidden">
-      {/* Nav */}
+      {/* ── Inline keyframes & styles ── */}
+      <style>{`
+        @keyframes word-reveal {
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes phone-float {
+          0%, 100% { transform: rotateY(-5deg) rotateX(5deg) translateY(0); }
+          50% { transform: rotateY(-5deg) rotateX(5deg) translateY(-12px); }
+        }
+        @keyframes glow-pulse {
+          0%, 100% { opacity: 0.5; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.05); }
+        }
+
+        /* Shimmer CTA */
+        .shimmer-btn {
+          position: relative;
+          overflow: hidden;
+        }
+        .shimmer-btn::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+          transition: none;
+        }
+        .shimmer-btn:hover::after {
+          animation: shimmer-sweep-btn 0.6s ease forwards;
+        }
+        @keyframes shimmer-sweep-btn {
+          to { left: 100%; }
+        }
+
+        /* Icon glow */
+        .icon-glow {
+          filter: drop-shadow(0 0 8px currentColor);
+          transition: filter 0.3s;
+        }
+        .group:hover .icon-glow {
+          filter: drop-shadow(0 0 14px currentColor);
+        }
+
+        /* Stat divider */
+        .stat-divider::after {
+          content: '';
+          position: absolute;
+          right: 0;
+          top: 15%;
+          height: 70%;
+          width: 1px;
+          background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.08), transparent);
+          animation: divider-fade 2s ease-in-out infinite alternate;
+        }
+        .stat-divider:last-child::after { display: none; }
+        @keyframes divider-fade {
+          0% { opacity: 0.3; }
+          100% { opacity: 1; }
+        }
+
+        /* Draw line */
+        .draw-line .connecting-line {
+          transition: stroke-dashoffset 1.5s ease;
+        }
+        .draw-line.draw-active .connecting-line {
+          stroke-dashoffset: 0;
+        }
+
+        /* Scroll reveal steps — alternating sides */
+        .scroll-reveal-step {
+          opacity: 0;
+          transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        .scroll-reveal-step.from-left {
+          transform: translateX(-40px);
+        }
+        .scroll-reveal-step.from-right {
+          transform: translateX(40px);
+        }
+        .scroll-reveal-step.revealed {
+          opacity: 1;
+          transform: translateX(0);
+        }
+
+        /* Feature card stagger */
+        .feature-card {
+          opacity: 0;
+          transform: translateY(30px);
+          transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        .scroll-reveal-stagger.revealed .feature-card:nth-child(1) {
+          opacity: 1; transform: translateY(0); transition-delay: 0ms;
+        }
+        .scroll-reveal-stagger.revealed .feature-card:nth-child(2) {
+          opacity: 1; transform: translateY(0); transition-delay: 150ms;
+        }
+        .scroll-reveal-stagger.revealed .feature-card:nth-child(3) {
+          opacity: 1; transform: translateY(0); transition-delay: 300ms;
+        }
+
+        /* Footer link underline */
+        .footer-link {
+          position: relative;
+        }
+        .footer-link::after {
+          content: '';
+          position: absolute;
+          bottom: -2px;
+          left: 0;
+          width: 0;
+          height: 1px;
+          background: currentColor;
+          transition: width 0.3s ease;
+        }
+        .footer-link:hover::after {
+          width: 100%;
+        }
+      `}</style>
+
+      {/* ── Nav ── */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         navScrolled
           ? 'bg-[#0A0C10]/90 backdrop-blur-xl border-b border-white/5'
@@ -133,81 +372,87 @@ export default function LandingPage() {
           </div>
           <Link
             href="/login"
-            className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 hover:shadow-lg hover:shadow-blue-600/30 hover:-translate-y-0.5 transition-all duration-200"
+            className="shimmer-btn rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 hover:shadow-lg hover:shadow-blue-600/30 hover:-translate-y-0.5 transition-all duration-200"
           >
             Get Started
           </Link>
         </div>
       </nav>
 
-      {/* Hero */}
+      {/* ── Hero ── */}
       <section className="pt-36 pb-24 px-6 relative min-h-[90vh] flex items-center">
         <div className="absolute top-20 left-1/4 w-[500px] h-[500px] bg-gradient-to-br from-blue-600/20 to-indigo-600/20 rounded-full blur-3xl animate-float-slow" />
         <div className="absolute top-40 right-1/4 w-[400px] h-[400px] bg-gradient-to-br from-violet-600/15 to-blue-600/15 rounded-full blur-3xl animate-float-slower" />
         <div className="absolute bottom-20 left-1/3 w-[300px] h-[300px] bg-gradient-to-br from-cyan-600/10 to-blue-600/10 rounded-full blur-3xl animate-float-slow" style={{ animationDelay: '2s' }} />
         <Particles />
 
-        <div className="max-w-4xl mx-auto text-center relative">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 backdrop-blur-sm rounded-full mb-8 animate-fade-in border border-blue-500/20">
-            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-            <span className="text-sm text-blue-300 font-medium">AI-Powered Caregiving Assistant</span>
-          </div>
+        <div className="max-w-6xl mx-auto relative w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Left: text */}
+            <div className="text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 backdrop-blur-sm rounded-full mb-8 animate-fade-in border border-blue-500/20">
+                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                <span className="text-sm text-blue-300 font-medium">AI-Powered Caregiving Assistant</span>
+              </div>
 
-          <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-bold leading-tight mb-6">
-            <span className="animate-fade-in-up inline-block text-white">Your health</span>
-            <br />
-            <span className="animate-fade-in-up inline-block animate-gradient-text" style={{ animationDelay: '0.3s' }}>
-              <Typewriter text="second brain" delay={800} />
-            </span>
-          </h1>
+              <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-bold leading-tight mb-6">
+                <WordReveal text="Your health second brain" className="text-white" />
+              </h1>
 
-          <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto mb-12 leading-relaxed animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
-            CareCompanion remembers every medication, appointment, lab result, and insurance detail — so you can focus on what matters most: <span className="text-white font-medium">the people you love</span>.
-          </p>
+              <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto lg:mx-0 mb-12 leading-relaxed animate-fade-in-up" style={{ animationDelay: '0.8s' }}>
+                CareCompanion remembers every medication, appointment, lab result, and insurance detail — so you can focus on what matters most: <span className="text-white font-medium">the people you love</span>.
+              </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up" style={{ animationDelay: '0.7s' }}>
-            <Link
-              href="/login"
-              className="w-full sm:w-auto rounded-2xl bg-blue-600 px-8 py-4 text-base font-semibold text-white hover:bg-blue-500 hover:shadow-xl hover:shadow-blue-600/30 hover:-translate-y-1 transition-all duration-300 animate-glow-pulse"
-            >
-              Start for free
-            </Link>
-            <a
-              href="#features"
-              className="w-full sm:w-auto rounded-2xl bg-white/5 border border-white/10 px-8 py-4 text-base font-semibold text-slate-300 hover:bg-white/10 hover:border-white/20 hover:-translate-y-0.5 transition-all duration-200"
-            >
-              See how it works
-            </a>
-          </div>
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 animate-fade-in-up" style={{ animationDelay: '1s' }}>
+                <Link
+                  href="/login"
+                  className="shimmer-btn w-full sm:w-auto rounded-2xl bg-blue-600 px-8 py-4 text-base font-semibold text-white hover:bg-blue-500 hover:shadow-xl hover:shadow-blue-600/30 hover:-translate-y-1 transition-all duration-300"
+                >
+                  Start for free
+                </Link>
+                <a
+                  href="#features"
+                  className="w-full sm:w-auto rounded-2xl bg-white/5 border border-white/10 px-8 py-4 text-base font-semibold text-slate-300 hover:bg-white/10 hover:border-white/20 hover:-translate-y-0.5 transition-all duration-200"
+                >
+                  See how it works
+                </a>
+              </div>
 
-          <div className="mt-16 animate-fade-in" style={{ animationDelay: '1.2s' }}>
-            <div className="w-6 h-10 rounded-full border-2 border-white/20 mx-auto flex justify-center pt-2">
-              <div className="w-1 h-2 bg-white/40 rounded-full animate-bounce" />
+              <div className="mt-16 animate-fade-in" style={{ animationDelay: '1.4s' }}>
+                <div className="w-6 h-10 rounded-full border-2 border-white/20 mx-auto lg:mx-0 flex justify-center pt-2">
+                  <div className="w-1 h-2 bg-white/40 rounded-full animate-bounce" />
+                </div>
+              </div>
+            </div>
+
+            {/* Right: phone mockup */}
+            <div className="hidden lg:flex justify-center animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
+              <PhoneMockup />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Stats */}
-        <section className="py-12 px-6 bg-white/[0.02] border-y border-white/5 scroll-reveal">
-          <div className="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
-            {[
-              { value: 10000, suffix: '+', label: 'Caregivers' },
-              { value: 50000, suffix: '+', label: 'Medications tracked' },
-              { value: 99, suffix: '%', label: 'Accuracy' },
-              { value: 2, suffix: ' min', label: 'Setup time' },
-            ].map((stat) => (
-              <div key={stat.label}>
-                <p className="font-display text-3xl sm:text-4xl font-bold text-white">
-                  <Counter target={stat.value} suffix={stat.suffix} />
-                </p>
-                <p className="text-sm text-slate-500 mt-1">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+      {/* ── Stats ── */}
+      <section className="py-12 px-6 bg-white/[0.02] border-y border-white/5 scroll-reveal">
+        <div className="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
+          {[
+            { value: 10000, suffix: '+', label: 'Caregivers' },
+            { value: 50000, suffix: '+', label: 'Medications tracked' },
+            { value: 99, suffix: '%', label: 'Accuracy' },
+            { value: 2, suffix: ' min', label: 'Setup time' },
+          ].map((stat) => (
+            <div key={stat.label} className="relative stat-divider">
+              <p className="font-display text-3xl sm:text-4xl font-bold text-white">
+                <Counter target={stat.value} suffix={stat.suffix} />
+              </p>
+              <p className="text-sm text-slate-500 mt-1">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-      {/* Features */}
+      {/* ── Features ── */}
       <section id="features" className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16 scroll-reveal">
@@ -244,24 +489,23 @@ export default function LandingPage() {
                 iconColor: 'text-amber-400',
               },
             ].map((feature) => (
-              <div
-                key={feature.title}
-                className="scroll-reveal-child bg-white/[0.03] rounded-2xl border border-white/[0.06] p-7 hover:bg-white/[0.06] hover:border-white/10 hover:-translate-y-1 transition-all duration-300 group cursor-default"
-              >
-                <div className={`w-12 h-12 rounded-xl ${feature.color} flex items-center justify-center mb-5 transition-colors duration-300`}>
-                  <svg className={`w-6 h-6 ${feature.iconColor}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d={feature.icon} />
-                  </svg>
+              <TiltCard key={feature.title} className="feature-card">
+                <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-7 hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default h-full">
+                  <div className={`w-12 h-12 rounded-xl ${feature.color} flex items-center justify-center mb-5 transition-colors duration-300`}>
+                    <svg className={`w-6 h-6 ${feature.iconColor} icon-glow`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d={feature.icon} />
+                    </svg>
+                  </div>
+                  <h3 className="font-display text-lg font-semibold text-white mb-2">{feature.title}</h3>
+                  <p className="text-sm text-slate-400 leading-relaxed">{feature.description}</p>
                 </div>
-                <h3 className="font-display text-lg font-semibold text-white mb-2">{feature.title}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">{feature.description}</p>
-              </div>
+              </TiltCard>
             ))}
           </div>
         </div>
       </section>
 
-      {/* How it works */}
+      {/* ── How it works ── */}
       <section className="py-24 px-6">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16 scroll-reveal">
@@ -271,13 +515,16 @@ export default function LandingPage() {
             </h2>
           </div>
 
-          <div className="space-y-8">
+          <div className="relative space-y-8">
+            {/* Connecting line */}
+            <DrawLine />
+
             {[
-              { step: '01', title: 'Enter your name', description: 'No email required. No passwords. Just tell us who you are and get started instantly.', direction: 'scroll-reveal-left' },
-              { step: '02', title: 'Tell us about your loved one', description: 'A quick 5-step wizard captures their medications, doctors, appointments, and conditions. Or just snap a photo — we\'ll do the rest.', direction: 'scroll-reveal-right' },
-              { step: '03', title: 'Start chatting', description: 'Ask CareCompanion anything. It knows your full care situation and gives specific, actionable answers. Like having a knowledgeable friend on call 24/7.', direction: 'scroll-reveal-left' },
+              { step: '01', title: 'Enter your name', description: 'No email required. No passwords. Just tell us who you are and get started instantly.', side: 'from-left' },
+              { step: '02', title: 'Tell us about your loved one', description: 'A quick 5-step wizard captures their medications, doctors, appointments, and conditions. Or just snap a photo — we\'ll do the rest.', side: 'from-right' },
+              { step: '03', title: 'Start chatting', description: 'Ask CareCompanion anything. It knows your full care situation and gives specific, actionable answers. Like having a knowledgeable friend on call 24/7.', side: 'from-left' },
             ].map((item) => (
-              <div key={item.step} className={`${item.direction} flex items-start gap-6 p-6 rounded-2xl hover:bg-white/[0.03] transition-colors duration-300`}>
+              <div key={item.step} className={`scroll-reveal-step ${item.side} relative z-10 flex items-start gap-6 p-6 rounded-2xl hover:bg-white/[0.03] transition-colors duration-300`}>
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-600/30">
                   <span className="font-display text-lg font-bold text-white">{item.step}</span>
                 </div>
@@ -291,7 +538,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonial */}
+      {/* ── Testimonial ── */}
       <section className="py-20 px-6">
         <div className="max-w-4xl mx-auto">
           <div className="scroll-reveal-scale bg-white/[0.03] rounded-3xl border border-white/[0.06] p-8 sm:p-12 text-center">
@@ -313,7 +560,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* ── CTA ── */}
       <section className="py-24 px-6 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-blue-700/10 to-indigo-800/20" />
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-3xl animate-float-slow" />
@@ -331,7 +578,7 @@ export default function LandingPage() {
           </p>
           <Link
             href="/login"
-            className="inline-flex rounded-2xl bg-blue-600 px-10 py-5 text-lg font-semibold text-white hover:bg-blue-500 hover:shadow-2xl hover:shadow-blue-600/30 hover:-translate-y-1 transition-all duration-300 shadow-lg shadow-blue-600/20"
+            className="shimmer-btn inline-flex rounded-2xl bg-blue-600 px-10 py-5 text-lg font-semibold text-white hover:bg-blue-500 hover:shadow-2xl hover:shadow-blue-600/30 hover:-translate-y-1 transition-all duration-300 shadow-lg shadow-blue-600/20"
           >
             Get started for free
           </Link>
@@ -339,8 +586,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-10 px-6 border-t border-white/5">
+      {/* ── Footer ── */}
+      <footer className="relative py-10 px-6 border-t border-white/5">
+        {/* Gradient fade at top */}
+        <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-[#0A0C10] to-transparent -translate-y-full pointer-events-none" />
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
@@ -348,7 +597,7 @@ export default function LandingPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
               </svg>
             </div>
-            <span className="text-sm text-slate-500">CareCompanion</span>
+            <span className="text-sm text-slate-500 footer-link">CareCompanion</span>
           </div>
           <p className="text-xs text-slate-600">Built with care, for caregivers.</p>
         </div>
