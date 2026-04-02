@@ -1,0 +1,91 @@
+<h2>Design — Care Tab</h2>
+<p class="subtitle">Section 3 of 4: Medications + Appointments merged into one screen</p>
+
+<div class="mockup">
+  <div class="mockup-header">Care Tab — Mobile View</div>
+  <div class="mockup-body" style="background: #0f172a; padding: 0; max-width: 375px; margin: 0 auto; min-height: 480px; display: flex; flex-direction: column;">
+
+    <!-- Top bar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px;">
+      <div style="color: #f1f5f9; font-size: 20px; font-weight: 700;">Care</div>
+      <div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(56,189,248,0.1); display: flex; align-items: center; justify-content: center;">
+        <svg width="16" height="16" fill="none" stroke="#38bdf8" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+    </div>
+
+    <!-- Segment control -->
+    <div style="display: flex; margin: 0 20px 16px; background: #1e293b; border-radius: 10px; padding: 3px;">
+      <div style="flex: 1; text-align: center; padding: 8px; border-radius: 8px; background: #38bdf8; color: #0f172a; font-size: 13px; font-weight: 600;">Medications</div>
+      <div style="flex: 1; text-align: center; padding: 8px; border-radius: 8px; color: #64748b; font-size: 13px; font-weight: 500;">Appointments</div>
+    </div>
+
+    <!-- Medications list -->
+    <div style="padding: 0 20px; flex: 1;">
+      <!-- Refill needed -->
+      <div style="font-size: 10px; color: #64748b; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 8px;">REFILL NEEDED</div>
+
+      <div style="background: #1e293b; border: 1px solid rgba(239,68,68,0.2); border-radius: 12px; padding: 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="color: #f1f5f9; font-size: 14px; font-weight: 600;">Lisinopril 10mg</div>
+          <div style="color: #94a3b8; font-size: 11px; margin-top: 2px;">Once daily • Morning</div>
+          <div style="color: #fca5a5; font-size: 11px; margin-top: 2px;">Refill due tomorrow</div>
+        </div>
+        <div style="background: rgba(239,68,68,0.1); border-radius: 8px; padding: 6px 10px;">
+          <span style="color: #fca5a5; font-size: 11px; font-weight: 600;">Refill</span>
+        </div>
+      </div>
+
+      <!-- Active meds -->
+      <div style="font-size: 10px; color: #64748b; font-weight: 600; letter-spacing: 0.05em; margin: 16px 0 8px;">ACTIVE</div>
+
+      <div style="background: #1e293b; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="color: #f1f5f9; font-size: 14px; font-weight: 600;">Metformin 500mg</div>
+          <div style="color: #94a3b8; font-size: 11px; margin-top: 2px;">Twice daily • With meals</div>
+          <div style="color: #22c55e; font-size: 11px; margin-top: 2px;">Refill in 18 days</div>
+        </div>
+        <svg width="16" height="16" fill="none" stroke="#475569" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+
+      <div style="background: #1e293b; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="color: #f1f5f9; font-size: 14px; font-weight: 600;">Atorvastatin 20mg</div>
+          <div style="color: #94a3b8; font-size: 11px; margin-top: 2px;">Once daily • Evening</div>
+          <div style="color: #22c55e; font-size: 11px; margin-top: 2px;">Refill in 24 days</div>
+        </div>
+        <svg width="16" height="16" fill="none" stroke="#475569" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <!-- Bottom tab bar -->
+    <div style="display: flex; justify-content: space-around; align-items: center; padding: 12px 8px 20px; border-top: 1px solid rgba(255,255,255,0.08);">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+        <svg width="20" height="20" fill="none" stroke="#64748b" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
+        <span style="font-size: 10px; color: #64748b;">Home</span>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+        <svg width="20" height="20" fill="none" stroke="#64748b" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span style="font-size: 10px; color: #64748b;">Chat</span>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+        <svg width="20" height="20" fill="none" stroke="#38bdf8" stroke-width="2" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        <span style="font-size: 10px; color: #38bdf8; font-weight: 600;">Care</span>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+        <svg width="20" height="20" fill="none" stroke="#64748b" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="9"/></svg>
+        <span style="font-size: 10px; color: #64748b;">Scan</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>How it works</h3>
+  <ul style="color: #d4d4d8; font-size: 14px; line-height: 1.8;">
+    <li><strong style="color: #38bdf8;">Segment control</strong> — Toggle between Medications and Appointments at the top. No page navigation needed.</li>
+    <li><strong style="color: #38bdf8;">Grouped by status</strong> — Meds that need refills surface first. Active meds below. No scrolling past irrelevant stuff.</li>
+    <li><strong style="color: #38bdf8;">"+" button</strong> — Top right adds a new medication or appointment depending on which segment is active.</li>
+    <li><strong style="color: #38bdf8;">Tap to expand</strong> — Tapping a med card opens a detail sheet (dosage, pharmacy, doctor, history) as a bottom sheet overlay, not a new page.</li>
+    <li><strong style="color: #38bdf8;">Appointments view</strong> — Same card style but grouped by "This Week" and "Upcoming". Shows doctor name, specialty, date/time.</li>
+  </ul>
+</div>

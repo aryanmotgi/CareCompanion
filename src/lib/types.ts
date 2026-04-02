@@ -1,0 +1,192 @@
+export interface CareProfile {
+  id: string;
+  user_id: string;
+  patient_name: string | null;
+  patient_age: number | null;
+  relationship: string | null;
+  conditions: string | null;
+  allergies: string | null;
+  created_at: string;
+}
+
+export interface Medication {
+  id: string;
+  care_profile_id: string;
+  name: string;
+  dose: string | null;
+  frequency: string | null;
+  prescribing_doctor: string | null;
+  start_date: string | null;
+  refill_date: string | null;
+  quantity_remaining: number | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface Doctor {
+  id: string;
+  care_profile_id: string;
+  name: string;
+  specialty: string | null;
+  phone: string | null;
+  address: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface Appointment {
+  id: string;
+  care_profile_id: string;
+  doctor_name: string | null;
+  specialty: string | null;
+  date_time: string | null;
+  location: string | null;
+  purpose: string | null;
+  prep_notes: string | null;
+  follow_up_notes: string | null;
+  created_at: string;
+}
+
+export interface Document {
+  id: string;
+  care_profile_id: string;
+  type: string | null;
+  file_url: string | null;
+  description: string | null;
+  document_date: string | null;
+  created_at: string;
+}
+
+export interface Message {
+  id: string;
+  user_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+}
+
+// Connected Apps
+export interface ConnectedApp {
+  id: string;
+  user_id: string;
+  source: string;
+  access_token: string | null;
+  refresh_token: string | null;
+  expires_at: string | null;
+  last_synced: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+// Insurance
+export interface Insurance {
+  id: string;
+  user_id: string;
+  provider: string;
+  member_id: string | null;
+  group_number: string | null;
+  deductible_limit: number | null;
+  deductible_used: number;
+  oop_limit: number | null;
+  oop_used: number;
+  plan_year: number | null;
+  created_at: string;
+}
+
+// Claims
+export interface Claim {
+  id: string;
+  user_id: string;
+  service_date: string | null;
+  provider_name: string | null;
+  billed_amount: number | null;
+  paid_amount: number | null;
+  patient_responsibility: number | null;
+  status: 'paid' | 'denied' | 'pending';
+  denial_reason: string | null;
+  eob_url: string | null;
+  created_at: string;
+}
+
+// Prior Authorizations
+export interface PriorAuth {
+  id: string;
+  user_id: string;
+  service: string;
+  status: string | null;
+  start_date: string | null;
+  expiry_date: string | null;
+  sessions_approved: number | null;
+  sessions_used: number;
+  created_at: string;
+}
+
+// FSA / HSA
+export interface FsaHsa {
+  id: string;
+  user_id: string;
+  provider: string;
+  account_type: 'fsa' | 'hsa';
+  balance: number;
+  contribution_limit: number | null;
+  plan_year: number | null;
+  last_synced: string | null;
+  created_at: string;
+}
+
+// Lab Results
+export interface LabResult {
+  id: string;
+  user_id: string;
+  test_name: string;
+  value: string | null;
+  unit: string | null;
+  reference_range: string | null;
+  is_abnormal: boolean;
+  date_taken: string | null;
+  source: string | null;
+  created_at: string;
+}
+
+// Notifications
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  message: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+// Form types for setup wizard
+export interface MedicationForm {
+  name: string;
+  dose: string;
+  frequency: string;
+  prescribing_doctor: string;
+  refill_date: string;
+}
+
+export interface DoctorForm {
+  name: string;
+  specialty: string;
+  phone: string;
+}
+
+export interface AppointmentForm {
+  doctor_name: string;
+  date_time: string;
+  purpose: string;
+}
+
+export interface SetupFormData {
+  patient_name: string;
+  patient_age: string;
+  relationship: string;
+  conditions: string;
+  allergies: string;
+  medications: MedicationForm[];
+  doctors: DoctorForm[];
+  appointments: AppointmentForm[];
+}

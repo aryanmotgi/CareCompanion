@@ -1,0 +1,37 @@
+<h2>Three approaches to reorganize CareCompanion</h2>
+<p class="subtitle">All keep your dark color palette. The difference is how aggressively we restructure.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Light Touch — Clean up, don't restructure</h3>
+      <p>Keep all 8 pages. Add a mobile bottom tab bar for the top 4 (Home, Chat, Care, Scan). Simplify dashboard layout. Fix spacing and hierarchy. Tuck profile/settings/connect behind a menu.</p>
+      <div style="margin-top: 8px; padding: 8px 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; color: #94a3b8;">
+        <strong style="color: #e2e8f0;">Effort:</strong> Low &nbsp;|&nbsp; <strong style="color: #e2e8f0;">Risk:</strong> Low &nbsp;|&nbsp; <strong style="color: #e2e8f0;">Impact:</strong> Medium
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)" style="border-color: #38bdf8;">
+    <div class="letter" style="background: #38bdf8; color: #0f172a;">B</div>
+    <div class="content">
+      <h3>Recommended — Mobile-first rebuild of navigation & layout</h3>
+      <p>4-tab bottom nav (Home, Chat, Care, Scan). Merge medications + appointments into a single "Care" tab with sub-sections. Dashboard becomes a focused home feed with cards. Profile/Connect/Settings behind avatar menu. Remove sidebar entirely. Every screen = one clear purpose.</p>
+      <div style="margin-top: 8px; padding: 8px 12px; background: rgba(56,189,248,0.1); border-radius: 6px; font-size: 13px; color: #94a3b8;">
+        <strong style="color: #38bdf8;">Effort:</strong> Medium &nbsp;|&nbsp; <strong style="color: #38bdf8;">Risk:</strong> Low-Med &nbsp;|&nbsp; <strong style="color: #38bdf8;">Impact:</strong> High — feels like a real app
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Full Rethink — Chat-first architecture</h3>
+      <p>Make AI Chat the home screen. Everything else (meds, appointments, scans) is accessible through chat or via a minimal secondary nav. Like how ChatGPT is chat-first with tools built in. Dashboard becomes a widget inside chat context.</p>
+      <div style="margin-top: 8px; padding: 8px 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; color: #94a3b8;">
+        <strong style="color: #e2e8f0;">Effort:</strong> High &nbsp;|&nbsp; <strong style="color: #e2e8f0;">Risk:</strong> High &nbsp;|&nbsp; <strong style="color: #e2e8f0;">Impact:</strong> High but polarizing
+      </div>
+    </div>
+  </div>
+</div>

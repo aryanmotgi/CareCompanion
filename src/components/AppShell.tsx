@@ -54,7 +54,7 @@ export function AppShell({
         </header>
       )}
 
-      <main className={`${isSetup ? '' : 'pt-14 pb-24'} relative z-10`}>
+      <main className={`${isSetup ? '' : 'pt-14 pb-24'} relative z-10 animate-page-in`}>
         {children}
       </main>
 

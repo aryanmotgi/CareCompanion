@@ -257,6 +257,10 @@ body {
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
   }
+
+  .animate-page-in {
+    animation: page-in 0.25s ease-out;
+  }
 }
 
 /* ===== ANIMATIONS ===== */
@@ -729,6 +733,11 @@ body {
 }
 
 @keyframes number-reveal {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes page-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
