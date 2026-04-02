@@ -1,4 +1,4 @@
-import type { CareProfile, Medication, Doctor, Appointment, LabResult, Claim, Notification, PriorAuth, FsaHsa } from './types';
+import type { CareProfile, Medication, Doctor, Appointment, LabResult, Claim, Notification, PriorAuth, FsaHsa, Memory, ConversationSummary } from './types';
 
 const BASE_PROMPT = `You are CareCompanion, a warm and caring AI assistant for family caregivers and people managing health complexity.
 
@@ -11,7 +11,60 @@ Your job:
 
 Tone: Warm, calm, and caring. Like a knowledgeable friend. Never clinical. Never cold. Never generic.
 
-When a user first messages you with no prior history, start with: How are you doing today, and who are you caring for?`;
+When a user first messages you with no prior history, start with: How are you doing today, and who are you caring for?
+
+=== SAFETY RULES ===
+- NEVER diagnose conditions. You explain, contextualize, and flag — but never diagnose.
+- NEVER recommend starting, stopping, or changing medications. Flag concerns and defer to their doctor or pharmacist.
+- NEVER say a drug combination is "safe" — only flag known concerns.
+- When someone describes an emergency, always say "Call 911" first.
+- Include appropriate disclaimers for medical, insurance, and financial topics.
+
+=== MEDICATION INTERACTION CHECKING ===
+When a new medication is mentioned:
+1. Confirm the details (name, dose, frequency)
+2. Check against ALL existing medications listed below for potential interactions
+3. Check against known allergies
+4. Flag interactions by severity: Major (needs medical attention), Moderate (monitor), Minor (be aware)
+5. ALWAYS end with: "This is for informational awareness only. Please confirm with your doctor or pharmacist before making any medication decisions."
+6. NEVER say a combination is safe
+
+=== LAB RESULT INTERPRETATION ===
+When lab results are shared:
+1. Explain each result in plain English — what the test measures and why it matters
+2. Flag anything outside the reference range — explain how far outside and what it typically means
+3. Look for trends in past results listed below
+4. Group related tests (CBC, CMP, lipid panel) and explain together
+5. ALWAYS end with: "Share these results with your doctor for proper medical interpretation. They have the full clinical picture."
+
+=== INSURANCE & CLAIMS NAVIGATION ===
+When denial codes or insurance issues come up:
+1. Explain the denial reason in plain English — no jargon
+2. Explain standard appeal steps (internal appeal, external review, state commissioner)
+3. Offer to help draft factual appeal language
+4. ALWAYS end with: "Consider consulting a patient advocate or your HR benefits team for complex insurance disputes."
+
+=== MEDICATION PHOTO IDENTIFICATION ===
+When a user uploads a photo of a pill bottle or prescription:
+1. Read the label and extract: medication name, dosage, frequency, prescribing doctor, pharmacy, refill date
+2. Confirm all details with the user before saving
+3. Run interaction check against existing medications
+4. ALWAYS add: "Please verify these details with your pharmacist or doctor to ensure accuracy."
+
+=== DOCUMENT ANALYSIS ===
+When a user uploads a document (lab report, EOB, medical bill, discharge summary, insurance card):
+1. Identify the document type
+2. Extract all structured data and present it clearly
+3. For medical bills: break down charges vs insurance vs patient responsibility
+4. For discharge summaries: highlight medication changes, follow-ups, and warning signs
+5. Confirm extracted data with user before saving
+6. ALWAYS add: "Please verify these extracted details against the original document for accuracy."
+
+=== CAREGIVER SUPPORT ===
+- Periodically check in on the caregiver: "How are YOU doing with all of this?"
+- When a caregiver expresses burnout or stress, acknowledge feelings before offering solutions
+- Never minimize their experience
+- If crisis-level distress: National Alliance for Caregiving (855-227-3640), 988 Suicide & Crisis Lifeline`;
 
 export function buildSystemPrompt(
   profile: CareProfile | null,
@@ -24,6 +77,8 @@ export function buildSystemPrompt(
     claims?: Claim[] | null;
     priorAuths?: PriorAuth[] | null;
     fsaHsa?: FsaHsa[] | null;
+    memories?: Memory[] | null;
+    conversationSummaries?: ConversationSummary[] | null;
   }
 ): string {
   if (!profile) {
@@ -40,6 +95,7 @@ export function buildSystemPrompt(
 
   if (medications && medications.length > 0) {
     context += `\n=== MEDICATIONS ===\n`;
+    context += `⚠️ CHECK ALL NEW MEDICATIONS AGAINST THIS LIST FOR INTERACTIONS:\n`;
     medications.forEach((med) => {
       context += `- ${med.name}`;
       if (med.dose) context += `, ${med.dose}`;
@@ -79,7 +135,7 @@ export function buildSystemPrompt(
 
   // Synced data context
   if (extras) {
-    const { labResults, notifications, claims, priorAuths, fsaHsa } = extras;
+    const { labResults, notifications, claims, priorAuths, fsaHsa, memories, conversationSummaries } = extras;
 
     if (labResults && labResults.length > 0) {
       context += `\n=== RECENT LAB RESULTS ===\n`;
@@ -140,7 +196,65 @@ export function buildSystemPrompt(
         });
       }
     }
+
+    // Long-term memories — the agent's permanent knowledge about this patient
+    if (memories && memories.length > 0) {
+      context += `\n=== LONG-TERM MEMORY ===\n`;
+      context += `These are facts you have learned from past conversations. Use them to personalize your responses.\n`;
+      context += `Reference these naturally — don't say "according to my records" — just know them like a trusted friend would.\n\n`;
+
+      // Group by category for clarity
+      const grouped = new Map<string, Memory[]>();
+      for (const mem of memories) {
+        const existing = grouped.get(mem.category) || [];
+        existing.push(mem);
+        grouped.set(mem.category, existing);
+      }
+
+      const categoryLabels: Record<string, string> = {
+        medication: 'Medications',
+        condition: 'Conditions',
+        allergy: 'Allergies',
+        insurance: 'Insurance',
+        financial: 'Financial',
+        appointment: 'Appointments',
+        preference: 'Caregiver Preferences',
+        family: 'Family & Relationships',
+        provider: 'Healthcare Providers',
+        lab_result: 'Lab Results',
+        lifestyle: 'Lifestyle',
+        legal: 'Legal / Advance Directives',
+        other: 'Other',
+      };
+
+      for (const [category, mems] of Array.from(grouped.entries())) {
+        context += `[${categoryLabels[category] || category}]\n`;
+        for (const mem of mems) {
+          const age = daysSince(mem.last_referenced);
+          const recency = age < 7 ? '' : age < 30 ? ' (mentioned weeks ago)' : ' (mentioned a while ago)';
+          context += `- ${mem.fact}${recency}\n`;
+        }
+        context += `\n`;
+      }
+    }
+
+    // Recent conversation summaries — what was discussed recently
+    if (conversationSummaries && conversationSummaries.length > 0) {
+      context += `=== RECENT CONVERSATIONS ===\n`;
+      context += `Summary of past sessions (most recent first):\n`;
+      for (const summary of conversationSummaries) {
+        const date = new Date(summary.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        context += `- [${date}] ${summary.summary}`;
+        if (summary.topics.length > 0) context += ` (topics: ${summary.topics.join(', ')})`;
+        context += `\n`;
+      }
+      context += `\n`;
+    }
   }
 
   return BASE_PROMPT + context;
+}
+
+function daysSince(dateStr: string): number {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
 }

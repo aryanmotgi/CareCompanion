@@ -1,0 +1,247 @@
+<h2>CareCompanion — Chat, Scans, Settings, Profile</h2>
+<p class="subtitle">Part 2 of the design — remaining pages</p>
+
+<div class="section">
+  <h3>3. Chat Page — Hybrid AI Assistant</h3>
+  <div class="mockup">
+    <div class="mockup-header">Chat with CareCompanion AI</div>
+    <div class="mockup-body" style="background:#0f172a;padding:16px;display:flex;flex-direction:column;gap:12px;">
+
+      <div style="display:flex;justify-content:flex-end;">
+        <div style="background:linear-gradient(135deg,#6366f1,#22d3ee);border-radius:16px 16px 4px 16px;padding:10px 14px;max-width:75%;color:white;font-size:13px;">
+          What's my cholesterol looking like?
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:flex-start;">
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#22d3ee);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:white;font-weight:700;">AI</div>
+        <div style="flex:1;">
+          <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:4px 16px 16px 16px;padding:10px 14px;color:#e2e8f0;font-size:13px;line-height:1.5;">
+            Your most recent LDL Cholesterol was <strong style="color:#ef4444;">165 mg/dL</strong>, which is above the normal range (&lt;100). Here's the detail:
+          </div>
+
+          <div style="margin-top:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.15);border-radius:10px;padding:12px;font-size:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="color:#f1f5f9;font-weight:600;">LDL Cholesterol</span>
+              <span style="background:rgba(239,68,68,0.2);color:#ef4444;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;">HIGH</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;color:#94a3b8;">
+              <span>165 mg/dL</span>
+              <span>Normal: &lt;100</span>
+            </div>
+            <div style="margin-top:8px;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;">
+              <div style="width:82%;height:100%;background:linear-gradient(90deg,#22d3ee,#ef4444);border-radius:2px;"></div>
+            </div>
+            <div style="color:#64748b;font-size:11px;margin-top:4px;">Quest Diagnostics • 3 days ago</div>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:4px 16px 16px 16px;padding:10px 14px;color:#e2e8f0;font-size:13px;line-height:1.5;margin-top:8px;">
+            You have a cardiology appointment with <strong>Dr. Patel</strong> in 3 days — this would be a good time to discuss a treatment plan. Want me to help you prepare questions?
+          </div>
+        </div>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-top:8px;">
+        <div style="flex:1;color:#64748b;font-size:13px;">Ask about your health...</div>
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#22d3ee);display:flex;align-items:center;justify-content:center;">
+          <span style="color:white;font-size:14px;">↑</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p style="color:#888;font-size:13px;margin-top:8px;">Clean bubbles for user, AI responses with rich embedded cards (labs, meds, appointments). Cards are contextual — only appear when AI references patient data.</p>
+</div>
+
+<div class="section">
+  <h3>4. Scans — AI-Powered Document Hub</h3>
+  <div class="mockup">
+    <div class="mockup-header">Scan Center</div>
+    <div class="mockup-body" style="background:#0f172a;padding:16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:24px;margin-bottom:4px;">🧪</div>
+          <div style="color:#f1f5f9;font-size:13px;font-weight:600;">Lab Reports</div>
+          <div style="color:#64748b;font-size:11px;">3 documents</div>
+        </div>
+        <div style="background:rgba(34,211,238,0.1);border:1px solid rgba(34,211,238,0.2);border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:24px;margin-bottom:4px;">💊</div>
+          <div style="color:#f1f5f9;font-size:13px;font-weight:600;">Prescriptions</div>
+          <div style="color:#64748b;font-size:11px;">5 documents</div>
+        </div>
+        <div style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2);border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:24px;margin-bottom:4px;">🏥</div>
+          <div style="color:#f1f5f9;font-size:13px;font-weight:600;">Insurance/EOBs</div>
+          <div style="color:#64748b;font-size:11px;">2 documents</div>
+        </div>
+        <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:24px;margin-bottom:4px;">📋</div>
+          <div style="color:#f1f5f9;font-size:13px;font-weight:600;">Medical Records</div>
+          <div style="color:#64748b;font-size:11px;">1 document</div>
+        </div>
+      </div>
+
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Recent Scans</div>
+
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+        <div style="width:40px;height:40px;border-radius:8px;background:rgba(99,102,241,0.15);display:flex;align-items:center;justify-content:center;font-size:18px;">🧪</div>
+        <div style="flex:1;">
+          <div style="color:#f1f5f9;font-size:13px;font-weight:600;">Lipid Panel Results</div>
+          <div style="color:#64748b;font-size:11px;">Quest Diagnostics • Scanned 2 days ago</div>
+        </div>
+        <div style="background:rgba(16,185,129,0.2);color:#10b981;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;">Imported</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+        <div style="width:40px;height:40px;border-radius:8px;background:rgba(251,191,36,0.15);display:flex;align-items:center;justify-content:center;font-size:18px;">🏥</div>
+        <div style="flex:1;">
+          <div style="color:#f1f5f9;font-size:13px;font-weight:600;">EOB — Heart & Vascular Center</div>
+          <div style="color:#64748b;font-size:11px;">Denied claim • $285 patient responsibility</div>
+        </div>
+        <div style="background:rgba(239,68,68,0.2);color:#ef4444;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;">Denied</div>
+      </div>
+
+      <button style="width:100%;padding:14px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#22d3ee);color:white;border:none;font-size:14px;font-weight:600;letter-spacing:0.5px;">
+        + Scan New Document
+      </button>
+    </div>
+  </div>
+  <p style="color:#888;font-size:13px;margin-top:8px;">Category grid → recent scans list → scan button. AI extracts data from photos/PDFs and offers to import into your profile (labs → lab_results, meds → medications, EOBs → claims).</p>
+</div>
+
+<div class="section">
+  <h3>5. Settings — Full Settings Hub</h3>
+  <div class="mockup">
+    <div class="mockup-header">Settings</div>
+    <div class="mockup-body" style="background:#0f172a;padding:16px;">
+
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Notifications</div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:12px;overflow:hidden;margin-bottom:16px;">
+        <div style="padding:14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div><div style="color:#e2e8f0;font-size:14px;">Refill Reminders</div><div style="color:#64748b;font-size:11px;">Alert when medications are running low</div></div>
+          <div style="width:42px;height:24px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#22d3ee);position:relative;"><div style="width:20px;height:20px;border-radius:50%;background:white;position:absolute;top:2px;right:2px;"></div></div>
+        </div>
+        <div style="padding:14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div><div style="color:#e2e8f0;font-size:14px;">Appointment Reminders</div><div style="color:#64748b;font-size:11px;">24 hours and 1 hour before</div></div>
+          <div style="width:42px;height:24px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#22d3ee);position:relative;"><div style="width:20px;height:20px;border-radius:50%;background:white;position:absolute;top:2px;right:2px;"></div></div>
+        </div>
+        <div style="padding:14px;display:flex;justify-content:space-between;align-items:center;">
+          <div><div style="color:#e2e8f0;font-size:14px;">Lab Result Alerts</div><div style="color:#64748b;font-size:11px;">Notify when new results are available</div></div>
+          <div style="width:42px;height:24px;border-radius:12px;background:rgba(255,255,255,0.1);position:relative;"><div style="width:20px;height:20px;border-radius:50%;background:#64748b;position:absolute;top:2px;left:2px;"></div></div>
+        </div>
+      </div>
+
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Connected Accounts</div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:12px;overflow:hidden;margin-bottom:16px;">
+        <div style="padding:14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="color:#e2e8f0;font-size:14px;">MyChart</div>
+          </div>
+          <span style="color:#10b981;font-size:12px;font-weight:600;">Connected</span>
+        </div>
+        <div style="padding:14px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="color:#e2e8f0;font-size:14px;">Google Calendar</div>
+          <span style="color:#64748b;font-size:12px;">Not connected</span>
+        </div>
+      </div>
+
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Privacy & Security</div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:12px;overflow:hidden;margin-bottom:16px;">
+        <div style="padding:14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div style="color:#e2e8f0;font-size:14px;">Export My Data</div>
+          <span style="color:#64748b;font-size:16px;">›</span>
+        </div>
+        <div style="padding:14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div style="color:#e2e8f0;font-size:14px;">Change Password</div>
+          <span style="color:#64748b;font-size:16px;">›</span>
+        </div>
+        <div style="padding:14px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="color:#ef4444;font-size:14px;">Delete Account</div>
+          <span style="color:#64748b;font-size:16px;">›</span>
+        </div>
+      </div>
+
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">About</div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:12px;overflow:hidden;">
+        <div style="padding:14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div style="color:#e2e8f0;font-size:14px;">App Version</div>
+          <span style="color:#64748b;font-size:13px;">1.0.0</span>
+        </div>
+        <div style="padding:14px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="color:#e2e8f0;font-size:14px;">Terms & Privacy Policy</div>
+          <span style="color:#64748b;font-size:16px;">›</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>6. Profile — Living Health Dashboard</h3>
+  <div class="mockup">
+    <div class="mockup-header">Health Profile</div>
+    <div class="mockup-body" style="background:#0f172a;padding:16px;">
+
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#22d3ee);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:700;">AM</div>
+        <div style="color:#f1f5f9;font-size:18px;font-weight:700;">Margaret Motgi</div>
+        <div style="color:#64748b;font-size:13px;">Age 72 • Parent</div>
+      </div>
+
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Current Conditions</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">
+        <span style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.2);color:#ef4444;padding:4px 10px;border-radius:8px;font-size:12px;">Hypertension</span>
+        <span style="background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.2);color:#fbbf24;padding:4px 10px;border-radius:8px;font-size:12px;">Type 2 Diabetes</span>
+        <span style="background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.2);color:#fbbf24;padding:4px 10px;border-radius:8px;font-size:12px;">High Cholesterol</span>
+      </div>
+
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Vitals Snapshot</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;text-align:center;">
+          <div style="color:#ef4444;font-size:18px;font-weight:700;">142/88</div>
+          <div style="color:#64748b;font-size:10px;">Blood Pressure</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;text-align:center;">
+          <div style="color:#fbbf24;font-size:18px;font-weight:700;">7.2%</div>
+          <div style="color:#64748b;font-size:10px;">A1C</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;text-align:center;">
+          <div style="color:#ef4444;font-size:18px;font-weight:700;">165</div>
+          <div style="color:#64748b;font-size:10px;">LDL mg/dL</div>
+        </div>
+      </div>
+
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Care Team</div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:12px;overflow:hidden;margin-bottom:16px;">
+        <div style="padding:12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(99,102,241,0.2);display:flex;align-items:center;justify-content:center;color:#818cf8;font-size:12px;font-weight:600;">DP</div>
+          <div style="flex:1;">
+            <div style="color:#e2e8f0;font-size:13px;font-weight:600;">Dr. Patel</div>
+            <div style="color:#64748b;font-size:11px;">Cardiology</div>
+          </div>
+          <div style="width:28px;height:28px;border-radius:50%;background:rgba(34,211,238,0.15);display:flex;align-items:center;justify-content:center;color:#22d3ee;font-size:14px;">📞</div>
+        </div>
+        <div style="padding:12px;display:flex;align-items:center;gap:10px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(34,211,238,0.2);display:flex;align-items:center;justify-content:center;color:#22d3ee;font-size:12px;font-weight:600;">DC</div>
+          <div style="flex:1;">
+            <div style="color:#e2e8f0;font-size:13px;font-weight:600;">Dr. Chen</div>
+            <div style="color:#64748b;font-size:11px;">Endocrinology</div>
+          </div>
+          <div style="width:28px;height:28px;border-radius:50%;background:rgba(34,211,238,0.15);display:flex;align-items:center;justify-content:center;color:#22d3ee;font-size:14px;">📞</div>
+        </div>
+      </div>
+
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Allergies</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">
+        <span style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:#e2e8f0;padding:4px 10px;border-radius:8px;font-size:12px;">Penicillin</span>
+        <span style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:#e2e8f0;padding:4px 10px;border-radius:8px;font-size:12px;">Shellfish</span>
+      </div>
+
+      <button style="width:100%;padding:12px;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;font-size:14px;font-weight:600;">
+        Edit Profile
+      </button>
+    </div>
+  </div>
+  <p style="color:#888;font-size:13px;margin-top:8px;">Living health dashboard: conditions with severity colors, vitals snapshot from latest labs, care team with call buttons, allergies as tags. All data pulled from existing Supabase tables.</p>
+</div>
+
+<p class="subtitle" style="margin-top:24px;">That's all 6 pages. Does this direction look right? Let me know in the terminal.</p>

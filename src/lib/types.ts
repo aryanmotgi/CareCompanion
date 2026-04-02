@@ -227,3 +227,87 @@ export interface UserSettings {
   created_at: string
   updated_at: string
 }
+
+// Care Team
+export interface CareTeamMember {
+  id: string;
+  care_profile_id: string;
+  user_id: string;
+  role: 'owner' | 'editor' | 'viewer';
+  invited_by: string | null;
+  joined_at: string;
+  created_at: string;
+  // Joined fields
+  email?: string;
+  display_name?: string;
+}
+
+export interface CareTeamInvite {
+  id: string;
+  care_profile_id: string;
+  invited_email: string;
+  role: 'editor' | 'viewer';
+  invited_by: string;
+  status: 'pending' | 'accepted' | 'declined';
+  created_at: string;
+  expires_at: string;
+}
+
+export interface CareTeamActivity {
+  id: string;
+  care_profile_id: string;
+  user_id: string | null;
+  user_name: string | null;
+  action: string;
+  created_at: string;
+}
+
+// User Preferences (multi-patient)
+export interface UserPreferences {
+  id: string;
+  user_id: string;
+  active_profile_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Medication Reminders
+export interface MedicationReminder {
+  id: string;
+  user_id: string;
+  medication_id: string;
+  medication_name: string;
+  dose: string | null;
+  reminder_times: string[];
+  days_of_week: string[];
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ReminderLog {
+  id: string;
+  user_id: string;
+  reminder_id: string;
+  medication_name: string;
+  scheduled_time: string;
+  status: 'pending' | 'taken' | 'snoozed' | 'missed';
+  responded_at: string | null;
+  created_at: string;
+}
+
+// Symptom Journal
+export interface SymptomEntry {
+  id: string;
+  user_id: string;
+  care_profile_id: string | null;
+  date: string;
+  pain_level: number | null;
+  mood: 'great' | 'good' | 'okay' | 'bad' | 'terrible' | null;
+  sleep_quality: 'great' | 'good' | 'fair' | 'poor' | 'terrible' | null;
+  sleep_hours: number | null;
+  appetite: 'normal' | 'increased' | 'decreased' | 'none' | null;
+  energy: 'high' | 'normal' | 'low' | 'very_low' | null;
+  symptoms: string[];
+  notes: string | null;
+  created_at: string;
+}

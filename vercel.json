@@ -3,6 +3,14 @@
     {
       "path": "/api/sync/all",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/notifications/generate",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/reminders/check",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import Link from 'next/link';
 import type { Notification } from '@/lib/types';
 
 interface NotificationBellProps {
@@ -9,12 +9,66 @@ interface NotificationBellProps {
   initialCount: number;
 }
 
+const TYPE_ICONS: Record<string, string> = {
+  refill_overdue: '🔴',
+  refill_soon: '💊',
+  appointment_prep: '📋',
+  appointment_today: '📅',
+  prior_auth_expiring: '⏰',
+  abnormal_lab: '⚠️',
+  low_balance: '💰',
+  lab_result: '🔬',
+  claim_denied: '❌',
+  prescription_ready: '💊',
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  refill_overdue: 'bg-red-500/10',
+  refill_soon: 'bg-amber-500/10',
+  appointment_prep: 'bg-blue-500/10',
+  appointment_today: 'bg-blue-500/10',
+  prior_auth_expiring: 'bg-orange-500/10',
+  abnormal_lab: 'bg-amber-500/10',
+  low_balance: 'bg-emerald-500/10',
+};
+
+function getChatPrompt(notif: Notification): string {
+  switch (notif.type) {
+    case 'refill_overdue':
+    case 'refill_soon':
+      return `Help me with the medication refill mentioned in this alert: ${notif.title}`;
+    case 'appointment_prep':
+      return `Help me prepare questions for my appointment: ${notif.title}`;
+    case 'appointment_today':
+      return `What should I remember for today's appointment? ${notif.title}`;
+    case 'abnormal_lab':
+    case 'lab_result':
+      return `Explain this lab result: ${notif.title}`;
+    case 'prior_auth_expiring':
+      return `Help me understand and renew this prior authorization: ${notif.title}`;
+    case 'claim_denied':
+      return `Help me understand this denied claim and how to appeal: ${notif.title}`;
+    case 'low_balance':
+      return `Help me plan my remaining FSA/HSA spending: ${notif.title}`;
+    default:
+      return `Tell me more about this: ${notif.title}`;
+  }
+}
+
+function timeAgo(dateStr: string) {
+  const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
 export function NotificationBell({ initialNotifications, initialCount }: NotificationBellProps) {
   const [notifications, setNotifications] = useState(initialNotifications);
   const [count, setCount] = useState(initialCount);
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const supabase = createClient();
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -26,30 +80,25 @@ export function NotificationBell({ initialNotifications, initialCount }: Notific
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const markAllRead = async () => {
-    const ids = notifications.filter((n) => !n.is_read).map((n) => n.id);
-    if (ids.length === 0) return;
-
-    await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .in('id', ids);
-
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    setCount(0);
+  const dismiss = async (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    setCount((c) => Math.max(0, c - 1));
+    await fetch('/api/notifications/read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
   };
 
-  const typeIcon = (type: string) => {
-    switch (type) {
-      case 'lab_result':
-        return 'M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5';
-      case 'claim_denied':
-        return 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z';
-      case 'prescription_ready':
-        return 'M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0';
-      default:
-        return 'M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0';
-    }
+  const markAllRead = async () => {
+    setNotifications([]);
+    setCount(0);
+    setOpen(false);
+    await fetch('/api/notifications/read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ all: true }),
+    });
   };
 
   return (
@@ -70,44 +119,59 @@ export function NotificationBell({ initialNotifications, initialCount }: Notific
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-[var(--bg-card)] rounded-2xl shadow-lg border border-[var(--border)] z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-80 max-h-[70vh] bg-[var(--bg-card)] rounded-2xl shadow-lg border border-[var(--border)] z-50 overflow-hidden animate-card-in">
+          {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
             <h3 className="font-display font-semibold text-white text-sm">Notifications</h3>
             {count > 0 && (
               <button
                 onClick={markAllRead}
-                className="text-xs text-blue-400 hover:text-blue-400 font-medium"
+                className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
               >
                 Mark all read
               </button>
             )}
           </div>
 
-          <div className="max-h-80 overflow-y-auto">
+          {/* List */}
+          <div className="max-h-[60vh] overflow-y-auto">
             {notifications.length === 0 ? (
               <div className="px-4 py-8 text-center">
-                <p className="text-sm text-[var(--text-muted)]">No notifications yet</p>
+                <p className="text-sm text-[var(--text-muted)]">All caught up!</p>
               </div>
             ) : (
               notifications.map((n) => (
                 <div
                   key={n.id}
-                  className={`flex items-start gap-3 px-4 py-3 border-b border-[var(--border)] ${!n.is_read ? 'bg-blue-500/10' : ''}`}
+                  className={`px-4 py-3 border-b border-[var(--border)] ${TYPE_COLORS[n.type] || (!n.is_read ? 'bg-blue-500/10' : '')}`}
                 >
-                  <svg className="w-4 h-4 text-[var(--text-muted)] mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d={typeIcon(n.type)} />
-                  </svg>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-white">{n.title}</p>
-                    {n.message && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{n.message}</p>}
-                    <p className="text-xs text-[var(--text-muted)] mt-1">
-                      {new Date(n.created_at).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      })}
-                    </p>
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-base mt-0.5 flex-shrink-0">{TYPE_ICONS[n.type] || '🔔'}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white leading-snug">{n.title}</p>
+                      {n.message && (
+                        <p className="text-xs text-[var(--text-secondary)] mt-1 line-clamp-2">{n.message}</p>
+                      )}
+                      <div className="flex items-center gap-3 mt-2">
+                        <Link
+                          href={`/chat?prompt=${encodeURIComponent(getChatPrompt(n))}`}
+                          onClick={() => {
+                            dismiss(n.id);
+                            setOpen(false);
+                          }}
+                          className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                        >
+                          Ask AI
+                        </Link>
+                        <button
+                          onClick={() => dismiss(n.id)}
+                          className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+                        >
+                          Dismiss
+                        </button>
+                        <span className="text-[10px] text-[var(--text-muted)] ml-auto">{timeAgo(n.created_at)}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))
