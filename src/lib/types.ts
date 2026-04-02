@@ -6,6 +6,8 @@ export interface CareProfile {
   relationship: string | null;
   conditions: string | null;
   allergies: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
   created_at: string;
 }
 
@@ -19,6 +21,7 @@ export interface Medication {
   start_date: string | null;
   refill_date: string | null;
   quantity_remaining: number | null;
+  pharmacy_phone?: string | null;
   notes: string | null;
   created_at: string;
 }
@@ -159,6 +162,28 @@ export interface Notification {
   created_at: string;
 }
 
+// Long-Term Memory
+export interface Memory {
+  id: string;
+  user_id: string;
+  care_profile_id: string | null;
+  category: 'medication' | 'condition' | 'allergy' | 'insurance' | 'financial' | 'appointment' | 'preference' | 'family' | 'provider' | 'lab_result' | 'lifestyle' | 'legal' | 'other';
+  fact: string;
+  source: 'conversation' | 'photo_scan' | 'fhir_sync' | 'manual';
+  confidence: 'high' | 'medium' | 'low';
+  created_at: string;
+  last_referenced: string;
+}
+
+export interface ConversationSummary {
+  id: string;
+  user_id: string;
+  summary: string;
+  topics: string[];
+  message_count: number;
+  created_at: string;
+}
+
 // Form types for setup wizard
 export interface MedicationForm {
   name: string;
@@ -189,4 +214,16 @@ export interface SetupFormData {
   medications: MedicationForm[];
   doctors: DoctorForm[];
   appointments: AppointmentForm[];
+}
+
+export interface UserSettings {
+  id: string
+  user_id: string
+  refill_reminders: boolean
+  appointment_reminders: boolean
+  lab_alerts: boolean
+  claim_updates: boolean
+  ai_personality: 'professional' | 'friendly' | 'concise'
+  created_at: string
+  updated_at: string
 }
