@@ -1,26 +1,37 @@
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
-import { SettingsPage } from '@/components/SettingsPage';
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { SettingsPage } from '@/components/SettingsPage'
 
-export default async function Settings() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export default async function SettingsRoute() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
-  if (!user) redirect('/login');
+  // Fetch or create user settings
+  let { data: settings } = await supabase
+    .from('user_settings')
+    .select('*')
+    .eq('user_id', user.id)
+    .single()
 
-  const [{ data: connectedApps }, { data: notifications }] = await Promise.all([
-    supabase.from('connected_apps').select('*').eq('user_id', user.id),
-    supabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false).order('created_at', { ascending: false }).limit(20),
-  ]);
+  if (!settings) {
+    const { data: newSettings } = await supabase
+      .from('user_settings')
+      .insert({ user_id: user.id })
+      .select()
+      .single()
+    settings = newSettings
+  }
+
+  const { data: connectedApps } = await supabase
+    .from('connected_apps')
+    .select('*')
+    .eq('user_id', user.id)
 
   return (
-    <div className="max-w-3xl">
-      <SettingsPage
-        connectedApps={connectedApps || []}
-        unreadNotifications={notifications || []}
-      />
-    </div>
-  );
+    <SettingsPage
+      settings={settings}
+      connectedApps={connectedApps || []}
+    />
+  )
 }
