@@ -74,88 +74,198 @@ function TiltCard({ children, className = '' }: { children: React.ReactNode; cla
    PhoneMockup — 3D floating phone
    ─────────────────────────────────────────── */
 function PhoneMockup() {
+  const [activeTab, setActiveTab] = useState(0);
+  const [expandedCard, setExpandedCard] = useState<number | null>(null);
+
+  const tabs = [
+    { label: 'Home', icon: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z' },
+    { label: 'Chat', icon: 'M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z' },
+    { label: 'Care', icon: 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z' },
+    { label: 'Scan', icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z' },
+  ];
+
   return (
-    <div className="relative mt-12 mx-auto" style={{ perspective: '1200px' }}>
-      {/* Glow */}
-      <div className="absolute -inset-8 bg-blue-500/15 rounded-full blur-[80px] animate-[glow-pulse_4s_ease-in-out_infinite]" />
-      {/* Phone frame */}
-      <div
-        className="relative w-[260px] h-[520px] bg-gradient-to-b from-[#131825] to-[#0f172a] rounded-[36px] border border-white/[0.08] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5),0_0_40px_rgba(59,130,246,0.1)] animate-[phone-float_6s_ease-in-out_infinite]"
-      >
-        {/* Dynamic Island */}
-        <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-24 h-[22px] bg-black rounded-full z-10" />
-        {/* Status bar */}
-        <div className="flex justify-between items-center px-6 pt-3 pb-0">
-          <span className="text-white/40 text-[8px] font-medium">9:41</span>
-          <div className="flex items-center gap-1">
-            <div className="flex gap-[2px]">{[1,2,3,4].map(i => <div key={i} className="w-[3px] h-[3px] rounded-[1px] bg-white/40" />)}</div>
-            <div className="w-4 h-2 rounded-[2px] border border-white/30 relative"><div className="absolute inset-[1px] right-[2px] bg-white/40 rounded-[1px]" /></div>
+    <div className="relative mt-12 mx-auto select-none" style={{ perspective: '1200px' }}>
+      {/* Glow behind phone */}
+      <div className="absolute -inset-12 bg-blue-500/10 rounded-full blur-[100px]" />
+
+      {/* iPhone 15 Pro frame */}
+      <div className="relative w-[272px] h-[556px] rounded-[44px] bg-gradient-to-b from-[#2a2a2e] to-[#1a1a1e] p-[2px] shadow-[0_25px_80px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.05)]" style={{ transform: 'rotateY(-4deg) rotateX(2deg)' }}>
+        {/* Titanium side buttons */}
+        <div className="absolute -left-[3px] top-[100px] w-[3px] h-[28px] bg-gradient-to-b from-[#3a3a3e] to-[#2a2a2e] rounded-l-sm" />
+        <div className="absolute -left-[3px] top-[145px] w-[3px] h-[48px] bg-gradient-to-b from-[#3a3a3e] to-[#2a2a2e] rounded-l-sm" />
+        <div className="absolute -left-[3px] top-[200px] w-[3px] h-[48px] bg-gradient-to-b from-[#3a3a3e] to-[#2a2a2e] rounded-l-sm" />
+        <div className="absolute -right-[3px] top-[155px] w-[3px] h-[64px] bg-gradient-to-b from-[#3a3a3e] to-[#2a2a2e] rounded-r-sm" />
+
+        {/* Screen */}
+        <div className="w-full h-full rounded-[42px] bg-[#0f172a] overflow-hidden relative">
+          {/* Dynamic Island */}
+          <div className="absolute top-[10px] left-1/2 -translate-x-1/2 w-[90px] h-[26px] bg-black rounded-full z-20 flex items-center justify-center gap-2">
+            <div className="w-[8px] h-[8px] rounded-full bg-[#1a1a2e] border border-[#2a2a3e]" />
+            <div className="w-[4px] h-[4px] rounded-full bg-[#1a1a2e]" />
           </div>
-        </div>
-        {/* App header */}
-        <div className="flex items-center justify-between px-4 pt-2 pb-1">
-          <span className="text-white/90 text-[11px] font-bold">CareCompanion</span>
-          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-400 to-cyan-400 flex items-center justify-center">
-            <span className="text-[6px] text-white font-bold">AM</span>
-          </div>
-        </div>
-        {/* Screen content */}
-        <div className="px-3.5 pt-2 space-y-2">
-          <div>
-            <div className="text-white/40 text-[9px]">Good afternoon</div>
-            <div className="text-white text-[13px] font-bold tracking-tight">Mom&apos;s Care Summary</div>
-          </div>
-          {/* Urgent card */}
-          <div className="bg-gradient-to-r from-red-500/[0.12] to-red-500/[0.04] rounded-[10px] p-2.5 border border-red-500/15">
-            <div className="flex items-center gap-1 mb-0.5">
-              <div className="w-[5px] h-[5px] rounded-full bg-red-400 shadow-[0_0_6px_rgba(239,68,68,0.5)]" />
-              <span className="text-red-300/90 text-[7px] font-semibold tracking-wider">NEEDS ATTENTION</span>
+
+          {/* Status bar */}
+          <div className="flex justify-between items-center px-7 pt-[14px] pb-0 relative z-10">
+            <span className="text-white/50 text-[10px] font-semibold" style={{ fontFeatureSettings: '"tnum"' }}>9:41</span>
+            <div className="flex items-center gap-[5px]">
+              <svg width="13" height="10" viewBox="0 0 13 10" fill="none"><path d="M1 7h1.5v3H1zM4 5h1.5v5H4zM7 3h1.5v7H7zM10 1h1.5v9H10z" fill="rgba(255,255,255,0.5)" /></svg>
+              <svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M6 2.5c1.8 0 3.4.8 4.5 2l1-1C10 2 8.1 1 6 1S2 2 .5 3.5l1 1C2.6 3.3 4.2 2.5 6 2.5zm0 3c1 0 1.9.4 2.5 1.1l1-1C8.5 4.6 7.3 4 6 4s-2.5.6-3.5 1.6l1 1C4.1 5.9 5 5.5 6 5.5zM7.5 8.5L6 10 4.5 8.5C5 8 5.5 7.7 6 7.7s1 .3 1.5.8z" fill="rgba(255,255,255,0.5)" /></svg>
+              <div className="w-[18px] h-[9px] rounded-[3px] border border-white/30 relative p-[1.5px]"><div className="h-full w-[65%] bg-white/50 rounded-[1.5px]" /><div className="absolute -right-[2px] top-[2.5px] w-[1.5px] h-[4px] bg-white/20 rounded-r-sm" /></div>
             </div>
-            <div className="text-white/90 text-[10px] font-medium">Lisinopril refill due tomorrow</div>
-            <div className="text-white/30 text-[8px] mt-0.5">10mg · Once daily · Dr. Patel</div>
           </div>
-          {/* Upcoming card */}
-          <div className="bg-white/[0.04] rounded-[10px] p-2.5 border border-white/[0.06]">
-            <div className="flex items-center gap-1 mb-0.5">
-              <div className="w-[5px] h-[5px] rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.4)]" />
-              <span className="text-cyan-300/90 text-[7px] font-semibold tracking-wider">UPCOMING</span>
+
+          {/* App header bar */}
+          <div className="flex items-center justify-between px-4 pt-1.5 pb-1 border-b border-white/[0.04]">
+            <span className="text-white/90 text-[11px] font-bold tracking-tight">CareCompanion</span>
+            <div className="w-[22px] h-[22px] rounded-full bg-gradient-to-br from-indigo-400 to-cyan-400 flex items-center justify-center shadow-[0_0_8px_rgba(99,102,241,0.3)]">
+              <span className="text-[7px] text-white font-bold">AM</span>
             </div>
-            <div className="text-white/90 text-[10px] font-medium">Dr. Patel — Thursday 2:30 PM</div>
-            <div className="text-white/30 text-[8px] mt-0.5">Cardiology · Heart & Vascular Center</div>
           </div>
-          {/* Alert card */}
-          <div className="bg-white/[0.04] rounded-[10px] p-2.5 border border-white/[0.06]">
-            <div className="flex items-center gap-1 mb-0.5">
-              <div className="w-[5px] h-[5px] rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.4)]" />
-              <span className="text-amber-300/90 text-[7px] font-semibold tracking-wider">LAB ALERT</span>
-            </div>
-            <div className="text-white/90 text-[10px] font-medium">LDL Cholesterol flagged high</div>
-            <div className="text-white/30 text-[8px] mt-0.5">165 mg/dL · Reference: &lt; 100</div>
+
+          {/* Screen content — switches based on active tab */}
+          <div className="h-[370px] overflow-y-auto scrollbar-none">
+            {activeTab === 0 && (
+              <div className="px-3.5 pt-3 space-y-[7px]">
+                <div>
+                  <div className="text-white/35 text-[9px] font-medium">Good afternoon</div>
+                  <div className="text-white text-[14px] font-bold tracking-tight leading-tight">Mom&apos;s Care Summary</div>
+                </div>
+                {/* Cards */}
+                {[
+                  { type: 'urgent', color: 'red', label: 'NEEDS ATTENTION', title: 'Lisinopril refill due tomorrow', sub: '10mg · Once daily · Dr. Patel', detail: 'Only 3 pills remaining. Contact Valley Pharmacy at (555) 234-5678 to refill.' },
+                  { type: 'upcoming', color: 'cyan', label: 'UPCOMING', title: 'Dr. Patel — Thursday 2:30 PM', sub: 'Cardiology · Heart & Vascular Center', detail: 'Bring blood pressure log. Fasting not required. Discuss Lisinopril dosage.' },
+                  { type: 'alert', color: 'amber', label: 'LAB ALERT', title: 'LDL Cholesterol flagged high', sub: '165 mg/dL · Reference: < 100', detail: 'Result from Quest Diagnostics, 3 days ago. Discuss with Dr. Patel at upcoming visit.' },
+                  { type: 'quick', color: 'indigo', label: '💬 QUICK ASK', title: 'What should I ask Dr. Patel?', sub: 'Tap to get AI-powered suggestions', detail: '' },
+                ].map((card, i) => {
+                  const isExpanded = expandedCard === i;
+                  const isUrgent = card.type === 'urgent';
+                  const isQuick = card.type === 'quick';
+                  const bgClass = isUrgent
+                    ? 'bg-gradient-to-r from-red-500/[0.12] to-red-500/[0.04] border-red-500/15'
+                    : isQuick
+                    ? 'bg-gradient-to-r from-indigo-500/[0.08] to-cyan-500/[0.05] border-indigo-500/15'
+                    : 'bg-white/[0.03] border-white/[0.06]';
+                  const dotColors: Record<string, string> = { red: 'bg-red-400 shadow-[0_0_6px_rgba(239,68,68,0.5)]', cyan: 'bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.4)]', amber: 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.4)]', indigo: 'bg-indigo-400 shadow-[0_0_6px_rgba(129,140,248,0.4)]' };
+                  const labelColors: Record<string, string> = { red: 'text-red-300/90', cyan: 'text-cyan-300/90', amber: 'text-amber-300/90', indigo: 'text-indigo-300/70' };
+
+                  return (
+                    <div
+                      key={i}
+                      onClick={() => setExpandedCard(isExpanded ? null : i)}
+                      className={`rounded-[10px] p-2.5 border cursor-pointer transition-all duration-300 ${bgClass} ${isExpanded ? 'ring-1 ring-white/10' : 'hover:bg-white/[0.06]'}`}
+                    >
+                      <div className={`flex items-center gap-1 mb-0.5 ${isQuick ? 'justify-center' : ''}`}>
+                        {!isQuick && <div className={`w-[5px] h-[5px] rounded-full ${dotColors[card.color]}`} />}
+                        <span className={`text-[7px] font-semibold tracking-wider ${labelColors[card.color]}`}>{card.label}</span>
+                      </div>
+                      <div className={`text-white/90 text-[10px] font-medium ${isQuick ? 'text-center text-white/70' : ''}`}>{card.title}</div>
+                      <div className={`text-white/25 text-[8px] mt-0.5 ${isQuick ? 'text-center' : ''}`}>{card.sub}</div>
+                      {/* Expanded detail */}
+                      {isExpanded && card.detail && (
+                        <div className="mt-2 pt-2 border-t border-white/[0.06]">
+                          <div className="text-white/50 text-[8px] leading-relaxed">{card.detail}</div>
+                          <div className="mt-1.5 flex gap-1.5">
+                            <div className="bg-blue-500/20 text-blue-300 text-[7px] font-medium px-2 py-0.5 rounded-full">View details</div>
+                            <div className="bg-white/[0.06] text-white/40 text-[7px] font-medium px-2 py-0.5 rounded-full">Dismiss</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {activeTab === 1 && (
+              <div className="px-3.5 pt-3 space-y-2">
+                <div className="text-white/90 text-[12px] font-bold mb-2">AI Assistant</div>
+                <div className="bg-white/[0.04] rounded-[10px] p-2.5">
+                  <div className="text-white/30 text-[8px] mb-1">CareCompanion</div>
+                  <div className="text-white/80 text-[9px] leading-relaxed">Hi! I&apos;m here to help with Mom&apos;s care. You have a Lisinopril refill due tomorrow and an appointment with Dr. Patel on Thursday. Want me to help prepare?</div>
+                </div>
+                <div className="bg-blue-500/10 rounded-[10px] p-2.5 ml-6">
+                  <div className="text-white/30 text-[8px] mb-1 text-right">You</div>
+                  <div className="text-white/80 text-[9px] leading-relaxed">What questions should I ask Dr. Patel about the cholesterol results?</div>
+                </div>
+                <div className="bg-white/[0.04] rounded-[10px] p-2.5">
+                  <div className="text-white/30 text-[8px] mb-1">CareCompanion</div>
+                  <div className="text-white/80 text-[9px] leading-relaxed">Great question! Here are 3 things to ask:<br/>1. Should we increase the Atorvastatin dose?<br/>2. Are there dietary changes to help?<br/>3. When should we retest?</div>
+                </div>
+                <div className="flex items-center gap-2 mt-2 bg-white/[0.03] rounded-full p-1.5 pl-3 border border-white/[0.06]">
+                  <span className="text-white/20 text-[9px] flex-1">Ask anything...</span>
+                  <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                    <svg width="10" height="10" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 2 && (
+              <div className="px-3.5 pt-3 space-y-2">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="text-white/90 text-[12px] font-bold">Care</div>
+                  <div className="w-5 h-5 rounded-full bg-cyan-400/10 flex items-center justify-center">
+                    <svg width="10" height="10" fill="none" stroke="#38bdf8" strokeWidth="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                  </div>
+                </div>
+                {/* Segment control */}
+                <div className="flex bg-white/[0.04] rounded-lg p-[2px]">
+                  <div className="flex-1 text-center py-1 rounded-md bg-cyan-400 text-[8px] font-semibold text-[#0f172a]">Medications</div>
+                  <div className="flex-1 text-center py-1 rounded-md text-[8px] font-medium text-white/30">Appointments</div>
+                </div>
+                <div className="text-[7px] text-white/25 font-semibold tracking-wider mt-1">REFILL NEEDED</div>
+                <div className="bg-white/[0.03] rounded-lg p-2 border border-red-500/10">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="text-white/90 text-[10px] font-medium">Lisinopril 10mg</div>
+                      <div className="text-white/25 text-[8px]">Once daily · Morning</div>
+                      <div className="text-red-300/80 text-[8px]">Refill tomorrow</div>
+                    </div>
+                    <div className="bg-red-500/10 rounded px-1.5 py-0.5"><span className="text-red-300 text-[7px] font-semibold">Refill</span></div>
+                  </div>
+                </div>
+                <div className="text-[7px] text-white/25 font-semibold tracking-wider mt-1">ACTIVE</div>
+                {['Metformin 500mg', 'Atorvastatin 20mg', 'Amlodipine 5mg'].map((med, i) => (
+                  <div key={i} className="bg-white/[0.03] rounded-lg p-2 border border-white/[0.04]">
+                    <div className="text-white/90 text-[10px] font-medium">{med}</div>
+                    <div className="text-emerald-400/60 text-[8px]">Refill in {18 + i * 6} days</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 3 && (
+              <div className="px-3.5 pt-3 flex flex-col items-center justify-center h-full">
+                <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-3">
+                  <svg width="28" height="28" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="3" x2="9" y2="9" /></svg>
+                </div>
+                <div className="text-white/80 text-[11px] font-semibold mb-1">Scan a Document</div>
+                <div className="text-white/30 text-[8px] text-center leading-relaxed px-4">Take a photo of a pill bottle, lab report, insurance card, or doctor&apos;s note</div>
+                <div className="mt-3 bg-blue-500/20 text-blue-300 text-[9px] font-medium px-4 py-1.5 rounded-full">Open Camera</div>
+              </div>
+            )}
           </div>
-          {/* Quick ask */}
-          <div className="bg-gradient-to-r from-indigo-500/[0.08] to-cyan-500/[0.05] rounded-[10px] p-2.5 border border-indigo-500/15 text-center">
-            <div className="text-indigo-300/70 text-[7px] font-semibold tracking-wider">💬 QUICK ASK</div>
-            <div className="text-white/70 text-[9px] mt-0.5">What should I ask Dr. Patel on Thursday?</div>
+
+          {/* Bottom tab bar */}
+          <div className="absolute bottom-0 left-0 right-0 bg-[#0f172a]/95 backdrop-blur-md border-t border-white/[0.05] flex justify-around items-center pt-[6px] pb-[18px] px-3">
+            {tabs.map((tab, i) => (
+              <button
+                key={tab.label}
+                onClick={(e) => { e.stopPropagation(); setActiveTab(i); setExpandedCard(null); }}
+                className="flex flex-col items-center gap-[2px] transition-all duration-200"
+              >
+                <div className={`transition-all duration-200 ${i === activeTab ? 'scale-110' : ''}`}>
+                  <svg width="15" height="15" fill="none" stroke={i === activeTab ? '#38bdf8' : '#475569'} strokeWidth="1.5" viewBox="0 0 24 24"><path d={tab.icon} /></svg>
+                </div>
+                <span className={`text-[7px] font-medium transition-colors duration-200 ${i === activeTab ? 'text-cyan-400' : 'text-white/20'}`}>{tab.label}</span>
+                {i === activeTab && <div className="w-1 h-1 rounded-full bg-cyan-400 mt-[-1px]" />}
+              </button>
+            ))}
           </div>
-        </div>
-        {/* Bottom tab bar */}
-        <div className="absolute bottom-0 left-0 right-0 bg-[#0f172a]/95 backdrop-blur border-t border-white/[0.06] flex justify-around items-center py-2 pb-4 px-2">
-          <div className="flex flex-col items-center gap-[2px]">
-            <svg width="14" height="14" fill="none" stroke="#38bdf8" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /></svg>
-            <span className="text-[7px] text-cyan-400 font-semibold">Home</span>
-          </div>
-          <div className="flex flex-col items-center gap-[2px]">
-            <svg width="14" height="14" fill="none" stroke="#475569" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
-            <span className="text-[7px] text-white/25">Chat</span>
-          </div>
-          <div className="flex flex-col items-center gap-[2px]">
-            <svg width="14" height="14" fill="none" stroke="#475569" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>
-            <span className="text-[7px] text-white/25">Care</span>
-          </div>
-          <div className="flex flex-col items-center gap-[2px]">
-            <svg width="14" height="14" fill="none" stroke="#475569" strokeWidth="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /></svg>
-            <span className="text-[7px] text-white/25">Scan</span>
-          </div>
+
+          {/* Home indicator bar */}
+          <div className="absolute bottom-[5px] left-1/2 -translate-x-1/2 w-[100px] h-[4px] bg-white/15 rounded-full" />
         </div>
       </div>
     </div>
