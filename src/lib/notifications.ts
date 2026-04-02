@@ -9,14 +9,21 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
   const admin = createAdminClient();
   let generated = 0;
 
-  // Get care profile
-  const { data: profile } = await admin
-    .from('care_profiles')
-    .select('id')
-    .eq('user_id', userId)
-    .single();
+  // Get care profile and user settings in parallel
+  const [{ data: profile }, { data: settings }] = await Promise.all([
+    admin.from('care_profiles').select('id').eq('user_id', userId).single(),
+    admin.from('user_settings').select('*').eq('user_id', userId).single(),
+  ]);
 
   if (!profile) return 0;
+
+  // Respect user notification preferences (default to true if no settings)
+  const prefs = {
+    refill_reminders: settings?.refill_reminders ?? true,
+    appointment_reminders: settings?.appointment_reminders ?? true,
+    lab_alerts: settings?.lab_alerts ?? true,
+    claim_updates: settings?.claim_updates ?? true,
+  };
 
   // Fetch all relevant data in parallel
   const [
@@ -27,10 +34,10 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
     { data: fsaHsa },
     { data: existingNotifs },
   ] = await Promise.all([
-    admin.from('medications').select('*').eq('care_profile_id', profile.id),
-    admin.from('appointments').select('*').eq('care_profile_id', profile.id),
+    prefs.refill_reminders ? admin.from('medications').select('*').eq('care_profile_id', profile.id) : Promise.resolve({ data: [] }),
+    prefs.appointment_reminders ? admin.from('appointments').select('*').eq('care_profile_id', profile.id) : Promise.resolve({ data: [] }),
     admin.from('prior_auths').select('*').eq('user_id', userId),
-    admin.from('lab_results').select('*').eq('user_id', userId).eq('is_abnormal', true).order('created_at', { ascending: false }).limit(10),
+    prefs.lab_alerts ? admin.from('lab_results').select('*').eq('user_id', userId).eq('is_abnormal', true).order('created_at', { ascending: false }).limit(10) : Promise.resolve({ data: [] }),
     admin.from('fsa_hsa').select('*').eq('user_id', userId),
     // Get recent notifications to avoid duplicates (last 24 hours)
     admin.from('notifications').select('title, type').eq('user_id', userId).gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
