@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { AppShell } from '@/components/AppShell';
+import { ToastProvider } from '@/components/ToastProvider';
+import { getActiveProfile, getAllProfiles } from '@/lib/active-profile';
 
 export default async function AppLayout({
   children,
@@ -14,15 +16,11 @@ export default async function AppLayout({
 
   if (!user) redirect('/login');
 
-  // Fetch profile data for sidebar
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('*')
-    .eq('user_id', user.id)
-    .single();
-
-  // Don't redirect if no profile — the connect page will handle profile creation
-  // Only redirect if user has no profile AND is not on the connect or manual-setup page
+  // Fetch active profile and all accessible profiles
+  const [profile, allProfiles] = await Promise.all([
+    getActiveProfile(supabase, user.id),
+    getAllProfiles(supabase, user.id),
+  ]);
 
   const { data: notifications } = await supabase
     .from('notifications')
@@ -35,14 +33,18 @@ export default async function AppLayout({
   const displayName = user.user_metadata?.display_name || '';
 
   return (
-    <AppShell
-      patientName={profile?.patient_name || 'your loved one'}
-      patientAge={profile?.patient_age}
-      relationship={profile?.relationship}
-      userName={displayName}
-      notifications={notifications || []}
-    >
-      {children}
-    </AppShell>
+    <ToastProvider>
+      <AppShell
+        patientName={profile?.patient_name || 'your loved one'}
+        patientAge={profile?.patient_age}
+        relationship={profile?.relationship}
+        userName={displayName}
+        notifications={notifications || []}
+        profiles={allProfiles}
+        activeProfileId={profile?.id || null}
+      >
+        {children}
+      </AppShell>
+    </ToastProvider>
   );
 }
