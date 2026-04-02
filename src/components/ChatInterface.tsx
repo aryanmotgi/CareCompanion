@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { MessageBubble } from '@/components/MessageBubble';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { DocumentScanner } from '@/components/DocumentScanner';
+import { useVoiceInput } from '@/lib/hooks/useVoiceInput';
 
 interface ChatInterfaceProps {
   initialMessages: UIMessage[];
@@ -26,6 +27,17 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
 
   const isStreaming = status === 'streaming';
   const isLoading = status === 'submitted' || isStreaming;
+
+  const { isListening, isSupported: voiceSupported, toggleListening } = useVoiceInput({
+    onTranscript: (text) => {
+      // When voice stops, put the final transcript in the input
+      setInput((prev) => (prev ? prev + ' ' + text : text));
+    },
+    onInterimTranscript: (text) => {
+      // Show live transcript as user speaks
+      setInput(text);
+    },
+  });
 
   // Auto-send prompt from URL (from dashboard quick prompts)
   useEffect(() => {
@@ -54,9 +66,9 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
   };
 
   const starterPrompts = [
-    `What medications is ${patientName} on?`,
-    `Help me prep for an upcoming appointment`,
-    `I need to add a new medication`,
+    'How are my vitals?',
+    'Prepare for my next appointment',
+    'Explain my medications',
   ];
 
   return (
@@ -93,7 +105,7 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
             {messages.map((message) => (
               <MessageBubble key={message.id} message={message} />
             ))}
-            {isStreaming && messages[messages.length - 1]?.role !== 'assistant' && (
+            {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
               <TypingIndicator />
             )}
             <div ref={messagesEndRef} />
@@ -115,48 +127,80 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
 
       {/* Input area */}
       <div className="border-t border-[var(--border)] bg-[var(--bg-card)] px-4 sm:px-8 py-4">
-        <div className="max-w-3xl mx-auto flex items-end gap-3">
-          {/* Scan button */}
-          <button
-            onClick={() => setShowScanner(true)}
-            className="rounded-xl bg-[var(--bg-elevated)] p-3 text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text)] transition-colors min-h-[44px]"
-            title="Scan a document"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z" />
-            </svg>
-          </button>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your message..."
-            rows={1}
-            className="flex-1 rounded-xl border-2 border-[var(--border)] bg-[var(--bg-elevated)] py-3 px-4 text-white placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-600 transition-colors resize-none"
-          />
-          {isStreaming ? (
-            <button
-              onClick={() => stop()}
-              className="rounded-xl bg-[var(--bg-elevated)] p-3 text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] transition-colors min-h-[44px]"
-              title="Stop"
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <rect x="6" y="6" width="12" height="12" rx="2" />
-              </svg>
-            </button>
-          ) : (
-            <button
-              onClick={() => handleSend()}
-              disabled={!input.trim() || isLoading}
-              className="rounded-xl bg-blue-600 p-3 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-h-[44px] animate-press"
-              title="Send"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-              </svg>
-            </button>
+        <div className="max-w-3xl mx-auto">
+          {/* Starter prompts — shown above input when conversation is empty */}
+          {messages.length === 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {starterPrompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => handleSend(prompt)}
+                  className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[#94a3b8] text-xs hover:bg-white/[0.08] transition-colors animate-press"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
           )}
+          {/* Glass input bar */}
+          <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2">
+            {/* Scan button */}
+            <button
+              onClick={() => setShowScanner(true)}
+              className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors flex-shrink-0"
+              title="Scan a document"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z" />
+              </svg>
+            </button>
+            {/* Voice input button */}
+            {voiceSupported && (
+              <button
+                onClick={toggleListening}
+                className={`p-1.5 transition-colors flex-shrink-0 ${
+                  isListening
+                    ? 'text-red-400 animate-pulse'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text)]'
+                }`}
+                title={isListening ? 'Stop listening' : 'Voice input'}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+                </svg>
+              </button>
+            )}
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask about your health..."
+              className="flex-1 bg-transparent text-[#e2e8f0] text-sm outline-none placeholder:text-[#64748b] min-h-[32px]"
+            />
+            {isStreaming ? (
+              <button
+                onClick={() => stop()}
+                className="w-8 h-8 rounded-full bg-white/[0.08] flex items-center justify-center text-[var(--text-secondary)] hover:bg-white/[0.12] transition-colors flex-shrink-0"
+                title="Stop"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                onClick={() => handleSend()}
+                disabled={!input.trim() || isLoading}
+                className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center text-white disabled:opacity-40 transition-opacity animate-press flex-shrink-0"
+                title="Send"
+              >
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
