@@ -69,6 +69,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'image_base64 is required' }, { status: 400 })
     }
 
+    // Reject oversized payloads (~10 MB decoded ≈ ~13.5 MB base64)
+    const MAX_BASE64_LENGTH = 13_500_000
+    if (image_base64.length > MAX_BASE64_LENGTH) {
+      return NextResponse.json({ error: 'Image too large (max 10 MB)' }, { status: 413 })
+    }
+
     // Use Claude Vision to extract structured data from the document
     const { object: extraction } = await generateObject({
       model: anthropic('claude-sonnet-4-6'),
@@ -114,12 +120,12 @@ Be thorough and accurate. If you can't read a field clearly, omit it rather than
       if (profile) {
         const imported = await autoImportExtraction(admin, user.id, profile.id, extraction)
 
-        // Update document record if document_id provided
+        // Update document record if document_id provided (with ownership check)
         if (document_id) {
           await admin.from('documents').update({
             type: extraction.document_type,
             description: getDocumentDescription(extraction),
-          }).eq('id', document_id)
+          }).eq('id', document_id).eq('care_profile_id', profile.id)
         }
 
         return NextResponse.json({
