@@ -75,7 +75,14 @@ function TiltCard({ children, className = '' }: { children: React.ReactNode; cla
    ─────────────────────────────────────────── */
 function PhoneMockup() {
   const [activeTab, setActiveTab] = useState(0);
-  const [expandedCard, setExpandedCard] = useState<number | null>(null);
+  const [popup, setPopup] = useState<{ title: string; detail: string } | null>(null);
+  const [tabGlow, setTabGlow] = useState(true);
+
+  // Subtle glow hint fades out after 3s
+  useEffect(() => {
+    const t = setTimeout(() => setTabGlow(false), 3000);
+    return () => clearTimeout(t);
+  }, []);
 
   const tabs = [
     { label: 'Home', icon: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z' },
@@ -133,12 +140,11 @@ function PhoneMockup() {
                 </div>
                 {/* Cards */}
                 {[
-                  { type: 'urgent', color: 'red', label: 'NEEDS ATTENTION', title: 'Lisinopril refill due tomorrow', sub: '10mg · Once daily · Dr. Patel', detail: 'Only 3 pills remaining. Contact Valley Pharmacy at (555) 234-5678 to refill.' },
-                  { type: 'upcoming', color: 'cyan', label: 'UPCOMING', title: 'Dr. Patel — Thursday 2:30 PM', sub: 'Cardiology · Heart & Vascular Center', detail: 'Bring blood pressure log. Fasting not required. Discuss Lisinopril dosage.' },
-                  { type: 'alert', color: 'amber', label: 'LAB ALERT', title: 'LDL Cholesterol flagged high', sub: '165 mg/dL · Reference: < 100', detail: 'Result from Quest Diagnostics, 3 days ago. Discuss with Dr. Patel at upcoming visit.' },
-                  { type: 'quick', color: 'indigo', label: '💬 QUICK ASK', title: 'What should I ask Dr. Patel?', sub: 'Tap to get AI-powered suggestions', detail: '' },
+                  { type: 'urgent', color: 'red', label: 'NEEDS ATTENTION', title: 'Lisinopril refill due tomorrow', sub: '10mg · Once daily · Dr. Patel', detail: 'Only 3 pills remaining. Contact Valley Pharmacy at (555) 234-5678 to refill your prescription.' },
+                  { type: 'upcoming', color: 'cyan', label: 'UPCOMING', title: 'Dr. Patel — Thursday 2:30 PM', sub: 'Cardiology · Heart & Vascular Center', detail: 'Bring blood pressure log. Fasting not required. Discuss Lisinopril dosage adjustment.' },
+                  { type: 'alert', color: 'amber', label: 'LAB ALERT', title: 'LDL Cholesterol flagged high', sub: '165 mg/dL · Reference: < 100', detail: 'Result from Quest Diagnostics, 3 days ago. Discuss with Dr. Patel at your upcoming visit.' },
+                  { type: 'quick', color: 'indigo', label: '💬 QUICK ASK', title: 'What should I ask Dr. Patel?', sub: 'Tap to get AI-powered suggestions', detail: '1. Should we adjust Lisinopril?\n2. Are there dietary changes for cholesterol?\n3. When should we retest A1C?' },
                 ].map((card, i) => {
-                  const isExpanded = expandedCard === i;
                   const isUrgent = card.type === 'urgent';
                   const isQuick = card.type === 'quick';
                   const bgClass = isUrgent
@@ -152,8 +158,8 @@ function PhoneMockup() {
                   return (
                     <div
                       key={i}
-                      onClick={() => setExpandedCard(isExpanded ? null : i)}
-                      className={`rounded-[10px] p-2.5 border cursor-pointer transition-all duration-300 ${bgClass} ${isExpanded ? 'ring-1 ring-white/10' : 'hover:bg-white/[0.06]'}`}
+                      onClick={() => setPopup({ title: card.title, detail: card.detail })}
+                      className={`rounded-[10px] p-2.5 border cursor-pointer transition-all duration-200 ${bgClass} hover:brightness-125 hover:scale-[1.02] active:scale-[0.98]`}
                     >
                       <div className={`flex items-center gap-1 mb-0.5 ${isQuick ? 'justify-center' : ''}`}>
                         {!isQuick && <div className={`w-[5px] h-[5px] rounded-full ${dotColors[card.color]}`} />}
@@ -161,16 +167,6 @@ function PhoneMockup() {
                       </div>
                       <div className={`text-white/90 text-[10px] font-medium ${isQuick ? 'text-center text-white/70' : ''}`}>{card.title}</div>
                       <div className={`text-white/25 text-[8px] mt-0.5 ${isQuick ? 'text-center' : ''}`}>{card.sub}</div>
-                      {/* Expanded detail */}
-                      {isExpanded && card.detail && (
-                        <div className="mt-2 pt-2 border-t border-white/[0.06]">
-                          <div className="text-white/50 text-[8px] leading-relaxed">{card.detail}</div>
-                          <div className="mt-1.5 flex gap-1.5">
-                            <div className="bg-blue-500/20 text-blue-300 text-[7px] font-medium px-2 py-0.5 rounded-full">View details</div>
-                            <div className="bg-white/[0.06] text-white/40 text-[7px] font-medium px-2 py-0.5 rounded-full">Dismiss</div>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -247,19 +243,43 @@ function PhoneMockup() {
             )}
           </div>
 
+          {/* Popup overlay — floats inside the phone */}
+          {popup && (
+            <div className="absolute inset-0 z-30 flex items-end justify-center" onClick={() => setPopup(null)}>
+              {/* Backdrop */}
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] animate-[fade-overlay_0.15s_ease]" />
+              {/* Popup card */}
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="relative mx-3 mb-[58px] w-full bg-[#1e293b] border border-white/[0.08] rounded-2xl p-3.5 shadow-[0_-8px_30px_rgba(0,0,0,0.4)] animate-[slide-up_0.25s_cubic-bezier(0.32,0.72,0,1)]"
+              >
+                {/* Close button */}
+                <button onClick={() => setPopup(null)} className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-white/[0.06] flex items-center justify-center hover:bg-white/10 transition-colors">
+                  <svg width="8" height="8" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                </button>
+                <div className="text-white/90 text-[11px] font-semibold pr-6">{popup.title}</div>
+                <div className="text-white/50 text-[9px] leading-relaxed mt-1.5 whitespace-pre-line">{popup.detail}</div>
+                <div className="mt-2.5 flex gap-2">
+                  <div className="bg-blue-500/20 text-blue-300 text-[8px] font-medium px-2.5 py-1 rounded-full cursor-pointer hover:bg-blue-500/30 transition-colors">View details</div>
+                  <div onClick={() => setPopup(null)} className="bg-white/[0.06] text-white/40 text-[8px] font-medium px-2.5 py-1 rounded-full cursor-pointer hover:bg-white/10 transition-colors">Dismiss</div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Bottom tab bar */}
-          <div className="absolute bottom-0 left-0 right-0 bg-[#0f172a]/95 backdrop-blur-md border-t border-white/[0.05] flex justify-around items-center pt-[6px] pb-[18px] px-3">
+          <div className={`absolute bottom-0 left-0 right-0 bg-[#0f172a]/95 backdrop-blur-md border-t border-white/[0.05] flex justify-around items-center pt-[6px] pb-[18px] px-3 ${tabGlow ? 'shadow-[0_-4px_20px_rgba(56,189,248,0.08)]' : ''} transition-shadow duration-1000`}>
             {tabs.map((tab, i) => (
               <button
                 key={tab.label}
-                onClick={(e) => { e.stopPropagation(); setActiveTab(i); setExpandedCard(null); }}
-                className="flex flex-col items-center gap-[2px] transition-all duration-200"
+                onClick={(e) => { e.stopPropagation(); setActiveTab(i); setPopup(null); setTabGlow(false); }}
+                className="flex flex-col items-center gap-[2px] transition-all duration-200 group"
               >
-                <div className={`transition-all duration-200 ${i === activeTab ? 'scale-110' : ''}`}>
-                  <svg width="15" height="15" fill="none" stroke={i === activeTab ? '#38bdf8' : '#475569'} strokeWidth="1.5" viewBox="0 0 24 24"><path d={tab.icon} /></svg>
+                <div className={`transition-all duration-200 ${i === activeTab ? 'scale-110' : 'group-hover:scale-105'}`}>
+                  <svg width="15" height="15" fill="none" stroke={i === activeTab ? '#38bdf8' : '#475569'} strokeWidth="1.5" viewBox="0 0 24 24" className={`transition-all duration-300 ${i === activeTab ? 'drop-shadow-[0_0_4px_rgba(56,189,248,0.5)]' : 'group-hover:stroke-white/40'}`}><path d={tab.icon} /></svg>
                 </div>
-                <span className={`text-[7px] font-medium transition-colors duration-200 ${i === activeTab ? 'text-cyan-400' : 'text-white/20'}`}>{tab.label}</span>
-                {i === activeTab && <div className="w-1 h-1 rounded-full bg-cyan-400 mt-[-1px]" />}
+                <span className={`text-[7px] font-medium transition-colors duration-200 ${i === activeTab ? 'text-cyan-400' : 'text-white/20 group-hover:text-white/35'}`}>{tab.label}</span>
+                {i === activeTab && <div className="w-1 h-1 rounded-full bg-cyan-400 mt-[-1px] shadow-[0_0_4px_rgba(56,189,248,0.6)]" />}
               </button>
             ))}
           </div>
