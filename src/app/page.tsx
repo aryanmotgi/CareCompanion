@@ -397,6 +397,18 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Load Unicorn Studio script
+  useEffect(() => {
+    const w = window as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (w.UnicornStudio?.isInitialized) return;
+    w.UnicornStudio = { isInitialized: false };
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v2.1.6/dist/unicornStudio.umd.js';
+    s.onload = () => { w.UnicornStudio?.init?.(); };
+    document.head.appendChild(s);
+    return () => { s.remove(); };
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#0A0C10] overflow-hidden">
       {/* Styles are in globals.css */}
@@ -427,9 +439,17 @@ export default function LandingPage() {
 
       {/* ── Hero ── */}
       <section className="pt-36 pb-24 px-6 relative min-h-[90vh] flex items-center">
+        {/* Unicorn Studio animated background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          <div
+            className="w-full h-full"
+            data-us-project="QoGS3lzOR3lYM84gWoLO"
+            style={{ opacity: 0.7 }}
+          />
+        </div>
+        {/* Fallback gradient blobs (visible before Unicorn loads) */}
         <div className="absolute top-20 left-1/4 w-[500px] h-[500px] bg-gradient-to-br from-blue-600/20 to-indigo-600/20 rounded-full blur-3xl animate-float-slow" />
         <div className="absolute top-40 right-1/4 w-[400px] h-[400px] bg-gradient-to-br from-violet-600/15 to-blue-600/15 rounded-full blur-3xl animate-float-slower" />
-        <div className="absolute bottom-20 left-1/3 w-[300px] h-[300px] bg-gradient-to-br from-cyan-600/10 to-blue-600/10 rounded-full blur-3xl animate-float-slow" style={{ animationDelay: '2s' }} />
         <Particles />
 
         <div className="max-w-6xl mx-auto relative w-full">
