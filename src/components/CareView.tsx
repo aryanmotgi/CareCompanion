@@ -7,7 +7,6 @@ import { ExpandableCard } from './ExpandableCard'
 import { BottomSheet } from './BottomSheet'
 import { useToast } from './ToastProvider'
 import { ConfirmDialog } from './ui/ConfirmDialog'
-import { Confetti } from './Confetti'
 import { VisitPrepSheet } from './VisitPrepSheet'
 import type { Medication, Appointment, Doctor } from '@/lib/types'
 
@@ -34,7 +33,6 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
 
   // Confirm dialog state
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; type: 'med' | 'appt'; name: string } | null>(null)
-  const [showConfetti, setShowConfetti] = useState(false)
 
   // Form state
   const [medName, setMedName] = useState('')
@@ -84,7 +82,6 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
       if (data) setMedications([...medications, data])
       setMedName(''); setMedDose(''); setMedFreq('')
       setShowMedForm(false)
-      setShowConfetti(true)
       showToast('Medication added', 'success')
     } catch {
       showToast('Failed to add medication', 'error')
@@ -110,7 +107,6 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
       if (data) setAppointments([...appointments, data])
       setApptDoctor(''); setApptSpecialty(''); setApptDate(''); setApptLocation(''); setApptPurpose('')
       setShowApptForm(false)
-      setShowConfetti(true)
       showToast('Appointment added', 'success')
     } catch {
       showToast('Failed to add appointment', 'error')
@@ -391,8 +387,6 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
         onCancel={() => setConfirmDelete(null)}
       />
 
-      {/* Success confetti */}
-      <Confetti active={showConfetti} onComplete={() => setShowConfetti(false)} />
     </div>
   )
 }
