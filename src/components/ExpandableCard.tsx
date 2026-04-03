@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 
 interface ExpandableCardProps {
   expanded: boolean
@@ -22,11 +22,29 @@ export function ExpandableCard({
   const contentRef = useRef<HTMLDivElement>(null)
   const [height, setHeight] = useState(0)
 
-  useEffect(() => {
+  const recalcHeight = useCallback(() => {
     if (contentRef.current) {
-      setHeight(contentRef.current.scrollHeight + 8)
+      setHeight(contentRef.current.scrollHeight)
     }
-  }, [expanded, expandedContent])
+  }, [])
+
+  // Recalculate on expand/content change
+  useEffect(() => {
+    if (expanded) {
+      // Small delay to let children render
+      requestAnimationFrame(recalcHeight)
+    }
+  }, [expanded, expandedContent, recalcHeight])
+
+  // Watch for internal content changes (tab switches, async content)
+  useEffect(() => {
+    if (!expanded || !contentRef.current) return
+    const ro = new ResizeObserver(recalcHeight)
+    ro.observe(contentRef.current)
+    const mo = new MutationObserver(() => requestAnimationFrame(recalcHeight))
+    mo.observe(contentRef.current, { childList: true, subtree: true })
+    return () => { ro.disconnect(); mo.disconnect() }
+  }, [expanded, recalcHeight])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -59,9 +77,9 @@ export function ExpandableCard({
 
       <div
         style={{
-          maxHeight: expanded ? `${height}px` : '0px',
+          maxHeight: expanded ? `${height + 32}px` : '0px',
           opacity: expanded ? 1 : 0,
-          overflow: expanded ? 'visible' : 'hidden',
+          overflow: 'hidden',
           transition: 'max-height 300ms cubic-bezier(0.4,0,0.2,1), opacity 200ms ease',
         }}
       >

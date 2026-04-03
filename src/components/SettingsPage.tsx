@@ -19,7 +19,7 @@ function Toggle({ enabled, onToggle, label }: { enabled: boolean; onToggle: () =
       aria-label={label}
       onClick={onToggle}
       className={`w-[42px] h-6 rounded-full relative transition-colors duration-200 min-w-[42px] min-h-[44px] flex items-center ${
-        enabled ? 'bg-[#22d3ee]' : 'bg-white/[0.1]'
+        enabled ? 'bg-[#A78BFA]' : 'bg-white/[0.1]'
       }`}
     >
       <div
@@ -265,7 +265,7 @@ export function SettingsPage({ settings: initialSettings, connectedApps }: Setti
             onChange={(e) => setNewPassword(e.target.value)}
             placeholder="Min 6 characters"
             minLength={6}
-            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-[#e2e8f0] text-sm mb-3 outline-none focus:border-[#22d3ee]/40 transition-colors"
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-[#e2e8f0] text-sm mb-3 outline-none focus:border-[#A78BFA]/40 transition-colors"
           />
           {newPassword.length > 0 && newPassword.length < 6 && (
             <p className="text-[#ef4444] text-xs mb-2">Password must be at least 6 characters</p>
@@ -273,7 +273,7 @@ export function SettingsPage({ settings: initialSettings, connectedApps }: Setti
           <button
             onClick={handleChangePassword}
             disabled={saving || newPassword.length < 6}
-            className="w-full py-2.5 rounded-lg bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
+            className="w-full py-2.5 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
           >
             {saving && (
               <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">

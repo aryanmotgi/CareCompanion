@@ -64,7 +64,7 @@ export function ToolResult({ toolName, result }: ToolResultProps) {
       <div className="my-2 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] overflow-hidden max-w-sm">
         <div className="px-3 py-2 bg-blue-500/10 border-b border-[var(--border)] flex items-center gap-2">
           <span>📊</span>
-          <span className="text-sm font-medium text-blue-400">Lab Trends — {results[0].test_name}</span>
+          <span className="text-sm font-medium text-[#A78BFA]">Lab Trends — {results[0].test_name}</span>
         </div>
         <div className="px-3 py-2 space-y-1">
           {results.map((r, i) => (

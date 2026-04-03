@@ -320,7 +320,7 @@ export function SetupWizard({
             <button
               type="button"
               onClick={() => setMedications((prev) => [...prev, emptyMedication()])}
-              className="text-sm text-blue-400 hover:text-blue-300 font-medium"
+              className="text-sm text-[#A78BFA] hover:text-[#C4B5FD] font-medium"
             >
               + Add another medication
             </button>
@@ -356,7 +356,7 @@ export function SetupWizard({
             <button
               type="button"
               onClick={() => setDoctors((prev) => [...prev, emptyDoctor()])}
-              className="text-sm text-blue-400 hover:text-blue-300 font-medium"
+              className="text-sm text-[#A78BFA] hover:text-[#C4B5FD] font-medium"
             >
               + Add another doctor
             </button>
@@ -390,7 +390,7 @@ export function SetupWizard({
             <button
               type="button"
               onClick={() => setAppointments((prev) => [...prev, emptyAppointment()])}
-              className="text-sm text-blue-400 hover:text-blue-300 font-medium"
+              className="text-sm text-[#A78BFA] hover:text-[#C4B5FD] font-medium"
             >
               + Add another appointment
             </button>

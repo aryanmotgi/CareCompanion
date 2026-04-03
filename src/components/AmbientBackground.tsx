@@ -3,42 +3,42 @@
 export function AmbientBackground() {
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-0" aria-hidden="true">
-      {/* Primary cyan orb — top right */}
+      {/* Indigo orb — top right */}
       <div
         className="absolute w-[600px] h-[600px] rounded-full animate-blob-1"
         style={{
-          background: 'radial-gradient(circle, rgba(6, 182, 212, 0.05) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(99, 102, 241, 0.06) 0%, transparent 70%)',
           top: '-10%',
           right: '-10%',
           filter: 'blur(80px)',
         }}
       />
-      {/* Violet orb — bottom left */}
+      {/* Lavender orb — bottom left */}
       <div
         className="absolute w-[500px] h-[500px] rounded-full animate-blob-2"
         style={{
-          background: 'radial-gradient(circle, rgba(139, 92, 246, 0.05) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(167, 139, 250, 0.06) 0%, transparent 70%)',
           bottom: '-5%',
           left: '-10%',
           filter: 'blur(80px)',
         }}
       />
-      {/* Blue orb — center drift */}
+      {/* Soft blue orb — center */}
       <div
         className="absolute w-[400px] h-[400px] rounded-full animate-blob-3"
         style={{
-          background: 'radial-gradient(circle, rgba(59, 130, 246, 0.04) 0%, transparent 70%)',
-          top: '30%',
-          left: '20%',
+          background: 'radial-gradient(circle, rgba(129, 140, 248, 0.04) 0%, transparent 70%)',
+          top: '35%',
+          left: '15%',
           filter: 'blur(100px)',
         }}
       />
-      {/* Rose orb — subtle bottom right */}
+      {/* Faint violet orb — bottom right */}
       <div
         className="absolute w-[350px] h-[350px] rounded-full animate-blob-4"
         style={{
-          background: 'radial-gradient(circle, rgba(251, 113, 133, 0.03) 0%, transparent 70%)',
-          bottom: '10%',
+          background: 'radial-gradient(circle, rgba(196, 181, 253, 0.03) 0%, transparent 70%)',
+          bottom: '15%',
           right: '5%',
           filter: 'blur(90px)',
         }}

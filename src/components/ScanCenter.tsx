@@ -109,7 +109,7 @@ export function ScanCenter({ documents = [] }: ScanCenterProps) {
       {/* Scan button */}
       <button
         onClick={() => setScanning(true)}
-        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-sm font-semibold tracking-wide animate-press"
+        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold tracking-wide animate-press"
       >
         + Scan New Document
       </button>

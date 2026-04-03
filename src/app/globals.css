@@ -2,46 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== DESIGN SYSTEM: Futuristic Glassmorphic Health ===== */
+/* ===== DESIGN SYSTEM: Blue & Lavender Care ===== */
 
 :root {
-  /* Core backgrounds */
-  --bg: #08090E;
-  --bg-warm: #0B0C12;
-  --bg-card: rgba(255, 255, 255, 0.03);
-  --bg-elevated: rgba(255, 255, 255, 0.06);
-  --bg-glass: rgba(255, 255, 255, 0.04);
+  /* Core backgrounds — warm dark, not cold */
+  --bg: #0C0E1A;
+  --bg-warm: #10122B;
+  --bg-card: rgba(167, 139, 250, 0.04);
+  --bg-elevated: rgba(167, 139, 250, 0.08);
+  --bg-glass: rgba(139, 92, 246, 0.05);
+
+  /* Primary — blue (trust) */
+  --accent: #6366F1;
+  --accent-light: rgba(99, 102, 241, 0.15);
+  --accent-glow: rgba(99, 102, 241, 0.25);
+  --accent-hover: #818CF8;
+
+  /* Secondary — lavender (compassion) */
+  --lavender: #A78BFA;
+  --lavender-light: rgba(167, 139, 250, 0.15);
+  --lavender-glow: rgba(167, 139, 250, 0.2);
 
   /* Accent spectrum */
-  --accent: #3B82F6;
-  --accent-light: rgba(59, 130, 246, 0.15);
-  --accent-glow: rgba(59, 130, 246, 0.3);
-  --accent-hover: #60A5FA;
-  --cyan: #22D3EE;
-  --cyan-glow: rgba(34, 211, 238, 0.2);
+  --cyan: #67E8F9;
+  --cyan-glow: rgba(103, 232, 249, 0.15);
   --violet: #A78BFA;
   --violet-glow: rgba(167, 139, 250, 0.2);
-  --emerald: #34D399;
-  --emerald-glow: rgba(52, 211, 153, 0.2);
-  --amber: #FBBF24;
-  --rose: #FB7185;
+  --emerald: #6EE7B7;
+  --emerald-glow: rgba(110, 231, 183, 0.15);
+  --amber: #FCD34D;
+  --rose: #FCA5A5;
 
-  /* Text hierarchy */
-  --text: #F1F5F9;
-  --text-secondary: #94A3B8;
-  --text-muted: #475569;
+  /* Text hierarchy — slightly warmer */
+  --text: #EDE9FE;
+  --text-secondary: #A5B4CF;
+  --text-muted: #5B6785;
 
   /* Borders & surfaces */
-  --border: rgba(255, 255, 255, 0.06);
-  --border-hover: rgba(255, 255, 255, 0.12);
-  --border-glow: rgba(59, 130, 246, 0.3);
+  --border: rgba(167, 139, 250, 0.08);
+  --border-hover: rgba(167, 139, 250, 0.18);
+  --border-glow: rgba(99, 102, 241, 0.3);
 
-  /* Shadows */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 40px rgba(59, 130, 246, 0.15);
-  --shadow-glow-cyan: 0 0 40px rgba(34, 211, 238, 0.1);
-  --shadow-glow-violet: 0 0 40px rgba(167, 139, 250, 0.1);
+  /* Shadows — purple-tinted */
+  --shadow-sm: 0 2px 8px rgba(15, 10, 40, 0.4);
+  --shadow-md: 0 4px 24px rgba(15, 10, 40, 0.5);
+  --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.12);
+  --shadow-glow-cyan: 0 0 40px rgba(103, 232, 249, 0.08);
+  --shadow-glow-violet: 0 0 40px rgba(167, 139, 250, 0.12);
+
+  /* Radius — soft & rounded */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
 }
 
 /* ===== BASE RESET ===== */
@@ -124,14 +137,14 @@ body {
 
   /* Gradient text */
   .text-gradient {
-    background: linear-gradient(135deg, #60A5FA, #A78BFA, #34D399);
+    background: linear-gradient(135deg, #818CF8, #A78BFA, #C4B5FD);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .text-gradient-blue {
-    background: linear-gradient(135deg, #3B82F6, #22D3EE);
+    background: linear-gradient(135deg, #6366F1, #A78BFA);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -425,7 +438,7 @@ body {
 
 /* Buttons */
 .btn-primary {
-  background: linear-gradient(135deg, #3B82F6, #2563EB);
+  background: linear-gradient(135deg, #6366F1, #4F46E5);
   color: white;
   border-radius: 12px;
   padding: 12px 24px;
@@ -438,7 +451,7 @@ body {
 }
 
 .btn-primary:hover {
-  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
   transform: translateY(-1px);
 }
 
@@ -468,8 +481,8 @@ body {
 }
 
 .input-glass:focus {
-  border-color: rgba(59, 130, 246, 0.4);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 0 20px rgba(59, 130, 246, 0.05);
+  border-color: rgba(167, 139, 250, 0.4);
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1), 0 0 20px rgba(167, 139, 250, 0.05);
 }
 
 .input-glass::placeholder {
@@ -539,7 +552,7 @@ body {
   inset: 0;
   border-radius: inherit;
   padding: 1.5px;
-  background: linear-gradient(270deg, #3B82F6, #06B6D4, #8B5CF6, #3B82F6);
+  background: linear-gradient(270deg, #6366F1, #A78BFA, #818CF8, #6366F1);
   background-size: 300% 300%;
   animation: gradient-border-spin 4s ease infinite;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -626,7 +639,7 @@ body {
 
 /* Gradient CTA button */
 .gradient-btn {
-  background: linear-gradient(135deg, #3B82F6, #6366F1, #8B5CF6);
+  background: linear-gradient(135deg, #6366F1, #7C3AED, #A78BFA);
   transition: all 0.3s ease;
 }
 
@@ -678,8 +691,8 @@ body {
 }
 
 @keyframes tab-glow {
-  0%, 100% { box-shadow: 0 0 6px rgba(56, 189, 248, 0.2); }
-  50% { box-shadow: 0 0 12px rgba(56, 189, 248, 0.4); }
+  0%, 100% { box-shadow: 0 0 6px rgba(167, 139, 250, 0.2); }
+  50% { box-shadow: 0 0 12px rgba(167, 139, 250, 0.4); }
 }
 
 @property --gradient-angle {
@@ -916,7 +929,7 @@ body {
   border-radius: 13px;
   background: conic-gradient(
     from var(--gradient-angle, 0deg),
-    #ef4444, #fbbf24, #22d3ee, #a78bfa, #ef4444
+    #ef4444, #A78BFA, #6366F1, #818CF8, #ef4444
   );
   animation: gradient-rotate 3s linear infinite;
   z-index: -1;
@@ -939,7 +952,7 @@ body {
 }
 
 .animate-greeting {
-  background: linear-gradient(135deg, #f1f5f9, #22d3ee, #a78bfa, #3b82f6, #f1f5f9);
+  background: linear-gradient(135deg, #EDE9FE, #A78BFA, #6366F1, #818CF8, #EDE9FE);
   background-size: 300% 300%;
   background-clip: text;
   -webkit-background-clip: text;
@@ -1003,6 +1016,44 @@ body {
 
 .animate-page-blur-in {
   animation: page-blur-in 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* ===== HIDE SCROLLBAR ===== */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ===== GALAXY ORBIT ===== */
+@keyframes galaxy-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes galaxy-counter-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+.animate-galaxy-spin {
+  animation: galaxy-spin 30s linear infinite;
+}
+
+.animate-galaxy-counter-spin {
+  animation: galaxy-counter-spin 30s linear infinite;
+}
+
+/* ===== 3D PHONE FLOAT ===== */
+@keyframes phone-float {
+  0%, 100% { transform: rotateY(-5deg) rotateX(2deg) translateY(0px); }
+  50% { transform: rotateY(-5deg) rotateX(2deg) translateY(-10px); }
+}
+
+.animate-phone-float {
+  animation: phone-float 5s ease-in-out infinite;
 }
 
 /* Reduced motion */

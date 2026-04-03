@@ -233,7 +233,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
           >
             <div className="flex items-center gap-3 mb-2">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${managingFor === 'self' ? 'bg-blue-500/20' : 'bg-white/5'} transition-colors`}>
-                <svg className={`w-5 h-5 ${managingFor === 'self' ? 'text-blue-400' : 'text-[var(--text-muted)]'} transition-colors`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <svg className={`w-5 h-5 ${managingFor === 'self' ? 'text-[#A78BFA]' : 'text-[var(--text-muted)]'} transition-colors`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                 </svg>
               </div>
@@ -315,7 +315,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
             <div className="relative flex-shrink-0">
               <div className={`absolute inset-0 rounded-2xl blur-xl ${isOneUpConnected ? 'bg-emerald-500/25' : 'bg-blue-500/25'} animate-orb-pulse`} />
               <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center ${isOneUpConnected ? 'bg-emerald-500/15' : 'bg-blue-500/15'} transition-colors`}>
-                <svg className={`w-7 h-7 sm:w-8 sm:h-8 ${isOneUpConnected ? 'text-emerald-400' : 'text-blue-400'} transition-colors`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <svg className={`w-7 h-7 sm:w-8 sm:h-8 ${isOneUpConnected ? 'text-emerald-400' : 'text-[#A78BFA]'} transition-colors`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
                 </svg>
               </div>
@@ -438,7 +438,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
                           Disconnect
                         </button>
                       ) : (
-                        <button className="text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] px-3.5 py-1.5 rounded-lg transition-all">
+                        <button className="text-xs font-medium text-[#A78BFA] bg-blue-500/10 hover:bg-blue-500/20 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] px-3.5 py-1.5 rounded-lg transition-all">
                           Connect
                         </button>
                       )

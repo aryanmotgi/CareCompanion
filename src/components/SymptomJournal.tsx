@@ -75,7 +75,7 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
         <h2 className="text-xl font-bold text-white">Symptom Journal</h2>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-xs font-semibold"
+          className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-xs font-semibold"
         >
           {showForm ? 'Cancel' : todayEntry ? 'Update Today' : 'Log Today'}
         </button>
@@ -186,7 +186,7 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
           </div>
 
           <button onClick={saveEntry} disabled={saving}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-400 text-white font-semibold disabled:opacity-50 transition-opacity">
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white font-semibold disabled:opacity-50 transition-opacity">
             {saving ? 'Saving...' : 'Save Entry'}
           </button>
         </div>

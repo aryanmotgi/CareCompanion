@@ -126,7 +126,7 @@ export function NotificationBell({ initialNotifications, initialCount }: Notific
             {count > 0 && (
               <button
                 onClick={markAllRead}
-                className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                className="text-xs text-[#A78BFA] hover:text-[#C4B5FD] font-medium transition-colors"
               >
                 Mark all read
               </button>
@@ -159,7 +159,7 @@ export function NotificationBell({ initialNotifications, initialCount }: Notific
                             dismiss(n.id);
                             setOpen(false);
                           }}
-                          className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                          className="text-xs text-[#A78BFA] hover:text-[#C4B5FD] font-medium transition-colors"
                         >
                           Ask AI
                         </Link>

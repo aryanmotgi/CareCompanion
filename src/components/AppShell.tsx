@@ -49,10 +49,10 @@ export function AppShell({
       <AmbientBackground />
 
       {!isSetup && (
-        <header className="fixed top-0 left-0 right-0 z-40 bg-[#0f172a]/95 backdrop-blur-lg border-b border-white/[0.06]">
+        <header className="fixed top-0 left-0 right-0 z-40 bg-[#0C0E1A]/90 backdrop-blur-xl border-b border-[var(--border)]">
           <div className="flex items-center justify-between px-5 h-14">
             <div className="flex items-center gap-2">
-              <h1 className="text-[#f1f5f9] text-lg font-bold">CareCompanion</h1>
+              <h1 className="text-[var(--text)] text-lg font-bold">CareCompanion</h1>
               {profiles.length > 1 && (
                 <>
                   <span className="text-[#334155]">·</span>
@@ -67,7 +67,7 @@ export function AppShell({
               />
               <button
                 onClick={() => setMenuOpen(true)}
-                className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center text-white text-sm font-semibold animate-press"
+                className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-white text-sm font-semibold animate-press"
               >
                 {initials}
               </button>

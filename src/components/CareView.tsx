@@ -7,19 +7,22 @@ import { ExpandableCard } from './ExpandableCard'
 import { BottomSheet } from './BottomSheet'
 import { useToast } from './ToastProvider'
 import { ConfirmDialog } from './ui/ConfirmDialog'
+import { ConflictsView } from './ConflictsView'
 import { VisitPrepSheet } from './VisitPrepSheet'
-import type { Medication, Appointment, Doctor } from '@/lib/types'
+import type { Medication, Appointment, Doctor, CareProfile, CareTeamMember } from '@/lib/types'
 
 interface CareViewProps {
   profileId: string
   medications: Medication[]
   appointments: Appointment[]
   doctors: Doctor[]
+  allProfiles?: CareProfile[]
+  careTeamMembers?: CareTeamMember[]
 }
 
-const inputClass = 'w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-[#e2e8f0] text-sm outline-none placeholder:text-[#64748b] focus:border-[#22d3ee]/40 transition-colors'
+const inputClass = 'w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-[#e2e8f0] text-sm outline-none placeholder:text-[#64748b] focus:border-[#A78BFA]/40 transition-colors'
 
-export function CareView({ profileId, medications: initialMeds, appointments: initialAppts, doctors }: CareViewProps) {
+export function CareView({ profileId, medications: initialMeds, appointments: initialAppts, doctors, allProfiles = [], careTeamMembers = [] }: CareViewProps) {
   const { showToast } = useToast()
   const [activeSegment, setActiveSegment] = useState(0)
   const [medications, setMedications] = useState(initialMeds)
@@ -159,7 +162,7 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
             </div>
             <div className="flex gap-2">
               {med.pharmacy_phone && (
-                <a href={`tel:${med.pharmacy_phone}`} className="flex-1 text-center py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-xs font-semibold animate-press">
+                <a href={`tel:${med.pharmacy_phone}`} className="flex-1 text-center py-2 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-xs font-semibold animate-press">
                   Call Pharmacy
                 </a>
               )}
@@ -250,7 +253,7 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
   return (
     <div className="px-5 py-6">
       <SegmentControl
-        segments={['Medications', 'Appointments']}
+        segments={['Medications', 'Appointments', 'Conflicts']}
         activeIndex={activeSegment}
         onChange={(idx) => { setActiveSegment(idx); setExpandedId(null) }}
       />
@@ -273,7 +276,7 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
           </div>
           <button
             onClick={() => setShowMedForm(true)}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-sm font-semibold animate-press shimmer-btn relative overflow-hidden"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold animate-press shimmer-btn relative overflow-hidden"
           >
             + Add Medication
           </button>
@@ -284,7 +287,7 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
         <div className="mt-5 space-y-5">
           {thisWeekAppts.length > 0 && (
             <div>
-              <div className="text-[#22d3ee] text-[11px] uppercase tracking-wider font-semibold mb-2">This Week</div>
+              <div className="text-[#A78BFA] text-[11px] uppercase tracking-wider font-semibold mb-2">This Week</div>
               <div className="space-y-2">{thisWeekAppts.map((a, i) => renderApptCard(a, i))}</div>
             </div>
           )}
@@ -298,11 +301,19 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
           </div>
           <button
             onClick={() => setShowApptForm(true)}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-sm font-semibold animate-press shimmer-btn relative overflow-hidden"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold animate-press shimmer-btn relative overflow-hidden"
           >
             + Add Appointment
           </button>
         </div>
+      )}
+
+      {activeSegment === 2 && (
+        <ConflictsView
+          profiles={allProfiles}
+          currentProfileId={profileId}
+          careTeamMembers={careTeamMembers}
+        />
       )}
 
       {/* Add Medication Form */}
@@ -323,7 +334,7 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
           <button
             onClick={handleAddMed}
             disabled={!medName.trim() || savingMed}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
           >
             {savingMed && (
               <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -362,7 +373,7 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
           <button
             onClick={handleAddAppt}
             disabled={!apptDoctor.trim() || !apptDate || savingAppt}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
           >
             {savingAppt && (
               <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">

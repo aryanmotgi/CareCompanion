@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { PriorityCard } from './PriorityCard'
 import { AnimatedNumber } from './AnimatedNumber'
+import { AlertInsights } from './AlertInsights'
 import { parseLabValue } from '@/lib/lab-parsing'
 import type { Medication, Appointment, LabResult, Claim } from '@/lib/types'
 
@@ -54,22 +55,32 @@ export function DashboardView({
           subtitle: `${med.quantity_remaining ?? '?'} pills remaining · ${med.prescribing_doctor || 'Unknown doctor'}`,
           priority: 1,
           expandedContent: (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div><span className="text-[#64748b]">Dose:</span> <span className="text-[#e2e8f0]">{med.dose}</span></div>
-                <div><span className="text-[#64748b]">Frequency:</span> <span className="text-[#e2e8f0]">{med.frequency}</span></div>
-                <div><span className="text-[#64748b]">Doctor:</span> <span className="text-[#e2e8f0]">{med.prescribing_doctor}</span></div>
-                <div><span className="text-[#64748b]">Remaining:</span> <span className="text-[#fbbf24]">{med.quantity_remaining} pills</span></div>
-              </div>
-              {med.pharmacy_phone && (
-                <a
-                  href={`tel:${med.pharmacy_phone}`}
-                  className="block w-full text-center py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-xs font-semibold"
-                >
-                  Call Pharmacy
-                </a>
-              )}
-            </div>
+            <AlertInsights
+              details={
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div><span className="text-[#64748b]">Dose:</span> <span className="text-[#e2e8f0]">{med.dose}</span></div>
+                    <div><span className="text-[#64748b]">Frequency:</span> <span className="text-[#e2e8f0]">{med.frequency}</span></div>
+                    <div><span className="text-[#64748b]">Doctor:</span> <span className="text-[#e2e8f0]">{med.prescribing_doctor}</span></div>
+                    <div><span className="text-[#64748b]">Remaining:</span> <span className="text-[#fbbf24]">{med.quantity_remaining} pills</span></div>
+                  </div>
+                  {med.pharmacy_phone && (
+                    <a
+                      href={`tel:${med.pharmacy_phone}`}
+                      className="block w-full text-center py-2 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-xs font-semibold"
+                    >
+                      Call Pharmacy
+                    </a>
+                  )}
+                </div>
+              }
+              insights={[
+                { emoji: '📞', text: `Call your pharmacy now to request a refill for ${med.name}. Have your prescription number ready.` },
+                { emoji: '⏰', text: `Set a reminder ${daysLeft <= 0 ? 'immediately' : 'today'} — ${med.quantity_remaining ?? 'few'} pills won't last long at your current dose.` },
+                { emoji: '💬', text: `If refills are denied, ask ${med.prescribing_doctor || 'your doctor'} for a new prescription or 90-day supply to avoid running out again.` },
+              ]}
+              chatPrompt={`Help me manage my ${med.name} refill — I have ${med.quantity_remaining ?? 'few'} pills left and it's ${daysLeft <= 0 ? 'overdue' : `due in ${daysLeft} days`}`}
+            />
           ),
         })
       }
@@ -91,30 +102,35 @@ export function DashboardView({
           subtitle: `${dayStr} at ${timeStr} · ${appt.purpose || ''}`,
           priority: 2,
           expandedContent: (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div><span className="text-[#64748b]">Location:</span> <span className="text-[#e2e8f0]">{appt.location}</span></div>
-                <div><span className="text-[#64748b]">Purpose:</span> <span className="text-[#e2e8f0]">{appt.purpose}</span></div>
-              </div>
-              <div className="flex gap-2">
-                {appt.location && (
-                  <a
-                    href={`https://maps.google.com/?q=${encodeURIComponent(appt.location)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 text-center py-2 rounded-lg bg-white/[0.06] border border-white/[0.1] text-[#e2e8f0] text-xs font-semibold"
-                  >
-                    Get Directions
-                  </a>
-                )}
-                <a
-                  href={`/chat?prompt=${encodeURIComponent(`Help me prepare for my ${appt.specialty} appointment with ${appt.doctor_name}`)}`}
-                  className="flex-1 text-center py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-xs font-semibold"
-                >
-                  Prepare with AI
-                </a>
-              </div>
-            </div>
+            <AlertInsights
+              details={
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div><span className="text-[#64748b]">Location:</span> <span className="text-[#e2e8f0]">{appt.location}</span></div>
+                    <div><span className="text-[#64748b]">Purpose:</span> <span className="text-[#e2e8f0]">{appt.purpose}</span></div>
+                  </div>
+                  <div className="flex gap-2">
+                    {appt.location && (
+                      <a
+                        href={`https://maps.google.com/?q=${encodeURIComponent(appt.location)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 text-center py-2 rounded-lg bg-white/[0.06] border border-white/[0.1] text-[#e2e8f0] text-xs font-semibold"
+                      >
+                        Get Directions
+                      </a>
+                    )}
+                  </div>
+                </div>
+              }
+              insights={[
+                { emoji: '📝', text: `Write down your top 3 questions for ${appt.doctor_name} before you go — you'll forget in the moment.` },
+                { emoji: '📋', text: `Bring a list of current medications and any new symptoms since your last visit.` },
+                { emoji: '🕐', text: `Arrive 10-15 minutes early ${appt.location ? `at ${appt.location}` : ''} — parking and check-in take time.` },
+                { emoji: '📱', text: `Take notes during the visit or ask if you can record — details fade fast after you leave.` },
+              ]}
+              chatPrompt={`Help me prepare for my ${appt.specialty} appointment with ${appt.doctor_name}${appt.purpose ? ` for ${appt.purpose}` : ''}`}
+            />
           ),
         })
       }
@@ -132,28 +148,39 @@ export function DashboardView({
         subtitle: `${lab.is_abnormal ? 'Above normal' : 'Normal'} range (${lab.reference_range}) · ${lab.source || ''}`,
         priority: 3,
         expandedContent: (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div><span className="text-[#64748b]">Value:</span> <span className="text-[#ef4444]">{lab.value} {lab.unit}</span></div>
-              <div><span className="text-[#64748b]">Normal:</span> <span className="text-[#e2e8f0]">{lab.reference_range}</span></div>
-              <div><span className="text-[#64748b]">Source:</span> <span className="text-[#e2e8f0]">{lab.source}</span></div>
-              <div><span className="text-[#64748b]">Date:</span> <span className="text-[#e2e8f0]">{lab.date_taken ? new Date(lab.date_taken).toLocaleDateString() : '—'}</span></div>
-            </div>
-            {parsed.progressPercent !== null && (
-              <div>
-                <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#22d3ee] to-[#ef4444]"
-                    style={{ width: `${Math.min(parsed.progressPercent, 100)}%` }}
-                  />
+          <AlertInsights
+            details={
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div><span className="text-[#64748b]">Value:</span> <span className="text-[#ef4444]">{lab.value} {lab.unit}</span></div>
+                  <div><span className="text-[#64748b]">Normal:</span> <span className="text-[#e2e8f0]">{lab.reference_range}</span></div>
+                  <div><span className="text-[#64748b]">Source:</span> <span className="text-[#e2e8f0]">{lab.source}</span></div>
+                  <div><span className="text-[#64748b]">Date:</span> <span className="text-[#e2e8f0]">{lab.date_taken ? new Date(lab.date_taken).toLocaleDateString() : '—'}</span></div>
                 </div>
-                <div className="flex justify-between text-[10px] text-[#64748b] mt-1">
-                  <span>0</span>
-                  <span>{parsed.referenceMax ? `Normal: <${parsed.referenceMax}` : ''}</span>
-                </div>
+                {parsed.progressPercent !== null && (
+                  <div>
+                    <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[#22d3ee] to-[#ef4444]"
+                        style={{ width: `${Math.min(parsed.progressPercent, 100)}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-[#64748b] mt-1">
+                      <span>0</span>
+                      <span>{parsed.referenceMax ? `Normal: <${parsed.referenceMax}` : ''}</span>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            }
+            insights={[
+              { emoji: '🩺', text: `Your ${lab.test_name} is ${lab.value} ${lab.unit}, above the normal range of ${lab.reference_range}. Schedule a follow-up to discuss this result.` },
+              { emoji: '📊', text: `Track this value over time — a single reading can be a fluke, but a trend tells the real story.` },
+              { emoji: '🥗', text: `Ask your doctor what lifestyle changes (diet, exercise, sleep) could help bring this number into range.` },
+              { emoji: '💊', text: `If you're on medication for this, ask whether your dosage needs adjusting based on this result.` },
+            ]}
+            chatPrompt={`Explain my ${lab.test_name} result of ${lab.value} ${lab.unit} — it's above the normal range of ${lab.reference_range}. What should I do?`}
+          />
         ),
       })
     })
@@ -169,12 +196,23 @@ export function DashboardView({
         subtitle: `$${claim.patient_responsibility} patient responsibility · ${claim.denial_reason || ''}`,
         priority: 3,
         expandedContent: (
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div><span className="text-[#64748b]">Billed:</span> <span className="text-[#e2e8f0]">${claim.billed_amount}</span></div>
-            <div><span className="text-[#64748b]">Paid:</span> <span className="text-[#e2e8f0]">${claim.paid_amount}</span></div>
-            <div><span className="text-[#64748b]">Your cost:</span> <span className="text-[#ef4444]">${claim.patient_responsibility}</span></div>
-            <div><span className="text-[#64748b]">Reason:</span> <span className="text-[#fbbf24]">{claim.denial_reason}</span></div>
-          </div>
+          <AlertInsights
+            details={
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div><span className="text-[#64748b]">Billed:</span> <span className="text-[#e2e8f0]">${claim.billed_amount}</span></div>
+                <div><span className="text-[#64748b]">Paid:</span> <span className="text-[#e2e8f0]">${claim.paid_amount}</span></div>
+                <div><span className="text-[#64748b]">Your cost:</span> <span className="text-[#ef4444]">${claim.patient_responsibility}</span></div>
+                <div><span className="text-[#64748b]">Reason:</span> <span className="text-[#fbbf24]">{claim.denial_reason}</span></div>
+              </div>
+            }
+            insights={[
+              { emoji: '📄', text: `Request the denial letter in writing — you have the right to a formal explanation and it starts the appeal clock.` },
+              { emoji: '📞', text: `Call your insurance and ask exactly what documentation they need to overturn the denial. Get a reference number.` },
+              { emoji: '🏥', text: `Ask ${claim.provider_name} if they can resubmit with different coding — many denials are coding errors, not coverage issues.` },
+              { emoji: '⚖️', text: `You can file a formal appeal within 180 days. Most first appeals succeed when medical necessity is documented.` },
+            ]}
+            chatPrompt={`Help me understand and appeal this denied claim from ${claim.provider_name} — denied for "${claim.denial_reason}". I owe $${claim.patient_responsibility}.`}
+          />
         ),
       })
     })

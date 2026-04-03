@@ -33,7 +33,7 @@ export function Button({ variant = 'primary', loading = false, children, classNa
   const base = 'inline-flex items-center justify-center rounded-xl font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg)] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] px-6 py-3 relative overflow-hidden';
 
   const variants = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-500 hover:shadow-lg hover:shadow-blue-500/20 focus:ring-blue-500/30',
+    primary: 'bg-[#6366F1] text-white hover:bg-[#818CF8] hover:shadow-lg hover:shadow-indigo-500/20 focus:ring-indigo-500/30',
     secondary: 'bg-[var(--bg-elevated)] text-[var(--text)] border border-[var(--border)] hover:bg-[var(--border)] hover:border-[var(--border-hover)] focus:ring-slate-500/20',
     danger: 'bg-red-600 text-white hover:bg-red-500 hover:shadow-lg hover:shadow-red-500/20 focus:ring-red-500/30',
   };

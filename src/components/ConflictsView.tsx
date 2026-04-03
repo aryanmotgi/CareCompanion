@@ -170,7 +170,7 @@ export function ConflictsView({ profiles, careTeamMembers }: ConflictsViewProps)
         <div className="flex gap-2">
           <a
             href={`/chat?prompt=${encodeURIComponent('Help me find local caregiving services — I need care options for when I have scheduling conflicts between my family members')}`}
-            className="flex-1 text-center py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-xs font-semibold shimmer-btn relative overflow-hidden"
+            className="flex-1 text-center py-2 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-xs font-semibold shimmer-btn relative overflow-hidden"
           >
             Search with AI
           </a>

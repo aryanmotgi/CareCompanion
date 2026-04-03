@@ -54,7 +54,7 @@ export function OnboardingWalkthrough({ onComplete }: { onComplete: () => void }
 
       <button
         onClick={handleNext}
-        className="w-full max-w-xs py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-sm font-semibold animate-press"
+        className="w-full max-w-xs py-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold animate-press"
       >
         {current === slides.length - 1 ? 'Get Started' : 'Next'}
       </button>

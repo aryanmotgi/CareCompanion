@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { CareView } from '@/components/CareView'
 import { CareSkeleton } from '@/components/skeletons/CareSkeleton'
+import { getAllProfiles } from '@/lib/active-profile'
 
 async function CareContent() {
   const supabase = await createClient()
@@ -17,10 +18,13 @@ async function CareContent() {
 
   if (!profile) redirect('/setup')
 
-  const [{ data: medications }, { data: appointments }, { data: doctors }] = await Promise.all([
+  const allProfiles = await getAllProfiles(supabase, user.id)
+
+  const [{ data: medications }, { data: appointments }, { data: doctors }, { data: careTeamMembers }] = await Promise.all([
     supabase.from('medications').select('*').eq('care_profile_id', profile.id),
     supabase.from('appointments').select('*').eq('care_profile_id', profile.id).order('date_time', { ascending: true }),
     supabase.from('doctors').select('*').eq('care_profile_id', profile.id),
+    supabase.from('care_team_members').select('*').eq('care_profile_id', profile.id),
   ])
 
   return (
@@ -29,6 +33,8 @@ async function CareContent() {
       medications={medications || []}
       appointments={appointments || []}
       doctors={doctors || []}
+      allProfiles={allProfiles}
+      careTeamMembers={careTeamMembers || []}
     />
   )
 }

@@ -31,7 +31,7 @@ function formatInline(text: string): React.ReactNode[] {
   const parts = text.split(/(`[^`]+`|\*\*.*?\*\*|\*.*?\*)/);
   return parts.map((part, i) => {
     if (part.startsWith('`') && part.endsWith('`')) {
-      return <code key={i} className="bg-white/[0.08] rounded px-1.5 py-0.5 text-xs font-mono text-[#22d3ee]">{part.slice(1, -1)}</code>;
+      return <code key={i} className="bg-white/[0.08] rounded px-1.5 py-0.5 text-xs font-mono text-[#A78BFA]">{part.slice(1, -1)}</code>;
     }
     if (part.startsWith('**') && part.endsWith('**')) {
       return <strong key={i} className="font-semibold text-[#f1f5f9]">{part.slice(2, -2)}</strong>;
@@ -57,7 +57,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   if (isUser) {
     return (
       <div className="flex justify-end mb-3 animate-slide-up">
-        <div className="max-w-[75%] bg-gradient-to-br from-indigo-500 to-cyan-400 rounded-[16px_16px_4px_16px] px-4 py-2.5 text-white text-sm leading-relaxed">
+        <div className="max-w-[75%] bg-gradient-to-br from-[#6366F1] to-[#A78BFA] rounded-[16px_16px_4px_16px] px-4 py-2.5 text-white text-sm leading-relaxed">
           {text}
         </div>
       </div>
@@ -66,7 +66,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   return (
     <div className="flex gap-2 items-start mb-3 animate-slide-up">
-      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex-shrink-0 flex items-center justify-center text-white text-[10px] font-bold" aria-hidden="true">
+      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex-shrink-0 flex items-center justify-center text-white text-[10px] font-bold" aria-hidden="true">
         AI
       </div>
       <div className="flex-1 max-w-[80%]">

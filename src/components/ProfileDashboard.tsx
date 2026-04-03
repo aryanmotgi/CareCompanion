@@ -40,7 +40,7 @@ export function ProfileDashboard({ profile, doctors, labResults }: ProfileDashbo
     <div className="px-5 py-6">
       {/* Header */}
       <div className="text-center mb-6">
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 mx-auto mb-3 flex items-center justify-center text-white text-[22px] font-bold">
+        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] mx-auto mb-3 flex items-center justify-center text-white text-[22px] font-bold">
           {initials}
         </div>
         <div className="text-[#f1f5f9] text-xl font-bold">{profile.patient_name}</div>

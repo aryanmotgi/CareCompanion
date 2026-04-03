@@ -48,7 +48,7 @@ export function ConfirmDialog({
   const confirmClass =
     variant === 'danger'
       ? 'bg-[#ef4444] hover:bg-[#dc2626] text-white'
-      : 'bg-gradient-to-r from-indigo-500 to-cyan-400 text-white'
+      : 'bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-overlay" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">

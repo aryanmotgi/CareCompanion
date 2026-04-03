@@ -140,7 +140,7 @@ export function ProfileMenu({ isOpen, onClose, userName, patientName }: ProfileM
       <div className="absolute inset-0 bg-black/50 animate-fade-overlay" onClick={onClose} />
       <div className="absolute top-0 right-0 bottom-0 w-[280px] bg-[#1e293b] animate-slide-in-right flex flex-col">
         <div className="flex items-center gap-3 p-5 pb-4 border-b border-white/[0.06]">
-          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center text-white text-base font-semibold">
+          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-white text-base font-semibold">
             {initials}
           </div>
           <div>

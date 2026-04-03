@@ -18,7 +18,7 @@ export default function Error({
         <p className="text-[#94a3b8] mb-6">An unexpected error occurred. Please try again.</p>
         <button
           onClick={reset}
-          className="inline-flex items-center px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-400 text-white font-medium hover:opacity-90 transition-opacity"
+          className="inline-flex items-center px-6 py-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white font-medium hover:opacity-90 transition-opacity"
         >
           Try again
         </button>

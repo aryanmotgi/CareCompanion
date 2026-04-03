@@ -17,6 +17,8 @@ interface ChatInterfaceProps {
 export function ChatInterface({ initialMessages, patientName }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [showScanner, setShowScanner] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [promptSent, setPromptSent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
   const promptFromUrl = searchParams.get('prompt');
@@ -30,14 +32,15 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
 
   const { isListening, isSupported: voiceSupported, toggleListening } = useVoiceInput({
     onTranscript: (text) => {
-      // When voice stops, put the final transcript in the input
       setInput((prev) => (prev ? prev + ' ' + text : text));
     },
     onInterimTranscript: (text) => {
-      // Show live transcript as user speaks
       setInput(text);
     },
   });
+
+  // Fix hydration mismatch — voice button only renders after mount
+  useEffect(() => { setMounted(true) }, []);
 
   // Allowlisted prompts for auto-send from URL
   const ALLOWED_PROMPTS = new Set([
@@ -50,15 +53,22 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
   ])
 
   const isAllowedPrompt = (prompt: string) =>
-    ALLOWED_PROMPTS.has(prompt) || prompt.startsWith('Help me prepare for my ')
+    ALLOWED_PROMPTS.has(prompt) ||
+    prompt.startsWith('Help me prepare for my ') ||
+    prompt.startsWith('Help me manage my ') ||
+    prompt.startsWith('Explain my ') ||
+    prompt.startsWith('Help me understand') ||
+    prompt.startsWith('I have a scheduling conflict') ||
+    prompt.startsWith('Help me find local')
 
-  // Auto-send prompt from URL (from dashboard quick prompts)
+  // Auto-send prompt from URL (from dashboard or alert cards)
   useEffect(() => {
-    if (promptFromUrl && messages.length === 0 && isAllowedPrompt(promptFromUrl)) {
+    if (promptFromUrl && !promptSent && isAllowedPrompt(promptFromUrl)) {
+      setPromptSent(true);
       sendMessage({ text: promptFromUrl });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [promptFromUrl]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -91,7 +101,7 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-16 h-16 bg-blue-500/15 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-8 h-8 text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <svg className="w-8 h-8 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
               </svg>
             </div>
@@ -106,7 +116,7 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
                 <button
                   key={prompt}
                   onClick={() => handleSend(prompt)}
-                  className="px-4 py-2.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] text-sm text-[var(--text)] hover:bg-blue-500/15 hover:border-blue-500/20 hover:text-blue-400 transition-colors"
+                  className="px-4 py-2.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] text-sm text-[var(--text)] hover:bg-blue-500/15 hover:border-blue-500/20 hover:text-[#A78BFA] transition-colors"
                 >
                   {prompt}
                 </button>
@@ -169,7 +179,7 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
               </svg>
             </button>
             {/* Voice input button */}
-            {voiceSupported && (
+            {mounted && voiceSupported && (
               <button
                 onClick={toggleListening}
                 className={`p-1.5 transition-colors flex-shrink-0 ${
@@ -205,7 +215,7 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
               <button
                 onClick={() => handleSend()}
                 disabled={!input.trim() || isLoading}
-                className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center text-white disabled:opacity-40 transition-opacity animate-press flex-shrink-0"
+                className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-white disabled:opacity-40 transition-opacity animate-press flex-shrink-0"
                 title="Send"
               >
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

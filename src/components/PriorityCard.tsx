@@ -27,8 +27,8 @@ const VARIANT_STYLES = {
   upcoming: {
     bg: 'bg-white/[0.04]',
     border: 'border-white/[0.06]',
-    dot: 'bg-[#22d3ee]',
-    label: 'text-[#22d3ee]',
+    dot: 'bg-[#818CF8]',
+    label: 'text-[#818CF8]',
     dotPulse: false,
   },
   alert: {
