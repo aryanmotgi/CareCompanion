@@ -63,7 +63,7 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const { image_base64, media_type, auto_import, document_id } = await req.json()
+    const { image_base64, auto_import, document_id } = await req.json()
 
     if (!image_base64) {
       return NextResponse.json({ error: 'image_base64 is required' }, { status: 400 })
@@ -86,7 +86,6 @@ export async function POST(req: Request) {
             {
               type: 'image',
               image: image_base64,
-              mimeType: media_type || 'image/jpeg',
             },
             {
               type: 'text',
