@@ -200,7 +200,7 @@ export function DashboardView({
   return (
     <div className="px-5 py-6">
       <div className="mb-1 text-[#94a3b8] text-xs uppercase tracking-wider">{greeting}</div>
-      <h2 className="text-[#f1f5f9] text-xl font-bold mb-5">
+      <h2 className="text-xl font-bold mb-5 animate-greeting">
         {actionCount > 0 ? (
           <>
             <AnimatedNumber value={actionCount} /> {actionCount === 1 ? 'item needs' : 'items need'} attention

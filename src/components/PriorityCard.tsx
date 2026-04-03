@@ -22,24 +22,28 @@ const VARIANT_STYLES = {
     border: 'border-[rgba(239,68,68,0.2)]',
     dot: 'bg-[#ef4444]',
     label: 'text-[#ef4444]',
+    dotPulse: true,
   },
   upcoming: {
     bg: 'bg-white/[0.04]',
     border: 'border-white/[0.06]',
     dot: 'bg-[#22d3ee]',
     label: 'text-[#22d3ee]',
+    dotPulse: false,
   },
   alert: {
     bg: 'bg-[rgba(251,191,36,0.08)]',
     border: 'border-[rgba(251,191,36,0.2)]',
     dot: 'bg-[#fbbf24]',
     label: 'text-[#fbbf24]',
+    dotPulse: false,
   },
   'quick-ask': {
     bg: 'bg-white/[0.03]',
     border: 'border-white/[0.08]',
     dot: 'bg-indigo-500',
     label: 'text-indigo-400',
+    dotPulse: false,
   },
 }
 
@@ -56,15 +60,16 @@ export function PriorityCard({
   expandedContent,
 }: PriorityCardProps) {
   const s = VARIANT_STYLES[variant]
+  const isUrgent = variant === 'urgent'
   const animStyle = {
-    animation: `card-stagger-in 0.4s cubic-bezier(0.4,0,0.2,1) both${variant === 'urgent' ? ', glow-pulse 2s ease-in-out infinite' : ''}`,
+    animation: `card-stagger-in 0.4s cubic-bezier(0.4,0,0.2,1) both${isUrgent ? ', glow-pulse 2s ease-in-out infinite' : ''}`,
     animationDelay: `${index * 60}ms`,
   }
 
   const content = (
     <>
       <div className="flex items-center gap-2 mb-1">
-        <div className={`w-2 h-2 rounded-full ${s.dot}`} />
+        <div className={`w-2 h-2 rounded-full ${s.dot} ${s.dotPulse ? 'animate-dot-pulse' : ''}`} />
         <span className={`text-xs font-semibold ${s.label}`}>{label}</span>
       </div>
       <div className="text-[#f1f5f9] text-sm font-semibold">{title}</div>
@@ -77,7 +82,7 @@ export function PriorityCard({
     return (
       <Link href={href}>
         <div
-          className={`${s.bg} border ${s.border} rounded-xl p-4 animate-press`}
+          className={`${s.bg} border ${s.border} rounded-xl p-4 animate-press shimmer-btn`}
           style={animStyle}
         >
           {content}
@@ -87,28 +92,32 @@ export function PriorityCard({
     )
   }
 
-  // Expandable cards
+  // Expandable cards — urgent gets spinning gradient border
   if (expandedContent && onToggle) {
     return (
-      <ExpandableCard
-        expanded={expanded}
-        onToggle={onToggle}
-        expandedContent={expandedContent}
-        className={`${s.bg} animate-press`}
-        style={animStyle}
-      >
-        {content}
-      </ExpandableCard>
+      <div className={isUrgent ? 'gradient-border-spin' : ''}>
+        <ExpandableCard
+          expanded={expanded}
+          onToggle={onToggle}
+          expandedContent={expandedContent}
+          className={`${s.bg} animate-press`}
+          style={animStyle}
+        >
+          {content}
+        </ExpandableCard>
+      </div>
     )
   }
 
   // Fallback: non-expandable card
   return (
-    <div
-      className={`${s.bg} border ${s.border} rounded-xl p-4 animate-press`}
-      style={animStyle}
-    >
-      {content}
+    <div className={isUrgent ? 'gradient-border-spin' : ''}>
+      <div
+        className={`${s.bg} border ${s.border} rounded-xl p-4 animate-press`}
+        style={animStyle}
+      >
+        {content}
+      </div>
     </div>
   )
 }

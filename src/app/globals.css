@@ -861,6 +861,150 @@ body {
   width: 100%;
 }
 
+/* ===== CONFETTI PARTICLES ===== */
+@keyframes confetti-burst {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--confetti-tx, 50px), var(--confetti-ty, -100px)) rotate(var(--confetti-spin, 360deg)) scale(0);
+    opacity: 0;
+  }
+}
+
+.confetti-particle {
+  animation: confetti-burst 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* ===== RIPPLE EFFECT ===== */
+.ripple-container {
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes ripple-expand {
+  0% {
+    transform: scale(0);
+    opacity: 0.35;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+.ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 50%, transparent 70%);
+  pointer-events: none;
+  animation: ripple-expand 0.6s cubic-bezier(0, 0.2, 0.8, 1) forwards;
+}
+
+/* ===== ANIMATED GRADIENT BORDER (SPINNING) ===== */
+.gradient-border-spin {
+  position: relative;
+  border-radius: 12px;
+  z-index: 0;
+}
+
+.gradient-border-spin::before {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  border-radius: 13px;
+  background: conic-gradient(
+    from var(--gradient-angle, 0deg),
+    #ef4444, #fbbf24, #22d3ee, #a78bfa, #ef4444
+  );
+  animation: gradient-rotate 3s linear infinite;
+  z-index: -1;
+  opacity: 0.8;
+}
+
+.gradient-border-spin::after {
+  content: '';
+  position: absolute;
+  inset: 0.5px;
+  border-radius: 11.5px;
+  background: var(--bg, #08090E);
+  z-index: -1;
+}
+
+/* ===== ANIMATED GREETING GRADIENT ===== */
+@keyframes greeting-gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.animate-greeting {
+  background: linear-gradient(135deg, #f1f5f9, #22d3ee, #a78bfa, #3b82f6, #f1f5f9);
+  background-size: 300% 300%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: greeting-gradient 6s ease infinite;
+}
+
+/* ===== SKELETON UPGRADE: BONE + PULSE ===== */
+@keyframes skeleton-bone-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes skeleton-shine {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-bone {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.03) 0%,
+    rgba(255,255,255,0.08) 20%,
+    rgba(255,255,255,0.03) 40%,
+    rgba(255,255,255,0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation:
+    skeleton-shine 1.8s ease-in-out infinite,
+    skeleton-bone-pulse 2s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* ===== BLOB ANIMATIONS (ENHANCED) ===== */
+@keyframes blob-float-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(-35px, 25px) scale(1.08); }
+  50% { transform: translate(20px, -30px) scale(0.92); }
+  75% { transform: translate(10px, 15px) scale(1.04); }
+}
+
+@keyframes blob-float-4 {
+  0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  33% { transform: translate(40px, -10px) scale(0.95) rotate(5deg); }
+  66% { transform: translate(-15px, 30px) scale(1.1) rotate(-3deg); }
+}
+
+.animate-blob-3 {
+  animation: blob-float-3 45s ease-in-out infinite;
+}
+
+.animate-blob-4 {
+  animation: blob-float-4 55s ease-in-out infinite;
+}
+
+/* ===== PAGE TRANSITION ===== */
+@keyframes page-blur-in {
+  0% { opacity: 0; filter: blur(8px); transform: translateY(6px); }
+  100% { opacity: 1; filter: blur(0px); transform: translateY(0); }
+}
+
+.animate-page-blur-in {
+  animation: page-blur-in 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -871,5 +1015,9 @@ body {
   .scroll-reveal, .scroll-reveal-left, .scroll-reveal-right, .scroll-reveal-scale {
     opacity: 1;
     transform: none;
+  }
+  .animate-greeting {
+    -webkit-text-fill-color: #f1f5f9;
+    animation: none;
   }
 }

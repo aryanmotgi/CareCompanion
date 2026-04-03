@@ -43,7 +43,9 @@ export default async function AppLayout({
         profiles={allProfiles}
         activeProfileId={profile?.id || null}
       >
-        {children}
+        <div className="animate-page-blur-in">
+          {children}
+        </div>
       </AppShell>
     </ToastProvider>
   );
