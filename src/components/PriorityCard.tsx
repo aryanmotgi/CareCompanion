@@ -36,8 +36,8 @@ const VARIANT_STYLES = {
     label: 'text-[#fbbf24]',
   },
   'quick-ask': {
-    bg: 'bg-gradient-to-br from-indigo-500/10 to-cyan-400/10',
-    border: 'border-indigo-500/20',
+    bg: 'bg-white/[0.03]',
+    border: 'border-white/[0.08]',
     dot: 'bg-indigo-500',
     label: 'text-indigo-400',
   },
@@ -94,7 +94,7 @@ export function PriorityCard({
         expanded={expanded}
         onToggle={onToggle}
         expandedContent={expandedContent}
-        className={`${s.bg} ${expanded ? '' : `border-${s.border.replace('border-', '')}`} animate-press`}
+        className={`${s.bg} animate-press`}
         style={animStyle}
       >
         {content}

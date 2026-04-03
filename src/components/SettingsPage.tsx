@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from './ToastProvider'
@@ -11,13 +11,14 @@ interface SettingsPageProps {
   connectedApps: ConnectedApp[]
 }
 
-function Toggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
+function Toggle({ enabled, onToggle, label }: { enabled: boolean; onToggle: () => void; label: string }) {
   return (
     <button
       role="switch"
       aria-checked={enabled}
+      aria-label={label}
       onClick={onToggle}
-      className={`w-[42px] h-6 rounded-full relative transition-colors duration-200 min-w-[44px] min-h-[44px] flex items-center ${
+      className={`w-[42px] h-6 rounded-full relative transition-colors duration-200 min-w-[42px] min-h-[44px] flex items-center ${
         enabled ? 'bg-[#22d3ee]' : 'bg-white/[0.1]'
       }`}
     >
@@ -47,12 +48,15 @@ function SettingsRow({
     <div
       className={`px-4 py-3.5 flex items-center justify-between ${onClick ? 'cursor-pointer active:bg-white/[0.02]' : ''}`}
       onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
     >
       <div>
         <div className={`text-sm ${danger ? 'text-[#ef4444]' : 'text-[#e2e8f0]'}`}>{label}</div>
         {description && <div className="text-[11px] text-[#64748b] mt-0.5">{description}</div>}
       </div>
-      {right || (onClick && <span className="text-[#64748b] text-base">›</span>)}
+      {right || (onClick && <span className="text-[#64748b] text-base" aria-hidden="true">›</span>)}
     </div>
   )
 }
@@ -81,13 +85,20 @@ export function SettingsPage({ settings: initialSettings, connectedApps }: Setti
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [saving, setSaving] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Cleanup debounce timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
 
   const toggleSetting = (key: keyof UserSettings) => {
     if (!settings) return
     const newValue = !settings[key]
     setSettings({ ...settings, [key]: newValue })
-    // Debounce DB update
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       try {
@@ -97,8 +108,7 @@ export function SettingsPage({ settings: initialSettings, connectedApps }: Setti
           .update({ [key]: newValue, updated_at: new Date().toISOString() })
           .eq('user_id', settings.user_id)
         if (error) throw error
-      } catch (err) {
-        console.error('[Settings] Failed to update setting:', err)
+      } catch {
         showToast('Failed to save setting', 'error')
         setSettings({ ...settings, [key]: !newValue })
       }
@@ -115,8 +125,7 @@ export function SettingsPage({ settings: initialSettings, connectedApps }: Setti
       setNewPassword('')
       setShowPasswordForm(false)
       showToast('Password updated', 'success')
-    } catch (err) {
-      console.error('[Settings] Failed to update password:', err)
+    } catch {
       showToast('Failed to update password', 'error')
     }
     setSaving(false)
@@ -128,14 +137,14 @@ export function SettingsPage({ settings: initialSettings, connectedApps }: Setti
       const res = await fetch('/api/delete-account', { method: 'POST' })
       if (!res.ok) throw new Error('Delete failed')
       window.location.href = '/login'
-    } catch (err) {
-      console.error('[Settings] Failed to delete account:', err)
+    } catch {
       showToast('Failed to delete account', 'error')
       setSaving(false)
     }
   }
 
   const handleExport = async () => {
+    setExporting(true)
     try {
       const res = await fetch('/api/export-data')
       if (!res.ok) throw new Error('Export failed')
@@ -147,9 +156,10 @@ export function SettingsPage({ settings: initialSettings, connectedApps }: Setti
       a.click()
       URL.revokeObjectURL(url)
       showToast('Data exported', 'success')
-    } catch (err) {
-      console.error('[Settings] Failed to export data:', err)
+    } catch {
       showToast('Failed to export data', 'error')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -162,22 +172,22 @@ export function SettingsPage({ settings: initialSettings, connectedApps }: Setti
         <SettingsRow
           label="Refill Reminders"
           description="Alert when medications are running low"
-          right={<Toggle enabled={settings?.refill_reminders ?? true} onToggle={() => toggleSetting('refill_reminders')} />}
+          right={<Toggle label="Refill Reminders" enabled={settings?.refill_reminders ?? true} onToggle={() => toggleSetting('refill_reminders')} />}
         />
         <SettingsRow
           label="Appointment Reminders"
           description="24 hours and 1 hour before"
-          right={<Toggle enabled={settings?.appointment_reminders ?? true} onToggle={() => toggleSetting('appointment_reminders')} />}
+          right={<Toggle label="Appointment Reminders" enabled={settings?.appointment_reminders ?? true} onToggle={() => toggleSetting('appointment_reminders')} />}
         />
         <SettingsRow
           label="Lab Result Alerts"
           description="Notify when new results are available"
-          right={<Toggle enabled={settings?.lab_alerts ?? true} onToggle={() => toggleSetting('lab_alerts')} />}
+          right={<Toggle label="Lab Result Alerts" enabled={settings?.lab_alerts ?? true} onToggle={() => toggleSetting('lab_alerts')} />}
         />
         <SettingsRow
           label="Claim Updates"
           description="Status changes on insurance claims"
-          right={<Toggle enabled={settings?.claim_updates ?? true} onToggle={() => toggleSetting('claim_updates')} />}
+          right={<Toggle label="Claim Updates" enabled={settings?.claim_updates ?? true} onToggle={() => toggleSetting('claim_updates')} />}
         />
       </SettingsGroup>
 
@@ -222,6 +232,7 @@ export function SettingsPage({ settings: initialSettings, connectedApps }: Setti
                 await supabase.from('user_settings').update({ ai_personality: val, updated_at: new Date().toISOString() }).eq('user_id', settings.user_id)
               }}
               className="bg-transparent text-[#64748b] text-sm outline-none cursor-pointer"
+              aria-label="AI Personality"
             >
               <option value="professional">Professional</option>
               <option value="friendly">Friendly</option>
@@ -233,7 +244,10 @@ export function SettingsPage({ settings: initialSettings, connectedApps }: Setti
 
       <SectionLabel>Privacy &amp; Security</SectionLabel>
       <SettingsGroup>
-        <SettingsRow label="Export My Data" onClick={handleExport} />
+        <SettingsRow
+          label={exporting ? 'Exporting...' : 'Export My Data'}
+          onClick={exporting ? undefined : handleExport}
+        />
         <SettingsRow
           label="Change Password"
           onClick={() => setShowPasswordForm(!showPasswordForm)}
@@ -243,26 +257,38 @@ export function SettingsPage({ settings: initialSettings, connectedApps }: Setti
 
       {showPasswordForm && (
         <div className="mt-3 bg-white/[0.04] border border-white/[0.06] rounded-xl p-4">
+          <label className="text-[#94a3b8] text-xs mb-1.5 block" htmlFor="new-password">New password</label>
           <input
+            id="new-password"
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="New password (min 6 characters)"
-            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-[#e2e8f0] text-sm mb-3 outline-none"
+            placeholder="Min 6 characters"
+            minLength={6}
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-[#e2e8f0] text-sm mb-3 outline-none focus:border-[#22d3ee]/40 transition-colors"
           />
+          {newPassword.length > 0 && newPassword.length < 6 && (
+            <p className="text-[#ef4444] text-xs mb-2">Password must be at least 6 characters</p>
+          )}
           <button
             onClick={handleChangePassword}
             disabled={saving || newPassword.length < 6}
-            className="w-full py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-sm font-semibold disabled:opacity-40"
+            className="w-full py-2.5 rounded-lg bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
           >
+            {saving && (
+              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            )}
             {saving ? 'Updating...' : 'Update Password'}
           </button>
         </div>
       )}
 
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title">
-          <div className="bg-[#1e293b] rounded-xl p-6 mx-5 max-w-sm w-full">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-overlay" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title">
+          <div className="bg-[#1e293b] rounded-xl p-6 mx-5 max-w-sm w-full animate-slide-up">
             <h3 id="delete-dialog-title" className="text-[#f1f5f9] text-lg font-bold mb-2">Delete Account</h3>
             <p className="text-[#94a3b8] text-sm mb-4">
               This will permanently delete your account and all your data. This cannot be undone.
@@ -270,15 +296,21 @@ export function SettingsPage({ settings: initialSettings, connectedApps }: Setti
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 py-2 rounded-lg bg-white/[0.06] text-[#e2e8f0] text-sm font-semibold"
+                className="flex-1 py-2.5 rounded-lg bg-white/[0.06] text-[#e2e8f0] text-sm font-semibold hover:bg-white/[0.1] transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteAccount}
                 disabled={saving}
-                className="flex-1 py-2 rounded-lg bg-[#ef4444] text-white text-sm font-semibold disabled:opacity-40"
+                className="flex-1 py-2.5 rounded-lg bg-[#ef4444] text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
               >
+                {saving && (
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                )}
                 {saving ? 'Deleting...' : 'Delete'}
               </button>
             </div>

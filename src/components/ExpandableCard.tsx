@@ -24,7 +24,7 @@ export function ExpandableCard({
 
   useEffect(() => {
     if (contentRef.current) {
-      setHeight(contentRef.current.scrollHeight)
+      setHeight(contentRef.current.scrollHeight + 8)
     }
   }, [expanded, expandedContent])
 
@@ -43,17 +43,16 @@ export function ExpandableCard({
       onClick={onToggle}
       onKeyDown={handleKeyDown}
       className={`
-        bg-white/[0.04] border rounded-xl p-4 cursor-pointer
+        bg-white/[0.04] rounded-xl p-4 cursor-pointer
+        border border-white/[0.06]
         transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#22d3ee]/50
-        ${expanded ? 'border-[rgba(34,211,238,0.2)]' : 'border-white/[0.06]'}
         ${className}
       `}
-      style={style}
+      style={{ outline: 'none', boxShadow: 'none', WebkitTapHighlightColor: 'transparent', ...style }}
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">{children}</div>
-        <span className={`text-lg transition-transform duration-300 ${expanded ? 'rotate-90 text-[#22d3ee]' : 'text-[#64748b]'}`} aria-hidden="true">
+        <span className={`text-lg transition-transform duration-300 ${expanded ? 'rotate-90 text-[#94a3b8]' : 'text-[#64748b]'}`} aria-hidden="true">
           ▸
         </span>
       </div>
@@ -62,7 +61,7 @@ export function ExpandableCard({
         style={{
           maxHeight: expanded ? `${height}px` : '0px',
           opacity: expanded ? 1 : 0,
-          overflow: 'hidden',
+          overflow: expanded ? 'visible' : 'hidden',
           transition: 'max-height 300ms cubic-bezier(0.4,0,0.2,1), opacity 200ms ease',
         }}
       >
