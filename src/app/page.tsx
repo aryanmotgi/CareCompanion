@@ -74,9 +74,10 @@ function ScrollProgress() {
 
 /* ── Floating particles ── */
 function FloatingParticles() {
-  const particles = useRef<{ id: number; left: string; size: number; duration: number; delay: number; drift: number; color: string }[]>([]);
-  if (particles.current.length === 0) {
-    particles.current = Array.from({ length: 20 }, (_, i) => ({
+  const [particles, setParticles] = useState<{ id: number; left: string; size: number; duration: number; delay: number; drift: number; color: string }[]>([]);
+
+  useEffect(() => {
+    setParticles(Array.from({ length: 20 }, (_, i) => ({
       id: i,
       left: `${Math.random() * 100}%`,
       size: Math.random() * 3 + 1,
@@ -84,11 +85,14 @@ function FloatingParticles() {
       delay: Math.random() * 10,
       drift: (Math.random() - 0.5) * 60,
       color: i % 3 === 0 ? 'rgba(99,102,241,0.4)' : i % 3 === 1 ? 'rgba(167,139,250,0.3)' : 'rgba(129,140,248,0.3)',
-    }));
-  }
+    })));
+  }, []);
+
+  if (particles.length === 0) return null;
+
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-      {particles.current.map((p) => (
+      {particles.map((p) => (
         <div
           key={p.id}
           className="particle"
