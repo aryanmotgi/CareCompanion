@@ -6,11 +6,15 @@ import { ExtractionSchema, type Extraction } from '@/lib/extraction-schema'
  * Core document extraction logic.
  * Takes a base64 image and optional category hint, returns Zod-validated structured data.
  */
+const VALID_CATEGORIES = ['lab_report', 'medication', 'insurance', 'eob', 'doctor_note']
+
 export async function extractDocument(
   image_base64: string,
   category?: string | null
 ): Promise<Extraction> {
-  const prompt = buildExtractionPrompt(category || null)
+  // Validate category against allowlist to prevent prompt injection
+  const safeCategory = category && VALID_CATEGORIES.includes(category) ? category : null
+  const prompt = buildExtractionPrompt(safeCategory)
 
   const { object: extraction } = await generateObject({
     model: anthropic('claude-sonnet-4-6'),

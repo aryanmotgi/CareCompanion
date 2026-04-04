@@ -9,8 +9,13 @@ import { NextResponse } from 'next/server'
 export function verifyCronRequest(req: Request): NextResponse | null {
   const cronSecret = process.env.CRON_SECRET
 
-  // In development without CRON_SECRET, allow all requests
-  if (!cronSecret) return null
+  // In production, CRON_SECRET must be set. In dev, allow without it.
+  if (!cronSecret) {
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 })
+    }
+    return null
+  }
 
   const authHeader = req.headers.get('authorization')
   if (authHeader !== `Bearer ${cronSecret}`) {
