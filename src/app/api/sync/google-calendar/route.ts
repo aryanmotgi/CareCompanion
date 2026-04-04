@@ -1,9 +1,19 @@
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function POST(req: Request) {
+  // Auth check — verify requesting user matches the user_id
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { user_id } = await req.json();
   if (!user_id) {
     return Response.json({ error: 'user_id required' }, { status: 400 });
+  }
+
+  if (user_id !== user.id) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const admin = createAdminClient();
