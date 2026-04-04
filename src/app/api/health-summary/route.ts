@@ -98,5 +98,34 @@ Generate the summary with these sections:
 Make it professional but readable. A doctor should be able to scan it in 2 minutes and have a complete picture.`,
   });
 
-  return Response.json({ success: true, summary: text });
+  // Cache the generated summary
+  await admin.from('health_summaries').upsert({
+    user_id: user.id,
+    care_profile_id: profile.id,
+    content: text,
+    generated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id' });
+
+  return Response.json({ success: true, summary: text, generated_at: new Date().toISOString() });
+}
+
+// GET — retrieve the most recent cached health summary
+export async function GET() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return new Response('Unauthorized', { status: 401 });
+
+  const { data } = await supabase
+    .from('health_summaries')
+    .select('content, generated_at')
+    .eq('user_id', user.id)
+    .order('generated_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!data) {
+    return Response.json({ summary: null, message: 'No health summary generated yet. Use POST to generate one.' });
+  }
+
+  return Response.json({ summary: data.content, generated_at: data.generated_at });
 }

@@ -49,3 +49,22 @@ export async function GET(req: Request) {
 
   return Response.json({ entries: data || [] });
 }
+
+// DELETE — remove a symptom entry by date
+export async function DELETE(req: Request) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return new Response('Unauthorized', { status: 401 });
+
+  const { date } = await req.json();
+  if (!date) return Response.json({ error: 'date is required' }, { status: 400 });
+
+  const { error } = await supabase
+    .from('symptom_entries')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('date', date);
+
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  return Response.json({ success: true });
+}

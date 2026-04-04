@@ -16,12 +16,12 @@ export function buildTools(userId: string, careProfileId: string | null) {
     save_medication: tool({
       description: 'Save a new medication to the patient\'s care profile. Use when the caregiver mentions a new medication, or when extracting from a photo scan.',
       inputSchema: z.object({
-        name: z.string().describe('Medication name (e.g. Metformin, Lisinopril)'),
-        dose: z.string().optional().describe('Dosage (e.g. 500mg, 10mg)'),
-        frequency: z.string().optional().describe('How often (e.g. twice daily, once at bedtime)'),
-        prescribing_doctor: z.string().optional().describe('Name of prescribing doctor'),
-        refill_date: z.string().optional().describe('Next refill date (YYYY-MM-DD)'),
-        notes: z.string().optional().describe('Any additional notes'),
+        name: z.string().min(1).max(200).describe('Medication name (e.g. Metformin, Lisinopril)'),
+        dose: z.string().max(100).optional().describe('Dosage (e.g. 500mg, 10mg)'),
+        frequency: z.string().max(200).optional().describe('How often (e.g. twice daily, once at bedtime)'),
+        prescribing_doctor: z.string().max(200).optional().describe('Name of prescribing doctor'),
+        refill_date: z.string().max(20).optional().describe('Next refill date (YYYY-MM-DD)'),
+        notes: z.string().max(1000).optional().describe('Any additional notes'),
       }),
       execute: async (params) => {
         if (!careProfileId) return { success: false, error: 'No care profile found. Please complete setup first.' };
@@ -83,11 +83,11 @@ export function buildTools(userId: string, careProfileId: string | null) {
     save_appointment: tool({
       description: 'Schedule a new appointment. Use when the caregiver mentions an upcoming visit or wants to book one.',
       inputSchema: z.object({
-        doctor_name: z.string().describe('Doctor or provider name'),
-        date_time: z.string().describe('Date and time (ISO format or natural like "next Tuesday at 2pm")'),
-        purpose: z.string().optional().describe('Reason for visit'),
-        location: z.string().optional().describe('Clinic or hospital name/address'),
-        prep_notes: z.string().optional().describe('How to prepare for the visit'),
+        doctor_name: z.string().min(1).max(200).describe('Doctor or provider name'),
+        date_time: z.string().max(100).describe('Date and time (ISO format or natural like "next Tuesday at 2pm")'),
+        purpose: z.string().max(500).optional().describe('Reason for visit'),
+        location: z.string().max(500).optional().describe('Clinic or hospital name/address'),
+        prep_notes: z.string().max(2000).optional().describe('How to prepare for the visit'),
       }),
       execute: async (params) => {
         if (!careProfileId) return { success: false, error: 'No care profile found.' };
@@ -106,11 +106,11 @@ export function buildTools(userId: string, careProfileId: string | null) {
     save_doctor: tool({
       description: 'Add a new doctor or healthcare provider to the care profile.',
       inputSchema: z.object({
-        name: z.string().describe('Doctor\'s full name'),
-        specialty: z.string().optional().describe('Medical specialty (e.g. Cardiology, Primary Care)'),
-        phone: z.string().optional().describe('Office phone number'),
-        address: z.string().optional().describe('Office address'),
-        notes: z.string().optional().describe('Any notes about this doctor'),
+        name: z.string().min(1).max(200).describe('Doctor\'s full name'),
+        specialty: z.string().max(200).optional().describe('Medical specialty (e.g. Cardiology, Primary Care)'),
+        phone: z.string().max(30).optional().describe('Office phone number'),
+        address: z.string().max(500).optional().describe('Office address'),
+        notes: z.string().max(1000).optional().describe('Any notes about this doctor'),
       }),
       execute: async (params) => {
         if (!careProfileId) return { success: false, error: 'No care profile found.' };
@@ -168,12 +168,12 @@ export function buildTools(userId: string, careProfileId: string | null) {
     save_lab_result: tool({
       description: 'Save a lab test result. Use when the caregiver shares lab values from a report or conversation.',
       inputSchema: z.object({
-        test_name: z.string().describe('Name of the test (e.g. A1C, TSH, CBC)'),
-        value: z.string().describe('The result value'),
-        unit: z.string().optional().describe('Unit of measurement (e.g. mg/dL, %)'),
-        reference_range: z.string().optional().describe('Normal range (e.g. 4.0-5.6%)'),
+        test_name: z.string().min(1).max(200).describe('Name of the test (e.g. A1C, TSH, CBC)'),
+        value: z.string().min(1).max(100).describe('The result value'),
+        unit: z.string().max(50).optional().describe('Unit of measurement (e.g. mg/dL, %)'),
+        reference_range: z.string().max(100).optional().describe('Normal range (e.g. 4.0-5.6%)'),
         is_abnormal: z.boolean().describe('Whether this value is outside the normal range'),
-        date_taken: z.string().optional().describe('Date the test was taken (YYYY-MM-DD)'),
+        date_taken: z.string().max(20).optional().describe('Date the test was taken (YYYY-MM-DD)'),
       }),
       execute: async (params) => {
         const { error } = await admin.from('lab_results').insert({
@@ -233,9 +233,9 @@ export function buildTools(userId: string, careProfileId: string | null) {
     generate_visit_prep: tool({
       description: 'Generate a pre-appointment prep sheet for an upcoming doctor visit. Gathers medications, recent labs, conditions, and suggests questions to ask. Use when the caregiver says they want to prepare for an appointment.',
       inputSchema: z.object({
-        doctor_name: z.string().describe('Name of the doctor for the appointment'),
-        purpose: z.string().optional().describe('Reason for the visit'),
-        concerns: z.string().optional().describe('Any specific concerns the caregiver wants to bring up'),
+        doctor_name: z.string().min(1).max(200).describe('Name of the doctor for the appointment'),
+        purpose: z.string().max(500).optional().describe('Reason for the visit'),
+        concerns: z.string().max(2000).optional().describe('Any specific concerns the caregiver wants to bring up'),
       }),
       execute: async (params) => {
         if (!careProfileId) return { success: false, error: 'No care profile found.' };
@@ -273,13 +273,13 @@ export function buildTools(userId: string, careProfileId: string | null) {
     save_visit_notes: tool({
       description: 'Save notes from a completed doctor visit. Use after the caregiver returns from an appointment and shares what happened.',
       inputSchema: z.object({
-        doctor_name: z.string().describe('Name of the doctor seen'),
-        visit_date: z.string().describe('Date of the visit (YYYY-MM-DD)'),
-        summary: z.string().describe('Brief summary of what was discussed'),
-        medication_changes: z.string().optional().describe('Any medications added, changed, or stopped'),
-        follow_up_date: z.string().optional().describe('Date of next follow-up (YYYY-MM-DD)'),
-        follow_up_instructions: z.string().optional().describe('Any instructions or things to watch for'),
-        referrals: z.string().optional().describe('Any referrals to other doctors or specialists'),
+        doctor_name: z.string().min(1).max(200).describe('Name of the doctor seen'),
+        visit_date: z.string().max(20).describe('Date of the visit (YYYY-MM-DD)'),
+        summary: z.string().min(5).max(2000).describe('Brief summary of what was discussed'),
+        medication_changes: z.string().max(1000).optional().describe('Any medications added, changed, or stopped'),
+        follow_up_date: z.string().max(20).optional().describe('Date of next follow-up (YYYY-MM-DD)'),
+        follow_up_instructions: z.string().max(2000).optional().describe('Any instructions or things to watch for'),
+        referrals: z.string().max(500).optional().describe('Any referrals to other doctors or specialists'),
       }),
       execute: async (params) => {
         if (!careProfileId) return { success: false, error: 'No care profile found.' };
@@ -361,7 +361,7 @@ export function buildTools(userId: string, careProfileId: string | null) {
       description: 'Explicitly save an important fact to long-term memory. Use for critical information the caregiver wants remembered.',
       inputSchema: z.object({
         category: z.enum(['medication', 'condition', 'allergy', 'insurance', 'financial', 'appointment', 'preference', 'family', 'provider', 'lab_result', 'lifestyle', 'legal', 'other']),
-        fact: z.string().describe('The specific fact to remember'),
+        fact: z.string().min(5).max(1000).describe('The specific fact to remember'),
       }),
       execute: async (params) => {
         const { error } = await admin.from('memories').insert({

@@ -22,9 +22,18 @@ const extractionSchema = z.object({
   })).describe('New facts from this conversation that should be remembered forever. Only include facts NOT already in existing memories.'),
 });
 
+// Skip memory extraction for trivial messages (greetings, short responses)
+const SKIP_PATTERNS = /^(hi|hello|hey|thanks|thank you|ok|okay|yes|no|sure|bye|goodbye|good morning|good night|got it)\b/i;
+const MIN_MESSAGE_LENGTH = 20; // Skip if both messages are very short
+
 /**
  * Extract new facts from the latest conversation exchange and save to Supabase.
  * Runs asynchronously after each assistant response — does not block the chat stream.
+ *
+ * Includes cost-saving guards:
+ * - Skips greetings and trivial messages
+ * - Skips when both messages are very short
+ * - Deduplicates within a 1-hour window per user
  */
 export async function extractAndSaveMemories(
   userId: string,
@@ -34,6 +43,22 @@ export async function extractAndSaveMemories(
   existingMemories: Memory[],
 ): Promise<void> {
   try {
+    // Guard: skip trivial messages to save API costs
+    if (SKIP_PATTERNS.test(userMessage.trim())) return;
+    if (userMessage.length < MIN_MESSAGE_LENGTH && assistantMessage.length < MIN_MESSAGE_LENGTH) return;
+
+    // Guard: check dedup window — skip if we extracted within the last minute for this user
+    const admin = createAdminClient();
+    const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
+    const { data: recentMemories } = await admin
+      .from('memories')
+      .select('id')
+      .eq('user_id', userId)
+      .gte('created_at', oneMinuteAgo)
+      .limit(1);
+
+    if (recentMemories && recentMemories.length > 0) return;
+
     const existingFacts = existingMemories.map((m) => `[${m.category}] ${m.fact}`).join('\n');
 
     const { object } = await generateObject({
@@ -62,7 +87,6 @@ Rules:
 
     if (object.facts.length === 0) return;
 
-    const admin = createAdminClient();
     const rows = object.facts.map((f) => ({
       user_id: userId,
       care_profile_id: careProfileId,
@@ -84,15 +108,17 @@ Rules:
 // ============================================================
 
 /**
- * Load all memories for a user, ordered by most recently referenced first.
+ * Load memories for a user, ordered by most recently referenced first.
+ * Limited to 150 to prevent context explosion in the system prompt.
  */
-export async function loadMemories(userId: string): Promise<Memory[]> {
+export async function loadMemories(userId: string, limit = 150): Promise<Memory[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('memories')
     .select('*')
     .eq('user_id', userId)
-    .order('last_referenced', { ascending: false });
+    .order('last_referenced', { ascending: false })
+    .limit(limit);
 
   if (error) {
     console.error('[memory] load failed:', error);
