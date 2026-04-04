@@ -41,6 +41,12 @@ export async function POST(req: Request) {
     const bytes = await file.arrayBuffer()
     const base64 = Buffer.from(bytes).toString('base64')
 
+    // Reject oversized files (~10 MB decoded)
+    const MAX_BASE64_LENGTH = 13_500_000
+    if (base64.length > MAX_BASE64_LENGTH) {
+      return Response.json({ error: 'Image too large (max 10 MB)' }, { status: 413 })
+    }
+
     // Use the unified extraction engine
     const extraction = await extractDocument(base64, category)
     const data = extraction.extracted_data

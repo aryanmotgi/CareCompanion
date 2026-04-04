@@ -67,7 +67,18 @@ describe('notification settings integration', () => {
     const count = await generateNotificationsForUser('user-1')
 
     // refill_reminders is true, and Lisinopril refill is due tomorrow
-    // So at least 1 notification should be generated
+    // appointment_reminders is false, so no appointment notifications
     expect(count).toBeGreaterThanOrEqual(0) // insert mock returns no error
+    expect(mockInsert).toHaveBeenCalled()
+  })
+
+  it('respects appointment_reminders=false by not querying appointments', async () => {
+    queriedTables.length = 0
+    const { generateNotificationsForUser } = await import('../notifications')
+    await generateNotificationsForUser('user-1')
+
+    // appointment_reminders is false in our mock settings
+    // The appointments table should NOT be queried
+    expect(queriedTables).not.toContain('appointments')
   })
 })

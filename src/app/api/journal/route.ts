@@ -56,7 +56,13 @@ export async function DELETE(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Response('Unauthorized', { status: 401 });
 
-  const { date } = await req.json();
+  let date: string | undefined;
+  try {
+    const body = await req.json();
+    date = body?.date;
+  } catch {
+    // empty or invalid JSON body
+  }
   if (!date) return Response.json({ error: 'date is required' }, { status: 400 });
 
   const { error } = await supabase

@@ -53,6 +53,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Image too large (max 10 MB)' }, { status: 413 })
     }
 
+    // Guard: API key must be present
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json({ error: 'AI extraction is not configured' }, { status: 503 })
+    }
+
     // Extract structured data using Claude Vision
     const extraction = await extractDocument(image_base64, category)
 
@@ -237,16 +242,35 @@ async function autoImportExtraction(admin: any, userId: string, profileId: strin
     if (!error) counts.claims = 1
   }
 
-  // Import appointments
+  // Import appointments (with duplicate detection by doctor_name + date_time)
   if (data.appointments?.length) {
-    const appts = data.appointments.map((appt) => ({
-      care_profile_id: profileId,
-      doctor_name: appt.doctor_name || null,
-      date_time: appt.date_time || null,
-      purpose: appt.purpose || null,
-    }))
-    const { error } = await admin.from('appointments').insert(appts)
-    if (!error) counts.appointments = appts.length
+    const { data: existingAppts } = await admin
+      .from('appointments')
+      .select('doctor_name, date_time')
+      .eq('care_profile_id', profileId)
+
+    const existingApptKeys = new Set(
+      (existingAppts || []).map((a: { doctor_name: string | null; date_time: string | null }) =>
+        `${(a.doctor_name || '').toLowerCase()}|${a.date_time || ''}`
+      )
+    )
+
+    const newAppts = data.appointments
+      .filter((appt) => {
+        const key = `${(appt.doctor_name || '').toLowerCase()}|${appt.date_time || ''}`
+        return !existingApptKeys.has(key)
+      })
+      .map((appt) => ({
+        care_profile_id: profileId,
+        doctor_name: appt.doctor_name || null,
+        date_time: appt.date_time || null,
+        purpose: appt.purpose || null,
+      }))
+
+    if (newAppts.length > 0) {
+      const { error } = await admin.from('appointments').insert(newAppts)
+      if (!error) counts.appointments = newAppts.length
+    }
   }
 
   // Import conditions (append to care profile)

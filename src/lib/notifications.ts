@@ -36,7 +36,7 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
   ] = await Promise.all([
     prefs.refill_reminders ? admin.from('medications').select('*').eq('care_profile_id', profile.id) : Promise.resolve({ data: [] }),
     prefs.appointment_reminders ? admin.from('appointments').select('*').eq('care_profile_id', profile.id) : Promise.resolve({ data: [] }),
-    admin.from('prior_auths').select('*').eq('user_id', userId),
+    prefs.claim_updates ? admin.from('prior_auths').select('*').eq('user_id', userId) : Promise.resolve({ data: [] }),
     prefs.lab_alerts ? admin.from('lab_results').select('*').eq('user_id', userId).eq('is_abnormal', true).order('created_at', { ascending: false }).limit(10) : Promise.resolve({ data: [] }),
     admin.from('fsa_hsa').select('*').eq('user_id', userId),
     // Get recent notifications to avoid duplicates (last 24 hours)
