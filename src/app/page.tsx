@@ -1188,8 +1188,10 @@ export default function LandingPage() {
             </div>
             <span className="text-[var(--text-muted)] text-sm">CareCompanion</span>
           </div>
-          <div className="text-[var(--text-muted)] text-xs">
-            Built for cancer patients and their caregivers. Your data stays yours.
+          <div className="flex items-center gap-4 text-[var(--text-muted)] text-xs">
+            <Link href="/privacy" className="hover:text-[var(--text)] transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-[var(--text)] transition-colors">Terms</Link>
+            <span>Your data stays yours.</span>
           </div>
         </div>
       </footer>
