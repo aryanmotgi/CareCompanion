@@ -302,17 +302,23 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
           <div className="space-y-4">
             {/* Cancer type */}
             <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Cancer type</label>
-              <select
-                value={cancerType}
-                onChange={(e) => setCancerType(e.target.value)}
-                className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-card)] py-3 px-4 text-white focus:outline-none focus:border-[#A78BFA]/40 transition-colors"
-              >
-                <option value="">Select type...</option>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-3">Cancer type</label>
+              <div className="flex flex-wrap gap-2">
                 {CANCER_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setCancerType(cancerType === t ? '' : t)}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
+                      cancerType === t
+                        ? 'border-[#A78BFA]/50 bg-[#A78BFA]/15 text-white'
+                        : 'border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:border-white/20 hover:text-white'
+                    }`}
+                  >
+                    {t}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
 
             {/* Stage */}
