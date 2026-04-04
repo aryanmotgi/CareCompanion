@@ -72,8 +72,8 @@ export function PriorityCard({
         <div className={`w-2 h-2 rounded-full ${s.dot} ${s.dotPulse ? 'animate-dot-pulse' : ''}`} />
         <span className={`text-xs font-semibold ${s.label}`}>{label}</span>
       </div>
-      <div className="text-[#f1f5f9] text-sm font-semibold">{title}</div>
-      <div className="text-[#94a3b8] text-xs">{subtitle}</div>
+      <div className="text-[var(--text)] text-sm font-semibold">{title}</div>
+      <div className="text-[var(--text-secondary)] text-xs">{subtitle}</div>
     </>
   )
 

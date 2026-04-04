@@ -9,9 +9,9 @@ interface ToastProps {
 }
 
 const dotColors: Record<ToastProps['type'], string> = {
-  success: 'bg-[#10b981]',
+  success: 'bg-[#6EE7B7]',
   error: 'bg-[#ef4444]',
-  info: 'bg-[#22d3ee]',
+  info: 'bg-[#A78BFA]',
 };
 
 export function Toast({ message, type, onDismiss }: ToastProps) {
@@ -29,7 +29,7 @@ export function Toast({ message, type, onDismiss }: ToastProps) {
         visible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
       }`}
     >
-      <div role="alert" aria-live="polite" className="flex items-center gap-3 rounded-xl border border-white/[0.1] bg-[#1e293b]/90 px-4 py-3 shadow-lg backdrop-blur">
+      <div role="alert" aria-live="polite" className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-warm)]/95 px-4 py-3 shadow-lg backdrop-blur-xl">
         <span
           className={`h-2 w-2 shrink-0 rounded-full ${dotColors[type]}`}
           aria-hidden="true"

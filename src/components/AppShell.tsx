@@ -50,7 +50,7 @@ export function AppShell({
 
       {!isSetup && (
         <header className="fixed top-0 left-0 right-0 z-40 bg-[#0C0E1A]/90 backdrop-blur-xl border-b border-[var(--border)]">
-          <div className="flex items-center justify-between px-5 h-14">
+          <div className="flex items-center justify-between px-4 sm:px-5 h-14">
             <div className="flex items-center gap-2">
               <h1 className="text-[var(--text)] text-lg font-bold">CareCompanion</h1>
               {profiles.length > 1 && (
@@ -76,8 +76,8 @@ export function AppShell({
         </header>
       )}
 
-      <main className={`${isSetup ? '' : 'pt-14 pb-24'} relative z-10 animate-page-in`}>
-        <div className="max-w-lg mx-auto">
+      <main className={`${isSetup ? '' : 'pt-14 pb-24'} relative z-10 animate-page-in min-h-screen min-h-dvh`}>
+        <div className="max-w-lg lg:max-w-2xl xl:max-w-3xl mx-auto px-1 sm:px-0">
           {children}
         </div>
       </main>

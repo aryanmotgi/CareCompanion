@@ -50,6 +50,7 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
     'How are my vitals?',
     'Prepare for my next appointment',
     'Explain my medications',
+    'Help me understand my diagnosis',
   ])
 
   const isAllowedPrompt = (prompt: string) =>
@@ -89,9 +90,10 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
   };
 
   const starterPrompts = [
-    'How are my vitals?',
-    'Prepare for my next appointment',
-    'Explain my medications',
+    { icon: '💊', text: 'Explain my medications', desc: 'Doses, side effects, interactions' },
+    { icon: '📅', text: 'Prepare for my next appointment', desc: 'Questions to ask your doctor' },
+    { icon: '🔬', text: 'How are my vitals?', desc: 'Lab results and trends' },
+    { icon: '🧠', text: 'Help me understand my diagnosis', desc: 'Plain-language explanations' },
   ];
 
   return (
@@ -99,26 +101,28 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
       {/* Messages */}
       <div className="flex-1 overflow-y-auto chat-scroll px-4 sm:px-8 py-6">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-16 h-16 bg-blue-500/15 rounded-full flex items-center justify-center mb-4">
+          <div className="flex flex-col items-center justify-center h-full text-center px-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-[#6366F1]/20 to-[#A78BFA]/20 rounded-2xl flex items-center justify-center mb-5 border border-[var(--border)]">
               <svg className="w-8 h-8 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z" />
               </svg>
             </div>
-            <h2 className="font-display text-2xl font-semibold text-white mb-2">
-              Chat with CareCompanion
+            <h2 className="font-display text-2xl font-semibold text-[var(--text)] mb-2">
+              Hi, how can I help?
             </h2>
-            <p className="text-[var(--text-secondary)] mb-8 max-w-md">
-              Ask me anything about {patientName}&apos;s care, or pick a topic below.
+            <p className="text-[var(--text-secondary)] mb-8 max-w-sm text-sm">
+              Ask me anything about {patientName}&apos;s care, medications, appointments, or health records.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
               {starterPrompts.map((prompt) => (
                 <button
-                  key={prompt}
-                  onClick={() => handleSend(prompt)}
-                  className="px-4 py-2.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] text-sm text-[var(--text)] hover:bg-blue-500/15 hover:border-blue-500/20 hover:text-[#A78BFA] transition-colors"
+                  key={prompt.text}
+                  onClick={() => handleSend(prompt.text)}
+                  className="flex flex-col items-start gap-1.5 p-3.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] text-left hover:bg-[var(--bg-elevated)] hover:border-[#A78BFA]/20 transition-all active:scale-[0.97] group"
                 >
-                  {prompt}
+                  <span className="text-lg">{prompt.icon}</span>
+                  <span className="text-[13px] font-medium text-[var(--text)] group-hover:text-[#A78BFA] transition-colors leading-tight">{prompt.text}</span>
+                  <span className="text-[11px] text-[var(--text-muted)] leading-tight">{prompt.desc}</span>
                 </button>
               ))}
             </div>
@@ -156,11 +160,11 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
             <div className="flex flex-wrap gap-2 mb-3">
               {starterPrompts.map((prompt) => (
                 <button
-                  key={prompt}
-                  onClick={() => handleSend(prompt)}
-                  className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[#94a3b8] text-xs hover:bg-white/[0.08] transition-colors animate-press"
+                  key={prompt.text}
+                  onClick={() => handleSend(prompt.text)}
+                  className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[var(--text-secondary)] text-xs hover:bg-[var(--bg-elevated)] hover:border-[#A78BFA]/20 transition-colors animate-press"
                 >
-                  {prompt}
+                  {prompt.icon} {prompt.text}
                 </button>
               ))}
             </div>

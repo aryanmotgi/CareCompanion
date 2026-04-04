@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 const ACTIVE_COLOR = '#A78BFA'
 const INACTIVE_COLOR = '#5B6785'
@@ -51,11 +51,29 @@ const TABS = [
 export function BottomTabBar() {
   const pathname = usePathname()
   const [bouncingTab, setBouncingTab] = useState<string | null>(null)
+  const navRef = useRef<HTMLDivElement>(null)
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 })
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard'
     return pathname.startsWith(href)
   }
+
+  const activeIndex = TABS.findIndex((tab) => isActive(tab.href))
+
+  useEffect(() => {
+    if (!navRef.current || activeIndex < 0) return
+    const links = navRef.current.querySelectorAll('a')
+    const active = links[activeIndex]
+    if (active) {
+      const navRect = navRef.current.getBoundingClientRect()
+      const activeRect = active.getBoundingClientRect()
+      setIndicatorStyle({
+        left: activeRect.left - navRect.left + activeRect.width / 2 - 12,
+        width: 24,
+      })
+    }
+  }, [activeIndex])
 
   const handleClick = (href: string) => {
     setBouncingTab(href)
@@ -64,7 +82,14 @@ export function BottomTabBar() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0C0E1A]/90 backdrop-blur-xl border-t border-[var(--border)]">
-      <div className="flex justify-around items-center px-2 pt-3 pb-5">
+      <div ref={navRef} className="flex justify-around items-center px-2 pt-3 pb-5 relative">
+        {/* Animated active indicator dot */}
+        {activeIndex >= 0 && (
+          <div
+            className="absolute top-0 h-[2px] rounded-full bg-gradient-to-r from-[#6366F1] to-[#A78BFA] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+            style={{ left: indicatorStyle.left, width: indicatorStyle.width }}
+          />
+        )}
         {TABS.map((tab) => {
           const active = isActive(tab.href)
           return (
@@ -74,10 +99,10 @@ export function BottomTabBar() {
               onClick={() => handleClick(tab.href)}
               className="flex flex-col items-center gap-1 relative"
             >
-              <div className={`${bouncingTab === tab.href ? 'animate-tab-bounce' : ''} ${active ? 'animate-tab-glow rounded-full' : ''}`}>
+              <div className={`transition-transform duration-200 ${bouncingTab === tab.href ? 'scale-90' : active ? 'scale-100' : 'scale-100'} ${active ? 'animate-tab-glow rounded-full' : ''}`}>
                 {tab.icon(active)}
               </div>
-              <span className={`text-[10px] font-medium ${active ? 'text-[#A78BFA] font-semibold' : 'text-[#5B6785]'}`}>
+              <span className={`text-[10px] font-medium transition-colors duration-200 ${active ? 'text-[#A78BFA] font-semibold' : 'text-[#5B6785]'}`}>
                 {tab.label}
               </span>
             </Link>

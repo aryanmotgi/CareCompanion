@@ -20,7 +20,7 @@ interface CareViewProps {
   careTeamMembers?: CareTeamMember[]
 }
 
-const inputClass = 'w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-[#e2e8f0] text-sm outline-none placeholder:text-[#64748b] focus:border-[#A78BFA]/40 transition-colors'
+const inputClass = 'w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-[var(--text)] text-sm outline-none placeholder:text-[var(--text-muted)] focus:border-[#A78BFA]/40 transition-colors'
 
 export function CareView({ profileId, medications: initialMeds, appointments: initialAppts, doctors, allProfiles = [], careTeamMembers = [] }: CareViewProps) {
   const { showToast } = useToast()
@@ -251,7 +251,7 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
   }
 
   return (
-    <div className="px-5 py-6">
+    <div className="px-4 sm:px-5 py-5 sm:py-6">
       <SegmentControl
         segments={['Medications', 'Appointments', 'Conflicts']}
         activeIndex={activeSegment}

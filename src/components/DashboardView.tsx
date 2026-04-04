@@ -59,10 +59,10 @@ export function DashboardView({
               details={
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div><span className="text-[#64748b]">Dose:</span> <span className="text-[#e2e8f0]">{med.dose}</span></div>
-                    <div><span className="text-[#64748b]">Frequency:</span> <span className="text-[#e2e8f0]">{med.frequency}</span></div>
-                    <div><span className="text-[#64748b]">Doctor:</span> <span className="text-[#e2e8f0]">{med.prescribing_doctor}</span></div>
-                    <div><span className="text-[#64748b]">Remaining:</span> <span className="text-[#fbbf24]">{med.quantity_remaining} pills</span></div>
+                    <div><span className="text-[var(--text-muted)]">Dose:</span> <span className="text-[var(--text)]">{med.dose}</span></div>
+                    <div><span className="text-[var(--text-muted)]">Frequency:</span> <span className="text-[var(--text)]">{med.frequency}</span></div>
+                    <div><span className="text-[var(--text-muted)]">Doctor:</span> <span className="text-[var(--text)]">{med.prescribing_doctor}</span></div>
+                    <div><span className="text-[var(--text-muted)]">Remaining:</span> <span className="text-[#fbbf24]">{med.quantity_remaining} pills</span></div>
                   </div>
                   {med.pharmacy_phone && (
                     <a
@@ -106,8 +106,8 @@ export function DashboardView({
               details={
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div><span className="text-[#64748b]">Location:</span> <span className="text-[#e2e8f0]">{appt.location}</span></div>
-                    <div><span className="text-[#64748b]">Purpose:</span> <span className="text-[#e2e8f0]">{appt.purpose}</span></div>
+                    <div><span className="text-[var(--text-muted)]">Location:</span> <span className="text-[var(--text)]">{appt.location}</span></div>
+                    <div><span className="text-[var(--text-muted)]">Purpose:</span> <span className="text-[var(--text)]">{appt.purpose}</span></div>
                   </div>
                   <div className="flex gap-2">
                     {appt.location && (
@@ -152,10 +152,10 @@ export function DashboardView({
             details={
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div><span className="text-[#64748b]">Value:</span> <span className="text-[#ef4444]">{lab.value} {lab.unit}</span></div>
-                  <div><span className="text-[#64748b]">Normal:</span> <span className="text-[#e2e8f0]">{lab.reference_range}</span></div>
-                  <div><span className="text-[#64748b]">Source:</span> <span className="text-[#e2e8f0]">{lab.source}</span></div>
-                  <div><span className="text-[#64748b]">Date:</span> <span className="text-[#e2e8f0]">{lab.date_taken ? new Date(lab.date_taken).toLocaleDateString() : '—'}</span></div>
+                  <div><span className="text-[var(--text-muted)]">Value:</span> <span className="text-[#ef4444]">{lab.value} {lab.unit}</span></div>
+                  <div><span className="text-[var(--text-muted)]">Normal:</span> <span className="text-[var(--text)]">{lab.reference_range}</span></div>
+                  <div><span className="text-[var(--text-muted)]">Source:</span> <span className="text-[var(--text)]">{lab.source}</span></div>
+                  <div><span className="text-[var(--text-muted)]">Date:</span> <span className="text-[var(--text)]">{lab.date_taken ? new Date(lab.date_taken).toLocaleDateString() : '—'}</span></div>
                 </div>
                 {parsed.progressPercent !== null && (
                   <div>
@@ -199,10 +199,10 @@ export function DashboardView({
           <AlertInsights
             details={
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div><span className="text-[#64748b]">Billed:</span> <span className="text-[#e2e8f0]">${claim.billed_amount}</span></div>
-                <div><span className="text-[#64748b]">Paid:</span> <span className="text-[#e2e8f0]">${claim.paid_amount}</span></div>
-                <div><span className="text-[#64748b]">Your cost:</span> <span className="text-[#ef4444]">${claim.patient_responsibility}</span></div>
-                <div><span className="text-[#64748b]">Reason:</span> <span className="text-[#fbbf24]">{claim.denial_reason}</span></div>
+                <div><span className="text-[var(--text-muted)]">Billed:</span> <span className="text-[var(--text)]">${claim.billed_amount}</span></div>
+                <div><span className="text-[var(--text-muted)]">Paid:</span> <span className="text-[var(--text)]">${claim.paid_amount}</span></div>
+                <div><span className="text-[var(--text-muted)]">Your cost:</span> <span className="text-[#ef4444]">${claim.patient_responsibility}</span></div>
+                <div><span className="text-[var(--text-muted)]">Reason:</span> <span className="text-[#fbbf24]">{claim.denial_reason}</span></div>
               </div>
             }
             insights={[
@@ -236,9 +236,9 @@ export function DashboardView({
   const actionCount = cards.filter((c) => c.variant !== 'quick-ask').length
 
   return (
-    <div className="px-5 py-6">
-      <div className="mb-1 text-[#94a3b8] text-xs uppercase tracking-wider">{greeting}</div>
-      <h2 className="text-xl font-bold mb-5 animate-greeting">
+    <div className="px-4 sm:px-5 py-5 sm:py-6">
+      <div className="mb-1 text-[var(--text-secondary)] text-xs uppercase tracking-wider">{greeting}</div>
+      <h2 className="text-fluid-xl font-bold mb-4 sm:mb-5 animate-greeting">
         {actionCount > 0 ? (
           <>
             <AnimatedNumber value={actionCount} /> {actionCount === 1 ? 'item needs' : 'items need'} attention
@@ -255,8 +255,8 @@ export function DashboardView({
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <div className="text-[#f1f5f9] text-lg font-semibold mb-1">All clear!</div>
-          <div className="text-[#64748b] text-sm">No items need your attention right now.</div>
+          <div className="text-[var(--text)] text-lg font-semibold mb-1">All clear!</div>
+          <div className="text-[var(--text-muted)] text-sm">No items need your attention right now.</div>
         </div>
       ) : (
         <div className="space-y-3">

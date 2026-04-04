@@ -53,7 +53,7 @@ export function LoginForm() {
           placeholder="e.g., Sarah"
           required
           autoFocus
-          className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] py-3 px-4 text-base text-white placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors"
+          className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] py-3 px-4 text-base text-white placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[#A78BFA]/40 focus:ring-1 focus:ring-[#A78BFA]/20 transition-colors"
         />
       </div>
       {error && (
@@ -64,7 +64,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={loading || !name.trim()}
-        className="w-full rounded-xl bg-blue-600 py-3.5 px-6 text-base text-white font-semibold hover:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        className="w-full rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] py-3.5 px-6 text-base text-white font-semibold hover:opacity-90 active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-[#A78BFA]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
       >
         {loading ? (
           <span className="inline-flex items-center gap-2">

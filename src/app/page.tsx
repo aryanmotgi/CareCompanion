@@ -41,7 +41,7 @@ function CyclingWord() {
   );
 }
 
-/* ── Scroll reveal hook ── */
+/* ── Scroll reveal hook (enhanced — handles all reveal classes) ── */
 function useScrollReveal() {
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -52,9 +52,119 @@ function useScrollReveal() {
       },
       { threshold: 0.15, rootMargin: '0px 0px -40px 0px' }
     );
-    document.querySelectorAll('.scroll-reveal, .scroll-reveal-left, .scroll-reveal-right, .scroll-reveal-scale').forEach((el) => observer.observe(el));
+    document.querySelectorAll('.scroll-reveal, .scroll-reveal-left, .scroll-reveal-right, .scroll-reveal-scale, .blur-reveal, .section-divider, .word-reveal-container, .glow-on-scroll, .stagger-list-container').forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, []);
+}
+
+/* ── Scroll progress bar ── */
+function ScrollProgress() {
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      setProgress(docHeight > 0 ? (scrollTop / docHeight) * 100 : 0);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+  return <div className="scroll-progress" style={{ width: `${progress}%` }} />;
+}
+
+/* ── Floating particles ── */
+function FloatingParticles() {
+  const particles = useRef<{ id: number; left: string; size: number; duration: number; delay: number; drift: number; color: string }[]>([]);
+  if (particles.current.length === 0) {
+    particles.current = Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      size: Math.random() * 3 + 1,
+      duration: Math.random() * 15 + 10,
+      delay: Math.random() * 10,
+      drift: (Math.random() - 0.5) * 60,
+      color: i % 3 === 0 ? 'rgba(99,102,241,0.4)' : i % 3 === 1 ? 'rgba(167,139,250,0.3)' : 'rgba(129,140,248,0.3)',
+    }));
+  }
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {particles.current.map((p) => (
+        <div
+          key={p.id}
+          className="particle"
+          style={{
+            left: p.left,
+            bottom: '-5%',
+            width: p.size,
+            height: p.size,
+            background: p.color,
+            animationDuration: `${p.duration}s`,
+            animationDelay: `${p.delay}s`,
+            '--drift': `${p.drift}px`,
+          } as React.CSSProperties}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ── Word-by-word reveal heading ── */
+function WordReveal({ text, className = '' }: { text: string; className?: string }) {
+  return (
+    <span className={`word-reveal-container ${className}`}>
+      {text.split(' ').map((word, i) => (
+        <span key={i} className="word" style={{ transitionDelay: `${i * 80}ms` }}>
+          {word}{' '}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/* ── 3D tilt card wrapper ── */
+function TiltCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    ref.current.style.setProperty('--tilt-x', `${-y * 8}deg`);
+    ref.current.style.setProperty('--tilt-y', `${x * 8}deg`);
+  };
+  const handleMouseLeave = () => {
+    if (!ref.current) return;
+    ref.current.style.setProperty('--tilt-x', '0deg');
+    ref.current.style.setProperty('--tilt-y', '0deg');
+  };
+  return (
+    <div ref={ref} className={`tilt-card ${className}`} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
+      {children}
+    </div>
+  );
+}
+
+/* ── Glow trail card — mouse-follow light effect ── */
+function GlowCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    ref.current.style.setProperty('--glow-x', `${x}px`);
+    ref.current.style.setProperty('--glow-y', `${y}px`);
+  };
+  return (
+    <div ref={ref} className={`glow-trail ${className}`} onMouseMove={handleMouseMove}>
+      {children}
+    </div>
+  );
+}
+
+/* ── Gradient section divider ── */
+function SectionDivider() {
+  return <div className="section-divider scroll-reveal my-0" />;
 }
 
 /* ── Tab bar icon SVGs (matching BottomTabBar.tsx exactly) ── */
@@ -683,36 +793,40 @@ function FeatureShowcase() {
   }, []);
 
   return (
-    <div className="relative mx-auto" style={{ maxWidth: 700 }}>
+    <div className="relative mx-auto max-w-[700px]">
       {/* Phone centered */}
-      <div className="flex justify-center mb-16">
+      <div className="flex justify-center mb-12 sm:mb-16">
         <PhoneMockup size="small" />
       </div>
 
       {/* 2 cards at a time, swipe through pairs */}
-      <div className="grid grid-cols-2 gap-3 px-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-4">
         {[cards[active], cards[(active + 1) % cards.length]].map((card, i) => (
           <div
             key={`${active}-${i}`}
             className="transition-all duration-500 animate-fade-in-up"
             style={{ animationDelay: `${i * 100}ms` }}
           >
-            <div
-              className="backdrop-blur-md rounded-2xl p-4 border border-white/[0.08] h-full"
-              style={{
-                background: 'rgba(12, 14, 26, 0.85)',
-                boxShadow: `0 4px 20px rgba(0,0,0,0.25), 0 0 15px ${card.color}08`,
-              }}
-            >
-              <div className="flex items-center gap-2 mb-2.5">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-base" style={{ background: `${card.color}15` }}>
-                  {card.icon}
+            <TiltCard>
+              <GlowCard>
+                <div
+                  className="backdrop-blur-md rounded-2xl p-4 border border-white/[0.08] h-full glow-on-scroll revealed"
+                  style={{
+                    background: 'rgba(12, 14, 26, 0.85)',
+                    boxShadow: `0 4px 20px rgba(0,0,0,0.25), 0 0 15px ${card.color}08`,
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-base" style={{ background: `${card.color}15` }}>
+                      {card.icon}
+                    </div>
+                    <span className="text-[10px] font-bold" style={{ color: card.color }}>{card.badge}</span>
+                  </div>
+                  <div className="text-[13px] font-bold text-white/90 mb-1">{card.title}</div>
+                  <div className="text-[10px] text-white/40 leading-relaxed">{card.desc}</div>
                 </div>
-                <span className="text-[10px] font-bold" style={{ color: card.color }}>{card.badge}</span>
-              </div>
-              <div className="text-[13px] font-bold text-white/90 mb-1">{card.title}</div>
-              <div className="text-[10px] text-white/40 leading-relaxed">{card.desc}</div>
-            </div>
+              </GlowCard>
+            </TiltCard>
           </div>
         ))}
       </div>
@@ -764,7 +878,7 @@ function AnimatedStat({ end, suffix = '', label }: { end: number; suffix?: strin
 
   return (
     <div ref={ref} className="scroll-reveal">
-      <div className="text-3xl lg:text-4xl font-bold text-[var(--text)] font-display">
+      <div className="text-fluid-3xl font-bold text-[var(--text)] font-display">
         {count}{suffix}
       </div>
       <div className="text-[var(--text-secondary)] text-xs mt-1">{label}</div>
@@ -787,10 +901,14 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg)] overflow-x-hidden">
-      {/* Ambient background */}
+      {/* Scroll progress bar */}
+      <ScrollProgress />
+
+      {/* Ambient background + floating particles */}
       <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
         <div className="absolute w-[500px] h-[500px] rounded-full animate-blob-1" style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)', top: '-15%', right: '-10%', filter: 'blur(80px)' }} />
         <div className="absolute w-[400px] h-[400px] rounded-full animate-blob-2" style={{ background: 'radial-gradient(circle, rgba(167,139,250,0.06) 0%, transparent 70%)', bottom: '10%', left: '-10%', filter: 'blur(80px)' }} />
+        <FloatingParticles />
       </div>
 
       {/* Nav */}
@@ -814,34 +932,34 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="relative z-10 pt-24 pb-8 px-6">
-        <div className="max-w-5xl mx-auto flex flex-col lg:flex-row-reverse items-center gap-8 lg:gap-12">
+      <section className="relative z-10 pt-20 sm:pt-24 pb-8 px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto flex flex-col lg:flex-row-reverse items-center gap-6 lg:gap-12">
           {/* Phone — FIRST on mobile, right side on desktop */}
-          <div className="flex-shrink-0 animate-fade-in-up">
+          <div className="flex-shrink-0 w-full max-w-[360px] lg:max-w-none lg:w-auto animate-fade-in-up overflow-visible flex justify-center">
             <PhoneMockup size="large" />
           </div>
           {/* Text — BELOW phone on mobile, left side on desktop */}
-          <div className="flex-1 text-center lg:text-left mt-12 lg:mt-0">
+          <div className="flex-1 text-center lg:text-left mt-8 lg:mt-0">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#A78BFA]/10 border border-[#A78BFA]/20 mb-6 animate-fade-in">
               <div className="w-1.5 h-1.5 rounded-full bg-[#A78BFA] animate-pulse" />
               <span className="text-[#A78BFA] text-xs font-medium">AI-Powered Caregiving</span>
             </div>
-            <h1 className="font-display text-4xl lg:text-5xl font-bold leading-tight mb-4 animate-greeting">
+            <h1 className="font-display text-fluid-3xl sm:text-fluid-4xl font-bold leading-tight mb-4 text-shimmer">
               Your family&apos;s health,<br />finally in one place
             </h1>
-            <p className="text-[var(--text-secondary)] text-base lg:text-lg max-w-lg mx-auto lg:mx-0 mb-8 leading-relaxed animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <p className="text-[var(--text-secondary)] text-fluid-base max-w-lg mx-auto lg:mx-0 mb-8 leading-relaxed animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
               Stop juggling 5 apps for <CyclingWord />. CareCompanion brings it all together, so you can focus on <strong className="text-[var(--text)]">the people you love</strong>.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
               <Link
                 href="/login"
-                className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white font-semibold text-sm shadow-lg shadow-[#6366F1]/25 hover:shadow-[#6366F1]/40 transition-shadow shimmer-btn relative overflow-hidden"
+                className="px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white font-semibold text-sm shadow-lg shadow-[#6366F1]/25 hover:shadow-[#6366F1]/40 transition-shadow shimmer-btn relative overflow-hidden"
               >
                 Start for free
               </Link>
               <a
                 href="#features"
-                className="px-8 py-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-[var(--text)] font-semibold text-sm hover:bg-white/[0.08] transition-colors"
+                className="px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-[var(--text)] font-semibold text-sm hover:bg-white/[0.08] transition-colors"
               >
                 See how it works
               </a>
@@ -850,44 +968,43 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features — phone center, cards orbit around it */}
-      <section id="features" className="py-20 px-2 sm:px-6 overflow-visible">
+      <SectionDivider />
+
+      {/* Features — phone center, cards below */}
+      <section id="features" className="py-16 sm:py-20 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-center font-display text-2xl lg:text-3xl font-bold text-[var(--text)] mb-3 scroll-reveal">What you can do</h2>
-          <p className="text-center text-[var(--text-secondary)] text-sm mb-16 scroll-reveal">Everything a caregiver needs. Nothing they don&apos;t.</p>
-
-          {/* Desktop: galaxy orbit layout */}
-          <div className="hidden lg:block">
-            <FeatureShowcase />
-          </div>
-
-          {/* Mobile: galaxy orbit layout */}
-          <div className="lg:hidden">
-            <FeatureShowcase />
-          </div>
+          <h2 className="text-center font-display text-fluid-2xl font-bold text-[var(--text)] mb-3 blur-reveal"><WordRevealH text="What you can do" /></h2>
+          <p className="text-center text-[var(--text-secondary)] text-fluid-sm mb-12 sm:mb-16 blur-reveal">Everything a caregiver needs. Nothing they don&apos;t.</p>
+          <FeatureShowcase />
         </div>
       </section>
 
+      <SectionDivider />
+
       {/* ═══════ HOW IT WORKS ═══════ */}
-      <section className="py-20 px-6">
+      <section className="py-16 sm:py-20 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-center font-display text-2xl lg:text-3xl font-bold text-[var(--text)] mb-3 scroll-reveal">How it works</h2>
-          <p className="text-center text-[var(--text-secondary)] text-sm mb-12 scroll-reveal">Three steps. Five minutes. Your whole family organized.</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <h2 className="text-center font-display text-fluid-2xl font-bold text-[var(--text)] mb-3 blur-reveal"><WordRevealH text="How it works" /></h2>
+          <p className="text-center text-[var(--text-secondary)] text-fluid-sm mb-10 sm:mb-12 blur-reveal">Three steps. Five minutes. Your whole family organized.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
             {[
               { step: '1', icon: '👤', title: 'Add your loved ones', desc: 'Create a profile for each person you care for. Add their medications, doctors, and conditions.' },
               { step: '2', icon: '📸', title: 'Scan their documents', desc: 'Photo a prescription bottle, lab report, or insurance card. AI extracts and organizes everything.' },
               { step: '3', icon: '✨', title: 'Get AI-powered insights', desc: 'Ask questions, get refill alerts, prepare for appointments, and coordinate with family.' },
             ].map((item, i) => (
-              <div key={i} className="relative scroll-reveal" style={{ animationDelay: `${i * 150}ms` }}>
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 text-center h-full">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center mx-auto mb-4 text-white font-bold text-sm shadow-lg shadow-[#6366F1]/20">
-                    {item.step}
-                  </div>
-                  <div className="text-2xl mb-3">{item.icon}</div>
-                  <h3 className="font-display font-bold text-[var(--text)] text-sm mb-2">{item.title}</h3>
-                  <p className="text-[var(--text-secondary)] text-xs leading-relaxed">{item.desc}</p>
-                </div>
+              <div key={i} className="relative blur-reveal" style={{ transitionDelay: `${i * 150}ms` }}>
+                <TiltCard>
+                  <GlowCard>
+                    <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 text-center h-full glow-on-scroll">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center mx-auto mb-4 text-white font-bold text-sm shadow-lg shadow-[#6366F1]/20">
+                      {item.step}
+                    </div>
+                    <div className="text-2xl mb-3">{item.icon}</div>
+                    <h3 className="font-display font-bold text-[var(--text)] text-sm mb-2">{item.title}</h3>
+                    <p className="text-[var(--text-secondary)] text-xs leading-relaxed">{item.desc}</p>
+                    </div>
+                  </GlowCard>
+                </TiltCard>
                 {i < 2 && (
                   <div className="hidden md:block absolute top-1/2 -right-3 text-white/10 text-xl">→</div>
                 )}
@@ -897,18 +1014,20 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <SectionDivider />
+
       {/* ═══════ BEFORE vs AFTER COMPARISON ═══════ */}
-      <section className="py-20 px-6 bg-[rgba(167,139,250,0.02)]">
+      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-[rgba(167,139,250,0.02)]">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-center font-display text-2xl lg:text-3xl font-bold text-[var(--text)] mb-12 scroll-reveal">Life before vs. after</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <h2 className="text-center font-display text-fluid-2xl font-bold text-[var(--text)] mb-8 sm:mb-12 blur-reveal"><WordRevealH text="Life before vs. after" /></h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {/* Before */}
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 scroll-reveal-left">
               <div className="flex items-center gap-2 mb-5">
                 <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-sm">😩</div>
                 <h3 className="font-display font-bold text-red-400 text-sm">Without CareCompanion</h3>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-3 stagger-list-container">
                 {[
                   'Medication info scattered across 3 apps',
                   'Forget to refill until it\'s too late',
@@ -917,7 +1036,7 @@ export default function LandingPage() {
                   'Lab results make no sense',
                   'Insurance claims pile up unread',
                 ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-2">
+                  <div key={i} className="flex items-start gap-2 stagger-list-item" style={{ transitionDelay: `${i * 100}ms` }}>
                     <span className="text-red-400/60 text-xs mt-0.5">✕</span>
                     <span className="text-[var(--text-secondary)] text-xs leading-relaxed">{item}</span>
                   </div>
@@ -930,7 +1049,7 @@ export default function LandingPage() {
                 <div className="w-8 h-8 rounded-full bg-[#6366F1]/10 flex items-center justify-center text-sm">😌</div>
                 <h3 className="font-display font-bold text-[#A78BFA] text-sm">With CareCompanion</h3>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-3 stagger-list-container">
                 {[
                   'Everything in one place for your whole family',
                   'Smart alerts before you run out',
@@ -939,7 +1058,7 @@ export default function LandingPage() {
                   'AI explains results in plain English',
                   'Denied claims? AI helps you appeal',
                 ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-2">
+                  <div key={i} className="flex items-start gap-2 stagger-list-item" style={{ transitionDelay: `${i * 100}ms` }}>
                     <span className="text-[#A78BFA] text-xs mt-0.5">✓</span>
                     <span className="text-[var(--text-secondary)] text-xs leading-relaxed">{item}</span>
                   </div>
@@ -950,32 +1069,40 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <SectionDivider />
+
       {/* ═══════ TRUST & SECURITY ═══════ */}
-      <section className="py-20 px-6">
+      <section className="py-16 sm:py-20 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-center font-display text-2xl lg:text-3xl font-bold text-[var(--text)] mb-3 scroll-reveal">Built on trust</h2>
-          <p className="text-center text-[var(--text-secondary)] text-sm mb-12 scroll-reveal">Your health data is sensitive. We treat it that way.</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <h2 className="text-center font-display text-fluid-2xl font-bold text-[var(--text)] mb-3 blur-reveal"><WordRevealH text="Built on trust" /></h2>
+          <p className="text-center text-[var(--text-secondary)] text-fluid-sm mb-8 sm:mb-12 blur-reveal">Your health data is sensitive. We treat it that way.</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             {[
               { icon: '🔒', title: 'End-to-end encrypted', desc: 'Your data is encrypted at rest and in transit' },
               { icon: '🛡️', title: 'HIPAA-aware design', desc: 'Built with healthcare privacy standards in mind' },
               { icon: '🚫', title: 'Never sold', desc: 'We don\'t sell your health data. Period.' },
               { icon: '👤', title: 'You own your data', desc: 'Export or delete everything anytime' },
             ].map((item, i) => (
-              <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 text-center scroll-reveal" style={{ animationDelay: `${i * 100}ms` }}>
-                <div className="text-2xl mb-2">{item.icon}</div>
-                <h3 className="font-display font-bold text-[var(--text)] text-xs mb-1">{item.title}</h3>
-                <p className="text-[var(--text-muted)] text-[10px] leading-relaxed">{item.desc}</p>
-              </div>
+              <TiltCard key={i}>
+                <GlowCard>
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 text-center blur-reveal glow-on-scroll" style={{ transitionDelay: `${i * 100}ms` }}>
+                    <div className="text-2xl mb-2">{item.icon}</div>
+                    <h3 className="font-display font-bold text-[var(--text)] text-xs mb-1">{item.title}</h3>
+                    <p className="text-[var(--text-muted)] text-[10px] leading-relaxed">{item.desc}</p>
+                  </div>
+                </GlowCard>
+              </TiltCard>
             ))}
           </div>
         </div>
       </section>
 
+      <SectionDivider />
+
       {/* ═══════ ANIMATED NUMBERS ═══════ */}
-      <section className="py-20 px-6 bg-[rgba(167,139,250,0.02)]">
+      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-[rgba(167,139,250,0.02)]">
         <div className="max-w-3xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 text-center">
             <AnimatedStat end={50} suffix="+" label="Medications tracked" />
             <AnimatedStat end={200} suffix="+" label="Appointments managed" />
             <AnimatedStat end={100} suffix="%" label="Free to use" />
@@ -984,11 +1111,13 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <SectionDivider />
+
       {/* Final CTA */}
-      <section className="py-20 px-6 bg-[rgba(167,139,250,0.02)]">
-        <div className="max-w-lg mx-auto text-center scroll-reveal">
-          <h2 className="font-display text-3xl font-bold mb-4 animate-greeting">Start caring smarter</h2>
-          <p className="text-[var(--text-secondary)] text-sm mb-8">Join caregivers who finally have everything in one place.</p>
+      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-[rgba(167,139,250,0.02)]">
+        <div className="max-w-lg mx-auto text-center blur-reveal">
+          <h2 className="font-display text-fluid-3xl font-bold mb-4 animate-greeting">Start caring smarter</h2>
+          <p className="text-[var(--text-secondary)] text-fluid-sm mb-8">Join caregivers who finally have everything in one place.</p>
           <Link
             href="/login"
             className="inline-block px-10 py-4 rounded-2xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white font-semibold shadow-lg shadow-[#6366F1]/25 hover:shadow-[#6366F1]/40 transition-shadow shimmer-btn relative overflow-hidden"

@@ -70,9 +70,16 @@ export function ExpandableCard({
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">{children}</div>
-        <span className={`text-lg transition-transform duration-300 ${expanded ? 'rotate-90 text-[#94a3b8]' : 'text-[#64748b]'}`} aria-hidden="true">
-          ▸
-        </span>
+        <svg
+          className={`w-4 h-4 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${expanded ? 'rotate-180 text-[#A78BFA]' : 'text-[var(--text-muted)]'}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={2}
+          stroke="currentColor"
+          aria-hidden="true"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
       </div>
 
       <div
@@ -85,7 +92,7 @@ export function ExpandableCard({
       >
         <div ref={contentRef}>
           <div
-            className="mt-3 pt-3 border-t border-white/[0.06]"
+            className="mt-3 pt-3 border-t border-[var(--border)]"
             onClick={(e) => e.stopPropagation()}
           >
             {expandedContent}

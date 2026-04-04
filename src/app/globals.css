@@ -58,6 +58,16 @@
 }
 
 /* ===== BASE RESET ===== */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
@@ -86,6 +96,9 @@ body {
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 /* ===== GLASSMORPHISM UTILITIES ===== */
@@ -1054,6 +1067,233 @@ body {
 
 .animate-phone-float {
   animation: phone-float 5s ease-in-out infinite;
+}
+
+/* ===== TEXT SHIMMER ===== */
+@keyframes text-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--text) 0%,
+    var(--text) 35%,
+    #A78BFA 45%,
+    #818CF8 50%,
+    #A78BFA 55%,
+    var(--text) 65%,
+    var(--text) 100%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: text-shimmer 4s linear infinite;
+}
+
+/* ===== HOVER CARD GLOW TRAIL ===== */
+.glow-trail {
+  position: relative;
+  overflow: hidden;
+}
+
+.glow-trail::before {
+  content: '';
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  transform: translate(var(--glow-x, 50%), var(--glow-y, 50%)) translate(-50%, -50%);
+  z-index: 0;
+}
+
+.glow-trail:hover::before {
+  opacity: 1;
+}
+
+.glow-trail > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ===== STAGGERED LIST FADE-IN ===== */
+.stagger-list-item {
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.stagger-list-container.revealed .stagger-list-item {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ===== SCROLL PROGRESS BAR ===== */
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #6366F1, #A78BFA, #818CF8);
+  z-index: 100;
+  transition: width 50ms linear;
+  border-radius: 0 2px 2px 0;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.5), 0 0 30px rgba(167, 139, 250, 0.2);
+}
+
+/* ===== FLOATING PARTICLES ===== */
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  animation: particle-float linear infinite;
+}
+
+@keyframes particle-float {
+  0% { opacity: 0; transform: translateY(0) translateX(0); }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(-100vh) translateX(var(--drift, 20px)); }
+}
+
+/* ===== BLUR-TO-SHARP REVEAL ===== */
+.blur-reveal {
+  opacity: 0;
+  filter: blur(10px);
+  transform: translateY(20px);
+  transition: opacity 0.8s ease, filter 0.8s ease, transform 0.8s ease;
+}
+
+.blur-reveal.revealed {
+  opacity: 1;
+  filter: blur(0px);
+  transform: translateY(0);
+}
+
+/* ===== 3D TILT CARD ===== */
+.tilt-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transform-style: preserve-3d;
+}
+
+.tilt-card:hover {
+  transform: perspective(800px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateZ(10px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 20px rgba(99, 102, 241, 0.1);
+}
+
+/* ===== SECTION GRADIENT DIVIDER ===== */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.3), rgba(167, 139, 250, 0.3), transparent);
+  margin: 0 auto;
+  max-width: 400px;
+  opacity: 0;
+  transition: opacity 1s ease, max-width 1s ease;
+}
+
+.section-divider.revealed {
+  opacity: 1;
+  max-width: 400px;
+}
+
+/* ===== STAGGERED WORD REVEAL ===== */
+.word-reveal-container .word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.word-reveal-container.revealed .word {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ===== GLOW-ON-SCROLL CARDS ===== */
+.glow-on-scroll {
+  transition: border-color 0.5s ease, box-shadow 0.5s ease;
+}
+
+.glow-on-scroll.revealed {
+  border-color: rgba(167, 139, 250, 0.15);
+  box-shadow: 0 0 30px rgba(99, 102, 241, 0.08), 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== COUNTER SLIDE-UP ===== */
+@keyframes counter-slide-up {
+  from { opacity: 0; transform: translateY(20px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.counter-animate {
+  animation: counter-slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ===== RESPONSIVE UTILITIES ===== */
+
+/* Fluid typography scale */
+.text-fluid-xs { font-size: clamp(0.625rem, 0.5rem + 0.5vw, 0.75rem); }
+.text-fluid-sm { font-size: clamp(0.75rem, 0.65rem + 0.5vw, 0.875rem); }
+.text-fluid-base { font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem); }
+.text-fluid-lg { font-size: clamp(1rem, 0.9rem + 0.5vw, 1.125rem); }
+.text-fluid-xl { font-size: clamp(1.25rem, 1rem + 1vw, 1.5rem); }
+.text-fluid-2xl { font-size: clamp(1.5rem, 1.2rem + 1.5vw, 2rem); }
+.text-fluid-3xl { font-size: clamp(1.75rem, 1.3rem + 2vw, 2.5rem); }
+.text-fluid-4xl { font-size: clamp(2rem, 1.5rem + 2.5vw, 3rem); }
+
+/* Responsive container */
+.container-responsive {
+  width: 100%;
+  max-width: 100%;
+  padding-left: clamp(1rem, 3vw, 2rem);
+  padding-right: clamp(1rem, 3vw, 2rem);
+  margin: 0 auto;
+}
+
+/* Responsive grid — auto-fill with min 280px */
+.grid-auto-fill {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+  gap: 1rem;
+}
+
+/* Prevent image overflow */
+img, video, svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Chat-specific responsive widths */
+@media (max-width: 639px) {
+  .chat-bubble-user { max-width: 90%; }
+  .chat-bubble-ai { max-width: 90%; }
+}
+@media (min-width: 640px) {
+  .chat-bubble-user { max-width: 75%; }
+  .chat-bubble-ai { max-width: 80%; }
+}
+
+/* Safe area insets for notched phones */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Phone mockup container — never overflow */
+.phone-container {
+  max-width: 100%;
+  overflow: visible;
 }
 
 /* Reduced motion */
