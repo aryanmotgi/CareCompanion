@@ -41,6 +41,9 @@ async function DashboardContent() {
       appointments={appointments || []}
       labResults={labResults || []}
       claims={claims || []}
+      cancerType={profile.cancer_type || null}
+      cancerStage={profile.cancer_stage || null}
+      treatmentPhase={profile.treatment_phase || null}
     />
   );
 }

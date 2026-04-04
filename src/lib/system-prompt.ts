@@ -107,6 +107,18 @@ export function buildSystemPrompt(
   if (profile.patient_age) context += `, Age: ${profile.patient_age}`;
   context += `\n`;
   if (profile.relationship) context += `Relationship: ${profile.relationship}\n`;
+  if (profile.cancer_type) context += `Cancer Type: ${profile.cancer_type}\n`;
+  if (profile.cancer_stage) context += `Cancer Stage: ${profile.cancer_stage}\n`;
+  if (profile.treatment_phase) {
+    const phaseLabels: Record<string, string> = {
+      just_diagnosed: 'Just diagnosed — learning about options',
+      active_treatment: 'Active treatment (chemo, radiation, or surgery)',
+      between_treatments: 'Between treatment cycles',
+      remission: 'In remission — monitoring and follow-ups',
+      unsure: 'Treatment phase not yet determined',
+    };
+    context += `Treatment Phase: ${phaseLabels[profile.treatment_phase] || profile.treatment_phase}\n`;
+  }
   if (profile.conditions) context += `Conditions: ${profile.conditions}\n`;
   if (profile.allergies) context += `Allergies: ${profile.allergies}\n`;
 

@@ -14,6 +14,17 @@ interface DashboardViewProps {
   appointments: Appointment[]
   labResults: LabResult[]
   claims: Claim[]
+  cancerType?: string | null
+  cancerStage?: string | null
+  treatmentPhase?: string | null
+}
+
+const PHASE_LABELS: Record<string, { label: string; color: string }> = {
+  just_diagnosed: { label: 'Just Diagnosed', color: 'text-amber-400 bg-amber-500/10' },
+  active_treatment: { label: 'Active Treatment', color: 'text-blue-400 bg-blue-500/10' },
+  between_treatments: { label: 'Between Cycles', color: 'text-cyan-400 bg-cyan-500/10' },
+  remission: { label: 'In Remission', color: 'text-emerald-400 bg-emerald-500/10' },
+  unsure: { label: 'Evaluating', color: 'text-violet-400 bg-violet-500/10' },
 }
 
 export function DashboardView({
@@ -22,6 +33,9 @@ export function DashboardView({
   appointments,
   labResults,
   claims,
+  cancerType,
+  cancerStage,
+  treatmentPhase,
 }: DashboardViewProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const hour = new Date().getHours()
@@ -239,7 +253,7 @@ export function DashboardView({
   return (
     <div className="px-4 sm:px-5 py-5 sm:py-6">
       <div className="mb-1 text-[var(--text-secondary)] text-xs uppercase tracking-wider">{greeting}</div>
-      <h2 className="text-fluid-xl font-bold mb-4 sm:mb-5 animate-greeting">
+      <h2 className="text-fluid-xl font-bold mb-2 animate-greeting">
         {actionCount > 0 ? (
           <>
             <AnimatedNumber value={actionCount} /> {actionCount === 1 ? 'item needs' : 'items need'} attention
@@ -248,6 +262,21 @@ export function DashboardView({
           `Looking good, ${patientName.split(' ')[0]}!`
         )}
       </h2>
+      {(cancerType || treatmentPhase) && (
+        <div className="flex flex-wrap items-center gap-2 mb-4 sm:mb-5">
+          {cancerType && (
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[#A78BFA]/10 text-[#A78BFA]">
+              {cancerType}{cancerStage && cancerStage !== 'Unsure' ? ` — Stage ${cancerStage}` : ''}
+            </span>
+          )}
+          {treatmentPhase && PHASE_LABELS[treatmentPhase] && (
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${PHASE_LABELS[treatmentPhase].color}`}>
+              {PHASE_LABELS[treatmentPhase].label}
+            </span>
+          )}
+        </div>
+      )}
+      {!cancerType && !treatmentPhase && <div className="mb-3 sm:mb-4" />}
 
       {/* Treatment Cycle Tracker */}
       <TreatmentCycleTracker medications={medications} patientName={patientName} />

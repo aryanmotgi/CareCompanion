@@ -51,6 +51,20 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [slideDir, setSlideDir] = useState<'left' | 'right'>('left');
+  const [animKey, setAnimKey] = useState(0);
+
+  const goForward = (nextStep: number) => {
+    setSlideDir('left');
+    setAnimKey((k) => k + 1);
+    setStep(nextStep);
+  };
+
+  const goBack = (prevStep: number) => {
+    setSlideDir('right');
+    setAnimKey((k) => k + 1);
+    setStep(prevStep);
+  };
 
   // Step 1: Who is this for
   const [role, setRole] = useState<'patient' | 'caregiver' | null>(null);
@@ -145,6 +159,26 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
 
   return (
     <div className="space-y-8">
+      <style>{`
+        @keyframes slideInLeft {
+          from { opacity: 0; transform: translateX(40px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes slideInRight {
+          from { opacity: 0; transform: translateX(-40px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes celebratePop {
+          0% { opacity: 0; transform: scale(0.8); }
+          50% { transform: scale(1.05); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes confettiFade {
+          0% { opacity: 0; transform: translateY(10px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
       {/* Progress dots */}
       <div className="flex items-center justify-center gap-2">
         {[1, 2, 3, 4].map((s) => (
@@ -163,7 +197,7 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
 
       {/* Step 1: Welcome + Who is this for */}
       {step === 1 && (
-        <div className="space-y-6 animate-fade-in-up">
+        <div key={animKey} className="space-y-6" style={{ animation: `${slideDir === 'left' ? 'slideInLeft' : 'slideInRight'} 0.35s ease-out` }}>
           <div className="text-center">
             <h1 className="font-display text-3xl font-bold text-white">
               {firstName ? `Welcome, ${firstName}` : 'Welcome'}
@@ -278,18 +312,21 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
           )}
 
           <button
-            onClick={() => setStep(2)}
+            onClick={() => goForward(2)}
             disabled={!canProceed()}
             className="w-full rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] py-3.5 px-6 text-base text-white font-semibold hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             Continue
           </button>
+          <a href="/login" className="block text-center text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors mt-3">
+            Back to login
+          </a>
         </div>
       )}
 
       {/* Step 2: Diagnosis */}
       {step === 2 && (
-        <div className="space-y-6 animate-fade-in-up">
+        <div key={animKey} className="space-y-6" style={{ animation: `${slideDir === 'left' ? 'slideInLeft' : 'slideInRight'} 0.35s ease-out` }}>
           <div className="text-center">
             <h1 className="font-display text-3xl font-bold text-white">
               About the diagnosis
@@ -377,20 +414,20 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
 
           <div className="flex gap-3">
             <button
-              onClick={() => setStep(1)}
+              onClick={() => goBack(1)}
               className="flex-shrink-0 rounded-xl border border-[var(--border)] py-3.5 px-5 text-sm text-[var(--text-muted)] hover:text-white hover:border-white/20 transition-all"
             >
               Back
             </button>
             <button
-              onClick={() => setStep(3)}
+              onClick={() => goForward(3)}
               className="flex-1 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] py-3.5 px-6 text-base text-white font-semibold hover:opacity-90 active:scale-[0.98] transition-all"
             >
               Continue
             </button>
           </div>
           <button
-            onClick={() => setStep(3)}
+            onClick={() => goForward(3)}
             className="w-full text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
           >
             Skip for now
@@ -400,7 +437,7 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
 
       {/* Step 3: Connect your data */}
       {step === 3 && (
-        <div className="space-y-6 animate-fade-in-up">
+        <div key={animKey} className="space-y-6" style={{ animation: `${slideDir === 'left' ? 'slideInLeft' : 'slideInRight'} 0.35s ease-out` }}>
           <div className="text-center">
             <h1 className="font-display text-3xl font-bold text-white">
               Bring in your data
@@ -494,13 +531,13 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
 
           <div className="flex gap-3">
             <button
-              onClick={() => setStep(2)}
+              onClick={() => goBack(2)}
               className="flex-shrink-0 rounded-xl border border-[var(--border)] py-3.5 px-5 text-sm text-[var(--text-muted)] hover:text-white hover:border-white/20 transition-all"
             >
               Back
             </button>
             <button
-              onClick={() => setStep(4)}
+              onClick={() => goForward(4)}
               className="flex-1 text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors py-3.5"
             >
               Skip — I&apos;ll add data later
@@ -511,7 +548,7 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
 
       {/* Step 4: Priorities */}
       {step === 4 && (
-        <div className="space-y-6 animate-fade-in-up">
+        <div key={animKey} className="space-y-6" style={{ animation: `${slideDir === 'left' ? 'slideInLeft' : 'slideInRight'} 0.35s ease-out` }}>
           <div className="text-center">
             <h1 className="font-display text-3xl font-bold text-white">
               What matters most?
@@ -564,7 +601,7 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
 
           <div className="flex gap-3">
             <button
-              onClick={() => setStep(3)}
+              onClick={() => goBack(3)}
               className="flex-shrink-0 rounded-xl border border-[var(--border)] py-3.5 px-5 text-sm text-[var(--text-muted)] hover:text-white hover:border-white/20 transition-all"
             >
               Back
@@ -590,14 +627,33 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
         </div>
       )}
 
+      {/* Loading overlay for step 3 data source actions */}
       {loading && step === 3 && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[var(--bg-card)] rounded-2xl p-8 text-center space-y-4">
-            <svg className="animate-spin h-8 w-8 text-[#A78BFA] mx-auto" fill="none" viewBox="0 0 24 24">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-[var(--bg-card)] rounded-2xl p-10 text-center space-y-5 border border-[var(--border)]" style={{ animation: 'celebratePop 0.4s ease-out' }}>
+            <div className="text-5xl">🎉</div>
+            <h2 className="text-xl font-bold text-white">You&apos;re all set!</h2>
+            <p className="text-sm text-[var(--text-secondary)]">Setting up your care companion...</p>
+            <svg className="animate-spin h-6 w-6 text-[#A78BFA] mx-auto" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            <p className="text-white font-medium">Setting up your account...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Loading overlay for step 4 finish */}
+      {loading && step === 4 && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-[var(--bg-card)] rounded-2xl p-10 text-center space-y-5 border border-[var(--border)]" style={{ animation: 'celebratePop 0.4s ease-out' }}>
+            <div className="text-5xl">🎉</div>
+            <h2 className="text-xl font-bold text-white">You&apos;re all set!</h2>
+            <p className="text-sm text-[var(--text-secondary)]">Taking you to your dashboard...</p>
+            <div className="flex justify-center gap-1.5" style={{ animation: 'confettiFade 0.6s ease-out 0.3s both' }}>
+              {['💜', '🩺', '💪', '🌟', '❤️'].map((e, i) => (
+                <span key={i} className="text-2xl" style={{ animation: `confettiFade 0.4s ease-out ${0.3 + i * 0.1}s both` }}>{e}</span>
+              ))}
+            </div>
           </div>
         </div>
       )}
