@@ -1,15 +1,14 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Privacy Policy — CareCompanion',
-  description: 'How CareCompanion handles your health data.',
+  title: 'Privacy Policy — CareCompanion AI',
+  description: 'How CareCompanion AI handles your health data.',
 };
 
 export default function PrivacyPolicy() {
   return (
     <div className="min-h-dvh bg-[var(--bg)] text-[var(--text)]">
       <div className="max-w-2xl mx-auto px-5 py-12 sm:py-16">
-        {/* Back link */}
         <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors mb-8">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -17,139 +16,157 @@ export default function PrivacyPolicy() {
           Back to home
         </Link>
 
-        <h1 className="text-3xl font-bold mb-2">Privacy Policy</h1>
-        <p className="text-sm text-[var(--text-muted)] mb-10">Last updated: April 3, 2025</p>
+        <p className="text-sm text-[var(--text-muted)] mb-2">Last Updated: April 3, 2026</p>
+        <h1 className="text-3xl font-bold mb-10">PRIVACY POLICY — CareCompanion AI</h1>
 
         <div className="space-y-8 text-sm leading-relaxed text-[var(--text-secondary)]">
+
           <section>
-            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">Overview</h2>
+            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">1. WHO WE ARE</h2>
             <p>
-              CareCompanion is a health management platform built for cancer patients and their family caregivers.
-              We take the privacy and security of your health information extremely seriously. This policy explains
-              what data we collect, how we use it, and how we protect it.
+              CareCompanion AI (&quot;CareCompanion&quot;, &quot;we&quot;, &quot;us&quot;) is an AI-powered health organizer built for cancer patients
+              and their family caregivers. We help families manage medications, appointments, lab results, and medical
+              records in one place. Our website is carecompanionai.org.
             </p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">Information We Collect</h2>
-            <p className="mb-3">When you use CareCompanion, we may collect and store:</p>
-            <ul className="list-disc pl-5 space-y-2">
-              <li><strong className="text-[var(--text)]">Account information:</strong> Email address and authentication credentials (managed by Supabase Auth).</li>
-              <li><strong className="text-[var(--text)]">Health information you provide:</strong> Patient profiles, medications, conditions, allergies, appointments, doctors, symptom journal entries, and notes you enter manually or through our AI chat.</li>
-              <li><strong className="text-[var(--text)]">Health records from connected services:</strong> When you connect a health portal (e.g., Epic MyChart, Cerner, Medicare Blue Button), we access your records via SMART on FHIR APIs with your explicit consent. This may include medications, lab results, conditions, allergies, appointments, insurance claims, and coverage information.</li>
-              <li><strong className="text-[var(--text)]">Documents you upload:</strong> Photos of prescription labels, lab reports, insurance cards, and other medical documents you scan using our document extraction feature.</li>
-              <li><strong className="text-[var(--text)]">Conversation data:</strong> Messages you send to the AI assistant, along with AI-generated summaries used to provide personalized care support.</li>
-            </ul>
-          </section>
+            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">2. WHAT DATA WE COLLECT</h2>
 
-          <section>
-            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">How We Use Your Information</h2>
-            <ul className="list-disc pl-5 space-y-2">
-              <li>To provide personalized cancer care management, including treatment tracking, medication reminders, appointment preparation, and lab result interpretation.</li>
-              <li>To power our AI assistant with context about your care situation so it can give relevant, specific answers rather than generic responses.</li>
-              <li>To sync health data from connected portals and keep your records up to date.</li>
-              <li>To generate alerts for medication refills, abnormal lab results, upcoming appointments, and insurance claim denials.</li>
-              <li>To enable care team collaboration so authorized family members can help manage care.</li>
+            <h3 className="text-sm font-semibold text-[var(--text)] mt-4 mb-2">Data you provide directly:</h3>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Patient profile information (name, age, conditions, allergies)</li>
+              <li>Medications, dosages, and refill dates</li>
+              <li>Doctor and care team information</li>
+              <li>Appointment details and notes</li>
+              <li>Lab results and health records</li>
+              <li>Insurance information</li>
+              <li>Symptom journal entries</li>
+              <li>Documents and medical files you upload</li>
+              <li>Chat messages with our AI assistant</li>
             </ul>
-          </section>
 
-          <section>
-            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">How We Protect Your Information</h2>
-            <ul className="list-disc pl-5 space-y-2">
-              <li><strong className="text-[var(--text)]">Encryption:</strong> All data is encrypted in transit (TLS 1.2+) and at rest (AES-256).</li>
-              <li><strong className="text-[var(--text)]">Access control:</strong> Row-level security (RLS) ensures you can only access your own data. Care team members have role-based permissions (owner, editor, viewer).</li>
-              <li><strong className="text-[var(--text)]">OAuth tokens:</strong> Access tokens for connected health services are stored securely and are never exposed to the frontend. Tokens are automatically refreshed and old tokens are overwritten.</li>
-              <li><strong className="text-[var(--text)]">No third-party analytics:</strong> We do not use third-party analytics or tracking services that have access to your health data.</li>
-              <li><strong className="text-[var(--text)]">Infrastructure:</strong> Our backend runs on Supabase (PostgreSQL with RLS) and Vercel, both of which maintain SOC 2 compliance.</li>
+            <h3 className="text-sm font-semibold text-[var(--text)] mt-4 mb-2">Data we collect automatically:</h3>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Account email and authentication data</li>
+              <li>App usage and feature interactions</li>
+              <li>Device type and browser (for app performance only)</li>
             </ul>
-          </section>
 
-          <section>
-            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">Connected Health Services (SMART on FHIR)</h2>
-            <p className="mb-3">
-              When you connect a health portal, we use the SMART on FHIR standard (the same protocol your hospital uses for patient access apps).
-            </p>
-            <ul className="list-disc pl-5 space-y-2">
-              <li>You authenticate directly with your health provider. We never see your portal username or password.</li>
-              <li>We request read-only access to your health records. We cannot modify your records at the source.</li>
-              <li>You can disconnect any service at any time, which revokes our access and removes stored tokens.</li>
-              <li>Data synced from health portals is stored in your CareCompanion account and subject to the same protections as manually entered data.</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">AI Processing</h2>
-            <p className="mb-3">
-              Our AI assistant is powered by Anthropic&apos;s Claude. When you interact with the AI:
-            </p>
-            <ul className="list-disc pl-5 space-y-2">
-              <li>Your messages and relevant health context are sent to Anthropic&apos;s API for processing.</li>
-              <li>Anthropic does not use your data to train their models (per their commercial API terms).</li>
-              <li>The AI never diagnoses conditions, recommends starting or stopping medications, or replaces professional medical advice.</li>
-              <li>AI-generated responses are for informational purposes and should always be verified with your healthcare team.</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">What We Never Do</h2>
-            <ul className="list-disc pl-5 space-y-2">
-              <li>We <strong className="text-[var(--text)]">never sell</strong> your health data to anyone.</li>
-              <li>We <strong className="text-[var(--text)]">never share</strong> your data with advertisers, data brokers, or marketing companies.</li>
-              <li>We <strong className="text-[var(--text)]">never use</strong> your health data for purposes other than providing you with CareCompanion&apos;s services.</li>
-              <li>We <strong className="text-[var(--text)]">never retain</strong> data after account deletion (see below).</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">Data Retention and Deletion</h2>
-            <ul className="list-disc pl-5 space-y-2">
-              <li>Your data is retained as long as your account is active.</li>
-              <li>You can export all your data at any time.</li>
-              <li>You can delete your account and all associated data at any time. Deletion is permanent and irreversible.</li>
-              <li>When you disconnect a health service, stored tokens are immediately deleted. Synced data remains in your account unless you delete it.</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">Care Team Sharing</h2>
+            <h3 className="text-sm font-semibold text-[var(--text)] mt-4 mb-2">Data imported via health system connections:</h3>
             <p>
-              If you invite family members or caregivers to your care team, they will have access to the patient profile
-              based on their assigned role (viewer or editor). You control who has access and can revoke it at any time.
-              Care team members see the same data you see for the shared profile, but cannot access your account settings,
-              other profiles, or billing information.
+              When you connect your hospital account (e.g. Epic MyChart), we import only the data you explicitly
+              authorize including medications, conditions, allergies, lab results, appointments, and insurance
+              claims. This only happens with your direct consent through the hospital&apos;s official OAuth login flow.
             </p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">Children&apos;s Privacy</h2>
+            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">3. HOW WE USE YOUR DATA</h2>
+            <p className="mb-3">We use your data solely to:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Power the CareCompanion AI assistant and its responses</li>
+              <li>Display your health information across the app</li>
+              <li>Send medication reminders and appointment alerts you have enabled</li>
+              <li>Generate health summaries and visit prep sheets</li>
+              <li>Improve app performance and fix bugs</li>
+            </ul>
+            <div className="mt-4 p-4 rounded-xl bg-white/[0.03] border border-[var(--border)]">
+              <p className="text-[var(--text)] font-medium">We never use your health data for advertising.</p>
+              <p className="text-[var(--text)] font-medium">We never sell your data to any third party, ever.</p>
+              <p className="text-[var(--text)] font-medium">We never share your data with anyone without your explicit consent except as required by law.</p>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">4. HOW WE STORE AND PROTECT YOUR DATA</h2>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>All data is stored in Supabase (PostgreSQL), a SOC 2 Type II certified cloud database</li>
+              <li>Row-level security ensures no user can access another user&apos;s data</li>
+              <li>All data is encrypted in transit (HTTPS/TLS) and at rest</li>
+              <li>API keys and credentials are never stored in code</li>
+              <li>Care team access is permission-controlled — you decide who sees what</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">5. HEALTH SYSTEM INTEGRATIONS (FHIR/OAuth)</h2>
+            <p className="mb-3">When you connect a health system like Epic MyChart:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>You are redirected to your hospital&apos;s official login page</li>
+              <li>You log in and explicitly grant CareCompanion read-only access to your records</li>
+              <li>We store only an encrypted access token in our database</li>
+              <li>We never see or store your hospital login password</li>
+              <li>You can disconnect any health system at any time from the Connect page, which immediately deletes your access token</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">6. CARE TEAM SHARING</h2>
+            <p className="mb-3">When you invite family members to your care team:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>You control their permission level (viewer, editor, or owner)</li>
+              <li>They only see data for the patient profile you invited them to</li>
+              <li>You can remove them at any time</li>
+              <li>All care team activity is logged in the activity feed</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">7. DATA RETENTION</h2>
             <p>
-              CareCompanion can be used to manage care for patients of any age, including children, when set up by a
-              parent or legal guardian. We do not knowingly collect information directly from children under 13 without
-              parental consent.
+              We keep your data for as long as your account is active. If you delete your account, all associated
+              data is permanently deleted within 30 days including patient profiles, medications, appointments, messages,
+              memories, and uploaded documents. You can also export all your data before deletion from the Settings page.
             </p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">Changes to This Policy</h2>
+            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">8. YOUR RIGHTS</h2>
+            <p className="mb-3">You have the right to:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Access all your data (export from Settings)</li>
+              <li>Correct any inaccurate data</li>
+              <li>Delete your account and all associated data</li>
+              <li>Disconnect any health system integration at any time</li>
+              <li>Withdraw consent for data processing at any time</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">9. CHILDREN&apos;S PRIVACY</h2>
             <p>
-              We may update this privacy policy from time to time. If we make material changes, we will notify you through
-              the app or by email. Your continued use of CareCompanion after changes constitutes acceptance of the updated policy.
+              CareCompanion is not directed at children under 13. We do not knowingly collect data from children under 13.
             </p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">Contact</h2>
+            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">10. CHANGES TO THIS POLICY</h2>
             <p>
-              If you have questions about this privacy policy or how your data is handled, contact us at{' '}
-              <a href="mailto:privacy@carecompanionai.org" className="text-[#A78BFA] hover:underline">privacy@carecompanionai.org</a>.
+              We will notify users by email and in-app notification of any material changes to this policy at least
+              14 days before they take effect.
             </p>
           </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-[var(--text)] mb-3">11. CONTACT US</h2>
+            <p>
+              For any privacy questions, data requests, or concerns:<br />
+              Email: <a href="mailto:privacy@carecompanionai.org" className="text-[#A78BFA] hover:underline">privacy@carecompanionai.org</a><br />
+              Website: carecompanionai.org
+            </p>
+          </section>
+
+          <div className="mt-6 p-4 rounded-xl bg-white/[0.03] border border-[var(--border)]">
+            <p className="text-xs text-[var(--text-muted)]">
+              CareCompanion AI follows HIPAA-aligned security practices. We are not currently a HIPAA-covered entity.
+            </p>
+          </div>
         </div>
 
-        {/* Footer */}
         <div className="mt-12 pt-6 border-t border-[var(--border)] flex items-center justify-between text-xs text-[var(--text-muted)]">
           <Link href="/terms" className="hover:text-[var(--text)] transition-colors">Terms of Service</Link>
-          <span>&copy; {new Date().getFullYear()} CareCompanion</span>
+          <span>&copy; {new Date().getFullYear()} CareCompanion AI</span>
         </div>
       </div>
     </div>
