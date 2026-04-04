@@ -49,8 +49,8 @@ export function AppShell({
       <AmbientBackground />
 
       {!isSetup && (
-        <header className="fixed top-0 left-0 right-0 z-40 bg-[#0C0E1A]/90 backdrop-blur-xl border-b border-[var(--border)]">
-          <div className="flex items-center justify-between px-4 sm:px-5 h-14">
+        <header className="fixed top-0 left-0 right-0 z-[100] bg-[#0C0E1A]/90 backdrop-blur-xl border-b border-[var(--border)]">
+          <div className="relative z-[101] flex items-center justify-between px-4 sm:px-5 h-14">
             <div className="flex items-center gap-2">
               <h1 className="text-[var(--text)] text-lg font-bold">CareCompanion</h1>
               {profiles.length > 1 && (
@@ -66,8 +66,11 @@ export function AppShell({
                 initialCount={notifications.filter((n: { is_read: boolean }) => !n.is_read).length}
               />
               <button
+                type="button"
                 onClick={() => setMenuOpen(true)}
-                className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-white text-sm font-semibold animate-press"
+                onTouchEnd={(e) => { e.preventDefault(); setMenuOpen(true); }}
+                className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-white text-sm font-semibold cursor-pointer active:scale-95 transition-transform"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
               >
                 {initials}
               </button>
@@ -76,7 +79,7 @@ export function AppShell({
         </header>
       )}
 
-      <main className={`${isSetup ? '' : 'pt-14 pb-24'} relative z-10 animate-page-in min-h-screen min-h-dvh`}>
+      <main className={`${isSetup ? '' : 'pt-14 pb-24'} relative animate-page-in min-h-screen min-h-dvh`}>
         <div className="max-w-lg lg:max-w-2xl xl:max-w-3xl mx-auto px-1 sm:px-0">
           {children}
         </div>

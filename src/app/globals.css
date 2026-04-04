@@ -375,7 +375,7 @@ body {
 .animate-fade-in { animation: fade-in 0.5s ease-out; }
 .animate-fade-in-up { animation: fade-in-up 0.5s ease-out; }
 .animate-fade-in-down { animation: fade-in-down 0.5s ease-out; }
-.animate-slide-in-right { animation: slide-in-right 0.5s ease-out; }
+.animate-slide-in-right-sm { animation: slide-in-right 0.5s ease-out; }
 .animate-scale-in { animation: scale-in 0.3s ease-out; }
 .animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
 .animate-shimmer {
@@ -398,7 +398,7 @@ body {
 .delay-800 { animation-delay: 800ms; }
 
 /* Fill mode for staggered animations */
-.animate-fade-in-up, .animate-slide-in-right, .animate-scale-in {
+.animate-fade-in-up, .animate-slide-in-right-sm, .animate-scale-in {
   animation-fill-mode: both;
 }
 

@@ -136,9 +136,9 @@ export function ProfileMenu({ isOpen, onClose, userName, patientName }: ProfileM
     .slice(0, 2)
 
   return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/50 animate-fade-overlay" onClick={onClose} />
-      <div className="absolute top-0 right-0 bottom-0 w-[280px] bg-[var(--bg-warm)] animate-slide-in-right flex flex-col">
+    <div className="fixed inset-0 z-[200]">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} style={{ animation: 'fade-overlay 0.25s ease-out' }} />
+      <div className="absolute top-0 right-0 bottom-0 w-[280px] bg-[var(--bg-warm)] flex flex-col" style={{ animation: 'slide-in-right-new 0.3s cubic-bezier(0.32, 0.72, 0, 1)' }}>
         <div className="flex items-center gap-3 p-5 pb-4 border-b border-[var(--border)]">
           <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-white text-base font-semibold">
             {initials}

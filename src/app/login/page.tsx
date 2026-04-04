@@ -11,7 +11,7 @@ export default function LoginPage() {
             </svg>
           </div>
           <h1 className="text-fluid-3xl font-bold text-white mb-1">CareCompanion</h1>
-          <p className="text-fluid-base text-[var(--text-secondary)]">Your AI-powered caregiving assistant</p>
+          <p className="text-fluid-base text-[var(--text-secondary)]">AI-powered cancer care for patients &amp; caregivers</p>
         </div>
         <LoginForm />
       </div>
