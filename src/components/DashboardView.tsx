@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { PriorityCard } from './PriorityCard'
+import { TreatmentCycleTracker } from './TreatmentCycleTracker'
 import { AnimatedNumber } from './AnimatedNumber'
 import { AlertInsights } from './AlertInsights'
 import { parseLabValue } from '@/lib/lab-parsing'
@@ -247,6 +248,9 @@ export function DashboardView({
           `Looking good, ${patientName.split(' ')[0]}!`
         )}
       </h2>
+
+      {/* Treatment Cycle Tracker */}
+      <TreatmentCycleTracker medications={medications} patientName={patientName} />
 
       {actionCount === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">

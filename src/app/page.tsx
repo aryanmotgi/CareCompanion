@@ -1022,12 +1022,23 @@ export default function LandingPage() {
             </div>
             <span className="font-display font-bold text-[var(--text)] text-lg">CareCompanion</span>
           </div>
-          <Link
-            href="/login"
-            className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold hover:opacity-90 transition-opacity shimmer-btn relative overflow-hidden"
-          >
-            Get Started
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/about" className="hidden sm:inline text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
+              About
+            </Link>
+            <Link href="/privacy" className="hidden sm:inline text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hidden sm:inline text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
+              Terms
+            </Link>
+            <Link
+              href="/login"
+              className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold hover:opacity-90 transition-opacity shimmer-btn relative overflow-hidden"
+            >
+              Get Started
+            </Link>
+          </div>
         </div>
       </nav>
 
@@ -1189,6 +1200,7 @@ export default function LandingPage() {
             <span className="text-[var(--text-muted)] text-sm">CareCompanion</span>
           </div>
           <div className="flex items-center gap-4 text-[var(--text-muted)] text-xs">
+            <Link href="/about" className="hover:text-[var(--text)] transition-colors">About</Link>
             <Link href="/privacy" className="hover:text-[var(--text)] transition-colors">Privacy</Link>
             <Link href="/terms" className="hover:text-[var(--text)] transition-colors">Terms</Link>
             <span>Your data stays yours.</span>

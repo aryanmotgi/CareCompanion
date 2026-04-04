@@ -379,7 +379,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
                 </button>
               </>
             ) : (
-              <a href="/api/oneup/authorize" className="gradient-btn inline-flex items-center gap-2.5 text-white font-semibold text-sm py-3 px-7 rounded-xl">
+              <a href="/api/fhir/authorize?provider=epic" className="gradient-btn inline-flex items-center gap-2.5 text-white font-semibold text-sm py-3 px-7 rounded-xl">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
                 </svg>
@@ -494,9 +494,9 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-white text-sm">Try with demo data</h4>
+              <h4 className="font-medium text-white text-sm">Try with cancer care demo</h4>
               <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                Load realistic sample data (medications, appointments, lab results) to explore the full app experience
+                Load realistic cancer treatment data (chemo meds, tumor markers, oncology appointments) to explore the full app
               </p>
             </div>
             <button
@@ -512,10 +512,10 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
                     await supabase.from('care_profiles').insert({
                       user_id: user.id,
                       patient_name: 'Mom',
-                      patient_age: 67,
+                      patient_age: 62,
                       relationship: 'parent',
-                      conditions: 'Type 2 Diabetes, Hypertension, High Cholesterol',
-                      allergies: 'Penicillin, Sulfa drugs',
+                      conditions: 'Stage IIIA Breast Cancer (HER2+, ER+)\nHypertension\nAnxiety',
+                      allergies: 'Sulfa drugs\nLatex',
                     });
                   }
 

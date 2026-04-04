@@ -16,8 +16,25 @@ const sourceSans = Source_Sans_3({
 });
 
 export const metadata: Metadata = {
-  title: 'CareCompanion',
-  description: 'Your AI-powered caregiving assistant',
+  title: 'CareCompanion AI',
+  description: 'AI-powered health organizer for cancer patients and their caregivers',
+  manifest: '/manifest.json',
+  icons: {
+    icon: '/logo.svg',
+    apple: '/logo-192.png',
+  },
+  openGraph: {
+    title: 'CareCompanion AI',
+    description: 'AI-powered health organizer for cancer patients and their caregivers',
+    url: 'https://carecompanionai.org',
+    siteName: 'CareCompanion AI',
+    type: 'website',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'CareCompanion',
+  },
 };
 
 export const viewport: Viewport = {
