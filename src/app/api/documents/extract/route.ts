@@ -1,61 +1,28 @@
-import { anthropic } from '@ai-sdk/anthropic'
-import { generateObject } from 'ai'
-import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { checkRateLimit } from '@/lib/rate-limit'
+import { type Extraction } from '@/lib/extraction-schema'
+import { extractDocument } from '@/lib/extract-document'
 
 export const maxDuration = 60
 
-const ExtractionSchema = z.object({
-  document_type: z.enum(['lab_report', 'medication', 'insurance_card', 'eob_bill', 'doctor_note']),
-  confidence: z.number().min(0).max(1),
-  extracted_data: z.object({
-    // Lab report fields
-    lab_results: z.array(z.object({
-      test_name: z.string(),
-      value: z.string(),
-      unit: z.string().optional(),
-      reference_range: z.string().optional(),
-      is_abnormal: z.boolean().optional(),
-      date_taken: z.string().optional(),
-    })).optional(),
-    // Medication fields
-    medications: z.array(z.object({
-      name: z.string(),
-      dose: z.string().optional(),
-      frequency: z.string().optional(),
-      prescribing_doctor: z.string().optional(),
-      refill_date: z.string().optional(),
-      pharmacy_phone: z.string().optional(),
-    })).optional(),
-    // Insurance fields
-    insurance: z.object({
-      provider: z.string().optional(),
-      member_id: z.string().optional(),
-      group_number: z.string().optional(),
-      plan_type: z.string().optional(),
-    }).optional(),
-    // EOB/Bill fields
-    claim: z.object({
-      provider_name: z.string().optional(),
-      service_date: z.string().optional(),
-      billed_amount: z.number().optional(),
-      paid_amount: z.number().optional(),
-      patient_responsibility: z.number().optional(),
-      denial_reason: z.string().optional(),
-    }).optional(),
-    // Doctor note summary
-    summary: z.string().optional(),
-    follow_up_notes: z.string().optional(),
-    doctor_name: z.string().optional(),
-  }),
-})
+const RATE_LIMIT_CONFIG = {
+  maxRequests: 10,
+  windowMs: 60 * 1000, // 10 requests per minute per user
+}
+
+const MAX_BASE64_LENGTH = 13_500_000 // ~10 MB decoded
 
 /**
  * POST /api/documents/extract
- * Accepts a document image (base64) and uses Claude Vision to extract structured data.
- * Optionally auto-imports extracted data into the appropriate tables.
+ *
+ * Unified document extraction API. Accepts either:
+ *   - FormData with `file` (image file) and optional `category` hint
+ *   - JSON with `image_base64` (base64-encoded image)
+ *
+ * Returns structured, Zod-validated extraction results.
+ * Optionally auto-imports extracted data into the care profile.
  */
 export async function POST(req: Request) {
   try {
@@ -63,52 +30,39 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-    const { image_base64, auto_import, document_id } = await req.json()
-
-    if (!image_base64) {
-      return NextResponse.json({ error: 'image_base64 is required' }, { status: 400 })
+    // Rate limiting
+    const rateCheck = checkRateLimit(`extract:${user.id}`, RATE_LIMIT_CONFIG)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait before scanning another document.' },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(Math.ceil(rateCheck.retryAfterMs / 1000)) },
+        }
+      )
     }
 
-    // Reject oversized payloads (~10 MB decoded ≈ ~13.5 MB base64)
-    const MAX_BASE64_LENGTH = 13_500_000
+    // Parse input: support both FormData and JSON
+    const { image_base64, auto_import, document_id, category } = await parseRequest(req)
+
+    if (!image_base64) {
+      return NextResponse.json({ error: 'No image provided' }, { status: 400 })
+    }
+
     if (image_base64.length > MAX_BASE64_LENGTH) {
       return NextResponse.json({ error: 'Image too large (max 10 MB)' }, { status: 413 })
     }
 
-    // Use Claude Vision to extract structured data from the document
-    const { object: extraction } = await generateObject({
-      model: anthropic('claude-sonnet-4-6'),
-      schema: ExtractionSchema,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              image: image_base64,
-            },
-            {
-              type: 'text',
-              text: `Analyze this medical document image and extract all structured data.
+    // Extract structured data using Claude Vision
+    const extraction = await extractDocument(image_base64, category)
 
-Identify the document type:
-- lab_report: Contains test names, values, reference ranges
-- medication: Prescription label or medication list
-- insurance_card: Insurance card with member ID, group number
-- eob_bill: Explanation of Benefits or medical bill
-- doctor_note: Clinical notes, discharge summary, visit notes
+    // Auto-import if requested and confidence is sufficient
+    // Use higher threshold (0.85) for safety-critical data like medications and labs
+    const confidenceThreshold = (extraction.document_type === 'medication' || extraction.document_type === 'lab_report')
+      ? 0.85
+      : 0.7
 
-Extract every piece of data you can identify. For lab results, determine if values are abnormal relative to the reference range. For medications, extract the full prescription details. For insurance, get all identifiers. For bills, get all amounts.
-
-Be thorough and accurate. If you can't read a field clearly, omit it rather than guessing.`,
-            },
-          ],
-        },
-      ],
-    })
-
-    // Auto-import if requested
-    if (auto_import && extraction.confidence >= 0.7) {
+    if (auto_import && extraction.confidence >= confidenceThreshold) {
       const admin = createAdminClient()
       const { data: profile } = await supabase
         .from('care_profiles')
@@ -142,40 +96,118 @@ Be thorough and accurate. If you can't read a field clearly, omit it rather than
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function autoImportExtraction(admin: any, userId: string, profileId: string, extraction: z.infer<typeof ExtractionSchema>) {
-  const counts = { lab_results: 0, medications: 0, insurance: 0, claims: 0 }
-  const data = extraction.extracted_data
+// --- Request parsing ---
 
-  // Import lab results
-  if (data.lab_results?.length) {
-    const labs = data.lab_results.map((lab) => ({
-      user_id: userId,
-      test_name: lab.test_name,
-      value: lab.value,
-      unit: lab.unit || null,
-      reference_range: lab.reference_range || null,
-      is_abnormal: lab.is_abnormal ?? false,
-      date_taken: lab.date_taken || new Date().toISOString().split('T')[0],
-      source: 'document_scan',
-    }))
-    const { error } = await admin.from('lab_results').insert(labs)
-    if (!error) counts.lab_results = labs.length
+interface ParsedRequest {
+  image_base64: string | null
+  auto_import: boolean
+  document_id: string | null
+  category: string | null
+}
+
+async function parseRequest(req: Request): Promise<ParsedRequest> {
+  const contentType = req.headers.get('content-type') || ''
+
+  if (contentType.includes('multipart/form-data')) {
+    // FormData upload (from DocumentScanner, CategoryScanner, CvsImportModal)
+    const formData = await req.formData()
+    const file = (formData.get('file') || formData.get('image')) as File | null
+    const category = formData.get('category') as string | null
+    const autoImport = formData.get('auto_import') === 'true'
+
+    if (!file) return { image_base64: null, auto_import: false, document_id: null, category }
+
+    const bytes = await file.arrayBuffer()
+    const base64 = Buffer.from(bytes).toString('base64')
+
+    return {
+      image_base64: base64,
+      auto_import: autoImport,
+      document_id: null,
+      category,
+    }
   }
 
-  // Import medications
+  // JSON body (programmatic usage)
+  const body = await req.json()
+  return {
+    image_base64: body.image_base64 || null,
+    auto_import: body.auto_import || false,
+    document_id: body.document_id || null,
+    category: body.category || null,
+  }
+}
+
+// --- Auto-import logic ---
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function autoImportExtraction(admin: any, userId: string, profileId: string, extraction: Extraction) {
+  const counts = { lab_results: 0, medications: 0, insurance: 0, claims: 0, appointments: 0, conditions: 0 }
+  const data = extraction.extracted_data
+
+  // Import lab results (with duplicate detection by test_name + date)
+  if (data.lab_results?.length) {
+    const { data: existingLabs } = await admin
+      .from('lab_results')
+      .select('test_name, date_taken')
+      .eq('user_id', userId)
+
+    const existingKeys = new Set(
+      (existingLabs || []).map((l: { test_name: string; date_taken: string | null }) =>
+        `${l.test_name.toLowerCase()}|${l.date_taken || ''}`
+      )
+    )
+
+    const today = new Date().toISOString().split('T')[0]
+    const newLabs = data.lab_results
+      .filter((lab) => {
+        const key = `${lab.test_name.toLowerCase()}|${lab.date_taken || today}`
+        return !existingKeys.has(key)
+      })
+      .map((lab) => ({
+        user_id: userId,
+        test_name: lab.test_name,
+        value: lab.value,
+        unit: lab.unit || null,
+        reference_range: lab.reference_range || null,
+        is_abnormal: lab.is_abnormal ?? false,
+        date_taken: lab.date_taken || today,
+        source: 'document_scan',
+      }))
+
+    if (newLabs.length > 0) {
+      const { error } = await admin.from('lab_results').insert(newLabs)
+      if (!error) counts.lab_results = newLabs.length
+    }
+  }
+
+  // Import medications (with duplicate detection by name)
   if (data.medications?.length) {
-    const meds = data.medications.map((med) => ({
-      care_profile_id: profileId,
-      name: med.name,
-      dose: med.dose || null,
-      frequency: med.frequency || null,
-      prescribing_doctor: med.prescribing_doctor || null,
-      refill_date: med.refill_date || null,
-      pharmacy_phone: med.pharmacy_phone || null,
-    }))
-    const { error } = await admin.from('medications').insert(meds)
-    if (!error) counts.medications = meds.length
+    const { data: existingMeds } = await admin
+      .from('medications')
+      .select('name')
+      .eq('care_profile_id', profileId)
+
+    const existingNames = new Set(
+      (existingMeds || []).map((m: { name: string }) => m.name.toLowerCase())
+    )
+
+    const newMeds = data.medications
+      .filter((med) => !existingNames.has(med.name.toLowerCase()))
+      .map((med) => ({
+        care_profile_id: profileId,
+        name: med.name,
+        dose: med.dose || null,
+        frequency: med.frequency || null,
+        prescribing_doctor: med.prescribing_doctor || null,
+        refill_date: med.refill_date || null,
+        pharmacy_phone: med.pharmacy_phone || null,
+      }))
+
+    if (newMeds.length > 0) {
+      const { error } = await admin.from('medications').insert(newMeds)
+      if (!error) counts.medications = newMeds.length
+    }
   }
 
   // Import insurance
@@ -205,10 +237,44 @@ async function autoImportExtraction(admin: any, userId: string, profileId: strin
     if (!error) counts.claims = 1
   }
 
+  // Import appointments
+  if (data.appointments?.length) {
+    const appts = data.appointments.map((appt) => ({
+      care_profile_id: profileId,
+      doctor_name: appt.doctor_name || null,
+      date_time: appt.date_time || null,
+      purpose: appt.purpose || null,
+    }))
+    const { error } = await admin.from('appointments').insert(appts)
+    if (!error) counts.appointments = appts.length
+  }
+
+  // Import conditions (append to care profile)
+  if (data.conditions?.length) {
+    const { data: profile } = await admin
+      .from('care_profiles')
+      .select('conditions')
+      .eq('id', profileId)
+      .single()
+
+    const existing = profile?.conditions || ''
+    const newConditions = data.conditions.filter(
+      (c: string) => !existing.toLowerCase().includes(c.toLowerCase())
+    )
+
+    if (newConditions.length > 0) {
+      const updated = existing
+        ? `${existing}\n${newConditions.join('\n')}`
+        : newConditions.join('\n')
+      await admin.from('care_profiles').update({ conditions: updated }).eq('id', profileId)
+      counts.conditions = newConditions.length
+    }
+  }
+
   return counts
 }
 
-function getDocumentDescription(extraction: z.infer<typeof ExtractionSchema>): string {
+function getDocumentDescription(extraction: Extraction): string {
   const data = extraction.extracted_data
   switch (extraction.document_type) {
     case 'lab_report':
