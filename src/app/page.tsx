@@ -109,12 +109,14 @@ function FloatingParticles() {
 }
 
 /* ── Word-by-word reveal heading ── */
-function WordReveal({ text, className = '' }: { text: string; className?: string }) {
+function WordRevealH({ text, className = '' }: { text: string; className?: string }) {
+  const words = text.split(' ');
   return (
     <span className={`word-reveal-container ${className}`}>
-      {text.split(' ').map((word, i) => (
-        <span key={i} className="word" style={{ transitionDelay: `${i * 80}ms` }}>
-          {word}{' '}
+      {words.map((word, i) => (
+        <span key={i}>
+          <span className="word" style={{ transitionDelay: `${i * 80}ms` }}>{word}</span>
+          {i < words.length - 1 && <span className="word" style={{ transitionDelay: `${i * 80}ms` }}>&nbsp;</span>}
         </span>
       ))}
     </span>
@@ -886,6 +888,100 @@ function AnimatedStat({ end, suffix = '', label }: { end: number; suffix?: strin
   );
 }
 
+/* ── Before vs After — interactive comparison ── */
+const COMPARISONS = [
+  { before: 'Medication info scattered across 3 apps', after: 'Everything in one place for your whole family', icon: '💊' },
+  { before: 'Forget to refill until it\'s too late', after: 'Smart alerts days before you run out', icon: '⏰' },
+  { before: 'Can\'t remember what the doctor said', after: 'AI prepares questions for every visit', icon: '🩺' },
+  { before: 'Family group chat is chaos', after: 'Care team shares one clear dashboard', icon: '👨‍👩‍👦' },
+  { before: 'Lab results make no sense', after: 'AI explains results in plain English', icon: '🔬' },
+  { before: 'Insurance claims pile up unread', after: 'AI helps you understand and appeal denials', icon: '📋' },
+];
+
+function BeforeAfterSection() {
+  const [showAfter, setShowAfter] = useState(false);
+
+  // Auto-toggle every 5 seconds
+  useEffect(() => {
+    const timer = setInterval(() => setShowAfter((v) => !v), 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <section className="py-16 sm:py-20 px-4 sm:px-6 bg-[rgba(167,139,250,0.02)]">
+      <div className="max-w-3xl mx-auto">
+        <h2 className="text-center font-display text-fluid-2xl font-bold text-[var(--text)] mb-4 blur-reveal">
+          <WordRevealH text="The difference is real" />
+        </h2>
+        <p className="text-center text-[var(--text-secondary)] text-fluid-sm mb-10 blur-reveal">
+          Watch how CareCompanion changes your day.
+        </p>
+
+        {/* Toggle switch — also clickable */}
+        <div className="flex justify-center mb-10 blur-reveal">
+          <button
+            onClick={() => setShowAfter(!showAfter)}
+            className="relative flex items-center rounded-full p-1 border border-[var(--border)] bg-[var(--bg-warm)]"
+          >
+            <span className={`relative z-10 px-5 py-2 rounded-full text-sm font-semibold transition-colors duration-300 ${!showAfter ? 'text-white' : 'text-[var(--text-muted)]'}`}>
+              Before
+            </span>
+            <span className={`relative z-10 px-5 py-2 rounded-full text-sm font-semibold transition-colors duration-300 ${showAfter ? 'text-white' : 'text-[var(--text-muted)]'}`}>
+              After
+            </span>
+            <div
+              className={`absolute top-1 h-[calc(100%-8px)] rounded-full transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${showAfter ? 'bg-gradient-to-r from-[#6366F1] to-[#A78BFA]' : 'bg-red-500/80'}`}
+              style={{
+                width: 'calc(50% - 4px)',
+                left: showAfter ? 'calc(50% + 2px)' : '4px',
+              }}
+            />
+          </button>
+        </div>
+
+        {/* Comparison cards */}
+        <div className="space-y-3">
+          {COMPARISONS.map((item, i) => (
+            <div
+              key={i}
+              className={`flex items-center gap-4 rounded-xl p-4 sm:p-5 border transition-all duration-500 ${
+                showAfter
+                  ? 'bg-[rgba(99,102,241,0.06)] border-[rgba(99,102,241,0.15)]'
+                  : 'bg-white/[0.02] border-white/[0.06]'
+              }`}
+              style={{ transitionDelay: `${i * 50}ms` }}
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-all duration-500 ${
+                showAfter ? 'bg-[#6366F1]/15 scale-110' : 'bg-white/[0.04] grayscale'
+              }`} style={{ transitionDelay: `${i * 50}ms` }}>
+                {item.icon}
+              </div>
+              <div className="flex-1 min-w-0 relative" style={{ minHeight: '1.5rem' }}>
+                {/* Before text */}
+                <p className={`text-sm leading-relaxed transition-all duration-500 ${
+                  showAfter
+                    ? 'opacity-0 -translate-y-3 absolute top-0 left-0 right-0'
+                    : 'opacity-100 translate-y-0 text-[var(--text-secondary)]'
+                }`} style={{ transitionDelay: `${i * 50}ms` }}>
+                  <span className="text-red-400/70 mr-1.5">✕</span>{item.before}
+                </p>
+                {/* After text */}
+                <p className={`text-sm leading-relaxed transition-all duration-500 ${
+                  showAfter
+                    ? 'opacity-100 translate-y-0 text-[var(--text)]'
+                    : 'opacity-0 translate-y-3 absolute top-0 left-0 right-0'
+                }`} style={{ transitionDelay: `${i * 50}ms` }}>
+                  <span className="text-[#A78BFA] mr-1.5">✓</span>{item.after}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ── Main page ── */
 export default function LandingPage() {
   useScrollReveal();
@@ -1016,58 +1112,8 @@ export default function LandingPage() {
 
       <SectionDivider />
 
-      {/* ═══════ BEFORE vs AFTER COMPARISON ═══════ */}
-      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-[rgba(167,139,250,0.02)]">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-center font-display text-fluid-2xl font-bold text-[var(--text)] mb-8 sm:mb-12 blur-reveal"><WordRevealH text="Life before vs. after" /></h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-            {/* Before */}
-            <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 scroll-reveal-left">
-              <div className="flex items-center gap-2 mb-5">
-                <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-sm">😩</div>
-                <h3 className="font-display font-bold text-red-400 text-sm">Without CareCompanion</h3>
-              </div>
-              <div className="space-y-3 stagger-list-container">
-                {[
-                  'Medication info scattered across 3 apps',
-                  'Forget to refill until it\'s too late',
-                  'Can\'t remember what the doctor said',
-                  'Family group chat is chaos',
-                  'Lab results make no sense',
-                  'Insurance claims pile up unread',
-                ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-2 stagger-list-item" style={{ transitionDelay: `${i * 100}ms` }}>
-                    <span className="text-red-400/60 text-xs mt-0.5">✕</span>
-                    <span className="text-[var(--text-secondary)] text-xs leading-relaxed">{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* After */}
-            <div className="bg-[rgba(99,102,241,0.04)] border border-[rgba(99,102,241,0.12)] rounded-2xl p-6 scroll-reveal-right">
-              <div className="flex items-center gap-2 mb-5">
-                <div className="w-8 h-8 rounded-full bg-[#6366F1]/10 flex items-center justify-center text-sm">😌</div>
-                <h3 className="font-display font-bold text-[#A78BFA] text-sm">With CareCompanion</h3>
-              </div>
-              <div className="space-y-3 stagger-list-container">
-                {[
-                  'Everything in one place for your whole family',
-                  'Smart alerts before you run out',
-                  'AI prepares questions for every visit',
-                  'Care team shares one clear view',
-                  'AI explains results in plain English',
-                  'Denied claims? AI helps you appeal',
-                ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-2 stagger-list-item" style={{ transitionDelay: `${i * 100}ms` }}>
-                    <span className="text-[#A78BFA] text-xs mt-0.5">✓</span>
-                    <span className="text-[var(--text-secondary)] text-xs leading-relaxed">{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* ═══════ BEFORE vs AFTER — INTERACTIVE TOGGLE ═══════ */}
+      <BeforeAfterSection />
 
       <SectionDivider />
 
