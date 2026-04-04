@@ -1,8 +1,19 @@
+import Link from 'next/link';
 import { LoginForm } from '@/components/LoginForm';
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen min-h-dvh flex items-center justify-center px-4 sm:px-6 bg-[var(--bg)]">
+    <div className="min-h-screen min-h-dvh flex flex-col items-center justify-center px-4 sm:px-6 bg-[var(--bg)]">
+      {/* Back to home */}
+      <div className="w-full max-w-sm mb-6">
+        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          Back to home
+        </Link>
+      </div>
+
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#6366F1] to-[#A78BFA] shadow-lg shadow-[#6366F1]/20 mb-5">
