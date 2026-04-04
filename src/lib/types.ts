@@ -8,6 +8,11 @@ export interface CareProfile {
   allergies: string | null;
   emergency_contact_name?: string | null;
   emergency_contact_phone?: string | null;
+  cancer_type?: string | null;
+  cancer_stage?: string | null;
+  treatment_phase?: string | null;
+  onboarding_priorities?: string[] | null;
+  onboarding_completed?: boolean;
   created_at: string;
 }
 
