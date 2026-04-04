@@ -2,21 +2,34 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function POST(req: Request) {
-  // Auth check — verify requesting user matches the user_id
+  // Auth: either (a) authenticated user session, or (b) server-side OAuth callback
+  // with a valid connected app proving the user_id is legitimate.
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { user_id } = await req.json();
   if (!user_id) {
     return Response.json({ error: 'user_id required' }, { status: 400 });
   }
 
-  if (user_id !== user.id) {
+  // If we have a session, verify ownership
+  if (user && user_id !== user.id) {
     return Response.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const admin = createAdminClient();
+
+  // If no session (server-side callback), verify the user has a connected app
+  if (!user) {
+    const { data: app } = await admin
+      .from('connected_apps')
+      .select('id')
+      .eq('user_id', user_id)
+      .eq('source', 'google_calendar')
+      .limit(1)
+      .single();
+    if (!app) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   // Get connection
   const { data: connection } = await admin

@@ -18,22 +18,32 @@ async function fetchFhirBundle(accessToken: string, resourceType: string): Promi
 }
 
 export async function POST(req: Request) {
-  // Auth check — verify requesting user matches the user_id
   const { createClient } = await import('@/lib/supabase/server');
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { user_id } = await req.json();
   if (!user_id) {
     return Response.json({ error: 'user_id required' }, { status: 400 });
   }
 
-  if (user_id !== user.id) {
+  if (user && user_id !== user.id) {
     return Response.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const admin = createAdminClient();
+
+  // If no session (server-side OAuth callback), verify connected app exists
+  if (!user) {
+    const { data: app } = await admin
+      .from('connected_apps')
+      .select('id')
+      .eq('user_id', user_id)
+      .eq('source', 'health_system')
+      .limit(1)
+      .single();
+    if (!app) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   const { data: connection } = await admin
     .from('connected_apps')

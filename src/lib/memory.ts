@@ -47,17 +47,7 @@ export async function extractAndSaveMemories(
     if (SKIP_PATTERNS.test(userMessage.trim())) return;
     if (userMessage.length < MIN_MESSAGE_LENGTH && assistantMessage.length < MIN_MESSAGE_LENGTH) return;
 
-    // Guard: check dedup window — skip if we extracted within the last minute for this user
     const admin = createAdminClient();
-    const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
-    const { data: recentMemories } = await admin
-      .from('memories')
-      .select('id')
-      .eq('user_id', userId)
-      .gte('created_at', oneMinuteAgo)
-      .limit(1);
-
-    if (recentMemories && recentMemories.length > 0) return;
 
     const existingFacts = existingMemories.map((m) => `[${m.category}] ${m.fact}`).join('\n');
 
