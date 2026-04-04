@@ -50,10 +50,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${appUrl}/settings?error=save_failed`);
     }
 
-    // Trigger initial sync
+    // Trigger initial sync (pass internal secret so sync route trusts the callback)
     await fetch(`${appUrl}/api/sync/google-calendar`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(process.env.CRON_SECRET ? { 'x-internal-secret': process.env.CRON_SECRET } : {}),
+      },
       body: JSON.stringify({ user_id: state }),
     });
 

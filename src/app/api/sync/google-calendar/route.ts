@@ -19,16 +19,13 @@ export async function POST(req: Request) {
 
   const admin = createAdminClient();
 
-  // If no session (server-side callback), verify the user has a connected app
+  // If no session (server-side OAuth callback), verify internal secret
   if (!user) {
-    const { data: app } = await admin
-      .from('connected_apps')
-      .select('id')
-      .eq('user_id', user_id)
-      .eq('source', 'google_calendar')
-      .limit(1)
-      .single();
-    if (!app) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const internalSecret = req.headers.get('x-internal-secret');
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret || internalSecret !== cronSecret) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
   }
 
   // Get connection

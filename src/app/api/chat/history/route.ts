@@ -12,7 +12,8 @@ export async function GET(req: Request) {
   if (!user) return new Response('Unauthorized', { status: 401 })
 
   const url = new URL(req.url)
-  const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100)
+  const rawLimit = parseInt(url.searchParams.get('limit') || '50', 10)
+  const limit = Number.isFinite(rawLimit) ? Math.min(rawLimit, 100) : 50
   const before = url.searchParams.get('before') // ISO timestamp cursor
 
   let query = supabase
