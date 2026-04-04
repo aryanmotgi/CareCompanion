@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 
 /* ── Cycling keyword with typing effect ── */
-const CYCLING_WORDS = ['medications', 'appointments', 'lab results', 'insurance', 'refills'];
+const CYCLING_WORDS = ['chemo schedules', 'tumor markers', 'oncology visits', 'treatment side effects', 'lab results'];
 function CyclingWord() {
   const words = CYCLING_WORDS;
   const [wordIdx, setWordIdx] = useState(0);
@@ -784,10 +784,10 @@ function ScanScreen() {
 /* ── Feature Carousel — cards slide through the phone ── */
 function FeatureShowcase() {
   const cards = [
-    { badge: 'Dashboard', color: '#ef4444', icon: '📊', title: 'Smart Alerts', desc: 'Urgent refills, appointments, and abnormal labs surfaced automatically.' },
-    { badge: 'Scan', color: '#818CF8', icon: '📸', title: 'Scan Documents', desc: 'Photo a prescription or lab report. AI extracts and organizes everything.' },
-    { badge: 'AI Chat', color: '#A78BFA', icon: '💬', title: 'Ask AI Anything', desc: 'Questions about meds, labs, insurance. Your AI companion knows it all.' },
-    { badge: 'Family', color: '#34D399', icon: '👨‍👩‍👦', title: 'Care Team', desc: 'Invite family, detect conflicts, find backup care when plans collide.' },
+    { badge: 'Dashboard', color: '#ef4444', icon: '📊', title: 'Treatment Tracker', desc: 'Chemo cycles, tumor markers, and blood counts surfaced automatically.' },
+    { badge: 'Scan', color: '#818CF8', icon: '📸', title: 'Scan Records', desc: 'Photo a lab report, pathology results, or prescription. AI extracts everything.' },
+    { badge: 'AI Chat', color: '#A78BFA', icon: '💬', title: 'Oncology AI', desc: 'Questions about chemo side effects, tumor markers, treatment options.' },
+    { badge: 'Care Team', color: '#34D399', icon: '🎗️', title: 'Care Team', desc: 'Coordinate with family caregivers and your oncology team.' },
   ];
 
   const [active, setActive] = useState(0);
@@ -894,12 +894,12 @@ function AnimatedStat({ end, suffix = '', label }: { end: number; suffix?: strin
 
 /* ── Before vs After — interactive comparison ── */
 const COMPARISONS = [
-  { before: 'Medication info scattered across 3 apps', after: 'Everything in one place for your whole family', icon: '💊' },
-  { before: 'Forget to refill until it\'s too late', after: 'Smart alerts days before you run out', icon: '⏰' },
-  { before: 'Can\'t remember what the doctor said', after: 'AI prepares questions for every visit', icon: '🩺' },
-  { before: 'Family group chat is chaos', after: 'Care team shares one clear dashboard', icon: '👨‍👩‍👦' },
-  { before: 'Lab results make no sense', after: 'AI explains results in plain English', icon: '🔬' },
-  { before: 'Insurance claims pile up unread', after: 'AI helps you understand and appeal denials', icon: '📋' },
+  { before: 'Chemo schedule, meds, and labs in separate apps', after: 'Everything in one place for your cancer care', icon: '💊' },
+  { before: 'Forget which cycle day you\'re on', after: 'Treatment tracker shows exactly where you are', icon: '⏰' },
+  { before: 'Can\'t remember what the oncologist said', after: 'AI prepares questions for every oncology visit', icon: '🩺' },
+  { before: 'Family caregivers out of the loop', after: 'Care team shares one clear treatment dashboard', icon: '🎗️' },
+  { before: 'Tumor markers and blood counts confusing', after: 'AI explains results and flags what matters', icon: '🔬' },
+  { before: 'Side effects hit and you don\'t know what\'s normal', after: 'AI tells you what to expect each cycle day', icon: '📋' },
 ];
 
 function BeforeAfterSection() {
@@ -1042,13 +1042,13 @@ export default function LandingPage() {
           <div className="flex-1 text-center lg:text-left mt-8 lg:mt-0">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#A78BFA]/10 border border-[#A78BFA]/20 mb-6 animate-fade-in">
               <div className="w-1.5 h-1.5 rounded-full bg-[#A78BFA] animate-pulse" />
-              <span className="text-[#A78BFA] text-xs font-medium">AI-Powered Caregiving</span>
+              <span className="text-[#A78BFA] text-xs font-medium">AI-Powered Cancer Care</span>
             </div>
             <h1 className="font-display text-fluid-3xl sm:text-fluid-4xl font-bold leading-tight mb-4 text-shimmer">
-              Your family&apos;s health,<br />finally in one place
+              Cancer care,<br />finally in one place
             </h1>
             <p className="text-[var(--text-secondary)] text-fluid-base max-w-lg mx-auto lg:mx-0 mb-8 leading-relaxed animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-              Stop juggling 5 apps for <CyclingWord />. CareCompanion brings it all together, so you can focus on <strong className="text-[var(--text)]">the people you love</strong>.
+              Stop juggling 5 apps for <CyclingWord />. CareCompanion brings it all together, so you can focus on <strong className="text-[var(--text)]">what matters most</strong>.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
               <Link
@@ -1074,7 +1074,7 @@ export default function LandingPage() {
       <section id="features" className="py-16 sm:py-20 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-center font-display text-fluid-2xl font-bold text-[var(--text)] mb-3 blur-reveal"><WordRevealH text="What you can do" /></h2>
-          <p className="text-center text-[var(--text-secondary)] text-fluid-sm mb-12 sm:mb-16 blur-reveal">Everything a caregiver needs. Nothing they don&apos;t.</p>
+          <p className="text-center text-[var(--text-secondary)] text-fluid-sm mb-12 sm:mb-16 blur-reveal">Everything a cancer patient and caregiver needs. Nothing they don&apos;t.</p>
           <FeatureShowcase />
         </div>
       </section>
@@ -1085,12 +1085,12 @@ export default function LandingPage() {
       <section className="py-16 sm:py-20 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-center font-display text-fluid-2xl font-bold text-[var(--text)] mb-3 blur-reveal"><WordRevealH text="How it works" /></h2>
-          <p className="text-center text-[var(--text-secondary)] text-fluid-sm mb-10 sm:mb-12 blur-reveal">Three steps. Five minutes. Your whole family organized.</p>
+          <p className="text-center text-[var(--text-secondary)] text-fluid-sm mb-10 sm:mb-12 blur-reveal">Three steps. Five minutes. Your cancer care organized.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
             {[
-              { step: '1', icon: '👤', title: 'Add your loved ones', desc: 'Create a profile for each person you care for. Add their medications, doctors, and conditions.' },
-              { step: '2', icon: '📸', title: 'Scan their documents', desc: 'Photo a prescription bottle, lab report, or insurance card. AI extracts and organizes everything.' },
-              { step: '3', icon: '✨', title: 'Get AI-powered insights', desc: 'Ask questions, get refill alerts, prepare for appointments, and coordinate with family.' },
+              { step: '1', icon: '🎗️', title: 'Add your diagnosis', desc: 'Enter your cancer type, treatment plan, medications, and oncology team. Or connect your patient portal.' },
+              { step: '2', icon: '📸', title: 'Scan your records', desc: 'Photo a lab report, pathology results, or prescription. AI extracts and organizes everything.' },
+              { step: '3', icon: '✨', title: 'Navigate your treatment', desc: 'Track side effects, prep for oncology visits, understand tumor markers, and coordinate with caregivers.' },
             ].map((item, i) => (
               <div key={i} className="relative blur-reveal" style={{ transitionDelay: `${i * 150}ms` }}>
                 <TiltCard>
@@ -1153,8 +1153,8 @@ export default function LandingPage() {
       <section className="py-16 sm:py-20 px-4 sm:px-6 bg-[rgba(167,139,250,0.02)]">
         <div className="max-w-3xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 text-center">
-            <AnimatedStat end={50} suffix="+" label="Medications tracked" />
-            <AnimatedStat end={200} suffix="+" label="Appointments managed" />
+            <AnimatedStat end={50} suffix="+" label="Chemo drugs tracked" />
+            <AnimatedStat end={200} suffix="+" label="Oncology visits managed" />
             <AnimatedStat end={100} suffix="%" label="Free to use" />
             <AnimatedStat end={5} suffix=" min" label="Setup time" />
           </div>
@@ -1189,7 +1189,7 @@ export default function LandingPage() {
             <span className="text-[var(--text-muted)] text-sm">CareCompanion</span>
           </div>
           <div className="text-[var(--text-muted)] text-xs">
-            Built with care. Your health data stays yours.
+            Built for cancer patients and their caregivers. Your data stays yours.
           </div>
         </div>
       </footer>

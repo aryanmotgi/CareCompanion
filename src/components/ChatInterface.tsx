@@ -51,6 +51,13 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
     'Prepare for my next appointment',
     'Explain my medications',
     'Help me understand my diagnosis',
+    'Log today\'s symptoms',
+    'Prep for oncology appointment',
+    'Track medication side effects',
+    'Review my treatment timeline',
+    'Explain my tumor markers',
+    'What should I expect this chemo cycle?',
+    'Help me understand my treatment plan',
   ])
 
   const isAllowedPrompt = (prompt: string) =>
@@ -90,10 +97,10 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
   };
 
   const starterPrompts = [
-    { icon: '💊', text: 'Explain my medications', desc: 'Doses, side effects, interactions' },
-    { icon: '📅', text: 'Prepare for my next appointment', desc: 'Questions to ask your doctor' },
-    { icon: '🔬', text: 'How are my vitals?', desc: 'Lab results and trends' },
-    { icon: '🧠', text: 'Help me understand my diagnosis', desc: 'Plain-language explanations' },
+    { icon: '💉', text: 'What should I expect this chemo cycle?', desc: 'Side effects, timing, what to watch for' },
+    { icon: '📊', text: 'Explain my tumor markers', desc: 'CEA, CA-125, PSA trends explained' },
+    { icon: '📅', text: 'Prep for oncology appointment', desc: 'Questions to ask your oncologist' },
+    { icon: '🧠', text: 'Help me understand my treatment plan', desc: 'Plain-language explanations' },
   ];
 
   return (

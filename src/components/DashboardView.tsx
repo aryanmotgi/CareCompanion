@@ -223,7 +223,7 @@ export function DashboardView({
       variant: 'quick-ask',
       label: 'AI ASSISTANT',
       title: 'Ask CareCompanion',
-      subtitle: 'Get help understanding your health data',
+      subtitle: 'Get help understanding your cancer care',
       priority: 99,
       action: 'Start a conversation',
       href: '/chat',
@@ -283,7 +283,7 @@ export function DashboardView({
         <div className="mt-6">
           <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2">Quick Ask</div>
           <div className="flex flex-wrap gap-2">
-            {['Prepare for my appointment', 'Explain my lab results', 'What should I ask my doctor?'].map((prompt) => (
+            {['Log today\'s symptoms', 'Prep for oncology appointment', 'Track medication side effects', 'Review my treatment timeline'].map((prompt) => (
               <a
                 key={prompt}
                 href={`/chat?prompt=${encodeURIComponent(prompt)}`}

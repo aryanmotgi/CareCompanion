@@ -31,9 +31,9 @@ export function ProfileDashboard({ profile, doctors, labResults }: ProfileDashbo
     labResults.find((l) => l.test_name.toLowerCase().includes(testName.toLowerCase()))
 
   const vitals = [
-    { label: 'Blood Pressure', lab: getLatestLab('Blood Pressure') },
-    { label: 'A1C', lab: getLatestLab('A1C') },
-    { label: 'LDL', lab: getLatestLab('LDL') },
+    { label: 'WBC', lab: getLatestLab('WBC') || getLatestLab('White Blood') },
+    { label: 'Hemoglobin', lab: getLatestLab('Hemoglobin') || getLatestLab('Hgb') },
+    { label: 'Platelets', lab: getLatestLab('Platelet') },
   ]
 
   return (
@@ -71,7 +71,7 @@ export function ProfileDashboard({ profile, doctors, labResults }: ProfileDashbo
       {/* Vitals Snapshot */}
       {labResults.length > 0 && (
         <div className="mb-6">
-          <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2">Vitals Snapshot</div>
+          <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2">Blood Count Snapshot</div>
           <div className="grid grid-cols-3 gap-2">
             {vitals.map((v) => {
               const parsed = v.lab ? parseLabValue(v.lab.value, v.lab.reference_range || '') : null
