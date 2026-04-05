@@ -49,7 +49,19 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
   const router = useRouter();
   const supabase = createClient();
 
-  const [step, setStep] = useState(1);
+  // Resume from step 4 if user went through FHIR connect flow
+  const getInitialStep = () => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('onboarding_step');
+      if (saved === '4') {
+        localStorage.removeItem('onboarding_step');
+        return 4;
+      }
+    }
+    return 1;
+  };
+
+  const [step, setStep] = useState(getInitialStep);
   const [loading, setLoading] = useState(false);
   const [slideDir, setSlideDir] = useState<'left' | 'right'>('left');
   const [animKey, setAnimKey] = useState(0);
@@ -127,6 +139,11 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
         } else {
           await supabase.from('care_profiles').insert(profileData);
         }
+      }
+
+      // Save step so we can resume at step 4 after returning from external flows
+      if (dataSource === 'connect' || dataSource === 'scan' || dataSource === 'manual') {
+        localStorage.setItem('onboarding_step', '4');
       }
 
       // Route based on data source choice
@@ -340,13 +357,13 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
             {/* Cancer type */}
             <div>
               <label className="block text-sm font-medium text-[var(--text-secondary)] mb-3">Cancer type</label>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {CANCER_TYPES.map((t) => (
                   <button
                     key={t}
                     type="button"
                     onClick={() => setCancerType(cancerType === t ? '' : t)}
-                    className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
+                    className={`px-3 py-2.5 rounded-xl text-sm font-medium border transition-all text-left ${
                       cancerType === t
                         ? 'border-[#A78BFA]/50 bg-[#A78BFA]/15 text-white'
                         : 'border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:border-white/20 hover:text-white'

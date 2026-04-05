@@ -18,7 +18,9 @@ async function DashboardContent() {
     .eq('user_id', user.id)
     .single();
 
-  if (!profile) redirect('/setup');
+  if (!profile) redirect('/onboarding');
+
+  const onboardingComplete = profile.onboarding_completed === true;
 
   const [
     { data: medications },
@@ -44,6 +46,8 @@ async function DashboardContent() {
       cancerType={profile.cancer_type || null}
       cancerStage={profile.cancer_stage || null}
       treatmentPhase={profile.treatment_phase || null}
+      onboardingComplete={onboardingComplete}
+      priorities={profile.onboarding_priorities || null}
     />
   );
 }

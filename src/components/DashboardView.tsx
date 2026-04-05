@@ -17,6 +17,8 @@ interface DashboardViewProps {
   cancerType?: string | null
   cancerStage?: string | null
   treatmentPhase?: string | null
+  onboardingComplete?: boolean
+  priorities?: string[] | null
 }
 
 const PHASE_LABELS: Record<string, { label: string; color: string }> = {
@@ -36,6 +38,8 @@ export function DashboardView({
   cancerType,
   cancerStage,
   treatmentPhase,
+  onboardingComplete = true,
+  priorities,
 }: DashboardViewProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const hour = new Date().getHours()
@@ -244,9 +248,21 @@ export function DashboardView({
       href: '/chat',
     })
 
-    result.sort((a, b) => a.priority - b.priority)
+    result.sort((a, b) => {
+      // Boost cards matching user priorities
+      const priorityMap: Record<string, string[]> = {
+        side_effects: ['quick-ask'],
+        medications: ['med-refill', 'med-overdue'],
+        appointments: ['appt-upcoming', 'appt-today'],
+        lab_results: ['lab-abnormal'],
+        insurance: ['claim-denied'],
+      }
+      const aBoost = priorities?.some(p => priorityMap[p]?.some(prefix => a.id.startsWith(prefix))) ? -100 : 0
+      const bBoost = priorities?.some(p => priorityMap[p]?.some(prefix => b.id.startsWith(prefix))) ? -100 : 0
+      return (a.priority + aBoost) - (b.priority + bBoost)
+    })
     return result
-  }, [medications, appointments, labResults, claims])
+  }, [medications, appointments, labResults, claims, priorities])
 
   const actionCount = cards.filter((c) => c.variant !== 'quick-ask').length
 
@@ -277,6 +293,27 @@ export function DashboardView({
         </div>
       )}
       {!cancerType && !treatmentPhase && <div className="mb-3 sm:mb-4" />}
+
+      {/* Onboarding banner for existing users */}
+      {!onboardingComplete && (
+        <a
+          href="/onboarding"
+          className="block mb-4 sm:mb-5 rounded-2xl border border-[#A78BFA]/30 bg-[#A78BFA]/5 p-4 hover:bg-[#A78BFA]/10 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#A78BFA]/20 flex items-center justify-center text-lg flex-shrink-0">
+              ✨
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white">Complete your profile</p>
+              <p className="text-xs text-[var(--text-muted)]">Set up your cancer type, treatment phase, and preferences for a personalized experience</p>
+            </div>
+            <svg className="w-5 h-5 text-[#A78BFA] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          </div>
+        </a>
+      )}
 
       {/* Treatment Cycle Tracker */}
       <TreatmentCycleTracker medications={medications} patientName={patientName} />

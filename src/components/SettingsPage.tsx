@@ -167,6 +167,17 @@ export function SettingsPage({ settings: initialSettings, connectedApps }: Setti
     <div className="px-5 py-6">
       <h2 className="text-[#f1f5f9] text-xl font-bold mb-6">Settings</h2>
 
+      <SectionLabel>Care Profile</SectionLabel>
+      <SettingsGroup>
+        <SettingsRow
+          label="Edit Profile & Preferences"
+          description="Update cancer type, treatment phase, and priorities"
+          onClick={() => {
+            window.location.href = '/onboarding'
+          }}
+        />
+      </SettingsGroup>
+
       <SectionLabel>Notifications</SectionLabel>
       <SettingsGroup>
         <SettingsRow

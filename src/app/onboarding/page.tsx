@@ -9,16 +9,11 @@ export default async function OnboardingPage() {
 
   if (!user) redirect('/login');
 
-  // Check if user already completed onboarding
   const { data: profile } = await supabase
     .from('care_profiles')
     .select('id, onboarding_completed')
     .eq('user_id', user.id)
     .single();
-
-  if (profile?.onboarding_completed) {
-    redirect('/dashboard');
-  }
 
   const userName = user.user_metadata?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0] || '';
 
