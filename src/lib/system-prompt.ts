@@ -122,6 +122,23 @@ export function buildSystemPrompt(
   if (profile.conditions) context += `Conditions: ${profile.conditions}\n`;
   if (profile.allergies) context += `Allergies: ${profile.allergies}\n`;
 
+  // Dynamic personalized greeting based on cancer type and treatment phase
+  context += `\n=== PERSONALIZED GREETING ===\n`;
+  context += `When the user first messages you with no prior history, use this greeting instead of the default:\n`;
+  if (profile.cancer_type && profile.treatment_phase === 'active_treatment') {
+    context += `"I see you're going through active treatment for ${profile.cancer_type}. How are you feeling today? I'm here to help with side effects, medications, appointments, or anything else on your mind."\n`;
+  } else if (profile.cancer_type && profile.treatment_phase === 'just_diagnosed') {
+    context += `"I understand you've been recently diagnosed with ${profile.cancer_type}. That's a lot to process. I'm here to help you navigate your care — from understanding your diagnosis to preparing for appointments."\n`;
+  } else if (profile.cancer_type && profile.treatment_phase === 'between_treatments') {
+    context += `"I see you're between treatment cycles for ${profile.cancer_type}. How are you recovering? I can help you track symptoms, prepare for your next cycle, or answer any questions."\n`;
+  } else if (profile.cancer_type && profile.treatment_phase === 'remission') {
+    context += `"Great to see you're in remission from ${profile.cancer_type}. How are you doing? I'm here to help with follow-up care, monitoring, and anything on your mind."\n`;
+  } else if (profile.cancer_type) {
+    context += `"I see you're managing ${profile.cancer_type}. How are you doing today? I'm here to help with anything related to your care."\n`;
+  } else {
+    context += `"How are you doing today? Tell me about yourself or the person you're caring for — what type of cancer, where you are in treatment, and how things have been going."\n`;
+  }
+
   if (medications && medications.length > 0) {
     context += `\n=== MEDICATIONS ===\n`;
     context += `⚠️ CHECK ALL NEW MEDICATIONS AGAINST THIS LIST FOR INTERACTIONS:\n`;

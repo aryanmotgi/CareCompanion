@@ -4,9 +4,23 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
+interface ExistingProfile {
+  id: string;
+  cancer_type?: string | null;
+  cancer_stage?: string | null;
+  treatment_phase?: string | null;
+  relationship?: string | null;
+  patient_name?: string | null;
+  patient_age?: number | null;
+  onboarding_priorities?: string[] | null;
+}
+
 interface OnboardingWizardProps {
   userName: string;
+  userEmail?: string;
+  userAvatar?: string;
   existingProfileId: string | null;
+  existingProfile?: ExistingProfile | null;
 }
 
 const CANCER_TYPES = [
@@ -45,7 +59,8 @@ const PRIORITIES = [
   { value: 'emotional', label: 'Emotional support', icon: '💜', desc: 'Resources and coping strategies' },
 ];
 
-export function OnboardingWizard({ userName, existingProfileId }: OnboardingWizardProps) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function OnboardingWizard({ userName, userEmail, userAvatar, existingProfileId, existingProfile }: OnboardingWizardProps) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -61,12 +76,62 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
     return 1;
   };
 
-  const [step, setStep] = useState(getInitialStep);
+  const [step, setStep] = useState(() => {
+    const initial = getInitialStep();
+    // Show intro animation for fresh onboarding (step 1, no existing profile data)
+    return initial === 1 && !existingProfile?.cancer_type ? 0 : initial;
+  });
   const [loading, setLoading] = useState(false);
   const [slideDir, setSlideDir] = useState<'left' | 'right'>('left');
   const [animKey, setAnimKey] = useState(0);
 
+  const firstName = userName.split(' ')[0];
+
+  const saveStepProgress = async (currentStep: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      let stepData: Record<string, unknown> = { user_id: user.id };
+
+      if (currentStep === 1) {
+        stepData = {
+          ...stepData,
+          patient_name: role === 'patient' ? (firstName || 'Me') : patientName.trim(),
+          patient_age: patientAge ? parseInt(patientAge) : null,
+          relationship: role === 'patient' ? 'self' : relationship || null,
+        };
+      } else if (currentStep === 2) {
+        stepData = {
+          ...stepData,
+          cancer_type: cancerType || null,
+          cancer_stage: cancerStage || null,
+          treatment_phase: treatmentPhase || null,
+        };
+      }
+
+      if (existingProfileId) {
+        await supabase.from('care_profiles').update(stepData).eq('id', existingProfileId);
+      } else {
+        const { data: existing } = await supabase
+          .from('care_profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (existing) {
+          await supabase.from('care_profiles').update(stepData).eq('id', existing.id);
+        } else {
+          await supabase.from('care_profiles').insert(stepData);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to save step progress:', err);
+    }
+  };
+
   const goForward = (nextStep: number) => {
+    saveStepProgress(step);
     setSlideDir('left');
     setAnimKey((k) => k + 1);
     setStep(nextStep);
@@ -78,21 +143,30 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
     setStep(prevStep);
   };
 
-  // Step 1: Who is this for
-  const [role, setRole] = useState<'patient' | 'caregiver' | null>(null);
-  const [patientName, setPatientName] = useState('');
-  const [patientAge, setPatientAge] = useState('');
-  const [relationship, setRelationship] = useState('');
+  // Detect Google sign-in (avatar URL present means OAuth)
+  const isGoogleUser = !!userAvatar;
+
+  // Step 1: Who is this for — auto-select patient for Google users, or restore from existing profile
+  const getInitialRole = (): 'patient' | 'caregiver' | null => {
+    if (existingProfile?.relationship === 'self') return 'patient';
+    if (existingProfile?.relationship && existingProfile.relationship !== 'self') return 'caregiver';
+    if (isGoogleUser) return 'patient';
+    return null;
+  };
+  const [role, setRole] = useState<'patient' | 'caregiver' | null>(getInitialRole);
+  const [patientName, setPatientName] = useState(existingProfile?.patient_name || '');
+  const [patientAge, setPatientAge] = useState(existingProfile?.patient_age?.toString() || '');
+  const [relationship, setRelationship] = useState(existingProfile?.relationship || '');
 
   // Step 2: Diagnosis
-  const [cancerType, setCancerType] = useState('');
-  const [cancerStage, setCancerStage] = useState('');
-  const [treatmentPhase, setTreatmentPhase] = useState('');
+  const [cancerType, setCancerType] = useState(existingProfile?.cancer_type || '');
+  const [cancerStage, setCancerStage] = useState(existingProfile?.cancer_stage || '');
+  const [treatmentPhase, setTreatmentPhase] = useState(existingProfile?.treatment_phase || '');
 
   // Step 3: Data source (handled inline)
 
   // Step 4: Priorities
-  const [priorities, setPriorities] = useState<string[]>([]);
+  const [priorities, setPriorities] = useState<string[]>(existingProfile?.onboarding_priorities || []);
 
   const togglePriority = (value: string) => {
     setPriorities((prev) =>
@@ -103,8 +177,6 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
           : prev
     );
   };
-
-  const firstName = userName.split(' ')[0];
 
   const saveAndFinish = async (dataSource: 'connect' | 'scan' | 'manual' | 'demo' | 'skip') => {
     setLoading(true);
@@ -140,6 +212,9 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
           await supabase.from('care_profiles').insert(profileData);
         }
       }
+
+      // Trigger welcome email (fire and forget)
+      fetch('/api/welcome-email', { method: 'POST' }).catch(() => {});
 
       // Save step so we can resume at step 4 after returning from external flows
       if (dataSource === 'connect' || dataSource === 'scan' || dataSource === 'manual') {
@@ -196,26 +271,77 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
         }
       `}</style>
 
-      {/* Progress dots */}
-      <div className="flex items-center justify-center gap-2">
-        {[1, 2, 3, 4].map((s) => (
-          <div
-            key={s}
-            className={`h-2 rounded-full transition-all duration-300 ${
-              s === step
-                ? 'w-8 bg-gradient-to-r from-[#6366F1] to-[#A78BFA]'
-                : s < step
-                  ? 'w-2 bg-[#A78BFA]'
-                  : 'w-2 bg-white/10'
-            }`}
-          />
-        ))}
-      </div>
+      {/* Intro animation - step 0 */}
+      {step === 0 && (
+        <div className="text-center space-y-8 py-8" style={{ animation: 'celebratePop 0.5s ease-out' }}>
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-[#6366F1] to-[#A78BFA] shadow-lg shadow-[#6366F1]/30 mx-auto">
+            <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+            </svg>
+          </div>
+
+          <div>
+            <h1 className="font-display text-3xl font-bold text-white mb-3">CareCompanion</h1>
+            <p className="text-[var(--text-secondary)] text-lg">Your AI-powered cancer care assistant</p>
+          </div>
+
+          <div className="space-y-4 max-w-xs mx-auto text-left">
+            {[
+              { icon: '💊', text: 'Track medications and side effects' },
+              { icon: '🤖', text: 'AI that understands your treatment' },
+              { icon: '📊', text: 'Monitor labs and appointments' },
+            ].map((item, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 text-white/80"
+                style={{ animation: `confettiFade 0.4s ease-out ${0.3 + i * 0.15}s both` }}
+              >
+                <span className="text-xl">{item.icon}</span>
+                <span className="text-sm">{item.text}</span>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => goForward(1)}
+            className="w-full rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] py-3.5 px-6 text-base text-white font-semibold hover:opacity-90 active:scale-[0.98] transition-all"
+          >
+            Get Started
+          </button>
+        </div>
+      )}
+
+      {/* Progress dots — hidden on intro */}
+      {step > 0 && (
+        <div className="flex items-center justify-center gap-2">
+          {[1, 2, 3, 4].map((s) => (
+            <div
+              key={s}
+              className={`h-2 rounded-full transition-all duration-300 ${
+                s === step
+                  ? 'w-8 bg-gradient-to-r from-[#6366F1] to-[#A78BFA]'
+                  : s < step
+                    ? 'w-2 bg-[#A78BFA]'
+                    : 'w-2 bg-white/10'
+              }`}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Step 1: Welcome + Who is this for */}
       {step === 1 && (
         <div key={animKey} className="space-y-6" style={{ animation: `${slideDir === 'left' ? 'slideInLeft' : 'slideInRight'} 0.35s ease-out` }}>
           <div className="text-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {userAvatar && (
+              <img
+                src={userAvatar}
+                alt=""
+                className="w-16 h-16 rounded-full mx-auto mb-3 border-2 border-[#A78BFA]/30"
+                referrerPolicy="no-referrer"
+              />
+            )}
             <h1 className="font-display text-3xl font-bold text-white">
               {firstName ? `Welcome, ${firstName}` : 'Welcome'}
             </h1>
@@ -338,6 +464,40 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
           <a href="/login" className="block text-center text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors mt-3">
             Back to login
           </a>
+          <button
+            onClick={async () => {
+              setLoading(true);
+              try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+                const minimalProfile = {
+                  user_id: user.id,
+                  patient_name: firstName || 'Me',
+                  relationship: 'self',
+                  onboarding_completed: true,
+                };
+                if (existingProfileId) {
+                  await supabase.from('care_profiles').update(minimalProfile).eq('id', existingProfileId);
+                } else {
+                  const { data: existing } = await supabase.from('care_profiles').select('id').eq('user_id', user.id).single();
+                  if (existing) {
+                    await supabase.from('care_profiles').update(minimalProfile).eq('id', existing.id);
+                  } else {
+                    await supabase.from('care_profiles').insert(minimalProfile);
+                  }
+                }
+                router.push('/dashboard');
+              } catch (err) {
+                console.error('Skip setup error:', err);
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+            className="block w-full text-center text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors mt-2 disabled:opacity-40"
+          >
+            Skip setup — take me to the app
+          </button>
         </div>
       )}
 
@@ -640,6 +800,22 @@ export function OnboardingWizard({ userName, existingProfileId }: OnboardingWiza
                 "Let's go!"
               )}
             </button>
+          {/* Invite caregiver/family member */}
+          <div className="rounded-xl border border-dashed border-[var(--border)] p-4 mt-2">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">👥</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white">Invite a family member</p>
+                <p className="text-xs text-[var(--text-muted)]">Share care access with your support team</p>
+              </div>
+              <a
+                href="/care-team"
+                className="text-xs font-medium text-[#A78BFA] bg-[#A78BFA]/10 hover:bg-[#A78BFA]/20 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
+              >
+                Invite
+              </a>
+            </div>
+          </div>
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { PriorityCard } from './PriorityCard'
 import { TreatmentCycleTracker } from './TreatmentCycleTracker'
 import { AnimatedNumber } from './AnimatedNumber'
@@ -42,6 +42,19 @@ export function DashboardView({
   priorities,
 }: DashboardViewProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [showTourTooltip, setShowTourTooltip] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !localStorage.getItem('dashboard_tour_seen')) {
+      setShowTourTooltip(true)
+    }
+  }, [])
+
+  const dismissTooltip = () => {
+    setShowTourTooltip(false)
+    localStorage.setItem('dashboard_tour_seen', '1')
+  }
+
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
@@ -327,6 +340,75 @@ export function DashboardView({
           </div>
           <div className="text-[var(--text)] text-lg font-semibold mb-1">All clear!</div>
           <div className="text-[var(--text-muted)] text-sm">No items need your attention right now.</div>
+
+          {/* Quick-start cards for empty data */}
+          {(medications.length === 0 || appointments.length === 0 || labResults.length === 0) && (
+            <div className="w-full mt-8 space-y-3 text-left">
+              <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2 text-center">Get Started</div>
+              {medications.length === 0 && (
+                <a
+                  href="/medications"
+                  className="flex items-center gap-3 p-4 rounded-2xl bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center flex-shrink-0">
+                    <svg width="20" height="20" fill="none" stroke="#6366F1" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 3h6v11a3 3 0 01-3 3v0a3 3 0 01-3-3V3z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 8h6" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 17v4" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[var(--text)]">Add your first medication</p>
+                    <p className="text-xs text-[var(--text-muted)]">Track doses, refills, and interactions</p>
+                  </div>
+                  <svg className="w-5 h-5 text-[var(--text-muted)] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </a>
+              )}
+              {appointments.length === 0 && (
+                <a
+                  href="/appointments"
+                  className="flex items-center gap-3 p-4 rounded-2xl bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#22d3ee]/10 flex items-center justify-center flex-shrink-0">
+                    <svg width="20" height="20" fill="none" stroke="#22d3ee" strokeWidth="2" viewBox="0 0 24 24">
+                      <rect x="3" y="4" width="18" height="18" rx="2" />
+                      <path strokeLinecap="round" d="M16 2v4M8 2v4M3 10h18" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[var(--text)]">Schedule an appointment</p>
+                    <p className="text-xs text-[var(--text-muted)]">Keep track of upcoming visits and prep</p>
+                  </div>
+                  <svg className="w-5 h-5 text-[var(--text-muted)] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </a>
+              )}
+              {labResults.length === 0 && (
+                <a
+                  href="/scans"
+                  className="flex items-center gap-3 p-4 rounded-2xl bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#10b981]/10 flex items-center justify-center flex-shrink-0">
+                    <svg width="20" height="20" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+                      <rect x="9" y="3" width="6" height="4" rx="1" />
+                      <path strokeLinecap="round" d="M9 14l2 2 4-4" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[var(--text)]">Scan a lab report</p>
+                    <p className="text-xs text-[var(--text-muted)]">Upload and get AI-powered insights</p>
+                  </div>
+                  <svg className="w-5 h-5 text-[var(--text-muted)] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </a>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -350,7 +432,7 @@ export function DashboardView({
 
       {/* Quick-ask prompts */}
       {actionCount > 0 && (
-        <div className="mt-6">
+        <div className="mt-6 relative" id="quick-ask-section">
           <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2">Quick Ask</div>
           <div className="flex flex-wrap gap-2">
             {['Log today\'s symptoms', 'Prep for oncology appointment', 'Track medication side effects', 'Review my treatment timeline'].map((prompt) => (
@@ -362,6 +444,40 @@ export function DashboardView({
                 {prompt}
               </a>
             ))}
+          </div>
+          {showTourTooltip && (
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-50">
+              <div className="relative bg-[#6366F1] text-white rounded-xl px-4 py-3 shadow-lg max-w-[260px] text-center">
+                <p className="text-sm font-medium mb-2">Tap here to ask your AI care companion anything</p>
+                <button
+                  onClick={dismissTooltip}
+                  className="text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-lg px-3 py-1 transition-colors"
+                >
+                  Got it
+                </button>
+                {/* Arrow pointing down */}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-[#6366F1]" />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tooltip for quick-ask card when no action items */}
+      {actionCount === 0 && showTourTooltip && (
+        <div className="relative mt-6">
+          <div className="flex justify-center">
+            <div className="relative bg-[#6366F1] text-white rounded-xl px-4 py-3 shadow-lg max-w-[260px] text-center">
+              <p className="text-sm font-medium mb-2">Tap here to ask your AI care companion anything</p>
+              <button
+                onClick={dismissTooltip}
+                className="text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-lg px-3 py-1 transition-colors"
+              >
+                Got it
+              </button>
+              {/* Arrow pointing down */}
+              <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-[#6366F1]" />
+            </div>
           </div>
         </div>
       )}
