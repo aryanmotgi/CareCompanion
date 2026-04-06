@@ -79,3 +79,32 @@ export function checkRateLimit(
 export function resetRateLimits() {
   buckets.clear()
 }
+
+/**
+ * Factory that returns a limiter with a `check` method.
+ * Compatible with the pattern:
+ *   const limiter = rateLimit({ interval, maxRequests });
+ *   const { success, remaining } = limiter.check(token);
+ */
+export function rateLimit({
+  interval,
+  maxRequests,
+}: {
+  interval: number
+  uniqueTokenPerInterval?: number
+  maxRequests: number
+}) {
+  return {
+    check(token: string): { success: boolean; remaining: number } {
+      const result = checkRateLimit(token, {
+        maxRequests,
+        windowMs: interval,
+      })
+      if (result.allowed) {
+        const entry = buckets.get(token)
+        return { success: true, remaining: entry ? Math.floor(entry.tokens) : maxRequests - 1 }
+      }
+      return { success: false, remaining: 0 }
+    },
+  }
+}

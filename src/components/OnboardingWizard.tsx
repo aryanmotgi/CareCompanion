@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { trackEvent } from '@/lib/analytics';
 
 interface ExistingProfile {
   id: string;
@@ -131,6 +132,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
   };
 
   const goForward = (nextStep: number) => {
+    trackEvent({ name: 'onboarding_step', properties: { from: step, to: nextStep } });
     saveStepProgress(step);
     setSlideDir('left');
     setAnimKey((k) => k + 1);
@@ -179,6 +181,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
   };
 
   const saveAndFinish = async (dataSource: 'connect' | 'scan' | 'manual' | 'demo' | 'skip') => {
+    trackEvent({ name: 'onboarding_complete', properties: { dataSource } });
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();

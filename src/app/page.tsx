@@ -1000,7 +1000,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] overflow-x-hidden">
+    <main className="min-h-screen bg-[var(--bg)] overflow-x-hidden">
       {/* Scroll progress bar */}
       <ScrollProgress />
 
@@ -1015,8 +1015,8 @@ export default function LandingPage() {
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${headerVisible ? 'opacity-100 translate-y-0 bg-[var(--bg)]/80 backdrop-blur-xl border-b border-[var(--border)]' : 'opacity-0 -translate-y-full'}`}>
         <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center shadow-lg shadow-[#6366F1]/20">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center shadow-lg shadow-[#6366F1]/20" role="img" aria-label="CareCompanion AI logo">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
               </svg>
             </div>
@@ -1059,7 +1059,7 @@ export default function LandingPage() {
               Cancer care,<br />finally in one place
             </h1>
             <p className="text-[var(--text-secondary)] text-fluid-base max-w-lg mx-auto lg:mx-0 mb-8 leading-relaxed animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-              Stop juggling 5 apps for <CyclingWord />. CareCompanion brings it all together, so you can focus on <strong className="text-[var(--text)]">what matters most</strong>.
+              Stop juggling 5 apps for <CyclingWord />. CareCompanion is the <strong className="text-[var(--text)]">cancer care app</strong> that brings treatment tracking, chemo side effects logging, and caregiver coordination together, so you can focus on <strong className="text-[var(--text)]">what matters most</strong>.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
               <Link
@@ -1178,7 +1178,7 @@ export default function LandingPage() {
       <section className="py-16 sm:py-20 px-4 sm:px-6 bg-[rgba(167,139,250,0.02)]">
         <div className="max-w-lg mx-auto text-center blur-reveal">
           <h2 className="font-display text-fluid-3xl font-bold mb-4 animate-greeting">Start caring smarter</h2>
-          <p className="text-[var(--text-secondary)] text-fluid-sm mb-8">Join caregivers who finally have everything in one place.</p>
+          <p className="text-[var(--text-secondary)] text-fluid-sm mb-8">Join cancer caregivers and patients who finally have their cancer treatment tracker, chemo side effects log, and oncology visit prep in one place.</p>
           <Link
             href="/login"
             className="inline-block px-10 py-4 rounded-2xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white font-semibold shadow-lg shadow-[#6366F1]/25 hover:shadow-[#6366F1]/40 transition-shadow shimmer-btn relative overflow-hidden"
@@ -1192,8 +1192,8 @@ export default function LandingPage() {
       <footer className="border-t border-[var(--border)] py-8 px-6">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center">
-              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center" role="img" aria-label="CareCompanion AI logo">
+              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
               </svg>
             </div>
@@ -1207,7 +1207,7 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-    </div>
+    </main>
   );
 }
 

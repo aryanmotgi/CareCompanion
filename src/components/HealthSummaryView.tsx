@@ -21,8 +21,28 @@ export function HealthSummaryView({ patientName }: HealthSummaryViewProps) {
     setLoading(false);
   }
 
-  function handleShare() {
+  async function handleShare() {
     if (!summary) return;
+    // Try to generate a shareable link first
+    try {
+      const res = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'health_summary' }),
+      });
+      if (res.ok) {
+        const { url } = await res.json();
+        if (typeof navigator.share === 'function') {
+          navigator.share({ title: `Health Summary — ${patientName}`, url });
+        } else {
+          navigator.clipboard.writeText(url);
+          alert('Share link copied to clipboard!');
+        }
+        return;
+      }
+    } catch {
+      // Fall back to text sharing
+    }
     if (typeof navigator.share === 'function') {
       navigator.share({ title: `Health Summary — ${patientName}`, text: summary });
     } else {

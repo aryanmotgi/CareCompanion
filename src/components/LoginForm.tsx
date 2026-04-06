@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { trackEvent } from '@/lib/analytics';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -71,6 +72,7 @@ export function LoginForm() {
         return;
       }
 
+      trackEvent({ name: 'signup', properties: { method: 'email' } });
       router.push('/onboarding');
     } else {
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -87,6 +89,8 @@ export function LoginForm() {
         setLoading(false);
         return;
       }
+
+      trackEvent({ name: 'login', properties: { method: 'email' } });
 
       const { data: profile } = await supabase
         .from('care_profiles')
