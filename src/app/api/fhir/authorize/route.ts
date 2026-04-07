@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { getProvider } from '@/lib/fhir-providers';
-import { createOneUpUser } from '@/lib/oneup';
 import crypto from 'crypto';
 
 export async function GET(req: NextRequest) {
@@ -45,37 +43,40 @@ export async function GET(req: NextRequest) {
 
   // 1upHealth uses a different connect flow
   if (providerId === '1uphealth') {
-    const admin = createAdminClient();
-
-    // Get or create oneup_user_id
-    const { data: prefs } = await admin
-      .from('user_preferences')
-      .select('oneup_user_id')
-      .eq('user_id', user.id)
-      .single();
-
-    let oneupUserId = prefs?.oneup_user_id;
-
-    if (!oneupUserId) {
-      try {
-        oneupUserId = await createOneUpUser(user.id);
-        await admin.from('user_preferences').upsert(
-          { user_id: user.id, oneup_user_id: oneupUserId },
-          { onConflict: 'user_id' }
-        );
-      } catch (err) {
-        console.error('Failed to create 1upHealth user:', err);
-        return NextResponse.redirect(`${baseUrl}/connect?error=oneup_user_creation_failed`);
-      }
-    }
-
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
       state,
     });
-    if (oneupUserId) {
-      params.set('oneup_user_id', oneupUserId);
+
+    // Try to get or create a 1up user ID (optional for sandbox)
+    try {
+      const { createAdminClient } = await import('@/lib/supabase/admin');
+      const { createOneUpUser } = await import('@/lib/oneup');
+      const admin = createAdminClient();
+
+      const { data: prefs } = await admin
+        .from('user_preferences')
+        .select('oneup_user_id')
+        .eq('user_id', user.id)
+        .single();
+
+      let oneupUserId = prefs?.oneup_user_id;
+
+      if (!oneupUserId) {
+        oneupUserId = await createOneUpUser(user.id);
+        await admin.from('user_preferences').upsert(
+          { user_id: user.id, oneup_user_id: oneupUserId },
+          { onConflict: 'user_id' }
+        );
+      }
+
+      if (oneupUserId) {
+        params.set('oneup_user_id', oneupUserId);
+      }
+    } catch (err) {
+      // Non-blocking — sandbox mode works without oneup_user_id
+      console.error('1upHealth user creation skipped:', err);
     }
 
     return NextResponse.redirect(`${provider.authorizeUrl}?${params.toString()}`);
