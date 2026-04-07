@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getProvider } from '@/lib/fhir-providers';
+import { createOneUpUser } from '@/lib/oneup';
 import crypto from 'crypto';
 
 export async function GET(req: NextRequest) {
@@ -41,6 +43,45 @@ export async function GET(req: NextRequest) {
     provider: providerId,
   })).toString('base64url');
 
+  // 1upHealth uses a different connect flow
+  if (providerId === '1uphealth') {
+    const admin = createAdminClient();
+
+    // Get or create oneup_user_id
+    const { data: prefs } = await admin
+      .from('user_preferences')
+      .select('oneup_user_id')
+      .eq('user_id', user.id)
+      .single();
+
+    let oneupUserId = prefs?.oneup_user_id;
+
+    if (!oneupUserId) {
+      try {
+        oneupUserId = await createOneUpUser(user.id);
+        await admin.from('user_preferences').upsert(
+          { user_id: user.id, oneup_user_id: oneupUserId },
+          { onConflict: 'user_id' }
+        );
+      } catch (err) {
+        console.error('Failed to create 1upHealth user:', err);
+        return NextResponse.redirect(`${baseUrl}/connect?error=oneup_user_creation_failed`);
+      }
+    }
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      state,
+    });
+    if (oneupUserId) {
+      params.set('oneup_user_id', oneupUserId);
+    }
+
+    return NextResponse.redirect(`${provider.authorizeUrl}?${params.toString()}`);
+  }
+
+  // Standard SMART on FHIR flow
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: clientId,
@@ -49,7 +90,6 @@ export async function GET(req: NextRequest) {
     state,
   });
 
-  // FHIR servers need the audience parameter
   if (provider.fhirBaseUrl) {
     params.set('aud', provider.fhirBaseUrl);
   }
@@ -65,13 +105,12 @@ export async function GET(req: NextRequest) {
     params.set('code_challenge', codeChallenge);
     params.set('code_challenge_method', 'S256');
 
-    // Store code_verifier in a cookie for the callback
     const response = NextResponse.redirect(`${provider.authorizeUrl}?${params.toString()}`);
     response.cookies.set('fhir_pkce_verifier', codeVerifier, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 600, // 10 minutes
+      maxAge: 600,
       path: '/',
     });
     return response;

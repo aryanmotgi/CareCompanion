@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getProvider } from '@/lib/fhir-providers';
+import { syncOneUpData } from '@/lib/oneup-sync';
 import type { FhirBundle } from '@/lib/fhir';
 import {
   parseMedications,
@@ -55,7 +56,9 @@ export async function POST(req: Request) {
   }
 
   const admin = createAdminClient();
-  const source = `fhir_${provider_id}`;
+
+  // 1upHealth uses its own source name and dedicated sync engine
+  const source = provider_id === '1uphealth' ? '1uphealth' : `fhir_${provider_id}`;
 
   // Get the stored connection
   const { data: connection } = await admin
@@ -110,6 +113,17 @@ export async function POST(req: Request) {
     } catch (err) {
       console.error('Token refresh error:', err);
       return Response.json({ error: 'Token refresh failed' }, { status: 401 });
+    }
+  }
+
+  // For 1upHealth, use the dedicated sync engine (it handles all resource types)
+  if (provider_id === '1uphealth') {
+    try {
+      const results = await syncOneUpData(user.id, accessToken);
+      return Response.json({ success: true, provider: provider.name, synced: results });
+    } catch (err) {
+      console.error('1upHealth sync error:', err);
+      return Response.json({ error: 'Sync failed' }, { status: 500 });
     }
   }
 

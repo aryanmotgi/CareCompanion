@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getProvider } from '@/lib/fhir-providers';
+import { syncOneUpData } from '@/lib/oneup-sync';
 
 export const maxDuration = 60;
 
@@ -88,11 +90,16 @@ export async function GET(req: NextRequest) {
       ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
       : null;
 
-    // Save the connection (use provider ID as source)
-    const { error: upsertError } = await supabase.from('connected_apps').upsert(
+    // For 1upHealth, use '1uphealth' as source to match oneup-sync expectations
+    const source = providerId === '1uphealth' ? '1uphealth' : `fhir_${providerId}`;
+
+    const admin = createAdminClient();
+
+    // Save the connection
+    const { error: upsertError } = await admin.from('connected_apps').upsert(
       {
         user_id: user.id,
-        source: `fhir_${providerId}`,
+        source,
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token || null,
         expires_at: expiresAt,
@@ -112,14 +119,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${baseUrl}/connect?error=save_failed`);
     }
 
-    // Trigger initial sync in the background
-    fetch(`${baseUrl}/api/fhir/sync`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider_id: providerId }),
-    }).catch((err) => {
-      console.error(`Background sync failed for ${providerId}:`, err);
-    });
+    // Trigger sync based on provider type
+    if (providerId === '1uphealth') {
+      // Use the dedicated 1upHealth sync engine
+      syncOneUpData(user.id, tokens.access_token).catch((err) => {
+        console.error('1upHealth initial sync error:', err);
+      });
+    } else {
+      // Generic FHIR sync for other providers
+      fetch(`${baseUrl}/api/fhir/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider_id: providerId }),
+      }).catch((err) => {
+        console.error(`Background sync failed for ${providerId}:`, err);
+      });
+    }
 
     // Clear PKCE cookie if used
     const response = NextResponse.redirect(`${baseUrl}/connect?connected=${providerId}`);
