@@ -20,7 +20,7 @@ test.describe('Authentication', () => {
     if (await createAccountText.isVisible()) {
       await createAccountText.click()
     }
-    const uniqueId = Date.now()
+    const uniqueId = Date.now() + '-' + Math.random().toString(36).substring(7)
     await page.getByPlaceholder('e.g., Sarah').fill(`Auth ${uniqueId}`)
     await page.locator('input[type="email"]').fill(`auth_${uniqueId}@example.com`)
     await page.locator('input[type="password"]').fill('SecurePassword123!')
