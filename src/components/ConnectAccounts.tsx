@@ -365,7 +365,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
           </div>
 
           {/* CTA area */}
-          <div className="relative mt-6 flex items-center gap-3">
+          <div className="relative z-10 mt-6 flex items-center gap-3">
             {isOneUpConnected ? (
               <>
                 <Button onClick={handleSync} loading={syncing} variant="secondary" className="!py-2.5 !px-5 !min-h-0 text-sm !bg-emerald-500/10 !border-emerald-500/20 !text-emerald-400 hover:!bg-emerald-500/20">
@@ -379,7 +379,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
                 </button>
               </>
             ) : (
-              <a href="/api/fhir/authorize?provider=1uphealth" className="gradient-btn inline-flex items-center gap-2.5 text-white font-semibold text-sm py-3 px-7 rounded-xl">
+              <a href="/api/fhir/authorize?provider=1uphealth" className="relative z-10 gradient-btn inline-flex items-center gap-2.5 text-white font-semibold text-sm py-3 px-7 rounded-xl cursor-pointer">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
                 </svg>
