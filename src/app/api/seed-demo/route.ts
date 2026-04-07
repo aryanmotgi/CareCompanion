@@ -34,10 +34,14 @@ export async function POST(req: Request) {
     patient_name: 'Mom',
     patient_age: 62,
     relationship: 'parent',
+    cancer_type: 'HER2+ ER+ Breast Cancer',
+    cancer_stage: 'Stage IIIA',
+    treatment_phase: 'active_treatment',
     conditions: 'Stage IIIA Breast Cancer (HER2+, ER+)\nHypertension\nAnxiety',
     allergies: 'Sulfa drugs\nLatex',
     emergency_contact_name: 'Dad (Robert)',
     emergency_contact_phone: '555-0199',
+    onboarding_completed: true,
   }).eq('id', profile.id);
 
   // Seed cancer medications
@@ -99,6 +103,31 @@ export async function POST(req: Request) {
     { user_id: user.id, care_profile_id: profile.id, date: dayISO(-2), pain_level: 4, mood: 'bad', sleep_quality: 'poor', sleep_hours: 4, appetite: 'none', energy: 'very_low', symptoms: ['Nausea', 'Vomiting', 'Fatigue', 'Mouth sores'], notes: 'Nausea: 8/10 | Fatigue: 9/10 | Worst day of this cycle — couldn\'t keep food down' },
     { user_id: user.id, care_profile_id: profile.id, date: dayISO(-3), pain_level: 2, mood: 'good', sleep_quality: 'good', sleep_hours: 7, appetite: 'normal', energy: 'normal', symptoms: ['Fatigue'], notes: 'Fatigue: 4/10 | Good day — appetite came back, walked 20 min' },
   ]);
+
+  // Seed insurance
+  await supabase.from('insurance').upsert({
+    user_id: user.id,
+    provider: 'Blue Cross Blue Shield',
+    member_id: 'XYZ-987654321',
+    group_number: 'GRP-ONCO-2026',
+    plan_year: 2026,
+    deductible_limit: 3000,
+    deductible_used: 2850,
+    oop_limit: 8000,
+    oop_used: 5200,
+  });
+
+  // Mark 1upHealth as connected so profile shows "Connected"
+  await supabase.from('connected_apps').upsert(
+    {
+      user_id: user.id,
+      source: '1uphealth',
+      access_token: 'demo-token',
+      last_synced: new Date().toISOString(),
+      metadata: { provider_name: '1upHealth', provider_id: '1uphealth', demo: true },
+    },
+    { onConflict: 'user_id,source' }
+  );
 
   // Upsert user settings
   await supabase.from('user_settings').upsert({
