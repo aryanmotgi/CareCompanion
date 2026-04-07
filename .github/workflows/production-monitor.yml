@@ -1,0 +1,43 @@
+name: Production 24/7 Monitor
+
+on:
+  schedule:
+    # Run every 4 hours
+    - cron: '0 */4 * * *'
+  workflow_dispatch: # Allow manual triggers
+
+jobs:
+  smoke-test:
+    name: Production Smoke Test
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E Production Monitor
+        # Run only the production monitor file to avoid trashing data with other test files
+        run: npx playwright test e2e/production-monitor.spec.ts
+        env:
+          # Point the Playwright test directly at the live Production URL
+          PLAYWRIGHT_BASE_URL: https://carecompanionai.org
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Upload Report on Failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
