@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { DashboardView } from '@/components/DashboardView';
 import { DashboardSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { MedicationReminders } from '@/components/MedicationReminders';
+import { DashboardInsights } from '@/components/DashboardInsights';
 
 async function DashboardContent() {
   const supabase = await createClient();
@@ -84,6 +85,9 @@ async function DashboardContent() {
         doctorCount={doctorCount ?? 0}
         connectedAppCount={(connectedApps && connectedApps.length) || 0}
       />
+      <div className="px-4 sm:px-5 pb-6">
+        <DashboardInsights />
+      </div>
     </>
   );
 }

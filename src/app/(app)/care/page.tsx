@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { CareView } from '@/components/CareView'
 import { CareSkeleton } from '@/components/skeletons/CareSkeleton'
+import { ComplianceReport } from '@/components/ComplianceReport'
 import { getAllProfiles } from '@/lib/active-profile'
 
 async function CareContent() {
@@ -28,14 +29,19 @@ async function CareContent() {
   ])
 
   return (
-    <CareView
-      profileId={profile.id}
-      medications={medications || []}
-      appointments={appointments || []}
-      doctors={doctors || []}
-      allProfiles={allProfiles}
-      careTeamMembers={careTeamMembers || []}
-    />
+    <>
+      <CareView
+        profileId={profile.id}
+        medications={medications || []}
+        appointments={appointments || []}
+        doctors={doctors || []}
+        allProfiles={allProfiles}
+        careTeamMembers={careTeamMembers || []}
+      />
+      <div className="px-4 sm:px-5 pb-6">
+        <ComplianceReport />
+      </div>
+    </>
   )
 }
 

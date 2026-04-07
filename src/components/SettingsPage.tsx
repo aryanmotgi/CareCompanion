@@ -4,11 +4,14 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from './ToastProvider'
-import type { UserSettings, ConnectedApp } from '@/lib/types'
+import { ReminderManager } from './ReminderManager'
+import type { UserSettings, ConnectedApp, MedicationReminder, Medication } from '@/lib/types'
 
 interface SettingsPageProps {
   settings: UserSettings | null
   connectedApps: ConnectedApp[]
+  medicationReminders?: MedicationReminder[]
+  medications?: Medication[]
 }
 
 function Toggle({ enabled, onToggle, label }: { enabled: boolean; onToggle: () => void; label: string }) {
@@ -77,7 +80,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function SettingsPage({ settings: initialSettings, connectedApps }: SettingsPageProps) {
+export function SettingsPage({ settings: initialSettings, connectedApps, medicationReminders = [], medications = [] }: SettingsPageProps) {
   const router = useRouter()
   const { showToast } = useToast()
   const [settings, setSettings] = useState<UserSettings | null>(initialSettings)
@@ -201,6 +204,11 @@ export function SettingsPage({ settings: initialSettings, connectedApps }: Setti
           right={<Toggle label="Claim Updates" enabled={settings?.claim_updates ?? true} onToggle={() => toggleSetting('claim_updates')} />}
         />
       </SettingsGroup>
+
+      <SectionLabel>Medication Reminders</SectionLabel>
+      <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl overflow-hidden p-4">
+        <ReminderManager reminders={medicationReminders} medications={medications} />
+      </div>
 
       <SectionLabel>Connected Accounts</SectionLabel>
       <SettingsGroup>

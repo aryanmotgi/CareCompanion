@@ -25,6 +25,9 @@ interface AppShellProps {
 const MENU_ITEMS = [
   { label: 'Emergency Card', href: '/emergency', icon: '🚨' },
   { label: 'Care Profile', href: '/profile', icon: '👤' },
+  { label: 'Treatment Timeline', href: '/timeline', icon: '📈' },
+  { label: 'Visit Prep', href: '/visit-prep', icon: '📝' },
+  { label: 'Lab Results', href: '/labs', icon: '🔬' },
   { label: 'Treatment Journal', href: '/journal', icon: '📓' },
   { label: 'Health Summary', href: '/health-summary', icon: '📋' },
   { label: 'Calendar', href: '/calendar', icon: '📅' },

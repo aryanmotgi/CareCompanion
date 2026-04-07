@@ -8,6 +8,7 @@ import { AlertInsights } from './AlertInsights'
 import { GuidedTour } from './GuidedTour'
 import { NudgeManager } from './NudgeManager'
 import { ProfileCompleteness } from './ProfileCompleteness'
+import { AppealGenerator } from './AppealGenerator'
 import { parseLabValue } from '@/lib/lab-parsing'
 import type { Medication, Appointment, LabResult, Claim } from '@/lib/types'
 
@@ -286,6 +287,17 @@ export function DashboardView({
             ]}
             chatPrompt={`Help me understand and appeal this denied claim from ${claim.provider_name} — denied for "${claim.denial_reason}". I owe $${claim.patient_responsibility}.`}
           />
+          <div className="mt-3">
+            <AppealGenerator
+              claimId={claim.id}
+              claimInfo={{
+                provider_name: claim.provider_name || 'Unknown',
+                denial_reason: claim.denial_reason || 'Not specified',
+                billed_amount: claim.billed_amount || 0,
+                patient_responsibility: claim.patient_responsibility || 0,
+              }}
+            />
+          </div>
         ),
       })
     })
