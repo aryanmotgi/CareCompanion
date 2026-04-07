@@ -2,6 +2,7 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveConflicts } from '@/lib/memory-conflict';
 import type { Memory, ConversationSummary } from './types';
 
 // ============================================================
@@ -76,6 +77,11 @@ Rules:
     });
 
     if (object.facts.length === 0) return;
+
+    // Resolve conflicts before inserting new memories
+    for (const fact of object.facts) {
+      await resolveConflicts(userId, fact.fact, fact.category, existingMemories);
+    }
 
     const rows = object.facts.map((f) => ({
       user_id: userId,

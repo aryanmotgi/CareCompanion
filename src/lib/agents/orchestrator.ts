@@ -3,6 +3,7 @@ import { generateText } from 'ai';
 import { routeMessage } from './router';
 import { SPECIALISTS, type SpecialistType } from './specialists';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 interface PatientContext {
   profile: Record<string, unknown> | null;
@@ -49,8 +50,24 @@ export async function orchestrate(
     };
   }
 
+  // Step 2.5: Rate limit specialist calls (max 10 per user per minute)
+  const agentRateKey = `agent:${userId}`
+  const agentRateResult = checkRateLimit(agentRateKey, { maxRequests: 10, windowMs: 60000 })
+  if (!agentRateResult.allowed) {
+    console.warn(`[orchestrator] Agent rate limit hit for user ${userId}`)
+    return {
+      specialistsUsed: [],
+      agentOutputs: {},
+      synthesizedContext: '',
+      isMultiAgent: false,
+    }
+  }
+
+  // Cap at 3 specialists max per message to control costs
+  const cappedSpecialists = routing.specialists.slice(0, 3)
+
   // Step 3: Run specialist agents in parallel
-  const specialistPromises = routing.specialists.map(async (type) => {
+  const specialistPromises = cappedSpecialists.map(async (type) => {
     const config = SPECIALISTS[type];
     const relevantData = buildRelevantData(config.relevantDataKeys, patientContext);
 
