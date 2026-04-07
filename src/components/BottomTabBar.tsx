@@ -81,7 +81,7 @@ export function BottomTabBar() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0C0E1A]/90 backdrop-blur-xl border-t border-[var(--border)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0C0E1A]/90 backdrop-blur-xl border-t border-[var(--border)]" data-tour="tab-nav">
       <div ref={navRef} className="flex justify-around items-center px-2 pt-3 pb-5 relative">
         {/* Animated active indicator dot */}
         {activeIndex >= 0 && (
@@ -98,6 +98,8 @@ export function BottomTabBar() {
               href={tab.href}
               onClick={() => handleClick(tab.href)}
               className="flex flex-col items-center gap-1 relative"
+              {...(tab.label === 'Care' ? { 'data-tour': 'tab-care' } : {})}
+              {...(tab.label === 'Scan' ? { 'data-tour': 'tab-scan' } : {})}
             >
               <div className={`transition-transform duration-200 ${bouncingTab === tab.href ? 'scale-90' : active ? 'scale-100' : 'scale-100'} ${active ? 'animate-tab-glow rounded-full' : ''}`}>
                 {tab.icon(active)}

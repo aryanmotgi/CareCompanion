@@ -14,6 +14,7 @@ interface PriorityCardProps {
   expanded?: boolean
   onToggle?: () => void
   expandedContent?: React.ReactNode
+  isPriority?: boolean
 }
 
 const VARIANT_STYLES = {
@@ -58,6 +59,7 @@ export function PriorityCard({
   expanded = false,
   onToggle,
   expandedContent,
+  isPriority = false,
 }: PriorityCardProps) {
   const s = VARIANT_STYLES[variant]
   const isUrgent = variant === 'urgent'
@@ -71,6 +73,11 @@ export function PriorityCard({
       <div className="flex items-center gap-2 mb-1">
         <div className={`w-2 h-2 rounded-full ${s.dot} ${s.dotPulse ? 'animate-dot-pulse' : ''}`} />
         <span className={`text-xs font-semibold ${s.label}`}>{label}</span>
+        {isPriority && (
+          <span className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#A78BFA]/15 text-[#A78BFA] border border-[#A78BFA]/20">
+            Priority
+          </span>
+        )}
       </div>
       <div className="text-[var(--text)] text-sm font-semibold">{title}</div>
       <div className="text-[var(--text-secondary)] text-xs">{subtitle}</div>

@@ -5,6 +5,9 @@ import { PriorityCard } from './PriorityCard'
 import { TreatmentCycleTracker } from './TreatmentCycleTracker'
 import { AnimatedNumber } from './AnimatedNumber'
 import { AlertInsights } from './AlertInsights'
+import { GuidedTour } from './GuidedTour'
+import { NudgeManager } from './NudgeManager'
+import { ProfileCompleteness } from './ProfileCompleteness'
 import { parseLabValue } from '@/lib/lab-parsing'
 import type { Medication, Appointment, LabResult, Claim } from '@/lib/types'
 
@@ -19,6 +22,16 @@ interface DashboardViewProps {
   treatmentPhase?: string | null
   onboardingComplete?: boolean
   priorities?: string[] | null
+  hasHealthRecords?: boolean
+  hasEmergencyContact?: boolean
+  hasDocumentsScanned?: boolean
+  profileCreatedAt?: string
+  allergies?: string | null
+  conditions?: string | null
+  emergencyContactName?: string | null
+  emergencyContactPhone?: string | null
+  doctorCount?: number
+  connectedAppCount?: number
 }
 
 const PHASE_LABELS: Record<string, { label: string; color: string }> = {
@@ -40,6 +53,16 @@ export function DashboardView({
   treatmentPhase,
   onboardingComplete = true,
   priorities,
+  hasHealthRecords = false,
+  hasEmergencyContact = false,
+  hasDocumentsScanned = false,
+  profileCreatedAt,
+  allergies,
+  conditions,
+  emergencyContactName,
+  emergencyContactPhone,
+  doctorCount = 0,
+  connectedAppCount = 0,
 }: DashboardViewProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showTourTooltip, setShowTourTooltip] = useState(false)
@@ -58,6 +81,23 @@ export function DashboardView({
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
+  // Map priority keys to card ID prefixes for matching
+  const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
+    side_effects: 'symptom',
+    medications: 'med-',
+    appointments: 'appt-',
+    lab_results: 'lab-',
+    insurance: 'claim-',
+  }
+
+  const isCardPriority = (cardId: string): boolean => {
+    if (!priorities || priorities.length === 0) return false
+    return priorities.some(p => {
+      const prefix = PRIORITY_TO_CARD_PREFIX[p]
+      return prefix && cardId.startsWith(prefix)
+    })
+  }
+
   const cards = useMemo(() => {
     const result: {
       id: string
@@ -69,6 +109,7 @@ export function DashboardView({
       action?: string
       href?: string
       expandedContent?: React.ReactNode
+      isPriority?: boolean
     }[] = []
 
     const now = new Date()
@@ -261,23 +302,51 @@ export function DashboardView({
       href: '/chat',
     })
 
+    // Mark cards that match user priorities
+    result.forEach(card => {
+      card.isPriority = isCardPriority(card.id)
+    })
+
     result.sort((a, b) => {
+      // Quick-ask always last
+      if (a.variant === 'quick-ask') return 1
+      if (b.variant === 'quick-ask') return -1
       // Boost cards matching user priorities
-      const priorityMap: Record<string, string[]> = {
-        side_effects: ['quick-ask'],
-        medications: ['med-refill', 'med-overdue'],
-        appointments: ['appt-upcoming', 'appt-today'],
-        lab_results: ['lab-abnormal'],
-        insurance: ['claim-denied'],
-      }
-      const aBoost = priorities?.some(p => priorityMap[p]?.some(prefix => a.id.startsWith(prefix))) ? -100 : 0
-      const bBoost = priorities?.some(p => priorityMap[p]?.some(prefix => b.id.startsWith(prefix))) ? -100 : 0
+      const aBoost = a.isPriority ? -100 : 0
+      const bBoost = b.isPriority ? -100 : 0
       return (a.priority + aBoost) - (b.priority + bBoost)
     })
     return result
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [medications, appointments, labResults, claims, priorities])
 
   const actionCount = cards.filter((c) => c.variant !== 'quick-ask').length
+
+  // Personalized quick-ask prompts based on user priorities
+  const quickAskPrompts = useMemo(() => {
+    const PRIORITY_PROMPTS: Record<string, string> = {
+      side_effects: "Log today's side effects",
+      medications: 'Check my upcoming refills',
+      appointments: 'Prep for my next appointment',
+      lab_results: 'Explain my latest lab results',
+      insurance: 'Check my claim status',
+    }
+    const DEFAULT_PROMPTS = [
+      "Log today's symptoms",
+      'Prep for oncology appointment',
+      'Track medication side effects',
+      'Review my treatment timeline',
+    ]
+
+    if (!priorities || priorities.length === 0) return DEFAULT_PROMPTS
+
+    // Build prompts: priority-matched first, then fill with defaults
+    const matched = priorities
+      .map(p => PRIORITY_PROMPTS[p])
+      .filter(Boolean)
+    const remaining = DEFAULT_PROMPTS.filter(d => !matched.includes(d))
+    return [...matched, ...remaining].slice(0, 4)
+  }, [priorities])
 
   return (
     <div className="px-4 sm:px-5 py-5 sm:py-6">
@@ -328,11 +397,39 @@ export function DashboardView({
         </a>
       )}
 
+      {/* Re-engagement nudges for skipped onboarding steps */}
+      {onboardingComplete && profileCreatedAt && (
+        <NudgeManager
+          hasHealthRecords={hasHealthRecords}
+          hasMedications={medications.length > 0}
+          hasAppointments={appointments.length > 0}
+          hasEmergencyContact={hasEmergencyContact}
+          hasDocumentsScanned={hasDocumentsScanned}
+          profileCreatedAt={profileCreatedAt}
+        />
+      )}
+
+      {/* Profile Completeness Indicator */}
+      <ProfileCompleteness
+        patientName={patientName}
+        cancerType={cancerType}
+        cancerStage={cancerStage}
+        treatmentPhase={treatmentPhase}
+        allergies={allergies}
+        conditions={conditions}
+        emergencyContactName={emergencyContactName}
+        emergencyContactPhone={emergencyContactPhone}
+        medicationCount={medications.length}
+        doctorCount={doctorCount}
+        appointmentCount={appointments.length}
+        connectedApps={connectedAppCount}
+      />
+
       {/* Treatment Cycle Tracker */}
       <TreatmentCycleTracker medications={medications} patientName={patientName} />
 
       {actionCount === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="flex flex-col items-center justify-center py-16 text-center" data-tour="dashboard-cards">
           <div className="w-16 h-16 rounded-full bg-[#10b981]/10 flex items-center justify-center mb-4">
             <svg width="32" height="32" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
               <polyline points="20 6 9 17 4 12" />
@@ -411,7 +508,7 @@ export function DashboardView({
           )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3" data-tour="dashboard-cards">
           {cards.map((card, i) => (
             <PriorityCard
               key={card.id}
@@ -425,6 +522,7 @@ export function DashboardView({
               expanded={expandedId === card.id}
               onToggle={() => setExpandedId(expandedId === card.id ? null : card.id)}
               expandedContent={card.expandedContent}
+              isPriority={card.isPriority}
             />
           ))}
         </div>
@@ -432,10 +530,10 @@ export function DashboardView({
 
       {/* Quick-ask prompts */}
       {actionCount > 0 && (
-        <div className="mt-6 relative" id="quick-ask-section">
+        <div className="mt-6 relative" id="quick-ask-section" data-tour="quick-ask">
           <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2">Quick Ask</div>
           <div className="flex flex-wrap gap-2">
-            {['Log today\'s symptoms', 'Prep for oncology appointment', 'Track medication side effects', 'Review my treatment timeline'].map((prompt) => (
+            {quickAskPrompts.map((prompt) => (
               <a
                 key={prompt}
                 href={`/chat?prompt=${encodeURIComponent(prompt)}`}
@@ -481,6 +579,9 @@ export function DashboardView({
           </div>
         </div>
       )}
+
+      {/* Guided tour for new users */}
+      <GuidedTour />
     </div>
   )
 }
