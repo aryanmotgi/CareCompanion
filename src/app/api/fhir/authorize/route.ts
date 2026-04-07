@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
         if (!userRes.ok) {
           const errText = await userRes.text();
           console.error('1upHealth user creation failed:', userRes.status, errText);
-          return Response.json({ error: 'oneup_user_failed', status: userRes.status, detail: errText }, { status: 500 });
+          return NextResponse.redirect(`${baseUrl}/connect?error=oneup_user_failed`);
         }
 
         const userData = await userRes.json();
@@ -98,7 +98,7 @@ export async function GET(req: NextRequest) {
         if (!tokenRes.ok) {
           const errText = await tokenRes.text();
           console.error('1upHealth token exchange failed:', tokenRes.status, errText);
-          return Response.json({ error: 'oneup_token_failed', status: tokenRes.status, detail: errText }, { status: 500 });
+          return NextResponse.redirect(`${baseUrl}/connect?error=oneup_token_failed`);
         }
 
         const tokenData = await tokenRes.json();
@@ -135,11 +135,7 @@ export async function GET(req: NextRequest) {
       );
     } catch (err) {
       console.error('1upHealth authorize error:', err);
-      // Return the error as JSON so we can debug
-      return Response.json({
-        error: 'oneup_authorize_failed',
-        message: err instanceof Error ? err.message : String(err),
-      }, { status: 500 });
+      return NextResponse.redirect(`${baseUrl}/connect?error=oneup_error`);
     }
   }
 
