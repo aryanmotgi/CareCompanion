@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Production 24/7 Monitor', () => {
   test('core application routes render without errors', async ({ page }) => {
+    test.skip(!process.env.PLAYWRIGHT_BASE_URL, 'This test is strictly for the deployed production environment.')
     await page.goto('/login')
     await page.locator('input[type="email"]').fill('test_automation@example.com')
     await page.locator('input[type="password"]').fill('password123')
