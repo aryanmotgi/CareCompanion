@@ -1,5 +1,8 @@
 import { fhirSearchAll } from './oneup';
 import { createAdminClient } from './supabase/admin';
+import { anthropic } from '@ai-sdk/anthropic';
+import { generateObject } from 'ai';
+import { z } from 'zod';
 
 interface SyncResults {
   patient_name?: string;
@@ -354,6 +357,66 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
     .update({ last_synced: new Date().toISOString() })
     .eq('user_id', userId)
     .eq('source', '1uphealth');
+
+  // === AUTO-POPULATE PROFILE FROM SYNCED DATA ===
+  // Use AI to detect cancer type, stage, and treatment phase from conditions + medications
+  try {
+    // Re-fetch the profile to get updated conditions
+    const { data: updatedProfile } = await admin
+      .from('care_profiles')
+      .select('id, conditions, allergies, cancer_type, cancer_stage, treatment_phase, patient_name, patient_age')
+      .eq('user_id', userId)
+      .single();
+
+    if (updatedProfile) {
+      // Get medications for treatment phase detection
+      const { data: meds } = await admin
+        .from('medications')
+        .select('name, dose, frequency')
+        .eq('care_profile_id', updatedProfile.id);
+
+      const hasConditions = !!updatedProfile.conditions;
+      const hasMeds = (meds || []).length > 0;
+      const missingFields = !updatedProfile.cancer_type || !updatedProfile.cancer_stage || !updatedProfile.treatment_phase;
+
+      // Only run AI detection if we have data to analyze AND fields are missing
+      if ((hasConditions || hasMeds) && missingFields) {
+        const { object: detected } = await generateObject({
+          model: anthropic('claude-haiku-4-5-20251001'),
+          schema: z.object({
+            cancer_type: z.string().nullable().describe('The specific cancer type if detectable, e.g. "Breast Cancer", "Lung Cancer", "Colon Cancer". null if not a cancer patient or unclear.'),
+            cancer_stage: z.string().nullable().describe('Cancer stage if detectable, e.g. "Stage II", "Stage IIIA", "Stage IV". null if unclear.'),
+            treatment_phase: z.string().nullable().describe('Current treatment phase, e.g. "active_treatment", "post_surgery", "chemotherapy", "radiation", "maintenance", "remission", "palliative". null if unclear.'),
+          }),
+          prompt: `Analyze this patient's medical data and detect their cancer type, stage, and treatment phase.
+
+CONDITIONS: ${updatedProfile.conditions || 'None listed'}
+MEDICATIONS: ${(meds || []).map((m) => `${m.name} ${m.dose || ''} ${m.frequency || ''}`).join(', ') || 'None'}
+ALLERGIES: ${updatedProfile.allergies || 'None'}
+
+Rules:
+- Only set cancer_type if there's clear evidence of a cancer diagnosis in the conditions
+- Only set cancer_stage if the stage is explicitly mentioned or strongly implied
+- Detect treatment_phase from medications (e.g. chemo drugs = "active_treatment", tamoxifen = "maintenance")
+- Return null for any field you're not confident about
+- Be specific: "HER2+ Breast Cancer" is better than "Breast Cancer"`,
+        });
+
+        const updates: Record<string, string> = {};
+        if (detected.cancer_type && !updatedProfile.cancer_type) updates.cancer_type = detected.cancer_type;
+        if (detected.cancer_stage && !updatedProfile.cancer_stage) updates.cancer_stage = detected.cancer_stage;
+        if (detected.treatment_phase && !updatedProfile.treatment_phase) updates.treatment_phase = detected.treatment_phase;
+
+        if (Object.keys(updates).length > 0) {
+          await admin.from('care_profiles').update(updates).eq('id', updatedProfile.id);
+          console.log('[sync] Auto-populated profile:', updates);
+        }
+      }
+    }
+  } catch (e) {
+    // Non-critical — profile auto-population is a convenience, not a requirement
+    console.error('[sync] Profile auto-populate error:', e);
+  }
 
   return results;
 }

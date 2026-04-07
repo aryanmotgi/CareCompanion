@@ -19,13 +19,20 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
   const [showScanner, setShowScanner] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [promptSent, setPromptSent] = useState(false);
+  const [, setIsNewChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
   const promptFromUrl = searchParams.get('prompt');
 
-  const { messages, sendMessage, status, error, regenerate, stop } = useChat({
+  const { messages, sendMessage, status, error, regenerate, stop, setMessages } = useChat({
     messages: initialMessages,
   });
+
+  const handleNewChat = () => {
+    setMessages([]);
+    setIsNewChat(true);
+    setInput('');
+  };
 
   const isStreaming = status === 'streaming';
   const isLoading = status === 'submitted' || isStreaming;
@@ -105,6 +112,21 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
 
   return (
     <div className="flex flex-col h-[calc(100dvh-140px)] lg:h-[calc(100dvh-100px)] -mx-4 sm:-mx-8 -mb-6">
+      {/* New Chat button — shown when there are messages */}
+      {messages.length > 0 && (
+        <div className="flex justify-end px-4 sm:px-8 pt-3 pb-1">
+          <button
+            onClick={handleNewChat}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[var(--text-secondary)] text-xs hover:bg-white/[0.08] hover:text-[var(--text)] transition-colors"
+            title="Start a new conversation"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            New Chat
+          </button>
+        </div>
+      )}
       {/* Messages */}
       <div className="flex-1 overflow-y-auto chat-scroll px-4 sm:px-8 py-6">
         {messages.length === 0 ? (
