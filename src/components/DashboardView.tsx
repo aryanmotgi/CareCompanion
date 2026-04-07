@@ -270,6 +270,7 @@ export function DashboardView({
         subtitle: `$${claim.patient_responsibility} patient responsibility · ${claim.denial_reason || ''}`,
         priority: 3,
         expandedContent: (
+          <>
           <AlertInsights
             details={
               <div className="grid grid-cols-2 gap-2 text-xs">
@@ -287,7 +288,7 @@ export function DashboardView({
             ]}
             chatPrompt={`Help me understand and appeal this denied claim from ${claim.provider_name} — denied for "${claim.denial_reason}". I owe $${claim.patient_responsibility}.`}
           />
-          <div className="mt-3">
+          <div className="mt-3 pt-3 border-t border-white/[0.06]">
             <AppealGenerator
               claimId={claim.id}
               claimInfo={{
@@ -298,6 +299,7 @@ export function DashboardView({
               }}
             />
           </div>
+        </>
         ),
       })
     })
