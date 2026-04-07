@@ -5,6 +5,7 @@ import { DashboardView } from '@/components/DashboardView';
 import { DashboardSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { MedicationReminders } from '@/components/MedicationReminders';
 import { DashboardInsights } from '@/components/DashboardInsights';
+import { syncOneUpData } from '@/lib/oneup-sync';
 
 async function DashboardContent() {
   const supabase = await createClient();
@@ -49,6 +50,20 @@ async function DashboardContent() {
     supabase.from('scanned_documents').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
     supabase.from('doctors').select('*', { count: 'exact', head: true }).eq('care_profile_id', profile.id),
   ]);
+
+  // Auto-sync: if 1upHealth is connected but profile is missing cancer info, trigger a background sync
+  const oneupApp = connectedApps?.find((a) => a.source === '1uphealth');
+  if (oneupApp?.access_token && (!profile.cancer_type || !profile.cancer_stage)) {
+    // Check if last sync was more than 5 minutes ago to avoid re-syncing on every page load
+    const lastSynced = oneupApp.last_synced ? new Date(oneupApp.last_synced).getTime() : 0;
+    const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+    if (lastSynced < fiveMinAgo && oneupApp.access_token !== 'demo-token') {
+      // Non-blocking background sync
+      syncOneUpData(user.id, oneupApp.access_token).catch((err) => {
+        console.error('[dashboard] Auto-sync error:', err);
+      });
+    }
+  }
 
   const hasHealthRecords = (connectedApps && connectedApps.length > 0) || false;
   const hasEmergencyContact = !!(profile.emergency_contact_name && profile.emergency_contact_phone);
