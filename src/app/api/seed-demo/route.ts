@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     patient_age: 62,
     relationship: 'parent',
     cancer_type: 'HER2+ ER+ Breast Cancer',
-    cancer_stage: 'Stage IIIA',
+    cancer_stage: 'IIIA',
     treatment_phase: 'active_treatment',
     conditions: 'Stage IIIA Breast Cancer (HER2+, ER+)\nHypertension\nAnxiety',
     allergies: 'Sulfa drugs\nLatex',
