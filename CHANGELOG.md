@@ -2,6 +2,25 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.1.2.0] - 2026-04-06
+
+Complete onboarding overhaul. New users now get a guided tour, personalized dashboard, and a unified setup flow that replaces three separate paths.
+
+### Added
+
+- **Post-onboarding guided tour** — 5-step spotlight walkthrough covering dashboard cards, AI chat, care tab, scan tab, and navigation. CSS mask-based cutout with pulse animation.
+- **Profile completeness indicator** — SVG circular progress ring scoring 11 weighted fields. Shows top 3 "next steps" action cards linking to relevant pages. Celebration state at 100%.
+- **Priorities-driven dashboard** — cards reorder based on onboarding priorities. "Priority" badges on matched cards. Quick-ask prompts personalized per selection.
+- **Re-engagement nudges** — dismissable and snoozeable cards for users who skipped adding health records, medications, appointments, emergency contacts, or scans. 1-day grace period after onboarding. 3-day snooze option.
+- **Structured cancer type picker** — 13 tappable pill buttons replacing free-text input. "Other" reveals custom text field. Cancer-specific contextual tips on selection.
+- **Unified 6-step onboarding wizard** — merged wizard, data connection, and manual setup into one flow with inline data entry (medications, doctors, appointments) and summary/welcome screen.
+
+### Changed
+
+- Manual setup page now redirects to onboarding for users who haven't completed it
+- Bottom tab bar has data-tour attributes for guided tour targeting
+- Dashboard page fetches additional profile data (doctors count, connected apps, emergency contacts, scanned documents) for completeness scoring and nudge logic
+
 ## [0.1.1.0] - 2026-04-03
 
 Backend hardening, test coverage, and new API endpoints. The extraction engine is now unified, sync routes are locked down, and 84 tests catch regressions before they ship.
