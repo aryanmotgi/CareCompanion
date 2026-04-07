@@ -90,7 +90,7 @@ export const FHIR_PROVIDERS: FhirProvider[] = [
     name: '1upHealth',
     description: 'Connect to 700+ health systems at once. Aggregates records from Epic, Cerner, Medicare, and more.',
     icon: '🔗',
-    authorizeUrl: 'https://api.1up.health/connect/system/clinical/start',
+    authorizeUrl: 'https://api.1up.health/connect/marketplace',
     tokenUrl: 'https://api.1up.health/oauth2/token',
     fhirBaseUrl: 'https://api.1up.health/r4',
     scopes: '',

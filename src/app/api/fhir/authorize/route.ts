@@ -124,14 +124,14 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      // Step 3: Redirect to 1upHealth connect widget with access_token
+      // Step 3: Redirect to 1upHealth connect marketplace with access_token
       const connectParams = new URLSearchParams({
         client_id: clientId,
         access_token: accessToken!,
       });
 
       return NextResponse.redirect(
-        `https://api.1up.health/connect/system/clinical?${connectParams.toString()}`
+        `https://api.1up.health/connect/marketplace?${connectParams.toString()}`
       );
     } catch (err) {
       console.error('1upHealth authorize error:', err);
