@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
+import { DataConsentModal } from '@/components/DataConsentModal';
+import { ConnectionStatus } from '@/components/ConnectionStatus';
 import type { ConnectedApp } from '@/lib/types';
 
 interface ConnectAccountsProps {
@@ -91,6 +93,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
   const [savingProfile, setSavingProfile] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [justConnected, setJustConnected] = useState<string | null>(null);
+  const [showConsent, setShowConsent] = useState(false);
 
   const isOneUpConnected = apps.some((a) => a.source === '1uphealth');
 
@@ -324,11 +327,11 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
             <div className="flex-1 min-w-0">
               {/* Connected badge */}
               {isOneUpConnected && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 text-[11px] font-semibold tracking-wide mb-2">
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                  </svg>
-                  Connected
+                <div className="mb-2">
+                  <ConnectionStatus
+                    source="1uphealth"
+                    lastSynced={apps.find((a) => a.source === '1uphealth')?.last_synced}
+                  />
                 </div>
               )}
 
@@ -379,12 +382,12 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
                 </button>
               </>
             ) : (
-              <a href="/api/fhir/authorize?provider=1uphealth" className="relative z-10 gradient-btn inline-flex items-center gap-2.5 text-white font-semibold text-sm py-3 px-7 rounded-xl cursor-pointer">
+              <button onClick={() => setShowConsent(true)} className="relative z-10 gradient-btn inline-flex items-center gap-2.5 text-white font-semibold text-sm py-3 px-7 rounded-xl cursor-pointer">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
                 </svg>
                 Connect Health Records
-              </a>
+              </button>
             )}
           </div>
         </div>
@@ -554,6 +557,15 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
           </button>
         </div>
       </footer>
+
+      <DataConsentModal
+        isOpen={showConsent}
+        onClose={() => setShowConsent(false)}
+        onConsent={() => {
+          setShowConsent(false);
+          window.location.href = '/api/fhir/authorize?provider=1uphealth';
+        }}
+      />
     </div>
   );
 }

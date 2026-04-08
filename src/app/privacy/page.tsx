@@ -105,8 +105,9 @@ export default function PrivacyPolicy() {
             {
               num: 5, title: 'HEALTH SYSTEM INTEGRATIONS (FHIR/OAuth)',
               content: <>
-                <p className="mb-3">When you connect a health system like <strong className="text-[var(--text)]">Epic MyChart</strong>:</p>
+                <p className="mb-3">When you connect a health system like <strong className="text-[var(--text)]">Epic MyChart</strong> via <strong className="text-[var(--text)]">1upHealth</strong>:</p>
                 <ul className="space-y-1.5">{[
+                  '1upHealth acts as a secure intermediary, connecting to 700+ health systems. We use their FHIR R4 API to import your records.',
                   'You are redirected to your hospital\'s official login page',
                   'You log in and explicitly grant CareCompanion read-only access',
                   'We store only an encrypted access token in our database',
