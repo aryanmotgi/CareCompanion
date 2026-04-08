@@ -63,8 +63,10 @@ export async function GET(req: NextRequest) {
       const isExpired = existingConn?.expires_at && new Date(existingConn.expires_at) < new Date();
 
       if (!accessToken || isExpired) {
-        // Step 1: Create a 1up user (or get existing one)
-        const userRes = await fetch('https://api.1up.health/user-management/v1/user', {
+        // Step 1: Create a 1up user, or get a new auth code if they already exist
+        let authCode: string;
+
+        const createRes = await fetch('https://api.1up.health/user-management/v1/user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -74,14 +76,30 @@ export async function GET(req: NextRequest) {
           }),
         });
 
-        if (!userRes.ok) {
-          const errText = await userRes.text();
-          console.error('1upHealth user creation failed:', userRes.status, errText);
-          return NextResponse.redirect(`${baseUrl}/connect?error=oneup_user_failed`);
-        }
+        if (createRes.ok) {
+          const createData = await createRes.json();
+          authCode = createData.code;
+        } else {
+          // User already exists — generate a new auth code
+          const codeRes = await fetch('https://api.1up.health/user-management/v1/user/auth-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              client_id: clientId,
+              client_secret: clientSecret,
+              app_user_id: user.id,
+            }),
+          });
 
-        const userData = await userRes.json();
-        const authCode = userData.code;
+          if (!codeRes.ok) {
+            const errText = await codeRes.text();
+            console.error('1upHealth auth-code generation failed:', codeRes.status, errText);
+            return NextResponse.redirect(`${baseUrl}/connect?error=oneup_user_failed`);
+          }
+
+          const codeData = await codeRes.json();
+          authCode = codeData.code;
+        }
 
         // Step 2: Exchange code for access_token
         const tokenRes = await fetch('https://api.1up.health/fhir/oauth2/token', {
@@ -115,7 +133,7 @@ export async function GET(req: NextRequest) {
               ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
               : null,
             metadata: {
-              oneup_user_id: userData.oneup_user_id,
+              oneup_user_id: user.id,
               provider_id: '1uphealth',
               provider_name: '1upHealth',
             },
