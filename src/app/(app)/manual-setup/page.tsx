@@ -15,27 +15,9 @@ export default async function ManualSetupPage() {
     .eq('user_id', user.id)
     .single();
 
-  // If no profile at all, create a minimal one first
-  if (!profile) {
-    const { data: newProfile } = await supabase
-      .from('care_profiles')
-      .insert({ user_id: user.id, patient_name: 'My loved one' })
-      .select('*')
-      .single();
-
-    if (!newProfile) redirect('/connect');
-
-    return (
-      <div className="max-w-2xl mx-auto">
-        <SetupWizard
-          initialStep={1}
-          existingProfile={newProfile}
-          existingMedications={[]}
-          existingDoctors={[]}
-          existingAppointments={[]}
-        />
-      </div>
-    );
+  // If onboarding hasn't been completed, redirect to the unified onboarding flow
+  if (!profile || !profile.onboarding_completed) {
+    redirect('/onboarding');
   }
 
   const [{ data: meds }, { data: docs }, { data: appts }] = await Promise.all([

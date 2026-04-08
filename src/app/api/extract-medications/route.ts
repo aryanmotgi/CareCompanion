@@ -1,81 +1,50 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server'
+import { extractDocument } from '@/lib/extract-document'
+import { checkRateLimit } from '@/lib/rate-limit'
 
-export const maxDuration = 30;
+export const maxDuration = 30
 
+/**
+ * POST /api/extract-medications
+ *
+ * Legacy endpoint — kept for backward compatibility with CvsImportModal.
+ * Uses the unified extraction engine with a medication category hint.
+ *
+ * Accepts FormData with `image` (file).
+ * Returns { medications: [...] } in the legacy format.
+ */
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
-  const formData = await req.formData();
-  const imageFile = formData.get('image') as File | null;
-
-  if (!imageFile) {
-    return Response.json({ error: 'No image provided' }, { status: 400 });
-  }
-
-  const bytes = await imageFile.arrayBuffer();
-  const base64 = Buffer.from(bytes).toString('base64');
-
-  // Determine media type
-  let mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' = 'image/png';
-  if (imageFile.type === 'image/jpeg' || imageFile.type === 'image/jpg') {
-    mediaType = 'image/jpeg';
-  } else if (imageFile.type === 'image/webp') {
-    mediaType = 'image/webp';
-  }
-
-  const anthropic = new Anthropic();
-
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 2048,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: mediaType,
-              data: base64,
-            },
-          },
-          {
-            type: 'text',
-            text: `Extract all medications from this pharmacy screenshot. For each medication, provide:
-- name: the medication name
-- dose: the dosage (e.g., "500mg", "10mg/5ml")
-- frequency: how often it's taken (e.g., "Once daily", "Twice daily", "As needed")
-
-Return ONLY valid JSON in this exact format:
-{"medications": [{"name": "...", "dose": "...", "frequency": "..."}]}
-
-If you cannot find any medications, return: {"medications": []}`,
-          },
-        ],
-      },
-    ],
-  });
-
   try {
-    const textBlock = response.content.find((b) => b.type === 'text');
-    const text = textBlock && 'text' in textBlock ? textBlock.text : '';
-    // Extract JSON from the response (might be wrapped in markdown code blocks)
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return Response.json({ medications: [] });
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return new Response('Unauthorized', { status: 401 })
     }
-    const parsed = JSON.parse(jsonMatch[0]);
-    return Response.json(parsed);
+
+    const rateCheck = checkRateLimit(`extract:${user.id}`, { maxRequests: 10, windowMs: 60_000 })
+    if (!rateCheck.allowed) {
+      return Response.json(
+        { error: 'Too many requests.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil(rateCheck.retryAfterMs / 1000)) } }
+      )
+    }
+
+    const formData = await req.formData()
+    const imageFile = formData.get('image') as File | null
+    if (!imageFile) {
+      return Response.json({ error: 'No image provided' }, { status: 400 })
+    }
+
+    const bytes = await imageFile.arrayBuffer()
+    const base64 = Buffer.from(bytes).toString('base64')
+
+    // Use the unified extraction engine with medication hint
+    const extraction = await extractDocument(base64, 'medication')
+
+    return Response.json({
+      medications: extraction.extracted_data.medications || [],
+    })
   } catch {
-    return Response.json({ medications: [] });
+    return Response.json({ medications: [] })
   }
 }

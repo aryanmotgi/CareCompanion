@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { CategoryScanner } from '@/components/CategoryScanner';
 import type { Medication } from '@/lib/types';
 
@@ -21,6 +22,8 @@ export function MedicationsView({ medications: initial, profileId }: Medications
   const [dose, setDose] = useState('');
   const [frequency, setFrequency] = useState('');
   const [saving, setSaving] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const addMedication = async () => {
     if (!name.trim()) return;
@@ -45,11 +48,26 @@ export function MedicationsView({ medications: initial, profileId }: Medications
     }
   };
 
-  const removeMedication = async (id: string) => {
-    const { error } = await supabase.from('medications').delete().eq('id', id);
+  const removeMedication = async () => {
+    if (!confirmRemove) return;
+    setRemoving(true);
+    const { error } = await supabase.from('medications').delete().eq('id', confirmRemove.id);
     if (!error) {
-      setMedications((prev) => prev.filter((m) => m.id !== id));
+      setMedications((prev) => prev.filter((m) => m.id !== confirmRemove.id));
     }
+    setRemoving(false);
+    setConfirmRemove(null);
+  };
+
+  const handleScanSaved = async () => {
+    // Refetch medications instead of reloading the whole page
+    const { data } = await supabase
+      .from('medications')
+      .select('*')
+      .eq('care_profile_id', profileId)
+      .order('created_at', { ascending: false });
+    if (data) setMedications(data);
+    setShowScanner(false);
   };
 
   return (
@@ -78,7 +96,7 @@ export function MedicationsView({ medications: initial, profileId }: Medications
             <FormField label="Frequency" value={frequency} onChange={setFrequency} placeholder="e.g., Twice daily" />
           </div>
           <div className="flex gap-2">
-            <Button onClick={addMedication} loading={saving}>Save</Button>
+            <Button onClick={addMedication} loading={saving} disabled={!name.trim()}>Save</Button>
             <Button variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
           </div>
         </div>
@@ -86,12 +104,14 @@ export function MedicationsView({ medications: initial, profileId }: Medications
 
       {/* List */}
       {medications.length === 0 ? (
-        <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] px-5 py-12 text-center">
-          <svg className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3" />
-          </svg>
-          <p className="text-sm text-[var(--text-secondary)] mb-1">No medications yet</p>
-          <p className="text-xs text-[var(--text-muted)]">Add one manually or scan a pill bottle</p>
+        <div className="flex flex-col items-center py-8 text-center">
+          <div className="w-12 h-12 rounded-full bg-white/[0.06] flex items-center justify-center mb-3">
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3" />
+            </svg>
+          </div>
+          <p className="text-sm text-[#94a3b8]">No medications yet</p>
+          <p className="text-xs text-[#64748b] mt-1">Tap &ldquo;+ Add&rdquo; above or scan a pill bottle to get started</p>
         </div>
       ) : (
         <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] divide-y divide-[var(--border)] overflow-hidden">
@@ -112,8 +132,8 @@ export function MedicationsView({ medications: initial, profileId }: Medications
                 )}
               </div>
               <button
-                onClick={() => removeMedication(med.id)}
-                className="text-sm text-red-400 hover:text-red-400 flex-shrink-0 ml-4"
+                onClick={() => setConfirmRemove({ id: med.id, name: med.name })}
+                className="text-sm text-red-400 hover:text-red-300 flex-shrink-0 ml-4 transition-colors"
               >
                 Remove
               </button>
@@ -126,9 +146,20 @@ export function MedicationsView({ medications: initial, profileId }: Medications
         <CategoryScanner
           category="medication"
           onClose={() => setShowScanner(false)}
-          onSaved={() => window.location.reload()}
+          onSaved={handleScanSaved}
         />
       )}
+
+      <ConfirmDialog
+        open={!!confirmRemove}
+        title="Remove Medication"
+        description={`Are you sure you want to remove "${confirmRemove?.name}"? This action cannot be undone.`}
+        confirmLabel="Remove"
+        variant="danger"
+        loading={removing}
+        onConfirm={removeMedication}
+        onCancel={() => setConfirmRemove(null)}
+      />
     </div>
   );
 }

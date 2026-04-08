@@ -92,7 +92,7 @@ export function VisitPrepSheet({ appointmentId, doctorName, dateTime, existingPr
       <button
         onClick={prep ? () => setShowSheet(true) : generatePrep}
         disabled={loading}
-        className="w-full text-center py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-sm font-semibold disabled:opacity-50 transition-opacity"
+        className="w-full text-center py-2.5 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold disabled:opacity-50 transition-opacity"
       >
         {loading ? (
           <span className="flex items-center justify-center gap-2">

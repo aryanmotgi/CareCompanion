@@ -270,14 +270,14 @@ export function SetupWizard({
         {step === 2 && (
           <div className="space-y-5">
             <h2 className="font-display text-xl font-semibold text-white mb-4">
-              Conditions & Allergies
+              Cancer Diagnosis & Conditions
             </h2>
             <FormField
-              label="Medical conditions"
+              label="Cancer type, stage, and other conditions"
               type="textarea"
               value={conditions}
               onChange={setConditions}
-              placeholder="e.g., Type 2 diabetes, high blood pressure, arthritis..."
+              placeholder="e.g., Stage III breast cancer (HER2+), diagnosed Jan 2025, also has high blood pressure..."
             />
             <FormField
               label="Allergies"
@@ -320,7 +320,7 @@ export function SetupWizard({
             <button
               type="button"
               onClick={() => setMedications((prev) => [...prev, emptyMedication()])}
-              className="text-sm text-blue-400 hover:text-blue-300 font-medium"
+              className="text-sm text-[#A78BFA] hover:text-[#C4B5FD] font-medium"
             >
               + Add another medication
             </button>
@@ -356,7 +356,7 @@ export function SetupWizard({
             <button
               type="button"
               onClick={() => setDoctors((prev) => [...prev, emptyDoctor()])}
-              className="text-sm text-blue-400 hover:text-blue-300 font-medium"
+              className="text-sm text-[#A78BFA] hover:text-[#C4B5FD] font-medium"
             >
               + Add another doctor
             </button>
@@ -390,7 +390,7 @@ export function SetupWizard({
             <button
               type="button"
               onClick={() => setAppointments((prev) => [...prev, emptyAppointment()])}
-              className="text-sm text-blue-400 hover:text-blue-300 font-medium"
+              className="text-sm text-[#A78BFA] hover:text-[#C4B5FD] font-medium"
             >
               + Add another appointment
             </button>

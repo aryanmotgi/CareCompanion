@@ -1,12 +1,15 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { syncOneUpData } from '@/lib/oneup-sync';
+import { verifyCronRequest } from '@/lib/cron-auth';
 
 export const maxDuration = 300;
 
-// Called by Vercel Cron every 15 minutes
+// Called by Vercel Cron daily at 8am UTC
 // Syncs all connected 1upHealth accounts
 
-export async function GET() {
+export async function GET(req: Request) {
+  const authError = verifyCronRequest(req);
+  if (authError) return authError;
   const admin = createAdminClient();
 
   const { data: apps } = await admin
@@ -34,6 +37,6 @@ export async function GET() {
   return Response.json({ synced: results.length, results });
 }
 
-export async function POST() {
-  return GET();
+export async function POST(req: Request) {
+  return GET(req);
 }

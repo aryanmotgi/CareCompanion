@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
+import { DataConsentModal } from '@/components/DataConsentModal';
+import { ConnectionStatus } from '@/components/ConnectionStatus';
 import type { ConnectedApp } from '@/lib/types';
 
 interface ConnectAccountsProps {
@@ -91,11 +93,30 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
   const [savingProfile, setSavingProfile] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [justConnected, setJustConnected] = useState<string | null>(null);
+  const [connectError, setConnectError] = useState<string | null>(null);
+  const [showConsent, setShowConsent] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const isOneUpConnected = apps.some((a) => a.source === '1uphealth');
 
-  // Check if we just came back from a successful connection
+  const ERROR_MESSAGES: Record<string, string> = {
+    provider_not_configured: '1upHealth is not configured yet. Please contact support.',
+    oneup_user_failed: 'Could not create 1upHealth account. Please try again.',
+    oneup_token_failed: 'Authentication with 1upHealth failed. Please try again.',
+    oneup_error: 'Something went wrong connecting to 1upHealth. Please try again.',
+  };
+
+  // Check if we just came back from a successful connection or error
   useEffect(() => {
+    const error = searchParams.get('error');
+    if (error) {
+      setConnectError(ERROR_MESSAGES[error] || 'Connection failed. Please try again.');
+      const url = new URL(window.location.href);
+      url.searchParams.delete('error');
+      window.history.replaceState({}, '', url.toString());
+    }
+
     const connected = searchParams.get('connected');
     if (connected) {
       setJustConnected(connected);
@@ -202,6 +223,28 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
         </p>
       </header>
 
+      {/* ━━ ERROR BANNER ━━ */}
+      {connectError && (
+        <div className="glass-card animate-fade-in-up rounded-2xl p-5 border border-red-500/20" style={{ background: 'rgba(239, 68, 68, 0.06)' }}>
+          <div className="flex items-center gap-4">
+            <div className="relative w-11 h-11 rounded-full bg-red-500/15 flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-red-300">Connection failed</p>
+              <p className="text-xs text-red-400/70 mt-0.5">{connectError}</p>
+            </div>
+            <button onClick={() => setConnectError(null)} className="text-red-400/60 hover:text-red-400 transition-colors p-1">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ━━ 7. SUCCESS BANNER ━━ */}
       {justConnected && (
         <div className="glass-card animate-fade-in-up stagger-1 animate-pulse-glow-green rounded-2xl p-5 border border-emerald-500/20" style={{ background: 'rgba(52, 211, 153, 0.06)' }}>
@@ -233,7 +276,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
           >
             <div className="flex items-center gap-3 mb-2">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${managingFor === 'self' ? 'bg-blue-500/20' : 'bg-white/5'} transition-colors`}>
-                <svg className={`w-5 h-5 ${managingFor === 'self' ? 'text-blue-400' : 'text-[var(--text-muted)]'} transition-colors`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <svg className={`w-5 h-5 ${managingFor === 'self' ? 'text-[#A78BFA]' : 'text-[var(--text-muted)]'} transition-colors`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                 </svg>
               </div>
@@ -315,7 +358,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
             <div className="relative flex-shrink-0">
               <div className={`absolute inset-0 rounded-2xl blur-xl ${isOneUpConnected ? 'bg-emerald-500/25' : 'bg-blue-500/25'} animate-orb-pulse`} />
               <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center ${isOneUpConnected ? 'bg-emerald-500/15' : 'bg-blue-500/15'} transition-colors`}>
-                <svg className={`w-7 h-7 sm:w-8 sm:h-8 ${isOneUpConnected ? 'text-emerald-400' : 'text-blue-400'} transition-colors`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <svg className={`w-7 h-7 sm:w-8 sm:h-8 ${isOneUpConnected ? 'text-emerald-400' : 'text-[#A78BFA]'} transition-colors`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
                 </svg>
               </div>
@@ -324,11 +367,11 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
             <div className="flex-1 min-w-0">
               {/* Connected badge */}
               {isOneUpConnected && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 text-[11px] font-semibold tracking-wide mb-2">
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                  </svg>
-                  Connected
+                <div className="mb-2">
+                  <ConnectionStatus
+                    source="1uphealth"
+                    lastSynced={apps.find((a) => a.source === '1uphealth')?.last_synced}
+                  />
                 </div>
               )}
 
@@ -365,7 +408,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
           </div>
 
           {/* CTA area */}
-          <div className="relative mt-6 flex items-center gap-3">
+          <div className="relative z-10 mt-6 flex items-center gap-3">
             {isOneUpConnected ? (
               <>
                 <Button onClick={handleSync} loading={syncing} variant="secondary" className="!py-2.5 !px-5 !min-h-0 text-sm !bg-emerald-500/10 !border-emerald-500/20 !text-emerald-400 hover:!bg-emerald-500/20">
@@ -379,12 +422,12 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
                 </button>
               </>
             ) : (
-              <a href="/api/oneup/authorize" className="gradient-btn inline-flex items-center gap-2.5 text-white font-semibold text-sm py-3 px-7 rounded-xl">
+              <button onClick={() => setShowConsent(true)} className="relative z-10 gradient-btn inline-flex items-center gap-2.5 text-white font-semibold text-sm py-3 px-7 rounded-xl cursor-pointer">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
                 </svg>
                 Connect Health Records
-              </a>
+              </button>
             )}
           </div>
         </div>
@@ -438,7 +481,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
                           Disconnect
                         </button>
                       ) : (
-                        <button className="text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] px-3.5 py-1.5 rounded-lg transition-all">
+                        <button className="text-xs font-medium text-[#A78BFA] bg-blue-500/10 hover:bg-blue-500/20 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] px-3.5 py-1.5 rounded-lg transition-all">
                           Connect
                         </button>
                       )
@@ -494,9 +537,9 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-white text-sm">Try with demo data</h4>
+              <h4 className="font-medium text-white text-sm">Try with cancer care demo</h4>
               <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                Load realistic sample data (medications, appointments, lab results) to explore the full app experience
+                Load realistic cancer treatment data (chemo meds, tumor markers, oncology appointments) to explore the full app
               </p>
             </div>
             <button
@@ -512,10 +555,10 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
                     await supabase.from('care_profiles').insert({
                       user_id: user.id,
                       patient_name: 'Mom',
-                      patient_age: 67,
+                      patient_age: 62,
                       relationship: 'parent',
-                      conditions: 'Type 2 Diabetes, Hypertension, High Cholesterol',
-                      allergies: 'Penicillin, Sulfa drugs',
+                      conditions: 'Stage IIIA Breast Cancer (HER2+, ER+)\nHypertension\nAnxiety',
+                      allergies: 'Sulfa drugs\nLatex',
                     });
                   }
 
@@ -534,6 +577,72 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
           </div>
         </div>
       </section>
+
+      {/* ━━ DELETE ACCOUNT ━━ */}
+      <section className="animate-fade-in-up stagger-6">
+        <div className="text-center">
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="text-xs text-[#64748b] hover:text-red-400 transition-colors"
+          >
+            Delete account &amp; start over
+          </button>
+        </div>
+      </section>
+
+      {/* Delete confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-lg" onClick={() => !deleting && setShowDeleteConfirm(false)} />
+          <div className="relative w-full max-w-sm rounded-2xl shadow-2xl animate-fade-in-up overflow-hidden" style={{ backgroundColor: '#0f172a' }}>
+            <div className="p-6">
+              <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-white text-center mb-2">Delete Account</h3>
+              <p className="text-sm text-[#94a3b8] text-center mb-6">
+                This will permanently delete your account and all your data — medications, appointments, lab results, messages, and settings. You&apos;ll be redirected to sign up again.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={deleting}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-[#94a3b8] hover:text-white transition-colors disabled:opacity-40"
+                  style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    setDeleting(true);
+                    try {
+                      const res = await fetch('/api/delete-account', { method: 'POST' });
+                      if (!res.ok) throw new Error('Delete failed');
+                      window.location.href = '/login';
+                    } catch {
+                      setDeleting(false);
+                      setShowDeleteConfirm(false);
+                      setConnectError('Failed to delete account. Please try again.');
+                    }
+                  }}
+                  disabled={deleting}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2 transition-colors"
+                >
+                  {deleting && (
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  )}
+                  {deleting ? 'Deleting...' : 'Delete Everything'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ━━ 7. FOOTER ━━ */}
       <footer className="flex items-center justify-between pb-10 animate-fade-in-up stagger-6">
@@ -554,6 +663,15 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
           </button>
         </div>
       </footer>
+
+      <DataConsentModal
+        isOpen={showConsent}
+        onClose={() => setShowConsent(false)}
+        consentHref="/api/fhir/authorize?provider=1uphealth"
+        onConsent={() => {
+          setShowConsent(false);
+        }}
+      />
     </div>
   );
 }

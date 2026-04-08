@@ -22,13 +22,17 @@ export async function POST(req: Request) {
 
   if (!appt) return Response.json({ error: 'Appointment not found' }, { status: 404 });
 
-  // Get care profile
+  // Get care profile and verify ownership
   const { data: profile } = await admin.from('care_profiles')
     .select('*')
     .eq('id', appt.care_profile_id)
     .single();
 
   if (!profile) return Response.json({ error: 'Care profile not found' }, { status: 404 });
+
+  if (profile.user_id !== user.id) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   // Gather all data
   const [

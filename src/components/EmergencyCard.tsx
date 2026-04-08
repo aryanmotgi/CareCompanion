@@ -163,7 +163,7 @@ export function EmergencyCard({ patient, medications, doctors, insurance }: Emer
               {primaryDoctor.phone && (
                 <a
                   href={`tel:${primaryDoctor.phone}`}
-                  className="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-medium"
+                  className="px-3 py-1.5 rounded-lg bg-blue-500/20 text-[#A78BFA] text-xs font-medium"
                 >
                   Call
                 </a>

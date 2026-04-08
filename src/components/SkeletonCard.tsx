@@ -12,11 +12,13 @@ export function SkeletonCard({ variant = 'default' }: SkeletonCardProps) {
   }
 
   return (
-    <div className={`rounded-xl bg-[#1e293b] ${heights[variant]} p-4 overflow-hidden relative`}>
+    <div className={`rounded-xl bg-white/[0.02] border border-white/[0.04] ${heights[variant]} p-4 overflow-hidden relative`}>
       <div className="space-y-3">
-        <div className="h-2.5 w-24 rounded-full bg-white/[0.04] animate-shimmer" />
-        <div className="h-4 w-48 rounded-full bg-white/[0.04] animate-shimmer" style={{ animationDelay: '0.1s' }} />
-        <div className="h-2.5 w-32 rounded-full bg-white/[0.04] animate-shimmer" style={{ animationDelay: '0.2s' }} />
+        <div className="h-2.5 w-20 skeleton-bone" style={{ animationDelay: '0s' }} />
+        <div className="h-4 w-48 skeleton-bone" style={{ animationDelay: '0.15s' }} />
+        {variant !== 'compact' && (
+          <div className="h-2.5 w-32 skeleton-bone" style={{ animationDelay: '0.3s' }} />
+        )}
       </div>
     </div>
   )

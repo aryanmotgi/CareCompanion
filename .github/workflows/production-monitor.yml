@@ -1,0 +1,67 @@
+name: Production 24/7 Monitor
+
+on:
+  schedule:
+    # Run every 4 hours
+    - cron: '0 */4 * * *'
+  workflow_dispatch: # Allow manual triggers
+
+jobs:
+  smoke-test:
+    name: Production Smoke Test
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E Production Monitor
+        # Run only the production monitor file to avoid trashing data with other test files
+        run: npx playwright test e2e/production-monitor.spec.ts
+        env:
+          # Point the Playwright test directly at the live Production URL
+          PLAYWRIGHT_BASE_URL: https://carecompanionai.org
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          E2E_MONITOR_EMAIL: ${{ secrets.E2E_MONITOR_EMAIL }}
+          E2E_MONITOR_PASSWORD: ${{ secrets.E2E_MONITOR_PASSWORD }}
+
+      - name: Upload Report on Failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Send failure email alert
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.ALERT_EMAIL_USERNAME }}
+          password: ${{ secrets.ALERT_EMAIL_PASSWORD }}
+          subject: "🚨 CareCompanion Production Monitor Failed"
+          to: ${{ secrets.ALERT_EMAIL_TO }}
+          from: CareCompanion Alerts <${{ secrets.ALERT_EMAIL_USERNAME }}>
+          body: |
+            The CareCompanion production monitor detected a failure on carecompanionai.org.
+
+            A critical user-facing feature may be broken. Please investigate immediately.
+
+            Workflow run details:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            This alert was triggered automatically by the scheduled Playwright smoke test.

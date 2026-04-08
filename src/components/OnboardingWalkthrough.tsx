@@ -4,19 +4,19 @@ import { useState } from 'react'
 
 const slides = [
   {
-    icon: '📊',
-    title: 'Track Your Health',
-    description: 'See medications, appointments, and lab results all in one place. Get alerts when something needs your attention.',
+    icon: '🎗️',
+    title: 'Track Your Cancer Care',
+    description: 'See chemo schedules, oncology appointments, tumor markers, and medications all in one place. Get alerts when something needs attention.',
   },
   {
     icon: '🤖',
-    title: 'AI-Powered Insights',
-    description: 'Chat with CareCompanion to understand lab results, prepare for appointments, or ask any health question.',
+    title: 'Understand Your Treatment',
+    description: 'Chat with CareCompanion to understand lab results, prepare for oncology visits, or ask about treatment side effects.',
   },
   {
     icon: '📸',
-    title: 'Scan & Organize',
-    description: 'Scan prescriptions, lab reports, insurance cards, and medical records. Everything organized automatically.',
+    title: 'Organize Medical Records',
+    description: 'Scan pathology reports, lab results, imaging reports, and insurance documents. Everything organized automatically.',
   },
 ]
 
@@ -54,7 +54,7 @@ export function OnboardingWalkthrough({ onComplete }: { onComplete: () => void }
 
       <button
         onClick={handleNext}
-        className="w-full max-w-xs py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-400 text-white text-sm font-semibold animate-press"
+        className="w-full max-w-xs py-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold animate-press"
       >
         {current === slides.length - 1 ? 'Get Started' : 'Next'}
       </button>

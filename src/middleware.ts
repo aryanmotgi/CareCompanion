@@ -53,5 +53,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/chat', '/profile', '/setup', '/login', '/settings', '/dashboard', '/care', '/medications', '/appointments', '/scans', '/connect', '/manual-setup', '/api/chat'],
+  matcher: ['/chat', '/profile', '/setup', '/login', '/settings', '/dashboard', '/care', '/medications', '/appointments', '/scans', '/connect', '/manual-setup', '/onboarding', '/api/chat'],
 };
