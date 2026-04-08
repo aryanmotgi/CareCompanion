@@ -105,7 +105,7 @@ export default function DemoWalkthroughPage() {
             <p className="text-sm text-white/70">Callback returns tokens; CareCompanion begins FHIR sync</p>
           </div>
         </div>
-        <Link
+        <a
           href="/api/fhir/authorize?provider=1uphealth"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/15 border border-blue-500/25 text-blue-400 text-sm font-medium hover:bg-blue-500/25 transition-colors"
         >
@@ -113,7 +113,7 @@ export default function DemoWalkthroughPage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
           </svg>
           Try the OAuth Flow
-        </Link>
+        </a>
       </StepCard>
 
       {/* Step 2: Data Sync */}
