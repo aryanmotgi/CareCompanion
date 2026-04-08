@@ -31,23 +31,37 @@ export function DataConsentModal({ isOpen, onClose, onConsent, consentHref }: Da
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-[#0f172a] border border-white/[0.1] rounded-2xl shadow-2xl animate-fade-in-up overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="consent-title">
+      {/* Fully opaque backdrop */}
+      <div className="absolute inset-0 bg-black/90 backdrop-blur-lg" onClick={onClose} />
+
+      {/* Modal — solid dark background, no transparency */}
+      <div className="relative w-full max-w-md rounded-2xl shadow-2xl animate-fade-in-up overflow-hidden" style={{ backgroundColor: '#0f172a' }}>
+        {/* Close X button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-[#94a3b8] hover:text-white transition-colors"
+          aria-label="Close"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+        </button>
+
         {/* Header */}
         <div className="p-6 pb-4">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(99, 102, 241, 0.15)' }}>
               <svg className="w-5 h-5 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
               </svg>
             </div>
             <div>
-              <h3 className="font-display text-lg font-bold text-white">Health Data Access</h3>
-              <p className="text-xs text-[var(--text-muted)]">Review before connecting</p>
+              <h3 id="consent-title" className="text-lg font-bold text-white">Health Data Access</h3>
+              <p className="text-xs text-[#64748b]">Review before connecting</p>
             </div>
           </div>
-          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+          <p className="text-sm text-[#94a3b8] leading-relaxed">
             By connecting your health records via <strong className="text-white">1upHealth</strong>, you consent to CareCompanion importing the following data:
           </p>
         </div>
@@ -65,7 +79,7 @@ export function DataConsentModal({ isOpen, onClose, onConsent, consentHref }: Da
               'Claims',
               'Insurance',
             ].map((item) => (
-              <div key={item} className="flex items-center gap-2 text-xs text-[#e2e8f0] py-1.5 px-3 rounded-lg bg-white/[0.06] border border-white/[0.06]">
+              <div key={item} className="flex items-center gap-2 text-xs text-[#e2e8f0] py-2 px-3 rounded-lg border" style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.06)' }}>
                 <span className="text-emerald-400">&#x2713;</span>
                 {item}
               </div>
@@ -75,27 +89,28 @@ export function DataConsentModal({ isOpen, onClose, onConsent, consentHref }: Da
 
         {/* Promises */}
         <div className="px-6 pb-5">
-          <div className="space-y-2 text-xs text-[var(--text-muted)]">
+          <div className="space-y-2 text-xs text-[#64748b]">
             <div className="flex items-start gap-2">
               <span className="text-[#A78BFA] mt-0.5">&#x2022;</span>
-              <span><strong className="text-[var(--text-secondary)]">Read-only access</strong> &mdash; we never modify your hospital records</span>
+              <span><strong className="text-[#94a3b8]">Read-only access</strong> &mdash; we never modify your hospital records</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-[#A78BFA] mt-0.5">&#x2022;</span>
-              <span><strong className="text-[var(--text-secondary)]">You can disconnect</strong> at any time from Settings</span>
+              <span><strong className="text-[#94a3b8]">You can disconnect</strong> at any time from Settings</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-[#A78BFA] mt-0.5">&#x2022;</span>
-              <span><strong className="text-[var(--text-secondary)]">We never sell</strong> your health data to third parties</span>
+              <span><strong className="text-[#94a3b8]">We never sell</strong> your health data to third parties</span>
             </div>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3 p-6 pt-4 border-t border-white/[0.06]">
+        <div className="flex gap-3 p-6 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <button
             onClick={onClose}
-            className="flex-1 text-sm font-medium text-[var(--text-muted)] hover:text-white py-2.5 px-4 rounded-xl border border-white/[0.08] hover:border-white/[0.15] transition-all"
+            className="flex-1 text-sm font-medium text-[#94a3b8] hover:text-white py-2.5 px-4 rounded-xl transition-all"
+            style={{ border: '1px solid rgba(255,255,255,0.08)' }}
           >
             Cancel
           </button>

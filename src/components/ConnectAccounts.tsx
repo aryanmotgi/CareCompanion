@@ -95,6 +95,8 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
   const [justConnected, setJustConnected] = useState<string | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [showConsent, setShowConsent] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const isOneUpConnected = apps.some((a) => a.source === '1uphealth');
 
@@ -575,6 +577,72 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
           </div>
         </div>
       </section>
+
+      {/* ━━ DELETE ACCOUNT ━━ */}
+      <section className="animate-fade-in-up stagger-6">
+        <div className="text-center">
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="text-xs text-[#64748b] hover:text-red-400 transition-colors"
+          >
+            Delete account &amp; start over
+          </button>
+        </div>
+      </section>
+
+      {/* Delete confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-lg" onClick={() => !deleting && setShowDeleteConfirm(false)} />
+          <div className="relative w-full max-w-sm rounded-2xl shadow-2xl animate-fade-in-up overflow-hidden" style={{ backgroundColor: '#0f172a' }}>
+            <div className="p-6">
+              <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-white text-center mb-2">Delete Account</h3>
+              <p className="text-sm text-[#94a3b8] text-center mb-6">
+                This will permanently delete your account and all your data — medications, appointments, lab results, messages, and settings. You&apos;ll be redirected to sign up again.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={deleting}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-[#94a3b8] hover:text-white transition-colors disabled:opacity-40"
+                  style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    setDeleting(true);
+                    try {
+                      const res = await fetch('/api/delete-account', { method: 'POST' });
+                      if (!res.ok) throw new Error('Delete failed');
+                      window.location.href = '/login';
+                    } catch {
+                      setDeleting(false);
+                      setShowDeleteConfirm(false);
+                      setConnectError('Failed to delete account. Please try again.');
+                    }
+                  }}
+                  disabled={deleting}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2 transition-colors"
+                >
+                  {deleting && (
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  )}
+                  {deleting ? 'Deleting...' : 'Delete Everything'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ━━ 7. FOOTER ━━ */}
       <footer className="flex items-center justify-between pb-10 animate-fade-in-up stagger-6">
