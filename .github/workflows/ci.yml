@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, feat/mobile-first-redesign]
+    branches: [main]
   pull_request:
-    branches: [main, feat/mobile-first-redesign]
+    branches: [main]
 
 jobs:
   validate:
