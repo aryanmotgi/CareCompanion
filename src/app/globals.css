@@ -1023,12 +1023,12 @@ body {
 
 /* ===== PAGE TRANSITION ===== */
 @keyframes page-blur-in {
-  0% { opacity: 0; filter: blur(8px); transform: translateY(6px); }
-  100% { opacity: 1; filter: blur(0px); transform: translateY(0); }
+  0% { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 .animate-page-blur-in {
-  animation: page-blur-in 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: page-blur-in 0.25s ease forwards;
 }
 
 /* ===== HIDE SCROLLBAR ===== */
