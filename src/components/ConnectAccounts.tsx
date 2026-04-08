@@ -125,16 +125,34 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
       url.searchParams.delete('connected');
       window.history.replaceState({}, '', url.toString());
 
-      // Refresh connected apps
-      const refreshApps = async () => {
+      // Refresh connected apps + trigger sync
+      const refreshAndSync = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const { data } = await supabase.from('connected_apps').select('*').eq('user_id', user.id);
           if (data) setApps(data);
+
+          // Auto-trigger sync to import health data and auto-detect cancer type
+          fetch('/api/oneup/sync', { method: 'POST' }).catch(() => {});
         }
       };
-      refreshApps();
+      refreshAndSync();
     }
+
+    // Auto-sync if 1upHealth is connected but profile is incomplete (e.g., user just returned from system search)
+    const autoSync = async () => {
+      const oneUp = connectedApps.find(a => a.source === '1uphealth');
+      if (!oneUp) return;
+      // If connected recently (within last 5 min) and no last_synced or very recent connection
+      const connectedAt = oneUp.metadata && typeof oneUp.metadata === 'object' && 'connected_at' in oneUp.metadata
+        ? new Date(oneUp.metadata.connected_at as string).getTime() : 0;
+      const syncedAt = oneUp.last_synced ? new Date(oneUp.last_synced).getTime() : 0;
+      if (connectedAt > syncedAt) {
+        // Connection is newer than last sync — trigger sync
+        fetch('/api/oneup/sync', { method: 'POST' }).catch(() => {});
+      }
+    };
+    if (!connected && !error) autoSync();
   }, [searchParams, supabase]);
 
   const handleManagingForChange = (value: 'self' | 'other') => {
