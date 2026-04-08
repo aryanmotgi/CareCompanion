@@ -1,653 +1,1213 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 
-/* ───────────────────────────────────────────
-   Global scroll observer
-   ─────────────────────────────────────────── */
-function useGlobalScrollReveal() {
+/* ── Cycling keyword with typing effect ── */
+const CYCLING_WORDS = ['chemo schedules', 'tumor markers', 'oncology visits', 'treatment side effects', 'lab results'];
+function CyclingWord() {
+  const words = CYCLING_WORDS;
+  const [wordIdx, setWordIdx] = useState(0);
+  const [charIdx, setCharIdx] = useState(0);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('revealed');
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: '0px 0px -30px 0px' }
-    );
+    const word = words[wordIdx];
 
-    const selectors = '.scroll-reveal, .scroll-reveal-stagger, .scroll-reveal-scale, .scroll-reveal-left, .scroll-reveal-right, .scroll-reveal-step';
-    document.querySelectorAll(selectors).forEach((el) => observer.observe(el));
+    if (!deleting && charIdx < word.length) {
+      // Typing
+      const timer = setTimeout(() => setCharIdx((c) => c + 1), 80);
+      return () => clearTimeout(timer);
+    } else if (!deleting && charIdx === word.length) {
+      // Pause at full word
+      const timer = setTimeout(() => setDeleting(true), 1800);
+      return () => clearTimeout(timer);
+    } else if (deleting && charIdx > 0) {
+      // Deleting
+      const timer = setTimeout(() => setCharIdx((c) => c - 1), 40);
+      return () => clearTimeout(timer);
+    } else if (deleting && charIdx === 0) {
+      // Move to next word
+      setDeleting(false);
+      setWordIdx((w) => (w + 1) % words.length);
+    }
+  }, [charIdx, deleting, wordIdx, words]);
 
-    return () => observer.disconnect();
-  }, []);
-}
-
-/* ───────────────────────────────────────────
-   WordReveal — word-by-word fade up
-   ─────────────────────────────────────────── */
-function WordReveal({ text, className = '' }: { text: string; className?: string }) {
   return (
-    <span className={className}>
-      {text.split(' ').map((word, i) => (
-        <span
-          key={i}
-          className="inline-block opacity-0 translate-y-4 animate-[word-reveal_0.5s_ease_forwards]"
-          style={{ animationDelay: `${i * 100}ms` }}
-        >
-          {word}&nbsp;
-        </span>
-      ))}
+    <span className="text-[#A78BFA] font-semibold">
+      {words[wordIdx].slice(0, charIdx)}
+      <span className="animate-pulse text-[#A78BFA]/60">|</span>
     </span>
   );
 }
 
-/* ───────────────────────────────────────────
-   TiltCard — 3D tilt on hover
-   ─────────────────────────────────────────── */
-function TiltCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width - 0.5;
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-    ref.current.style.transform = `perspective(600px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) scale(1.02)`;
-  };
-
-  const handleMouseLeave = () => {
-    if (ref.current) ref.current.style.transform = 'perspective(600px) rotateY(0deg) rotateX(0deg) scale(1)';
-  };
-
-  return (
-    <div ref={ref} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} className={`transition-transform duration-300 ease-out ${className}`}>
-      {children}
-    </div>
-  );
-}
-
-/* ───────────────────────────────────────────
-   PhoneMockup — 3D floating phone
-   ─────────────────────────────────────────── */
-function PhoneMockup() {
-  const [activeTab, setActiveTab] = useState(0);
-  const [popup, setPopup] = useState<{ title: string; detail: string } | null>(null);
-  const [tabGlow, setTabGlow] = useState(true);
-
-  // Subtle glow hint fades out after 3s
+/* ── Scroll reveal hook (enhanced — handles all reveal classes) ── */
+function useScrollReveal() {
   useEffect(() => {
-    const t = setTimeout(() => setTabGlow(false), 3000);
-    return () => clearTimeout(t);
-  }, []);
-
-  const tabs = [
-    { label: 'Home', icon: 'M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z' },
-    { label: 'Chat', icon: 'M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z' },
-    { label: 'Care', icon: 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z' },
-    { label: 'Scan', icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z' },
-  ];
-
-  return (
-    <div className="relative mt-12 mx-auto select-none" style={{ perspective: '1200px' }}>
-      {/* Glow behind phone */}
-      <div className="absolute -inset-12 bg-blue-500/10 rounded-full blur-[100px]" />
-
-      {/* iPhone 15 Pro frame */}
-      <div className="relative w-[272px] h-[556px] rounded-[44px] bg-gradient-to-b from-[#2a2a2e] to-[#1a1a1e] p-[2px] shadow-[0_25px_80px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.05)]" style={{ transform: 'rotateY(-4deg) rotateX(2deg)' }}>
-        {/* Titanium side buttons */}
-        <div className="absolute -left-[3px] top-[100px] w-[3px] h-[28px] bg-gradient-to-b from-[#3a3a3e] to-[#2a2a2e] rounded-l-sm" />
-        <div className="absolute -left-[3px] top-[145px] w-[3px] h-[48px] bg-gradient-to-b from-[#3a3a3e] to-[#2a2a2e] rounded-l-sm" />
-        <div className="absolute -left-[3px] top-[200px] w-[3px] h-[48px] bg-gradient-to-b from-[#3a3a3e] to-[#2a2a2e] rounded-l-sm" />
-        <div className="absolute -right-[3px] top-[155px] w-[3px] h-[64px] bg-gradient-to-b from-[#3a3a3e] to-[#2a2a2e] rounded-r-sm" />
-
-        {/* Screen */}
-        <div className="w-full h-full rounded-[42px] bg-[#0f172a] overflow-hidden relative">
-          {/* Dynamic Island */}
-          <div className="absolute top-[10px] left-1/2 -translate-x-1/2 w-[90px] h-[26px] bg-black rounded-full z-20 flex items-center justify-center gap-2">
-            <div className="w-[8px] h-[8px] rounded-full bg-[#1a1a2e] border border-[#2a2a3e]" />
-            <div className="w-[4px] h-[4px] rounded-full bg-[#1a1a2e]" />
-          </div>
-
-          {/* Status bar */}
-          <div className="flex justify-between items-center px-7 pt-[14px] pb-0 relative z-10">
-            <span className="text-white/50 text-[10px] font-semibold" style={{ fontFeatureSettings: '"tnum"' }}>9:41</span>
-            <div className="flex items-center gap-[5px]">
-              <svg width="13" height="10" viewBox="0 0 13 10" fill="none"><path d="M1 7h1.5v3H1zM4 5h1.5v5H4zM7 3h1.5v7H7zM10 1h1.5v9H10z" fill="rgba(255,255,255,0.5)" /></svg>
-              <svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M6 2.5c1.8 0 3.4.8 4.5 2l1-1C10 2 8.1 1 6 1S2 2 .5 3.5l1 1C2.6 3.3 4.2 2.5 6 2.5zm0 3c1 0 1.9.4 2.5 1.1l1-1C8.5 4.6 7.3 4 6 4s-2.5.6-3.5 1.6l1 1C4.1 5.9 5 5.5 6 5.5zM7.5 8.5L6 10 4.5 8.5C5 8 5.5 7.7 6 7.7s1 .3 1.5.8z" fill="rgba(255,255,255,0.5)" /></svg>
-              <div className="w-[18px] h-[9px] rounded-[3px] border border-white/30 relative p-[1.5px]"><div className="h-full w-[65%] bg-white/50 rounded-[1.5px]" /><div className="absolute -right-[2px] top-[2.5px] w-[1.5px] h-[4px] bg-white/20 rounded-r-sm" /></div>
-            </div>
-          </div>
-
-          {/* App header bar */}
-          <div className="flex items-center justify-between px-4 pt-1.5 pb-1 border-b border-white/[0.04]">
-            <span className="text-white/90 text-[11px] font-bold tracking-tight">CareCompanion</span>
-            <div className="w-[22px] h-[22px] rounded-full bg-gradient-to-br from-indigo-400 to-cyan-400 flex items-center justify-center shadow-[0_0_8px_rgba(99,102,241,0.3)]">
-              <span className="text-[7px] text-white font-bold">AM</span>
-            </div>
-          </div>
-
-          {/* Screen content — switches based on active tab */}
-          <div className="h-[370px] overflow-y-auto scrollbar-none">
-            {activeTab === 0 && (
-              <div className="px-3.5 pt-3 space-y-[7px]">
-                <div>
-                  <div className="text-white/35 text-[9px] font-medium">Good afternoon</div>
-                  <div className="text-white text-[14px] font-bold tracking-tight leading-tight">Mom&apos;s Care Summary</div>
-                </div>
-                {/* Cards */}
-                {[
-                  { type: 'urgent', color: 'red', label: 'NEEDS ATTENTION', title: 'Lisinopril refill due tomorrow', sub: '10mg · Once daily · Dr. Patel', detail: 'Only 3 pills remaining. Contact Valley Pharmacy at (555) 234-5678 to refill your prescription.' },
-                  { type: 'upcoming', color: 'cyan', label: 'UPCOMING', title: 'Dr. Patel — Thursday 2:30 PM', sub: 'Cardiology · Heart & Vascular Center', detail: 'Bring blood pressure log. Fasting not required. Discuss Lisinopril dosage adjustment.' },
-                  { type: 'alert', color: 'amber', label: 'LAB ALERT', title: 'LDL Cholesterol flagged high', sub: '165 mg/dL · Reference: < 100', detail: 'Result from Quest Diagnostics, 3 days ago. Discuss with Dr. Patel at your upcoming visit.' },
-                  { type: 'quick', color: 'indigo', label: '💬 QUICK ASK', title: 'What should I ask Dr. Patel?', sub: 'Tap to get AI-powered suggestions', detail: '1. Should we adjust Lisinopril?\n2. Are there dietary changes for cholesterol?\n3. When should we retest A1C?' },
-                ].map((card, i) => {
-                  const isUrgent = card.type === 'urgent';
-                  const isQuick = card.type === 'quick';
-                  const bgClass = isUrgent
-                    ? 'bg-gradient-to-r from-red-500/[0.12] to-red-500/[0.04] border-red-500/15'
-                    : isQuick
-                    ? 'bg-gradient-to-r from-indigo-500/[0.08] to-cyan-500/[0.05] border-indigo-500/15'
-                    : 'bg-white/[0.03] border-white/[0.06]';
-                  const dotColors: Record<string, string> = { red: 'bg-red-400 shadow-[0_0_6px_rgba(239,68,68,0.5)]', cyan: 'bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.4)]', amber: 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.4)]', indigo: 'bg-indigo-400 shadow-[0_0_6px_rgba(129,140,248,0.4)]' };
-                  const labelColors: Record<string, string> = { red: 'text-red-300/90', cyan: 'text-cyan-300/90', amber: 'text-amber-300/90', indigo: 'text-indigo-300/70' };
-
-                  return (
-                    <div
-                      key={i}
-                      onClick={() => setPopup({ title: card.title, detail: card.detail })}
-                      className={`rounded-[10px] p-2.5 border cursor-pointer transition-all duration-200 ${bgClass} hover:brightness-125 hover:scale-[1.02] active:scale-[0.98]`}
-                    >
-                      <div className={`flex items-center gap-1 mb-0.5 ${isQuick ? 'justify-center' : ''}`}>
-                        {!isQuick && <div className={`w-[5px] h-[5px] rounded-full ${dotColors[card.color]}`} />}
-                        <span className={`text-[7px] font-semibold tracking-wider ${labelColors[card.color]}`}>{card.label}</span>
-                      </div>
-                      <div className={`text-white/90 text-[10px] font-medium ${isQuick ? 'text-center text-white/70' : ''}`}>{card.title}</div>
-                      <div className={`text-white/25 text-[8px] mt-0.5 ${isQuick ? 'text-center' : ''}`}>{card.sub}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {activeTab === 1 && (
-              <div className="px-3.5 pt-3 space-y-2">
-                <div className="text-white/90 text-[12px] font-bold mb-2">AI Assistant</div>
-                <div className="bg-white/[0.04] rounded-[10px] p-2.5">
-                  <div className="text-white/30 text-[8px] mb-1">CareCompanion</div>
-                  <div className="text-white/80 text-[9px] leading-relaxed">Hi! I&apos;m here to help with Mom&apos;s care. You have a Lisinopril refill due tomorrow and an appointment with Dr. Patel on Thursday. Want me to help prepare?</div>
-                </div>
-                <div className="bg-blue-500/10 rounded-[10px] p-2.5 ml-6">
-                  <div className="text-white/30 text-[8px] mb-1 text-right">You</div>
-                  <div className="text-white/80 text-[9px] leading-relaxed">What questions should I ask Dr. Patel about the cholesterol results?</div>
-                </div>
-                <div className="bg-white/[0.04] rounded-[10px] p-2.5">
-                  <div className="text-white/30 text-[8px] mb-1">CareCompanion</div>
-                  <div className="text-white/80 text-[9px] leading-relaxed">Great question! Here are 3 things to ask:<br/>1. Should we increase the Atorvastatin dose?<br/>2. Are there dietary changes to help?<br/>3. When should we retest?</div>
-                </div>
-                <div className="flex items-center gap-2 mt-2 bg-white/[0.03] rounded-full p-1.5 pl-3 border border-white/[0.06]">
-                  <span className="text-white/20 text-[9px] flex-1">Ask anything...</span>
-                  <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
-                    <svg width="10" height="10" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 2 && (
-              <div className="px-3.5 pt-3 space-y-2">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="text-white/90 text-[12px] font-bold">Care</div>
-                  <div className="w-5 h-5 rounded-full bg-cyan-400/10 flex items-center justify-center">
-                    <svg width="10" height="10" fill="none" stroke="#38bdf8" strokeWidth="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                  </div>
-                </div>
-                {/* Segment control */}
-                <div className="flex bg-white/[0.04] rounded-lg p-[2px]">
-                  <div className="flex-1 text-center py-1 rounded-md bg-cyan-400 text-[8px] font-semibold text-[#0f172a]">Medications</div>
-                  <div className="flex-1 text-center py-1 rounded-md text-[8px] font-medium text-white/30">Appointments</div>
-                </div>
-                <div className="text-[7px] text-white/25 font-semibold tracking-wider mt-1">REFILL NEEDED</div>
-                <div className="bg-white/[0.03] rounded-lg p-2 border border-red-500/10">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <div className="text-white/90 text-[10px] font-medium">Lisinopril 10mg</div>
-                      <div className="text-white/25 text-[8px]">Once daily · Morning</div>
-                      <div className="text-red-300/80 text-[8px]">Refill tomorrow</div>
-                    </div>
-                    <div className="bg-red-500/10 rounded px-1.5 py-0.5"><span className="text-red-300 text-[7px] font-semibold">Refill</span></div>
-                  </div>
-                </div>
-                <div className="text-[7px] text-white/25 font-semibold tracking-wider mt-1">ACTIVE</div>
-                {['Metformin 500mg', 'Atorvastatin 20mg', 'Amlodipine 5mg'].map((med, i) => (
-                  <div key={i} className="bg-white/[0.03] rounded-lg p-2 border border-white/[0.04]">
-                    <div className="text-white/90 text-[10px] font-medium">{med}</div>
-                    <div className="text-emerald-400/60 text-[8px]">Refill in {18 + i * 6} days</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {activeTab === 3 && (
-              <div className="px-3.5 pt-3 flex flex-col items-center justify-center h-full">
-                <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mb-3">
-                  <svg width="28" height="28" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="3" x2="9" y2="9" /></svg>
-                </div>
-                <div className="text-white/80 text-[11px] font-semibold mb-1">Scan a Document</div>
-                <div className="text-white/30 text-[8px] text-center leading-relaxed px-4">Take a photo of a pill bottle, lab report, insurance card, or doctor&apos;s note</div>
-                <div className="mt-3 bg-blue-500/20 text-blue-300 text-[9px] font-medium px-4 py-1.5 rounded-full">Open Camera</div>
-              </div>
-            )}
-          </div>
-
-          {/* Popup overlay — floats inside the phone */}
-          {popup && (
-            <div className="absolute inset-0 z-30 flex items-end justify-center" onClick={() => setPopup(null)}>
-              {/* Backdrop */}
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] animate-[fade-overlay_0.15s_ease]" />
-              {/* Popup card */}
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="relative mx-3 mb-[58px] w-full bg-[#1e293b] border border-white/[0.08] rounded-2xl p-3.5 shadow-[0_-8px_30px_rgba(0,0,0,0.4)] animate-[slide-up_0.25s_cubic-bezier(0.32,0.72,0,1)]"
-              >
-                {/* Close button */}
-                <button onClick={() => setPopup(null)} className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-white/[0.06] flex items-center justify-center hover:bg-white/10 transition-colors">
-                  <svg width="8" height="8" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" /></svg>
-                </button>
-                <div className="text-white/90 text-[11px] font-semibold pr-6">{popup.title}</div>
-                <div className="text-white/50 text-[9px] leading-relaxed mt-1.5 whitespace-pre-line">{popup.detail}</div>
-                <div className="mt-2.5 flex gap-2">
-                  <div className="bg-blue-500/20 text-blue-300 text-[8px] font-medium px-2.5 py-1 rounded-full cursor-pointer hover:bg-blue-500/30 transition-colors">View details</div>
-                  <div onClick={() => setPopup(null)} className="bg-white/[0.06] text-white/40 text-[8px] font-medium px-2.5 py-1 rounded-full cursor-pointer hover:bg-white/10 transition-colors">Dismiss</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Bottom tab bar */}
-          <div className={`absolute bottom-0 left-0 right-0 bg-[#0f172a]/95 backdrop-blur-md border-t border-white/[0.05] flex justify-around items-center pt-[6px] pb-[18px] px-3 ${tabGlow ? 'shadow-[0_-4px_20px_rgba(56,189,248,0.08)]' : ''} transition-shadow duration-1000`}>
-            {tabs.map((tab, i) => (
-              <button
-                key={tab.label}
-                onClick={(e) => { e.stopPropagation(); setActiveTab(i); setPopup(null); setTabGlow(false); }}
-                className="flex flex-col items-center gap-[2px] transition-all duration-200 group"
-              >
-                <div className={`transition-all duration-200 ${i === activeTab ? 'scale-110' : 'group-hover:scale-105'}`}>
-                  <svg width="15" height="15" fill="none" stroke={i === activeTab ? '#38bdf8' : '#475569'} strokeWidth="1.5" viewBox="0 0 24 24" className={`transition-all duration-300 ${i === activeTab ? 'drop-shadow-[0_0_4px_rgba(56,189,248,0.5)]' : 'group-hover:stroke-white/40'}`}><path d={tab.icon} /></svg>
-                </div>
-                <span className={`text-[7px] font-medium transition-colors duration-200 ${i === activeTab ? 'text-cyan-400' : 'text-white/20 group-hover:text-white/35'}`}>{tab.label}</span>
-                {i === activeTab && <div className="w-1 h-1 rounded-full bg-cyan-400 mt-[-1px] shadow-[0_0_4px_rgba(56,189,248,0.6)]" />}
-              </button>
-            ))}
-          </div>
-
-          {/* Home indicator bar */}
-          <div className="absolute bottom-[5px] left-1/2 -translate-x-1/2 w-[100px] h-[4px] bg-white/15 rounded-full" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ───────────────────────────────────────────
-   DrawLine — SVG connecting line that draws
-   itself when scrolled into view
-   ─────────────────────────────────────────── */
-function DrawLine() {
-  const svgRef = useRef<SVGSVGElement>(null);
-
-  useEffect(() => {
-    const el = svgRef.current;
-    if (!el) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
-          el.classList.add('draw-active');
-        }
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) entry.target.classList.add('revealed');
+        });
       },
-      { threshold: 0.2 }
+      { threshold: 0.15, rootMargin: '0px 0px -40px 0px' }
     );
-    observer.observe(el);
+    document.querySelectorAll('.scroll-reveal, .scroll-reveal-left, .scroll-reveal-right, .scroll-reveal-scale, .blur-reveal, .section-divider, .word-reveal-container, .glow-on-scroll, .stagger-list-container').forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, []);
-
-  return (
-    <svg ref={svgRef} className="draw-line absolute left-7 top-0 bottom-0 w-[2px] z-0" style={{ height: '100%' }} preserveAspectRatio="none" viewBox="0 0 2 100">
-      <line x1="1" y1="0" x2="1" y2="100" stroke="url(#line-grad)" strokeWidth="2" strokeDasharray="100" strokeDashoffset="100" className="connecting-line" />
-      <defs>
-        <linearGradient id="line-grad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgba(59,130,246,0.5)" />
-          <stop offset="100%" stopColor="rgba(99,102,241,0.5)" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
 }
 
-/* ───────────────────────────────────────────
-   Particles
-   ─────────────────────────────────────────── */
-function Particles() {
+/* ── Scroll progress bar ── */
+function ScrollProgress() {
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      setProgress(docHeight > 0 ? (scrollTop / docHeight) * 100 : 0);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+  return <div className="scroll-progress" style={{ width: `${progress}%` }} />;
+}
+
+/* ── Floating particles ── */
+function FloatingParticles() {
+  const [particles, setParticles] = useState<{ id: number; left: string; size: number; duration: number; delay: number; drift: number; color: string }[]>([]);
+
+  useEffect(() => {
+    setParticles(Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      size: Math.random() * 3 + 1,
+      duration: Math.random() * 15 + 10,
+      delay: Math.random() * 10,
+      drift: (Math.random() - 0.5) * 60,
+      color: i % 3 === 0 ? 'rgba(99,102,241,0.4)' : i % 3 === 1 ? 'rgba(167,139,250,0.3)' : 'rgba(129,140,248,0.3)',
+    })));
+  }, []);
+
+  if (particles.length === 0) return null;
+
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {Array.from({ length: 20 }).map((_, i) => (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {particles.map((p) => (
         <div
-          key={i}
-          className="absolute rounded-full bg-blue-400/20"
+          key={p.id}
+          className="particle"
           style={{
-            width: `${Math.random() * 6 + 2}px`,
-            height: `${Math.random() * 6 + 2}px`,
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            animation: `particle ${Math.random() * 15 + 10}s linear infinite`,
-            animationDelay: `${Math.random() * 10}s`,
-          }}
+            left: p.left,
+            bottom: '-5%',
+            width: p.size,
+            height: p.size,
+            background: p.color,
+            animationDuration: `${p.duration}s`,
+            animationDelay: `${p.delay}s`,
+            '--drift': `${p.drift}px`,
+          } as React.CSSProperties}
         />
       ))}
     </div>
   );
 }
 
-/* ───────────────────────────────────────────
-   Counter — counts up on scroll
-   ─────────────────────────────────────────── */
-function Counter({ target, suffix = '' }: { target: number; suffix?: string }) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const started = useRef(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !started.current) {
-          started.current = true;
-          let current = 0;
-          const step = Math.ceil(target / 40);
-          const interval = setInterval(() => {
-            current += step;
-            if (current >= target) { current = target; clearInterval(interval); }
-            setCount(current);
-          }, 30);
-        }
-      },
-      { threshold: 0.5 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [target]);
-
-  return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
+/* ── Word-by-word reveal heading ── */
+function WordRevealH({ text, className = '' }: { text: string; className?: string }) {
+  const words = text.split(' ');
+  return (
+    <span className={`word-reveal-container ${className}`}>
+      {words.map((word, i) => (
+        <span key={i}>
+          <span className="word" style={{ transitionDelay: `${i * 80}ms` }}>{word}</span>
+          {i < words.length - 1 && <span className="word" style={{ transitionDelay: `${i * 80}ms` }}>&nbsp;</span>}
+        </span>
+      ))}
+    </span>
+  );
 }
 
-/* ═══════════════════════════════════════════
-   MAIN PAGE
-   ═══════════════════════════════════════════ */
-export default function LandingPage() {
-  useGlobalScrollReveal();
-  const [navScrolled, setNavScrolled] = useState(false);
+/* ── 3D tilt card wrapper ── */
+function TiltCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    ref.current.style.setProperty('--tilt-x', `${-y * 8}deg`);
+    ref.current.style.setProperty('--tilt-y', `${x * 8}deg`);
+  };
+  const handleMouseLeave = () => {
+    if (!ref.current) return;
+    ref.current.style.setProperty('--tilt-x', '0deg');
+    ref.current.style.setProperty('--tilt-y', '0deg');
+  };
+  return (
+    <div ref={ref} className={`tilt-card ${className}`} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
+      {children}
+    </div>
+  );
+}
+
+/* ── Glow trail card — mouse-follow light effect ── */
+function GlowCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    ref.current.style.setProperty('--glow-x', `${x}px`);
+    ref.current.style.setProperty('--glow-y', `${y}px`);
+  };
+  return (
+    <div ref={ref} className={`glow-trail ${className}`} onMouseMove={handleMouseMove}>
+      {children}
+    </div>
+  );
+}
+
+/* ── Gradient section divider ── */
+function SectionDivider() {
+  return <div className="section-divider scroll-reveal my-0" />;
+}
+
+/* ── Tab bar icon SVGs (matching BottomTabBar.tsx exactly) ── */
+function TabIconHome({ active, size = 14 }: { active: boolean; size?: number }) {
+  return (
+    <svg width={size} height={size} fill="none" stroke={active ? '#A78BFA' : 'rgba(255,255,255,0.25)'} strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+    </svg>
+  );
+}
+function TabIconChat({ active, size = 14 }: { active: boolean; size?: number }) {
+  return (
+    <svg width={size} height={size} fill="none" stroke={active ? '#A78BFA' : 'rgba(255,255,255,0.25)'} strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+    </svg>
+  );
+}
+function TabIconCare({ active, size = 14 }: { active: boolean; size?: number }) {
+  return (
+    <svg width={size} height={size} fill="none" stroke={active ? '#A78BFA' : 'rgba(255,255,255,0.25)'} strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+    </svg>
+  );
+}
+function TabIconScan({ active, size = 14 }: { active: boolean; size?: number }) {
+  return (
+    <svg width={size} height={size} fill="none" stroke={active ? '#A78BFA' : 'rgba(255,255,255,0.25)'} strokeWidth="2" viewBox="0 0 24 24">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <line x1="3" y1="9" x2="21" y2="9" />
+      <line x1="9" y1="3" x2="9" y2="9" />
+    </svg>
+  );
+}
+
+/* ── Phone mockup with auto-cycling screens ── */
+function PhoneMockup({ className = '', size = 'large' }: { className?: string; size?: 'large' | 'small' }) {
+  const [activeScreen, setActiveScreen] = useState(0);
+  const screens = [
+    { label: 'Home', content: <DashboardScreen /> },
+    { label: 'Chat', content: <ChatScreen /> },
+    { label: 'Care', content: <MedicationsScreen /> },
+    { label: 'Scan', content: <ScanScreen /> },
+  ];
 
   useEffect(() => {
-    const handleScroll = () => setNavScrolled(window.scrollY > 20);
+    // Simple loop: Home → Chat → Care → Scan, 4s each (Chat gets 5s)
+    const durations = [4000, 5000, 4000, 4000];
+    let current = 0;
+    let timer: NodeJS.Timeout;
+
+    function next() {
+      current = (current + 1) % 4;
+      setActiveScreen(current);
+      timer = setTimeout(next, durations[current]);
+    }
+
+    timer = setTimeout(next, durations[0]);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const isLarge = size === 'large';
+  const w = isLarge ? 320 : 220;
+  const h = isLarge ? 660 : 440;
+
+  const tabIcons = [
+    { Icon: TabIconHome, label: 'Home', screenIdx: 0 },
+    { Icon: TabIconChat, label: 'Chat', screenIdx: 1 },
+    { Icon: TabIconCare, label: 'Care', screenIdx: 2 },
+    { Icon: TabIconScan, label: 'Scan', screenIdx: 3 },
+  ];
+
+  /* ── Small / flat variant (feature sections) ── */
+  if (!isLarge) {
+    return (
+      <div className={`relative mx-auto ${className}`} style={{ width: w, height: h }}>
+        <div className="absolute inset-0 rounded-[30px] bg-[#1a1a2e] shadow-[0_0_50px_rgba(99,102,241,0.12),0_15px_40px_rgba(0,0,0,0.4)]">
+          <div className="absolute inset-[3px] rounded-[27px] bg-[#0C0E1A] overflow-hidden border border-white/[0.06]">
+            {/* Status bar */}
+            <div className="relative z-20 flex items-center justify-between px-4 pt-2 pb-0.5">
+              <span className="text-[8px] text-white/40 font-medium">9:41</span>
+              <div className="absolute left-1/2 -translate-x-1/2 top-1.5">
+                <div className="w-16 h-[16px] bg-black rounded-full" />
+              </div>
+              <div className="flex items-center gap-0.5">
+                <svg width="10" height="7" viewBox="0 0 14 10" fill="none"><path d="M1 6h1v3H1zM4 4h1v5H4zM7 2h1v7H7zM10 0h1v9h-1z" fill="rgba(255,255,255,0.4)"/></svg>
+                <svg width="14" height="7" viewBox="0 0 20 10" fill="none"><rect x="0.5" y="0.5" width="17" height="9" rx="2" stroke="rgba(255,255,255,0.25)"/><rect x="2" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,0.4)"/></svg>
+              </div>
+            </div>
+            {/* Screen content */}
+            <div className="absolute top-8 left-0 right-0 bottom-10 overflow-hidden">
+              {screens.map((screen, i) => (
+                <div key={i} className={`absolute inset-0 px-3 py-1.5 transition-opacity duration-700 ${i === activeScreen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                  {screen.content}
+                </div>
+              ))}
+            </div>
+            {/* Tab bar */}
+            <div className="absolute bottom-0 left-0 right-0 z-20 bg-[#0C0E1A]/90 backdrop-blur border-t border-white/[0.06] pb-2 pt-1.5">
+              <div className="flex justify-around items-center px-3">
+                {tabIcons.map((tab) => {
+                  const active = activeScreen === tab.screenIdx;
+                  return (
+                    <div key={tab.label} className="flex flex-col items-center gap-0.5">
+                      <tab.Icon active={active} size={11} />
+                      <span className={`text-[6px] ${active ? 'text-[#A78BFA] font-semibold' : 'text-white/25'}`}>{tab.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mx-auto mt-1 w-16 h-0.5 rounded-full bg-white/15" />
+            </div>
+          </div>
+        </div>
+        {/* Screen dots */}
+        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex gap-1.5">
+          {screens.map((s, i) => (
+            <button key={i} onClick={() => setActiveScreen(i)} className={`h-1.5 rounded-full transition-all duration-300 ${i === activeScreen ? 'bg-[#A78BFA] w-4' : 'bg-white/15 w-1.5'}`} aria-label={s.label} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Large / 3D variant (hero) ── */
+  return (
+    <div className={`relative mx-auto ${className}`} style={{ width: w + 40, height: h + 30, perspective: '1100px' }}>
+      {/* Glow behind phone */}
+      <div
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+        style={{
+          width: '120%',
+          height: '80%',
+          background: 'radial-gradient(ellipse, rgba(99,102,241,0.12) 0%, rgba(167,139,250,0.06) 40%, transparent 70%)',
+          filter: 'blur(60px)',
+        }}
+      />
+      {/* Floor shadow */}
+      <div
+        className="absolute bottom-0 left-1/2 -translate-x-1/2"
+        style={{
+          width: '70%',
+          height: '20px',
+          background: 'radial-gradient(ellipse, rgba(99,102,241,0.2) 0%, transparent 70%)',
+          filter: 'blur(12px)',
+        }}
+      />
+
+      {/* 3D transformed phone container */}
+      <div
+        className="relative w-full h-full animate-phone-float"
+        style={{
+          transform: 'rotateY(-5deg) rotateX(2deg)',
+          transformStyle: 'preserve-3d',
+          transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        {/* Side buttons — volume (left edge, visible due to 3D rotation) */}
+        <div className="absolute top-[140px] w-[3px] h-[28px] rounded-l-sm" style={{ left: 27, background: 'linear-gradient(to right, #35355a, #2a2a42)', boxShadow: '-3px 0 8px rgba(0,0,0,0.5)' }} />
+        <div className="absolute top-[178px] w-[3px] h-[28px] rounded-l-sm" style={{ left: 27, background: 'linear-gradient(to right, #35355a, #2a2a42)', boxShadow: '-3px 0 8px rgba(0,0,0,0.5)' }} />
+        {/* Side button — power (right edge) */}
+        <div className="absolute top-[160px] w-[3px] h-[40px] rounded-r-sm" style={{ right: 27, background: 'linear-gradient(to left, #35355a, #2a2a42)', boxShadow: '3px 0 8px rgba(0,0,0,0.5)' }} />
+        {/* Side button — silent toggle */}
+        <div className="absolute top-[105px] w-[3px] h-[14px] rounded-l-sm" style={{ left: 27, background: 'linear-gradient(to right, #35355a, #2a2a42)', boxShadow: '-3px 0 8px rgba(0,0,0,0.5)' }} />
+
+        {/* Phone outer frame — titanium-style gradient */}
+        <div
+          className="absolute rounded-[48px]"
+          style={{
+            left: 30,
+            right: 30,
+            top: 15,
+            bottom: 15,
+            background: 'linear-gradient(145deg, #3a3a56 0%, #252540 15%, #1e1e35 50%, #18182d 85%, #252540 100%)',
+            boxShadow: `
+              0 0 0 0.5px rgba(255,255,255,0.08),
+              0 2px 4px rgba(0,0,0,0.3),
+              0 8px 16px rgba(0,0,0,0.4),
+              0 20px 40px rgba(0,0,0,0.35),
+              0 40px 80px rgba(0,0,0,0.25),
+              0 0 100px rgba(99,102,241,0.1),
+              0 0 200px rgba(167,139,250,0.05),
+              inset 0 1px 0 rgba(255,255,255,0.1),
+              inset 0 -1px 0 rgba(0,0,0,0.3)
+            `,
+          }}
+        >
+          {/* Reflection / shine overlay — top-left highlight */}
+          <div
+            className="absolute inset-0 rounded-[48px] pointer-events-none z-30"
+            style={{
+              background: `
+                linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 15%, transparent 40%),
+                linear-gradient(225deg, transparent 60%, rgba(255,255,255,0.02) 85%, rgba(255,255,255,0.04) 100%)
+              `,
+            }}
+          />
+
+          {/* Edge highlight — subtle rim light */}
+          <div
+            className="absolute inset-0 rounded-[48px] pointer-events-none z-30"
+            style={{
+              border: '0.5px solid rgba(255,255,255,0.06)',
+              background: 'transparent',
+            }}
+          />
+
+          {/* Phone inner bezel — screen area */}
+          <div className="absolute inset-[4px] rounded-[44px] bg-[#0C0E1A] overflow-hidden" style={{ border: '0.5px solid rgba(255,255,255,0.04)' }}>
+            {/* Screen glass effect — subtle top reflection */}
+            <div
+              className="absolute inset-0 pointer-events-none z-10"
+              style={{
+                background: 'linear-gradient(170deg, rgba(255,255,255,0.04) 0%, transparent 25%)',
+              }}
+            />
+
+            {/* Status bar */}
+            <div className="relative z-20 flex items-center justify-between px-6 pt-3 pb-1">
+              <span className="text-[10px] text-white/50 font-medium">9:41</span>
+              {/* Dynamic Island */}
+              <div className="absolute left-1/2 -translate-x-1/2 top-2">
+                <div className="w-[90px] h-[18px] bg-black rounded-full flex items-center justify-center"
+                  style={{ boxShadow: 'inset 0 0 3px rgba(0,0,0,0.9)' }}>
+                  <div className="w-2 h-2 rounded-full bg-[#0a0a15] border border-white/[0.05]" />
+                </div>
+              </div>
+              {/* Status icons */}
+              <div className="flex items-center gap-1">
+                <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M1 6h1v3H1zM4 4h1v5H4zM7 2h1v7H7zM10 0h1v9h-1z" fill="rgba(255,255,255,0.5)"/></svg>
+                <svg width="13" height="10" viewBox="0 0 13 10" fill="none"><path d="M6.5 3C8.5 3 10.2 4 11.5 5.5L6.5 10 1.5 5.5C2.8 4 4.5 3 6.5 3z" fill="rgba(255,255,255,0.5)"/></svg>
+                <svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0.5" y="0.5" width="17" height="9" rx="2" stroke="rgba(255,255,255,0.3)"/><rect x="2" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,0.5)"/><path d="M19 3.5v3a1 1 0 000-3z" fill="rgba(255,255,255,0.3)"/></svg>
+              </div>
+            </div>
+
+            {/* Screen content */}
+            <div className="absolute top-10 left-0 right-0 bottom-14 overflow-hidden" style={{ background: 'linear-gradient(180deg, #0e1025 0%, #0C0E1A 100%)' }}>
+              {screens.map((screen, i) => (
+                <div
+                  key={i}
+                  className={`absolute inset-0 px-4 py-2 transition-opacity duration-700 ${i === activeScreen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                >
+                  {screen.content}
+                </div>
+              ))}
+            </div>
+
+            {/* Bottom tab bar with real SVG icons */}
+            <div className="absolute bottom-0 left-0 right-0 z-20 bg-[#0C0E1A]/90 backdrop-blur border-t border-white/[0.06] pb-3 pt-2">
+              <div className="flex justify-around items-center px-4">
+                {tabIcons.map((tab) => {
+                  const active = activeScreen === tab.screenIdx;
+                  return (
+                    <div key={tab.label} className="flex flex-col items-center gap-0.5">
+                      <tab.Icon active={active} size={14} />
+                      <span className={`text-[8px] ${active ? 'text-[#A78BFA] font-semibold' : 'text-white/25'}`}>{tab.label}</span>
+                      {active && <div className="w-1 h-1 rounded-full bg-[#A78BFA]" />}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Home indicator */}
+              <div className="mx-auto mt-2 w-28 h-1 rounded-full bg-white/15" />
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Screen dots */}
+      <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+        {screens.map((s, i) => (
+          <button
+            key={i}
+            onClick={() => setActiveScreen(i)}
+            className={`h-2 rounded-full transition-all duration-300 ${i === activeScreen ? 'bg-[#A78BFA] w-5' : 'bg-white/15 w-2'}`}
+            aria-label={s.label}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Demo screens for phone mockup ── */
+function DashboardScreen() {
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    // Start collapsed, expand after 1.5s, collapse at 3.2s (before screen cycles)
+    const openTimer = setTimeout(() => setExpanded(true), 1500);
+    const closeTimer = setTimeout(() => setExpanded(false), 3200);
+    return () => { clearTimeout(openTimer); clearTimeout(closeTimer); };
+  }, []);
+  return (
+    <div className="space-y-2">
+      {/* App header */}
+      <div className="flex items-center justify-between">
+        <span className="text-[12px] font-bold text-white/90">CareCompanion</span>
+        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-[7px] text-white font-bold">AM</div>
+      </div>
+      {/* Greeting */}
+      <div className="mb-0.5">
+        <div className="text-[8px] text-[#94a3b8] uppercase tracking-wider">Good afternoon</div>
+        <div className="text-[13px] font-bold text-white/90">3 items need attention</div>
+      </div>
+      {/* Urgent card — EXPANDED with details */}
+      <div className="bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.2)] rounded-xl p-2.5">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-1 mb-0.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] animate-pulse" />
+              <span className="text-[7px] text-[#ef4444] font-semibold tracking-wider uppercase">Urgent</span>
+            </div>
+            <div className="text-[10px] text-white/90 font-semibold">Lisinopril refill due tomorrow</div>
+            <div className="text-[8px] text-white/40">3 pills remaining · Dr. Patel</div>
+          </div>
+          <span className={`text-[10px] text-white/30 transition-transform duration-300 ${expanded ? 'rotate-90' : ''}`}>▸</span>
+        </div>
+        {/* Animated expanded details */}
+        <div
+          className="overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
+          style={{ maxHeight: expanded ? '120px' : '0px', opacity: expanded ? 1 : 0 }}
+        >
+          <div className="mt-2 pt-2 border-t border-white/[0.06]">
+            <div className="grid grid-cols-2 gap-1 text-[7px] mb-2">
+              <div><span className="text-white/30">Dose:</span> <span className="text-white/70">10mg</span></div>
+              <div><span className="text-white/30">Frequency:</span> <span className="text-white/70">Once daily</span></div>
+              <div><span className="text-white/30">Doctor:</span> <span className="text-white/70">Dr. Patel</span></div>
+              <div><span className="text-white/30">Remaining:</span> <span className="text-[#fbbf24]">3 pills</span></div>
+            </div>
+            <div className="bg-gradient-to-r from-[#6366F1] to-[#A78BFA] rounded-md py-1 text-center">
+              <span className="text-[8px] text-white font-semibold">Call Pharmacy</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Upcoming — collapsed */}
+      <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-2.5">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-1 mb-0.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#818CF8]" />
+              <span className="text-[7px] text-[#818CF8] font-semibold tracking-wider uppercase">Upcoming</span>
+            </div>
+            <div className="text-[10px] text-white/90 font-semibold">Dr. Patel — Cardiology</div>
+            <div className="text-[8px] text-white/40">Tomorrow at 2:30 PM</div>
+          </div>
+          <span className="text-[10px] text-white/20">▸</span>
+        </div>
+      </div>
+      {/* Alert — collapsed */}
+      <div className="bg-[rgba(251,191,36,0.08)] border border-[rgba(251,191,36,0.2)] rounded-xl p-2.5">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-1 mb-0.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#fbbf24]" />
+              <span className="text-[7px] text-[#fbbf24] font-semibold tracking-wider uppercase">Alert</span>
+            </div>
+            <div className="text-[10px] text-white/90 font-semibold">LDL Cholesterol — 165 mg/dL</div>
+            <div className="text-[8px] text-white/40">Above normal (&lt; 100)</div>
+          </div>
+          <span className="text-[10px] text-white/20">▸</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MedicationsScreen() {
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    const openTimer = setTimeout(() => setExpanded(true), 1200);
+    const closeTimer = setTimeout(() => setExpanded(false), 3200);
+    return () => { clearTimeout(openTimer); clearTimeout(closeTimer); };
+  }, []);
+  return (
+    <div className="space-y-2">
+      {/* Segment control */}
+      <div className="flex gap-0.5 bg-[#10122B] rounded-[10px] p-[2px] border border-white/[0.04]">
+        <div className="flex-1 text-center text-[9px] py-1.5 rounded-[8px] bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white font-semibold">Medications</div>
+        <div className="flex-1 text-center text-[9px] py-1.5 text-white/30 font-medium">Appointments</div>
+        <div className="flex-1 text-center text-[9px] py-1.5 text-white/30 font-medium">Conflicts</div>
+      </div>
+      <div className="text-[7px] text-red-400 uppercase tracking-wider font-semibold">Needs Refill</div>
+      {/* Lisinopril — collapsed */}
+      <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[10px] text-white/85 font-semibold">Lisinopril</div>
+            <div className="text-[8px] text-white/40">10mg · Once daily</div>
+          </div>
+          <span className="text-[10px] text-white/20">▸</span>
+        </div>
+      </div>
+      <div className="text-[7px] text-white/30 uppercase tracking-wider">Active Medications</div>
+      {/* Metformin — EXPANDED with slide-down details */}
+      <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[10px] text-white/85 font-semibold">Metformin</div>
+            <div className="text-[8px] text-white/40">500mg · Twice daily</div>
+          </div>
+          <span className={`text-[10px] text-white/30 transition-transform duration-300 ${expanded ? 'rotate-90' : ''}`}>▸</span>
+        </div>
+        {/* Animated expanded details */}
+        <div
+          className="overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
+          style={{ maxHeight: expanded ? '120px' : '0px', opacity: expanded ? 1 : 0 }}
+        >
+          <div className="mt-2 pt-2 border-t border-white/[0.06]">
+            <div className="grid grid-cols-2 gap-1 text-[7px] mb-2">
+              <div><span className="text-white/30">Doctor:</span> <span className="text-white/70">Dr. Chen</span></div>
+              <div><span className="text-white/30">Refill:</span> <span className="text-white/70">Apr 15</span></div>
+              <div><span className="text-white/30">Remaining:</span> <span className="text-white/70">28 pills</span></div>
+              <div><span className="text-white/30">Frequency:</span> <span className="text-white/70">Twice daily</span></div>
+            </div>
+            <div className="flex gap-1.5">
+              <div className="flex-1 bg-white/[0.06] border border-white/[0.08] rounded-md py-1 text-center">
+                <span className="text-[7px] text-white/70 font-medium">Edit</span>
+              </div>
+              <div className="flex-1 bg-white/[0.06] border border-white/[0.08] rounded-md py-1 text-center">
+                <span className="text-[7px] text-[#ef4444] font-medium">Delete</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Atorvastatin — collapsed */}
+      <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[10px] text-white/85 font-semibold">Atorvastatin</div>
+            <div className="text-[8px] text-white/40">20mg · Once daily</div>
+          </div>
+          <span className="text-[10px] text-white/20">▸</span>
+        </div>
+      </div>
+      {/* Add button */}
+      <div className="bg-gradient-to-r from-[#6366F1] to-[#A78BFA] rounded-xl py-1.5 text-center">
+        <span className="text-[9px] text-white font-semibold">+ Add Medication</span>
+      </div>
+    </div>
+  );
+}
+
+function ChatScreen() {
+  const userMsg = 'What should I ask Dr. Patel about my blood pressure?';
+  const aiLines = [
+    'Here are 3 questions for your visit:',
+    '',
+    '1. Should we adjust my Lisinopril dose given my recent readings?',
+    '2. How often should I check my BP at home?',
+    '3. Are there lifestyle changes to try before adding medication?',
+  ];
+
+  const [phase, setPhase] = useState<'user-typing' | 'thinking' | 'ai-typing' | 'done'>('user-typing');
+  const [userChars, setUserChars] = useState(0);
+  const [aiChars, setAiChars] = useState(0);
+
+  const fullAiText = aiLines.join('\n');
+
+  // User typing phase
+  useEffect(() => {
+    if (phase !== 'user-typing') return;
+    if (userChars >= userMsg.length) {
+      const t = setTimeout(() => setPhase('thinking'), 400);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => setUserChars((c) => c + 1), 28);
+    return () => clearTimeout(t);
+  }, [phase, userChars]);
+
+  // Thinking phase (show dots for 1.2s then start AI)
+  useEffect(() => {
+    if (phase !== 'thinking') return;
+    const t = setTimeout(() => setPhase('ai-typing'), 1200);
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  // AI typing phase
+  useEffect(() => {
+    if (phase !== 'ai-typing') return;
+    if (aiChars >= fullAiText.length) {
+      const t = setTimeout(() => setPhase('done'), 1500);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => setAiChars((c) => c + 1), 18);
+    return () => clearTimeout(t);
+  }, [phase, aiChars, fullAiText.length]);
+
+  // Reset loop
+  useEffect(() => {
+    if (phase !== 'done') return;
+    const t = setTimeout(() => {
+      setPhase('user-typing');
+      setUserChars(0);
+      setAiChars(0);
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Chat header */}
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-[6px] text-white font-bold flex-shrink-0">AI</div>
+        <span className="text-[10px] text-white/70 font-semibold">CareCompanion Chat</span>
+      </div>
+
+      <div className="flex-1 space-y-2 overflow-hidden">
+        {/* User message bubble */}
+        {(phase === 'user-typing' || phase === 'thinking' || phase === 'ai-typing' || phase === 'done') && userChars > 0 && (
+          <div className="flex justify-end">
+            <div className="bg-gradient-to-br from-[#6366F1] to-[#A78BFA] rounded-2xl rounded-tr-sm px-2.5 py-1.5 max-w-[85%]">
+              <div className="text-[9px] text-white leading-relaxed">
+                {userMsg.slice(0, userChars)}
+                {phase === 'user-typing' && <span className="inline-block w-[3px] h-[9px] bg-white/70 ml-[1px] animate-pulse align-middle" />}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Typing indicator */}
+        {phase === 'thinking' && (
+          <div className="flex gap-1.5 items-start">
+            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-[6px] text-white font-bold flex-shrink-0">AI</div>
+            <div className="bg-white/[0.06] rounded-2xl rounded-tl-sm px-3 py-2">
+              <div className="flex gap-1 items-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* AI response */}
+        {(phase === 'ai-typing' || phase === 'done') && (
+          <div className="flex gap-1.5 items-start">
+            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-[6px] text-white font-bold flex-shrink-0">AI</div>
+            <div className="bg-white/[0.06] rounded-2xl rounded-tl-sm px-2.5 py-1.5 max-w-[85%]">
+              <div className="text-[9px] text-white/80 leading-relaxed whitespace-pre-wrap">
+                {fullAiText.slice(0, aiChars)}
+                {phase === 'ai-typing' && <span className="inline-block w-[3px] h-[9px] bg-[#A78BFA]/70 ml-[1px] animate-pulse align-middle" />}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Input bar */}
+      <div className="flex items-center gap-1.5 bg-white/[0.04] rounded-xl px-2.5 py-1.5 mt-2 border border-white/[0.06]">
+        <div className="text-[8px] text-white/30 flex-1">Ask about your health...</div>
+        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center">
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ScanScreen() {
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center gap-1.5">
+        <svg width="12" height="12" fill="none" stroke="#A78BFA" strokeWidth="2" viewBox="0 0 24 24">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <line x1="3" y1="9" x2="21" y2="9" />
+          <line x1="9" y1="3" x2="9" y2="9" />
+        </svg>
+        <span className="text-[10px] text-[#A78BFA] font-semibold">Scan Results</span>
+      </div>
+      <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-2.5 space-y-2">
+        <div className="flex items-center gap-1.5">
+          <div className="w-5 h-5 rounded-lg bg-[#6366F1]/15 flex items-center justify-center">
+            <svg width="10" height="10" fill="none" stroke="#818CF8" strokeWidth="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div>
+            <div className="text-[9px] text-white/70 font-medium">Lab Report Detected</div>
+            <div className="text-[7px] text-white/30">Extracted 3 values</div>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          {[
+            { name: 'Blood Pressure', value: '142/88', flag: true },
+            { name: 'LDL Cholesterol', value: '165 mg/dL', flag: true },
+            { name: 'A1C', value: '7.2%', flag: true },
+          ].map((lab) => (
+            <div key={lab.name} className="flex items-center justify-between py-0.5">
+              <span className="text-[8px] text-white/50">{lab.name}</span>
+              <div className="flex items-center gap-1">
+                <span className={`text-[8px] font-medium ${lab.flag ? 'text-[#ef4444]' : 'text-emerald-400'}`}>{lab.value}</span>
+                {lab.flag && (
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5">
+                    <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  </svg>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="bg-gradient-to-r from-[#6366F1] to-[#A78BFA] rounded-xl py-2 text-center shadow-lg shadow-[#6366F1]/20">
+        <span className="text-[9px] text-white font-semibold">Save to Profile</span>
+      </div>
+      <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl py-1.5 text-center">
+        <span className="text-[9px] text-white/40 font-medium">Ask AI about these results</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Feature section ── */
+/* ── Feature Carousel — cards slide through the phone ── */
+function FeatureShowcase() {
+  const cards = [
+    { badge: 'Dashboard', color: '#ef4444', icon: '📊', title: 'Treatment Tracker', desc: 'Chemo cycles, tumor markers, and blood counts surfaced automatically.' },
+    { badge: 'Scan', color: '#818CF8', icon: '📸', title: 'Scan Records', desc: 'Photo a lab report, pathology results, or prescription. AI extracts everything.' },
+    { badge: 'AI Chat', color: '#A78BFA', icon: '💬', title: 'Oncology AI', desc: 'Questions about chemo side effects, tumor markers, treatment options.' },
+    { badge: 'Care Team', color: '#34D399', icon: '🎗️', title: 'Care Team', desc: 'Coordinate with family caregivers and your oncology team.' },
+  ];
+
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    // Swap between page 0 (cards 0,1) and page 2 (cards 2,3)
+    const timer = setInterval(() => setActive((a) => a === 0 ? 2 : 0), 4000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="relative mx-auto max-w-[700px]">
+      {/* Phone centered */}
+      <div className="flex justify-center mb-12 sm:mb-16">
+        <PhoneMockup size="small" />
+      </div>
+
+      {/* 2 cards at a time, swipe through pairs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-4">
+        {[cards[active], cards[(active + 1) % cards.length]].map((card, i) => (
+          <div
+            key={`${active}-${i}`}
+            className="transition-all duration-500 animate-fade-in-up"
+            style={{ animationDelay: `${i * 100}ms` }}
+          >
+            <TiltCard>
+              <GlowCard>
+                <div
+                  className="backdrop-blur-md rounded-2xl p-4 border border-white/[0.08] h-full glow-on-scroll revealed"
+                  style={{
+                    background: 'rgba(12, 14, 26, 0.85)',
+                    boxShadow: `0 4px 20px rgba(0,0,0,0.25), 0 0 15px ${card.color}08`,
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-base" style={{ background: `${card.color}15` }}>
+                      {card.icon}
+                    </div>
+                    <span className="text-[10px] font-bold" style={{ color: card.color }}>{card.badge}</span>
+                  </div>
+                  <div className="text-[13px] font-bold text-white/90 mb-1">{card.title}</div>
+                  <div className="text-[10px] text-white/40 leading-relaxed">{card.desc}</div>
+                </div>
+              </GlowCard>
+            </TiltCard>
+          </div>
+        ))}
+      </div>
+
+      {/* Dots — 2 pages */}
+      <div className="flex gap-2 justify-center mt-5">
+        {[0, 2].map((pageStart, i) => (
+          <button
+            key={i}
+            onClick={() => setActive(pageStart)}
+            className={`h-1.5 rounded-full transition-all duration-300 ${active === pageStart ? 'w-5 bg-[#A78BFA]' : 'w-1.5 bg-white/15'}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Animated stat counter ── */
+function AnimatedStat({ end, suffix = '', label }: { end: number; suffix?: string; label: string }) {
+  const [count, setCount] = useState(0);
+  const [started, setStarted] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting && !started) setStarted(true); },
+      { threshold: 0.5 }
+    );
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [started]);
+
+  useEffect(() => {
+    if (!started) return;
+    let frame: number;
+    const duration = 1500;
+    const start = performance.now();
+    const animate = (now: number) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.round(eased * end));
+      if (progress < 1) frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [started, end]);
+
+  return (
+    <div ref={ref} className="scroll-reveal">
+      <div className="text-fluid-3xl font-bold text-[var(--text)] font-display">
+        {count}{suffix}
+      </div>
+      <div className="text-[var(--text-secondary)] text-xs mt-1">{label}</div>
+    </div>
+  );
+}
+
+/* ── Before vs After — interactive comparison ── */
+const COMPARISONS = [
+  { before: 'Chemo schedule, meds, and labs in separate apps', after: 'Everything in one place for your cancer care', icon: '💊' },
+  { before: 'Forget which cycle day you\'re on', after: 'Treatment tracker shows exactly where you are', icon: '⏰' },
+  { before: 'Can\'t remember what the oncologist said', after: 'AI prepares questions for every oncology visit', icon: '🩺' },
+  { before: 'Family caregivers out of the loop', after: 'Care team shares one clear treatment dashboard', icon: '🎗️' },
+  { before: 'Tumor markers and blood counts confusing', after: 'AI explains results and flags what matters', icon: '🔬' },
+  { before: 'Side effects hit and you don\'t know what\'s normal', after: 'AI tells you what to expect each cycle day', icon: '📋' },
+];
+
+function BeforeAfterSection() {
+  const [showAfter, setShowAfter] = useState(false);
+
+  // Auto-toggle every 5 seconds
+  useEffect(() => {
+    const timer = setInterval(() => setShowAfter((v) => !v), 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <section className="py-16 sm:py-20 px-4 sm:px-6 bg-[rgba(167,139,250,0.02)]">
+      <div className="max-w-3xl mx-auto">
+        <h2 className="text-center font-display text-fluid-2xl font-bold text-[var(--text)] mb-4 blur-reveal">
+          <WordRevealH text="The difference is real" />
+        </h2>
+        <p className="text-center text-[var(--text-secondary)] text-fluid-sm mb-10 blur-reveal">
+          Watch how CareCompanion changes your day.
+        </p>
+
+        {/* Toggle switch — also clickable */}
+        <div className="flex justify-center mb-10 blur-reveal">
+          <button
+            onClick={() => setShowAfter(!showAfter)}
+            className="relative flex items-center rounded-full p-1 border border-[var(--border)] bg-[var(--bg-warm)]"
+          >
+            <span className={`relative z-10 px-5 py-2 rounded-full text-sm font-semibold transition-colors duration-300 ${!showAfter ? 'text-white' : 'text-[var(--text-muted)]'}`}>
+              Before
+            </span>
+            <span className={`relative z-10 px-5 py-2 rounded-full text-sm font-semibold transition-colors duration-300 ${showAfter ? 'text-white' : 'text-[var(--text-muted)]'}`}>
+              After
+            </span>
+            <div
+              className={`absolute top-1 h-[calc(100%-8px)] rounded-full transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${showAfter ? 'bg-gradient-to-r from-[#6366F1] to-[#A78BFA]' : 'bg-red-500/80'}`}
+              style={{
+                width: 'calc(50% - 4px)',
+                left: showAfter ? 'calc(50% + 2px)' : '4px',
+              }}
+            />
+          </button>
+        </div>
+
+        {/* Comparison cards */}
+        <div className="space-y-3">
+          {COMPARISONS.map((item, i) => (
+            <div
+              key={i}
+              className={`flex items-center gap-4 rounded-xl p-4 sm:p-5 border transition-all duration-500 ${
+                showAfter
+                  ? 'bg-[rgba(99,102,241,0.06)] border-[rgba(99,102,241,0.15)]'
+                  : 'bg-white/[0.02] border-white/[0.06]'
+              }`}
+              style={{ transitionDelay: `${i * 50}ms` }}
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-all duration-500 ${
+                showAfter ? 'bg-[#6366F1]/15 scale-110' : 'bg-white/[0.04] grayscale'
+              }`} style={{ transitionDelay: `${i * 50}ms` }}>
+                {item.icon}
+              </div>
+              <div className="flex-1 min-w-0 relative" style={{ minHeight: '1.5rem' }}>
+                {/* Before text */}
+                <p className={`text-sm leading-relaxed transition-all duration-500 ${
+                  showAfter
+                    ? 'opacity-0 -translate-y-3 absolute top-0 left-0 right-0'
+                    : 'opacity-100 translate-y-0 text-[var(--text-secondary)]'
+                }`} style={{ transitionDelay: `${i * 50}ms` }}>
+                  <span className="text-red-400/70 mr-1.5">✕</span>{item.before}
+                </p>
+                {/* After text */}
+                <p className={`text-sm leading-relaxed transition-all duration-500 ${
+                  showAfter
+                    ? 'opacity-100 translate-y-0 text-[var(--text)]'
+                    : 'opacity-0 translate-y-3 absolute top-0 left-0 right-0'
+                }`} style={{ transitionDelay: `${i * 50}ms` }}>
+                  <span className="text-[#A78BFA] mr-1.5">✓</span>{item.after}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Main page ── */
+export default function LandingPage() {
+  useScrollReveal();
+  const [headerVisible, setHeaderVisible] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setHeaderVisible(window.scrollY > 100);
+    };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0A0C10] overflow-hidden">
-      {/* Styles are in globals.css */}
+    <main className="min-h-screen bg-[var(--bg)] overflow-x-hidden">
+      {/* Scroll progress bar */}
+      <ScrollProgress />
 
-      {/* ── Nav ── */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        navScrolled
-          ? 'bg-[#0A0C10]/90 backdrop-blur-xl border-b border-white/5'
-          : 'bg-transparent'
-      }`}>
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+      {/* Ambient background + floating particles */}
+      <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
+        <div className="absolute w-[500px] h-[500px] rounded-full animate-blob-1" style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)', top: '-15%', right: '-10%', filter: 'blur(80px)' }} />
+        <div className="absolute w-[400px] h-[400px] rounded-full animate-blob-2" style={{ background: 'radial-gradient(circle, rgba(167,139,250,0.06) 0%, transparent 70%)', bottom: '10%', left: '-10%', filter: 'blur(80px)' }} />
+        <FloatingParticles />
+      </div>
+
+      {/* Nav */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${headerVisible ? 'opacity-100 translate-y-0 bg-[var(--bg)]/80 backdrop-blur-xl border-b border-[var(--border)]' : 'opacity-0 -translate-y-full'}`}>
+        <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center shadow-lg shadow-[#6366F1]/20" role="img" aria-label="CareCompanion AI logo">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
               </svg>
             </div>
-            <span className="font-display font-bold text-white text-lg">CareCompanion</span>
+            <span className="font-display font-bold text-[var(--text)] text-lg">CareCompanion</span>
           </div>
-          <Link
-            href="/login"
-            className="shimmer-btn rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 hover:shadow-lg hover:shadow-blue-600/30 hover:-translate-y-0.5 transition-all duration-200"
-          >
-            Get Started
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/about" className="hidden sm:inline text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
+              About
+            </Link>
+            <Link href="/privacy" className="hidden sm:inline text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hidden sm:inline text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
+              Terms
+            </Link>
+            <Link
+              href="/login"
+              className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold hover:opacity-90 transition-opacity shimmer-btn relative overflow-hidden"
+            >
+              Get Started
+            </Link>
+          </div>
         </div>
       </nav>
 
-      {/* ── Hero ── */}
-      <section className="pt-36 pb-24 px-6 relative min-h-[90vh] flex items-center">
-        <div className="absolute top-20 left-1/4 w-[500px] h-[500px] bg-gradient-to-br from-blue-600/20 to-indigo-600/20 rounded-full blur-3xl animate-float-slow" />
-        <div className="absolute top-40 right-1/4 w-[400px] h-[400px] bg-gradient-to-br from-violet-600/15 to-blue-600/15 rounded-full blur-3xl animate-float-slower" />
-        <div className="absolute bottom-20 left-1/3 w-[300px] h-[300px] bg-gradient-to-br from-cyan-600/10 to-blue-600/10 rounded-full blur-3xl animate-float-slow" style={{ animationDelay: '2s' }} />
-        <Particles />
-
-        <div className="max-w-6xl mx-auto relative w-full">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Left: text */}
-            <div className="text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 backdrop-blur-sm rounded-full mb-8 animate-fade-in border border-blue-500/20">
-                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                <span className="text-sm text-blue-300 font-medium">AI-Powered Caregiving Assistant</span>
-              </div>
-
-              <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-bold leading-tight mb-6">
-                <WordReveal text="Your health second brain" className="text-white" />
-              </h1>
-
-              <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto lg:mx-0 mb-12 leading-relaxed animate-fade-in-up" style={{ animationDelay: '0.8s' }}>
-                CareCompanion remembers every medication, appointment, lab result, and insurance detail — so you can focus on what matters most: <span className="text-white font-medium">the people you love</span>.
-              </p>
-
-              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 animate-fade-in-up" style={{ animationDelay: '1s' }}>
-                <Link
-                  href="/login"
-                  className="shimmer-btn w-full sm:w-auto rounded-2xl bg-blue-600 px-8 py-4 text-base font-semibold text-white hover:bg-blue-500 hover:shadow-xl hover:shadow-blue-600/30 hover:-translate-y-1 transition-all duration-300"
-                >
-                  Start for free
-                </Link>
-                <a
-                  href="#features"
-                  className="w-full sm:w-auto rounded-2xl bg-white/5 border border-white/10 px-8 py-4 text-base font-semibold text-slate-300 hover:bg-white/10 hover:border-white/20 hover:-translate-y-0.5 transition-all duration-200"
-                >
-                  See how it works
-                </a>
-              </div>
-
-              <div className="mt-16 animate-fade-in" style={{ animationDelay: '1.4s' }}>
-                <div className="w-6 h-10 rounded-full border-2 border-white/20 mx-auto lg:mx-0 flex justify-center pt-2">
-                  <div className="w-1 h-2 bg-white/40 rounded-full animate-bounce" />
-                </div>
-              </div>
-            </div>
-
-            {/* Right: phone mockup */}
-            <div className="hidden lg:flex justify-center animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
-              <PhoneMockup />
-            </div>
+      {/* Hero */}
+      <section className="relative z-10 pt-20 sm:pt-24 pb-8 px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto flex flex-col lg:flex-row-reverse items-center gap-6 lg:gap-12">
+          {/* Phone — FIRST on mobile, right side on desktop */}
+          <div className="flex-shrink-0 w-full max-w-[360px] lg:max-w-none lg:w-auto animate-fade-in-up overflow-visible flex justify-center">
+            <PhoneMockup size="large" />
           </div>
-        </div>
-      </section>
-
-      {/* ── Stats ── */}
-      <section className="py-12 px-6 bg-white/[0.02] border-y border-white/5 scroll-reveal">
-        <div className="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
-          {[
-            { value: 10000, suffix: '+', label: 'Caregivers' },
-            { value: 50000, suffix: '+', label: 'Medications tracked' },
-            { value: 99, suffix: '%', label: 'Accuracy' },
-            { value: 2, suffix: ' min', label: 'Setup time' },
-          ].map((stat) => (
-            <div key={stat.label} className="relative stat-divider">
-              <p className="font-display text-3xl sm:text-4xl font-bold text-white">
-                <Counter target={stat.value} suffix={stat.suffix} />
-              </p>
-              <p className="text-sm text-slate-500 mt-1">{stat.label}</p>
+          {/* Text — BELOW phone on mobile, left side on desktop */}
+          <div className="flex-1 text-center lg:text-left mt-8 lg:mt-0">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#A78BFA]/10 border border-[#A78BFA]/20 mb-6 animate-fade-in">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#A78BFA] animate-pulse" />
+              <span className="text-[#A78BFA] text-xs font-medium">AI-Powered Cancer Care</span>
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Features ── */}
-      <section id="features" className="py-24 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16 scroll-reveal">
-            <p className="text-sm font-semibold text-blue-400 uppercase tracking-widest mb-3">Features</p>
-            <h2 className="font-display text-3xl sm:text-4xl font-bold text-white mb-4">
-              Everything caregivers need
-            </h2>
-            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-              Stop juggling spreadsheets, sticky notes, and patient portals. CareCompanion organizes it all.
+            <h1 className="font-display text-fluid-3xl sm:text-fluid-4xl font-bold leading-tight mb-4 text-shimmer">
+              Cancer care,<br />finally in one place
+            </h1>
+            <p className="text-[var(--text-secondary)] text-fluid-base max-w-lg mx-auto lg:mx-0 mb-8 leading-relaxed animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+              Stop juggling 5 apps for <CyclingWord />. CareCompanion is the <strong className="text-[var(--text)]">cancer care app</strong> that brings treatment tracking, chemo side effects logging, and caregiver coordination together, so you can focus on <strong className="text-[var(--text)]">what matters most</strong>.
             </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+              <Link
+                href="/login"
+                className="px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white font-semibold text-sm shadow-lg shadow-[#6366F1]/25 hover:shadow-[#6366F1]/40 transition-shadow shimmer-btn relative overflow-hidden"
+              >
+                Start for free
+              </Link>
+              <a
+                href="#features"
+                className="px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-[var(--text)] font-semibold text-sm hover:bg-white/[0.08] transition-colors"
+              >
+                See how it works
+              </a>
+            </div>
           </div>
+        </div>
+      </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 scroll-reveal-stagger">
+      <SectionDivider />
+
+      {/* Features — phone center, cards below */}
+      <section id="features" className="py-16 sm:py-20 px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-center font-display text-fluid-2xl font-bold text-[var(--text)] mb-3 blur-reveal"><WordRevealH text="What you can do" /></h2>
+          <p className="text-center text-[var(--text-secondary)] text-fluid-sm mb-12 sm:mb-16 blur-reveal">Everything a cancer patient and caregiver needs. Nothing they don&apos;t.</p>
+          <FeatureShowcase />
+        </div>
+      </section>
+
+      <SectionDivider />
+
+      {/* ═══════ HOW IT WORKS ═══════ */}
+      <section className="py-16 sm:py-20 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-center font-display text-fluid-2xl font-bold text-[var(--text)] mb-3 blur-reveal"><WordRevealH text="How it works" /></h2>
+          <p className="text-center text-[var(--text-secondary)] text-fluid-sm mb-10 sm:mb-12 blur-reveal">Three steps. Five minutes. Your cancer care organized.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
             {[
-              {
-                icon: 'M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z',
-                title: 'AI that knows your situation',
-                description: 'Tell CareCompanion about your loved one once. It remembers everything and gives specific, personalized guidance — never generic advice.',
-                color: 'bg-blue-500/15 group-hover:bg-blue-500/25',
-                iconColor: 'text-blue-400',
-              },
-              {
-                icon: 'M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z',
-                title: 'Snap to import',
-                description: 'Take a photo of any pill bottle, lab report, insurance card, or doctor note. Our AI instantly extracts and organizes every detail.',
-                color: 'bg-violet-500/15 group-hover:bg-violet-500/25',
-                iconColor: 'text-violet-400',
-              },
-              {
-                icon: 'M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0',
-                title: 'Never miss a thing',
-                description: 'Refill reminders, appointment prep, abnormal lab alerts, denied claim explanations — CareCompanion proactively surfaces what you need to know.',
-                color: 'bg-amber-500/15 group-hover:bg-amber-500/25',
-                iconColor: 'text-amber-400',
-              },
-            ].map((feature) => (
-              <TiltCard key={feature.title} className="feature-card">
-                <div className="bg-white/[0.03] rounded-2xl border border-white/[0.06] p-7 hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 group cursor-default h-full">
-                  <div className={`w-12 h-12 rounded-xl ${feature.color} flex items-center justify-center mb-5 transition-colors duration-300`}>
-                    <svg className={`w-6 h-6 ${feature.iconColor} icon-glow`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d={feature.icon} />
-                    </svg>
+              { step: '1', icon: '🎗️', title: 'Add your diagnosis', desc: 'Enter your cancer type, treatment plan, medications, and oncology team. Or connect your patient portal.' },
+              { step: '2', icon: '📸', title: 'Scan your records', desc: 'Photo a lab report, pathology results, or prescription. AI extracts and organizes everything.' },
+              { step: '3', icon: '✨', title: 'Navigate your treatment', desc: 'Track side effects, prep for oncology visits, understand tumor markers, and coordinate with caregivers.' },
+            ].map((item, i) => (
+              <div key={i} className="relative blur-reveal" style={{ transitionDelay: `${i * 150}ms` }}>
+                <TiltCard>
+                  <GlowCard>
+                    <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 text-center h-full glow-on-scroll">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center mx-auto mb-4 text-white font-bold text-sm shadow-lg shadow-[#6366F1]/20">
+                      {item.step}
+                    </div>
+                    <div className="text-2xl mb-3">{item.icon}</div>
+                    <h3 className="font-display font-bold text-[var(--text)] text-sm mb-2">{item.title}</h3>
+                    <p className="text-[var(--text-secondary)] text-xs leading-relaxed">{item.desc}</p>
+                    </div>
+                  </GlowCard>
+                </TiltCard>
+                {i < 2 && (
+                  <div className="hidden md:block absolute top-1/2 -right-3 text-white/10 text-xl">→</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <SectionDivider />
+
+      {/* ═══════ BEFORE vs AFTER — INTERACTIVE TOGGLE ═══════ */}
+      <BeforeAfterSection />
+
+      <SectionDivider />
+
+      {/* ═══════ TRUST & SECURITY ═══════ */}
+      <section className="py-16 sm:py-20 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-center font-display text-fluid-2xl font-bold text-[var(--text)] mb-3 blur-reveal"><WordRevealH text="Built on trust" /></h2>
+          <p className="text-center text-[var(--text-secondary)] text-fluid-sm mb-8 sm:mb-12 blur-reveal">Your health data is sensitive. We treat it that way.</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            {[
+              { icon: '🔒', title: 'End-to-end encrypted', desc: 'Your data is encrypted at rest and in transit' },
+              { icon: '🛡️', title: 'HIPAA-aware design', desc: 'Built with healthcare privacy standards in mind' },
+              { icon: '🚫', title: 'Never sold', desc: 'We don\'t sell your health data. Period.' },
+              { icon: '👤', title: 'You own your data', desc: 'Export or delete everything anytime' },
+            ].map((item, i) => (
+              <TiltCard key={i}>
+                <GlowCard>
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 text-center blur-reveal glow-on-scroll" style={{ transitionDelay: `${i * 100}ms` }}>
+                    <div className="text-2xl mb-2">{item.icon}</div>
+                    <h3 className="font-display font-bold text-[var(--text)] text-xs mb-1">{item.title}</h3>
+                    <p className="text-[var(--text-muted)] text-[10px] leading-relaxed">{item.desc}</p>
                   </div>
-                  <h3 className="font-display text-lg font-semibold text-white mb-2">{feature.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed">{feature.description}</p>
-                </div>
+                </GlowCard>
               </TiltCard>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── How it works ── */}
-      <section className="py-24 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16 scroll-reveal">
-            <p className="text-sm font-semibold text-blue-400 uppercase tracking-widest mb-3">How it works</p>
-            <h2 className="font-display text-3xl sm:text-4xl font-bold text-white">
-              Up and running in 2 minutes
-            </h2>
-          </div>
+      <SectionDivider />
 
-          <div className="relative space-y-8">
-            {/* Connecting line */}
-            <DrawLine />
-
-            {[
-              { step: '01', title: 'Enter your name', description: 'No email required. No passwords. Just tell us who you are and get started instantly.', side: 'from-left' },
-              { step: '02', title: 'Tell us about your loved one', description: 'A quick 5-step wizard captures their medications, doctors, appointments, and conditions. Or just snap a photo — we\'ll do the rest.', side: 'from-right' },
-              { step: '03', title: 'Start chatting', description: 'Ask CareCompanion anything. It knows your full care situation and gives specific, actionable answers. Like having a knowledgeable friend on call 24/7.', side: 'from-left' },
-            ].map((item) => (
-              <div key={item.step} className={`scroll-reveal-step ${item.side} relative z-10 flex items-start gap-6 p-6 rounded-2xl hover:bg-white/[0.03] transition-colors duration-300`}>
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-600/30">
-                  <span className="font-display text-lg font-bold text-white">{item.step}</span>
-                </div>
-                <div>
-                  <h3 className="font-display text-xl font-semibold text-white mb-2">{item.title}</h3>
-                  <p className="text-slate-400 leading-relaxed">{item.description}</p>
-                </div>
-              </div>
-            ))}
+      {/* ═══════ ANIMATED NUMBERS ═══════ */}
+      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-[rgba(167,139,250,0.02)]">
+        <div className="max-w-3xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 text-center">
+            <AnimatedStat end={50} suffix="+" label="Chemo drugs tracked" />
+            <AnimatedStat end={200} suffix="+" label="Oncology visits managed" />
+            <AnimatedStat end={100} suffix="%" label="Free to use" />
+            <AnimatedStat end={5} suffix=" min" label="Setup time" />
           </div>
         </div>
       </section>
 
-      {/* ── Testimonial ── */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="scroll-reveal-scale bg-white/[0.03] rounded-3xl border border-white/[0.06] p-8 sm:p-12 text-center">
-            <div className="flex justify-center gap-1 mb-6">
-              {[1,2,3,4,5].map((star) => (
-                <svg key={star} className="w-5 h-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-              ))}
-            </div>
-            <blockquote className="font-display text-xl sm:text-2xl text-slate-200 leading-relaxed mb-6">
-              &ldquo;I was drowning in pill bottles, appointment reminders, and insurance calls. CareCompanion gave me my sanity back. It&apos;s like having a co-caregiver who never forgets anything.&rdquo;
-            </blockquote>
-            <div>
-              <p className="font-medium text-white">Sarah K.</p>
-              <p className="text-sm text-slate-500">Caregiver for her mother, 78</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <SectionDivider />
 
-      {/* ── CTA ── */}
-      <section className="py-24 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-blue-700/10 to-indigo-800/20" />
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-3xl animate-float-slow" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-3xl animate-float-slower" />
-        <Particles />
-
-        <div className="max-w-3xl mx-auto text-center relative scroll-reveal">
-          <h2 className="font-display text-3xl sm:text-5xl font-bold text-white mb-6 leading-tight">
-            Caregiving is hard enough.
-            <br />
-            <span className="text-blue-400">Let us help.</span>
-          </h2>
-          <p className="text-lg text-slate-400 mb-10 max-w-xl mx-auto leading-relaxed">
-            Join thousands of caregivers who use CareCompanion to manage medications, appointments, and insurance — all in one place.
-          </p>
+      {/* Final CTA */}
+      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-[rgba(167,139,250,0.02)]">
+        <div className="max-w-lg mx-auto text-center blur-reveal">
+          <h2 className="font-display text-fluid-3xl font-bold mb-4 animate-greeting">Start caring smarter</h2>
+          <p className="text-[var(--text-secondary)] text-fluid-sm mb-8">Join cancer caregivers and patients who finally have their cancer treatment tracker, chemo side effects log, and oncology visit prep in one place.</p>
           <Link
             href="/login"
-            className="shimmer-btn inline-flex rounded-2xl bg-blue-600 px-10 py-5 text-lg font-semibold text-white hover:bg-blue-500 hover:shadow-2xl hover:shadow-blue-600/30 hover:-translate-y-1 transition-all duration-300 shadow-lg shadow-blue-600/20"
+            className="inline-block px-10 py-4 rounded-2xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white font-semibold shadow-lg shadow-[#6366F1]/25 hover:shadow-[#6366F1]/40 transition-shadow shimmer-btn relative overflow-hidden"
           >
-            Get started for free
+            Get started — it&apos;s free
           </Link>
-          <p className="text-sm text-slate-600 mt-4">No credit card required. No email needed.</p>
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer className="relative py-10 px-6 border-t border-white/5">
-        {/* Gradient fade at top */}
-        <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-[#0A0C10] to-transparent -translate-y-full pointer-events-none" />
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-              <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+      {/* Footer */}
+      <footer className="border-t border-[var(--border)] py-8 px-6">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center" role="img" aria-label="CareCompanion AI logo">
+              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
               </svg>
             </div>
-            <span className="text-sm text-slate-500 footer-link">CareCompanion</span>
+            <span className="text-[var(--text-muted)] text-sm">CareCompanion</span>
           </div>
-          <p className="text-xs text-slate-600">Built with care, for caregivers.</p>
+          <div className="flex items-center gap-4 text-[var(--text-muted)] text-xs">
+            <Link href="/about" className="hover:text-[var(--text)] transition-colors">About</Link>
+            <Link href="/privacy" className="hover:text-[var(--text)] transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-[var(--text)] transition-colors">Terms</Link>
+            <span>Your data stays yours.</span>
+          </div>
         </div>
       </footer>
-    </div>
+    </main>
   );
 }
+

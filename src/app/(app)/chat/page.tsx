@@ -1,9 +1,10 @@
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ChatInterface } from '@/components/ChatInterface';
 import type { Message } from '@/lib/types';
 
-export default async function ChatPage() {
+async function ChatContent() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -38,5 +39,21 @@ export default async function ChatPage() {
       initialMessages={initialMessages}
       patientName={profile.patient_name || 'your loved one'}
     />
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-[calc(100dvh-140px)]">
+        <div className="flex gap-1.5">
+          <div className="typing-dot" />
+          <div className="typing-dot" />
+          <div className="typing-dot" />
+        </div>
+      </div>
+    }>
+      <ChatContent />
+    </Suspense>
   );
 }

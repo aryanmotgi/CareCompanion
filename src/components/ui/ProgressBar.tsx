@@ -37,7 +37,7 @@ export function ProgressBar({ currentStep, totalSteps, labels }: ProgressBarProp
                 </div>
                 <span
                   className={`text-xs mt-1.5 font-medium ${
-                    isCurrent ? 'text-blue-400' : isCompleted ? 'text-[var(--text-secondary)]' : 'text-[var(--text-muted)]'
+                    isCurrent ? 'text-[#A78BFA]' : isCompleted ? 'text-[var(--text-secondary)]' : 'text-[var(--text-muted)]'
                   }`}
                 >
                   {labels[i]}

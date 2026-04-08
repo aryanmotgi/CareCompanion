@@ -218,14 +218,14 @@ export function DocumentScanner({ onClose, onSaved }: DocumentScannerProps) {
                 <div className="space-y-4">
                   {/* Document type badge */}
                   <div className="flex items-center gap-3 p-4 bg-blue-500/15 rounded-xl">
-                    <svg className="w-5 h-5 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <svg className="w-5 h-5 text-[#A78BFA] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d={DOC_TYPE_ICONS[result.document_type] || DOC_TYPE_ICONS.OTHER} />
                     </svg>
                     <div>
                       <p className="text-sm font-medium text-blue-200">
                         {DOC_TYPE_LABELS[result.document_type] || 'Document'} detected
                       </p>
-                      <p className="text-xs text-blue-400">{result.summary}</p>
+                      <p className="text-xs text-[#A78BFA]">{result.summary}</p>
                     </div>
                   </div>
 

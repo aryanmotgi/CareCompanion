@@ -126,7 +126,7 @@ export function CalendarView({ appointments, medications, patientName }: Calenda
                 events.length > 0 ? 'hover:bg-white/[0.06]' : 'hover:bg-white/[0.03]'
               }`}
             >
-              <span className={`${isToday ? 'text-blue-400 font-bold' : 'text-[var(--text-secondary)]'} text-xs`}>{day}</span>
+              <span className={`${isToday ? 'text-[#A78BFA] font-bold' : 'text-[var(--text-secondary)]'} text-xs`}>{day}</span>
               {events.length > 0 && (
                 <div className="flex gap-0.5">
                   {events.slice(0, 3).map((e, j) => (
@@ -171,7 +171,7 @@ export function CalendarView({ appointments, medications, patientName }: Calenda
                   {event.type === 'appointment' && (
                     <Link
                       href={`/chat?prompt=${encodeURIComponent(`Help me prepare for my appointment with ${event.label}`)}`}
-                      className="text-xs text-blue-400 font-medium"
+                      className="text-xs text-[#A78BFA] font-medium"
                     >
                       Prep
                     </Link>

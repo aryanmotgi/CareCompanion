@@ -1,16 +1,24 @@
 {
   "crons": [
     {
+      "path": "/api/cron/sync",
+      "schedule": "0 6 * * *"
+    },
+    {
       "path": "/api/sync/all",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 8 * * *"
     },
     {
       "path": "/api/notifications/generate",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 9 * * *"
     },
     {
       "path": "/api/reminders/check",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/purge",
+      "schedule": "0 3 * * 0"
     }
   ]
 }

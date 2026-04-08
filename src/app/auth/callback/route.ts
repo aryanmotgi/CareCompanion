@@ -33,15 +33,14 @@ export async function GET(request: Request) {
       if (user) {
         const { data: profile } = await supabase
           .from('care_profiles')
-          .select('id')
+          .select('id, onboarding_completed')
           .eq('user_id', user.id)
           .single();
 
-        if (profile) {
+        if (profile?.onboarding_completed) {
           return NextResponse.redirect(`${origin}/dashboard`);
         } else {
-          // New users go to connect accounts page
-          return NextResponse.redirect(`${origin}/connect`);
+          return NextResponse.redirect(`${origin}/onboarding`);
         }
       }
     }

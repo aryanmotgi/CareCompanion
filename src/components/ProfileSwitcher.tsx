@@ -49,7 +49,7 @@ export function ProfileSwitcher({ profiles, activeProfileId }: ProfileSwitcherPr
   const initials = (name: string) => name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 
   const COLORS = [
-    'from-indigo-500 to-cyan-400',
+    'from-[#6366F1] to-[#A78BFA]',
     'from-pink-500 to-orange-400',
     'from-emerald-500 to-teal-400',
     'from-purple-500 to-pink-400',
@@ -90,7 +90,7 @@ export function ProfileSwitcher({ profiles, activeProfileId }: ProfileSwitcherPr
                 <p className="text-[11px] text-[var(--text-muted)]">{p.relationship || ''}{p.patient_age ? ` · Age ${p.patient_age}` : ''}</p>
               </div>
               {p.id === activeProfileId && (
-                <svg className="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <svg className="w-4 h-4 text-[#A78BFA] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                 </svg>
               )}

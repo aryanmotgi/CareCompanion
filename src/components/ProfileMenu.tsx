@@ -136,16 +136,16 @@ export function ProfileMenu({ isOpen, onClose, userName, patientName }: ProfileM
     .slice(0, 2)
 
   return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/50 animate-fade-overlay" onClick={onClose} />
-      <div className="absolute top-0 right-0 bottom-0 w-[280px] bg-[#1e293b] animate-slide-in-right flex flex-col">
-        <div className="flex items-center gap-3 p-5 pb-4 border-b border-white/[0.06]">
-          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center text-white text-base font-semibold">
+    <div className="fixed inset-0 z-[200]">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} style={{ animation: 'fade-overlay 0.25s ease-out' }} />
+      <div className="absolute top-0 right-0 bottom-0 w-[280px] bg-[var(--bg-warm)] flex flex-col" style={{ animation: 'slide-in-right-new 0.3s cubic-bezier(0.32, 0.72, 0, 1)' }}>
+        <div className="flex items-center gap-3 p-5 pb-4 border-b border-[var(--border)]">
+          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-white text-base font-semibold">
             {initials}
           </div>
           <div>
-            <div className="text-[#f1f5f9] text-[15px] font-semibold">{userName || 'User'}</div>
-            <div className="text-[#64748b] text-xs">Caring for {patientName}</div>
+            <div className="text-[var(--text)] text-[15px] font-semibold">{userName || 'User'}</div>
+            <div className="text-[var(--text-muted)] text-xs">Caring for {patientName}</div>
           </div>
         </div>
 
@@ -155,25 +155,25 @@ export function ProfileMenu({ isOpen, onClose, userName, patientName }: ProfileM
               key={item.label}
               href={item.href}
               onClick={onClose}
-              className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-white/[0.04] transition-colors duration-200 animate-press"
+              className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors duration-200 animate-press"
             >
               {item.icon}
-              <span className="text-[#e2e8f0] text-sm flex-1">{item.label}</span>
-              <svg width="14" height="14" fill="none" stroke="#475569" strokeWidth="2" viewBox="0 0 24 24">
+              <span className="text-[var(--text)] text-sm flex-1">{item.label}</span>
+              <svg width="14" height="14" fill="none" stroke="var(--text-muted)" strokeWidth="2" viewBox="0 0 24 24">
                 <polyline points="9 18 15 12 9 6" />
               </svg>
             </Link>
           ))}
         </div>
 
-        <div className="p-3 pt-0 border-t border-white/[0.06]">
+        <div className="p-3 pt-0 border-t border-[var(--border)]">
           <button
             onClick={async () => {
               const supabase = createClient()
               await supabase.auth.signOut()
               window.location.href = '/login'
             }}
-            className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-white/[0.04] transition-colors w-full animate-press"
+            className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-red-500/10 transition-colors w-full animate-press"
           >
             <svg width="18" height="18" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />

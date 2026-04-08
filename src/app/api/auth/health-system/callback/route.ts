@@ -44,10 +44,13 @@ export async function GET(req: NextRequest) {
       { onConflict: 'user_id,source' }
     );
 
-    // Trigger initial FHIR sync
+    // Trigger initial FHIR sync (pass internal secret so sync route trusts the callback)
     await fetch(`${appUrl}/api/sync/health-system`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(process.env.CRON_SECRET ? { 'x-internal-secret': process.env.CRON_SECRET } : {}),
+      },
       body: JSON.stringify({ user_id: state }),
     });
 

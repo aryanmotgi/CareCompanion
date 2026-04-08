@@ -45,7 +45,10 @@ export async function GET(req: NextRequest) {
 
     await fetch(`${appUrl}/api/sync/insurance`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(process.env.CRON_SECRET ? { 'x-internal-secret': process.env.CRON_SECRET } : {}),
+      },
       body: JSON.stringify({ user_id: state }),
     });
 

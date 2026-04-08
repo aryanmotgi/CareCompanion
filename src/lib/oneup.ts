@@ -1,21 +1,18 @@
-// Health Records Connection — supports Epic FHIR (direct) and 1upHealth (aggregator)
-// When 1upHealth is approved, set ONEUPH_CLIENT_ID to switch to aggregator mode.
-// Until then, uses Epic sandbox directly.
+// Health Records Connection — 1upHealth is the primary aggregator.
+// Falls back to Epic direct if 1upHealth credentials aren't set.
 
 // === PROVIDER CONFIG ===
 
 type Provider = 'epic' | '1uphealth';
 
 function getActiveProvider(): Provider {
-  // If 1upHealth credentials are set AND valid, use 1upHealth
-  // Otherwise fall back to Epic direct
-  const oneupId = process.env.ONEUPH_CLIENT_ID || '';
+  const oneupId = process.env.ONEUP_CLIENT_ID || '';
   const epicId = process.env.EPIC_CLIENT_ID || '';
 
-  // For now, prefer Epic direct since 1upHealth needs approval
-  if (epicId) return 'epic';
+  // Prefer 1upHealth — it aggregates 700+ health systems
   if (oneupId) return '1uphealth';
-  return 'epic';
+  if (epicId) return 'epic';
+  return '1uphealth';
 }
 
 const PROVIDER_CONFIG = {
@@ -26,9 +23,9 @@ const PROVIDER_CONFIG = {
     scopes: 'launch/patient openid fhirUser patient/Patient.read patient/AllergyIntolerance.read patient/Condition.read patient/MedicationRequest.read patient/Observation.read patient/Appointment.read patient/Practitioner.read',
   },
   '1uphealth': {
-    authorizeUrl: 'https://api.1up.health/connect/system/clinical',
-    tokenUrl: 'https://api.1up.health/fhir/oauth2/token',
-    fhirBaseUrl: 'https://api.1up.health/fhir/r4',
+    authorizeUrl: 'https://api.1up.health/connect/system/clinical/start',
+    tokenUrl: 'https://api.1up.health/oauth2/token',
+    fhirBaseUrl: 'https://api.1up.health/r4',
     scopes: '',
   },
 };
@@ -42,24 +39,53 @@ function getCredentials(): { clientId: string; clientSecret: string } {
     };
   }
   return {
-    clientId: process.env.ONEUPH_CLIENT_ID || '',
-    clientSecret: process.env.ONEUPH_CLIENT_SECRET || '',
+    clientId: process.env.ONEUP_CLIENT_ID || '',
+    clientSecret: process.env.ONEUP_CLIENT_SECRET || '',
   };
+}
+
+// === 1UPHEALTH USER MANAGEMENT ===
+
+/**
+ * Create a 1upHealth user for a given app user.
+ * Returns the oneup_user_id needed for the connect flow.
+ */
+export async function createOneUpUser(appUserId: string): Promise<string> {
+  const { clientId, clientSecret } = getCredentials();
+
+  const res = await fetch('https://api.1up.health/user-management/v1/user', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: clientId,
+      client_secret: clientSecret,
+      app_user_id: appUserId,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`1upHealth user creation failed: ${res.status} — ${text}`);
+  }
+
+  const data = await res.json();
+  return data.oneup_user_id;
 }
 
 // === AUTH FUNCTIONS ===
 
 /**
  * Build the authorization URL. Redirects user to the provider's login page.
+ * For 1upHealth, requires a oneup_user_id (created via createOneUpUser).
  */
-export function buildAuthUrl(userId: string): string {
+export function buildAuthUrl(userId: string, oneupUserId?: string): string {
   const provider = getActiveProvider();
   const config = PROVIDER_CONFIG[provider];
   const { clientId } = getCredentials();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const redirectUri = `${baseUrl}/api/oneup/callback`;
+  const redirectUri = `${baseUrl}/api/fhir/callback`;
 
-  const state = Buffer.from(JSON.stringify({ userId, provider })).toString('base64url');
+  const state = Buffer.from(JSON.stringify({ userId, provider: provider === '1uphealth' ? '1uphealth' : 'epic' })).toString('base64url');
 
   if (provider === '1uphealth') {
     const params = new URLSearchParams({
@@ -67,6 +93,10 @@ export function buildAuthUrl(userId: string): string {
       redirect_uri: redirectUri,
       state,
     });
+    // 1upHealth connect flow requires the oneup_user_id
+    if (oneupUserId) {
+      params.set('oneup_user_id', oneupUserId);
+    }
     return `${config.authorizeUrl}?${params.toString()}`;
   }
 
@@ -91,13 +121,13 @@ export async function exchangeCode(code: string): Promise<{
   refresh_token?: string;
   token_type?: string;
   expires_in?: number;
-  patient?: string; // Epic returns the FHIR patient ID
+  patient?: string;
 }> {
   const provider = getActiveProvider();
   const config = PROVIDER_CONFIG[provider];
   const { clientId, clientSecret } = getCredentials();
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const redirectUri = `${baseUrl}/api/oneup/callback`;
+  const redirectUri = `${baseUrl}/api/fhir/callback`;
 
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
@@ -106,7 +136,6 @@ export async function exchangeCode(code: string): Promise<{
     client_id: clientId,
   });
 
-  // Epic uses client_secret in body, 1upHealth also
   if (clientSecret) {
     body.set('client_secret', clientSecret);
   }
@@ -206,6 +235,31 @@ export async function fhirSearchAll(resourceType: string, params: string, access
   }
 
   return resources;
+}
+
+/**
+ * Fetch $everything for a patient (1upHealth bulk data pull).
+ */
+export async function fetchPatientEverything(accessToken: string): Promise<Record<string, unknown>[]> {
+  const config = PROVIDER_CONFIG[getActiveProvider()];
+  const url = `${config.fhirBaseUrl}/Patient/$everything`;
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/fhir+json',
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Patient/$everything failed: ${res.status} ${await res.text()}`);
+  }
+
+  const bundle = await res.json() as {
+    entry?: Array<{ resource: Record<string, unknown> }>;
+  };
+
+  return bundle.entry?.map((e) => e.resource) || [];
 }
 
 /**

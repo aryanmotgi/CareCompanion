@@ -108,7 +108,7 @@ export function CareTeamView() {
         <div className="space-y-2">
           {members.map((m) => (
             <div key={m.id} className="flex items-center gap-3 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl px-4 py-3">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
                 {(m.display_name || '?')[0].toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">

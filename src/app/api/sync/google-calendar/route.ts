@@ -1,12 +1,32 @@
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function POST(req: Request) {
+  // Auth: either (a) authenticated user session, or (b) server-side OAuth callback
+  // with a valid connected app proving the user_id is legitimate.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   const { user_id } = await req.json();
   if (!user_id) {
     return Response.json({ error: 'user_id required' }, { status: 400 });
   }
 
+  // If we have a session, verify ownership
+  if (user && user_id !== user.id) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const admin = createAdminClient();
+
+  // If no session (server-side OAuth callback), verify internal secret
+  if (!user) {
+    const internalSecret = req.headers.get('x-internal-secret');
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret || internalSecret !== cronSecret) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+  }
 
   // Get connection
   const { data: connection } = await admin

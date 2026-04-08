@@ -25,17 +25,17 @@ export function SegmentControl({ segments, activeIndex, onChange }: SegmentContr
   }, [activeIndex])
 
   return (
-    <div ref={containerRef} className="relative flex bg-[#1e293b] rounded-[10px] p-[3px]">
+    <div ref={containerRef} className="relative flex bg-[var(--bg-warm)] rounded-[14px] p-[3px] border border-[var(--border)]">
       <div
-        className="absolute top-[3px] h-[calc(100%-6px)] rounded-lg bg-[#38bdf8] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+        className="absolute top-[3px] h-[calc(100%-6px)] rounded-[11px] bg-gradient-to-r from-[#6366F1] to-[#A78BFA] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
         style={{ left: pillStyle.left, width: pillStyle.width }}
       />
       {segments.map((label, i) => (
         <button
           key={label}
           onClick={() => onChange(i)}
-          className={`relative z-10 flex-1 text-center py-2 px-4 rounded-lg text-[13px] font-semibold transition-colors duration-200 ${
-            i === activeIndex ? 'text-[#0f172a]' : 'text-[#64748b]'
+          className={`relative z-10 flex-1 text-center py-2 px-4 rounded-[11px] text-[13px] font-semibold transition-colors duration-200 ${
+            i === activeIndex ? 'text-white' : 'text-[var(--text-muted)]'
           }`}
         >
           {label}

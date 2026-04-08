@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 
 interface ExpandableCardProps {
   expanded: boolean
@@ -22,11 +22,29 @@ export function ExpandableCard({
   const contentRef = useRef<HTMLDivElement>(null)
   const [height, setHeight] = useState(0)
 
-  useEffect(() => {
+  const recalcHeight = useCallback(() => {
     if (contentRef.current) {
       setHeight(contentRef.current.scrollHeight)
     }
-  }, [expanded, expandedContent])
+  }, [])
+
+  // Recalculate on expand/content change
+  useEffect(() => {
+    if (expanded) {
+      // Small delay to let children render
+      requestAnimationFrame(recalcHeight)
+    }
+  }, [expanded, expandedContent, recalcHeight])
+
+  // Watch for internal content changes (tab switches, async content)
+  useEffect(() => {
+    if (!expanded || !contentRef.current) return
+    const ro = new ResizeObserver(recalcHeight)
+    ro.observe(contentRef.current)
+    const mo = new MutationObserver(() => requestAnimationFrame(recalcHeight))
+    mo.observe(contentRef.current, { childList: true, subtree: true })
+    return () => { ro.disconnect(); mo.disconnect() }
+  }, [expanded, recalcHeight])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -43,24 +61,30 @@ export function ExpandableCard({
       onClick={onToggle}
       onKeyDown={handleKeyDown}
       className={`
-        bg-white/[0.04] border rounded-xl p-4 cursor-pointer
+        bg-white/[0.04] rounded-xl p-4 cursor-pointer
+        border border-white/[0.06]
         transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#22d3ee]/50
-        ${expanded ? 'border-[rgba(34,211,238,0.2)]' : 'border-white/[0.06]'}
         ${className}
       `}
-      style={style}
+      style={{ outline: 'none', boxShadow: 'none', WebkitTapHighlightColor: 'transparent', ...style }}
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">{children}</div>
-        <span className={`text-lg transition-transform duration-300 ${expanded ? 'rotate-90 text-[#22d3ee]' : 'text-[#64748b]'}`} aria-hidden="true">
-          ▸
-        </span>
+        <svg
+          className={`w-4 h-4 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${expanded ? 'rotate-180 text-[#A78BFA]' : 'text-[var(--text-muted)]'}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={2}
+          stroke="currentColor"
+          aria-hidden="true"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
       </div>
 
       <div
         style={{
-          maxHeight: expanded ? `${height}px` : '0px',
+          maxHeight: expanded ? `${height + 32}px` : '0px',
           opacity: expanded ? 1 : 0,
           overflow: 'hidden',
           transition: 'max-height 300ms cubic-bezier(0.4,0,0.2,1), opacity 200ms ease',
@@ -68,7 +92,7 @@ export function ExpandableCard({
       >
         <div ref={contentRef}>
           <div
-            className="mt-3 pt-3 border-t border-white/[0.06]"
+            className="mt-3 pt-3 border-t border-[var(--border)]"
             onClick={(e) => e.stopPropagation()}
           >
             {expandedContent}

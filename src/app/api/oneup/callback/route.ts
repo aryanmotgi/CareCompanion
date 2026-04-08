@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { exchangeCode } from '@/lib/oneup';
 import { syncOneUpData } from '@/lib/oneup-sync';
 
 export const maxDuration = 60;
 
+// This route is kept as a legacy endpoint.
+// The primary callback is /api/fhir/callback (registered with 1upHealth).
+// Both work — this one uses the oneup.ts helpers directly.
 export async function GET(req: Request) {
   const { searchParams, origin } = new URL(req.url);
   const code = searchParams.get('code');
@@ -21,18 +25,16 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${baseUrl}/connect?error=missing_code`);
   }
 
-  // Decode state to get userId and provider
   let userId: string;
   let provider: string;
   try {
     const stateData = JSON.parse(Buffer.from(state || '', 'base64url').toString());
     userId = stateData.userId;
-    provider = stateData.provider || 'epic';
+    provider = stateData.provider || '1uphealth';
   } catch {
     return NextResponse.redirect(`${baseUrl}/connect?error=invalid_state`);
   }
 
-  // Verify the authenticated user matches the state
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -41,7 +43,6 @@ export async function GET(req: Request) {
   }
 
   try {
-    // Exchange code for tokens
     const tokens = await exchangeCode(code);
 
     const expiresAt = tokens.expires_in
@@ -50,8 +51,8 @@ export async function GET(req: Request) {
 
     const source = provider === '1uphealth' ? '1uphealth' : 'epic';
 
-    // Save connection
-    await supabase.from('connected_apps').upsert(
+    const admin = createAdminClient();
+    await admin.from('connected_apps').upsert(
       {
         user_id: user.id,
         source,
@@ -63,7 +64,7 @@ export async function GET(req: Request) {
       { onConflict: 'user_id,source' }
     );
 
-    // Trigger initial sync (non-blocking — we redirect immediately)
+    // Trigger initial sync (non-blocking)
     syncOneUpData(user.id, tokens.access_token).catch((err) => {
       console.error(`Initial ${source} sync error:`, err);
     });

@@ -11,12 +11,29 @@ async function fetchFhirBundle(accessToken: string, resourceType: string): Promi
 }
 
 export async function POST(req: Request) {
+  const { createClient } = await import('@/lib/supabase/server');
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   const { user_id } = await req.json();
   if (!user_id) {
     return Response.json({ error: 'user_id required' }, { status: 400 });
   }
 
+  if (user && user_id !== user.id) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const admin = createAdminClient();
+
+  // If no session (server-side OAuth callback), verify internal secret
+  if (!user) {
+    const internalSecret = req.headers.get('x-internal-secret');
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret || internalSecret !== cronSecret) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+  }
 
   const { data: connection } = await admin
     .from('connected_apps')

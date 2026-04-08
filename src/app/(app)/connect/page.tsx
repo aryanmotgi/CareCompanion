@@ -1,3 +1,5 @@
+// Note: This page is also accessible from Settings > Connected Accounts.
+// It works as a standalone page and is linked from the sidebar menu and settings.
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { ConnectAccounts } from '@/components/ConnectAccounts';
