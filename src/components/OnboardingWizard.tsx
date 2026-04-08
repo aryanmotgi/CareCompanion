@@ -675,6 +675,38 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
             </p>
           </div>
 
+          {/* Quick connect CTA — skip manual entry */}
+          <a
+            href="/api/fhir/authorize?provider=1uphealth"
+            onClick={() => {
+              localStorage.setItem('onboarding_step', '5');
+              saveStepProgress(2);
+            }}
+            className="block rounded-2xl p-4 border border-[#6366F1]/30 transition-all hover:border-[#6366F1]/50"
+            style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(167,139,250,0.08))' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(99,102,241,0.2)' }}>
+                <svg className="w-5 h-5 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white">Skip this — connect your health records</p>
+                <p className="text-xs text-[#94a3b8] mt-0.5">Import diagnosis, meds, labs, and more from 300+ health systems via 1upHealth. Saves time and avoids errors.</p>
+              </div>
+              <svg className="w-5 h-5 text-[#A78BFA] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+              </svg>
+            </div>
+          </a>
+
+          <div className="relative flex items-center gap-3">
+            <div className="flex-1 h-px bg-white/[0.08]" />
+            <span className="text-xs text-[#64748b] font-medium">or enter manually</span>
+            <div className="flex-1 h-px bg-white/[0.08]" />
+          </div>
+
           <div className="space-y-4">
             {/* Cancer type */}
             <div>
