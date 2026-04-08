@@ -395,18 +395,36 @@ function EmptyState({ filter }: { filter: FilterType }) {
     symptoms: 'symptom entries',
   };
 
+  const ctaMap: Record<FilterType, { href: string; label: string } | null> = {
+    all: { href: '/chat', label: 'Start a conversation' },
+    medications: { href: '/medications', label: 'Add a medication' },
+    appointments: null,
+    labs: { href: '/scans', label: 'Scan a lab report' },
+    symptoms: { href: '/chat?prompt=Log%20today%27s%20symptoms', label: 'Log symptoms' },
+  };
+
+  const cta = ctaMap[filter];
+
   return (
-    <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mb-4">
-        <svg className="w-7 h-7 text-[var(--text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <div className="flex flex-col items-center py-8 text-center">
+      <div className="w-12 h-12 rounded-full bg-white/[0.06] flex items-center justify-center mb-3">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="10" />
           <polyline points="12 6 12 12 16 14" />
         </svg>
       </div>
-      <h3 className="text-base font-semibold text-[var(--text)] mb-1">No {labels[filter]} yet</h3>
-      <p className="text-sm text-[var(--text-muted)] max-w-xs">
+      <p className="text-sm text-[#94a3b8]">No {labels[filter]} yet</p>
+      <p className="text-xs text-[#64748b] mt-1 max-w-xs">
         As you add {labels[filter]} to CareCompanion, they will appear here on your timeline.
       </p>
+      {cta && (
+        <a
+          href={cta.href}
+          className="mt-3 text-xs font-medium text-[#A78BFA] hover:underline"
+        >
+          {cta.label}
+        </a>
+      )}
     </div>
   );
 }

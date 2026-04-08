@@ -205,20 +205,16 @@ export function RefillStatusCard() {
         )}
 
         {!loading && !error && medications.length === 0 && (
-          <div className="px-5 py-8 text-center">
-            <div className="w-10 h-10 rounded-full bg-white/[0.04] flex items-center justify-center mx-auto mb-3">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="text-[var(--text-muted,#9ca3af)]">
-                <path
-                  d="M6 2v3a1 1 0 01-1 1H3m10-4v3a1 1 0 001 1h2M6 2H3.5A1.5 1.5 0 002 3.5v11A1.5 1.5 0 003.5 16h11a1.5 1.5 0 001.5-1.5v-11A1.5 1.5 0 0014.5 2H12m-6 0h6m-6 0v3m6-3v3m-6 0h6"
-                  stroke="currentColor"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                />
+          <div className="flex flex-col items-center py-8 text-center">
+            <div className="w-12 h-12 rounded-full bg-white/[0.06] flex items-center justify-center mb-3">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <path d="M16 2v4M8 2v4M3 10h18" />
               </svg>
             </div>
-            <p className="text-sm text-[var(--text-muted,#9ca3af)]">No refills to track yet</p>
-            <p className="text-[11px] text-[var(--text-muted,#9ca3af)] mt-1 opacity-60">
-              Add medications with refill dates to see their status here
+            <p className="text-sm text-[#94a3b8]">No refills to track yet</p>
+            <p className="text-xs text-[#64748b] mt-1">
+              <a href="/medications" className="text-[#A78BFA] hover:underline">Add medications</a> with refill dates to see their status here
             </p>
           </div>
         )}

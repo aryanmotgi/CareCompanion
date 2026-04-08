@@ -58,9 +58,9 @@ export function MedicationReminders({ reminders: initial }: MedicationRemindersP
           </svg>
           <h3 className="text-sm font-semibold text-[var(--text)]">Medication Reminders</h3>
         </div>
-        <div className="flex flex-col items-center py-6 text-center">
+        <div className="flex flex-col items-center py-8 text-center">
           <div className="w-12 h-12 rounded-full bg-white/[0.06] flex items-center justify-center mb-3">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <rect x="4.5" y="3.5" width="15" height="17" rx="2.5" />
               <path d="M9 3.5V2" />
               <path d="M15 3.5V2" />
@@ -68,9 +68,9 @@ export function MedicationReminders({ reminders: initial }: MedicationRemindersP
               <path d="M9.5 14h3" />
             </svg>
           </div>
-          <p className="text-sm text-[var(--text-muted)]">No reminders for today</p>
-          <p className="text-xs text-[var(--text-muted)] mt-1 opacity-60">
-            Set up reminders in your care settings
+          <p className="text-sm text-[#94a3b8]">No reminders for today</p>
+          <p className="text-xs text-[#64748b] mt-1">
+            <a href="/settings" className="text-[#A78BFA] hover:underline">Set up reminders</a> in your care settings
           </p>
         </div>
       </div>

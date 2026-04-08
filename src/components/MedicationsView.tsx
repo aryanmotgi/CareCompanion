@@ -104,12 +104,14 @@ export function MedicationsView({ medications: initial, profileId }: Medications
 
       {/* List */}
       {medications.length === 0 ? (
-        <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] px-5 py-12 text-center">
-          <svg className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3" />
-          </svg>
-          <p className="text-sm text-[var(--text-secondary)] mb-1">No medications yet</p>
-          <p className="text-xs text-[var(--text-muted)]">Add one manually or scan a pill bottle</p>
+        <div className="flex flex-col items-center py-8 text-center">
+          <div className="w-12 h-12 rounded-full bg-white/[0.06] flex items-center justify-center mb-3">
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3" />
+            </svg>
+          </div>
+          <p className="text-sm text-[#94a3b8]">No medications yet</p>
+          <p className="text-xs text-[#64748b] mt-1">Tap &ldquo;+ Add&rdquo; above or scan a pill bottle to get started</p>
         </div>
       ) : (
         <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] divide-y divide-[var(--border)] overflow-hidden">

@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from './ToastProvider'
 import { ReminderManager } from './ReminderManager'
+import { NotificationPreferences } from './NotificationPreferences'
 import type { UserSettings, ConnectedApp, MedicationReminder, Medication } from '@/lib/types'
 
 interface SettingsPageProps {
@@ -12,26 +13,6 @@ interface SettingsPageProps {
   connectedApps: ConnectedApp[]
   medicationReminders?: MedicationReminder[]
   medications?: Medication[]
-}
-
-function Toggle({ enabled, onToggle, label }: { enabled: boolean; onToggle: () => void; label: string }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={enabled}
-      aria-label={label}
-      onClick={onToggle}
-      className={`w-[42px] h-6 rounded-full relative transition-colors duration-200 min-w-[42px] min-h-[44px] flex items-center ${
-        enabled ? 'bg-[#A78BFA]' : 'bg-white/[0.1]'
-      }`}
-    >
-      <div
-        className={`w-5 h-5 rounded-full absolute top-0.5 transition-all duration-200 ${
-          enabled ? 'right-0.5 bg-white' : 'left-0.5 bg-[#64748b]'
-        }`}
-      />
-    </button>
-  )
 }
 
 function SettingsRow({
@@ -89,34 +70,6 @@ export function SettingsPage({ settings: initialSettings, connectedApps, medicat
   const [newPassword, setNewPassword] = useState('')
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const debounceRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Cleanup debounce timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
-  }, [])
-
-  const toggleSetting = (key: keyof UserSettings) => {
-    if (!settings) return
-    const newValue = !settings[key]
-    setSettings({ ...settings, [key]: newValue })
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const supabase = createClient()
-        const { error } = await supabase
-          .from('user_settings')
-          .update({ [key]: newValue, updated_at: new Date().toISOString() })
-          .eq('user_id', settings.user_id)
-        if (error) throw error
-      } catch {
-        showToast('Failed to save setting', 'error')
-        setSettings({ ...settings, [key]: !newValue })
-      }
-    }, 500)
-  }
 
   const handleChangePassword = async () => {
     if (!newPassword || newPassword.length < 6) return
@@ -182,28 +135,10 @@ export function SettingsPage({ settings: initialSettings, connectedApps, medicat
       </SettingsGroup>
 
       <SectionLabel>Notifications</SectionLabel>
-      <SettingsGroup>
-        <SettingsRow
-          label="Refill Reminders"
-          description="Alert when medications are running low"
-          right={<Toggle label="Refill Reminders" enabled={settings?.refill_reminders ?? true} onToggle={() => toggleSetting('refill_reminders')} />}
-        />
-        <SettingsRow
-          label="Appointment Reminders"
-          description="24 hours and 1 hour before"
-          right={<Toggle label="Appointment Reminders" enabled={settings?.appointment_reminders ?? true} onToggle={() => toggleSetting('appointment_reminders')} />}
-        />
-        <SettingsRow
-          label="Lab Result Alerts"
-          description="Notify when new results are available"
-          right={<Toggle label="Lab Result Alerts" enabled={settings?.lab_alerts ?? true} onToggle={() => toggleSetting('lab_alerts')} />}
-        />
-        <SettingsRow
-          label="Claim Updates"
-          description="Status changes on insurance claims"
-          right={<Toggle label="Claim Updates" enabled={settings?.claim_updates ?? true} onToggle={() => toggleSetting('claim_updates')} />}
-        />
-      </SettingsGroup>
+      <NotificationPreferences
+        settings={settings}
+        onSettingsChange={(updated) => setSettings(updated)}
+      />
 
       <SectionLabel>Medication Reminders</SectionLabel>
       <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl overflow-hidden p-4">

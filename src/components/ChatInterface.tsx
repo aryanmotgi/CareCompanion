@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { MessageBubble } from '@/components/MessageBubble';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { DocumentScanner } from '@/components/DocumentScanner';
+import { ChatSearch } from '@/components/ChatSearch';
 import { useVoiceInput } from '@/lib/hooks/useVoiceInput';
 
 interface ChatInterfaceProps {
@@ -17,10 +18,12 @@ interface ChatInterfaceProps {
 export function ChatInterface({ initialMessages, patientName }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [showScanner, setShowScanner] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [promptSent, setPromptSent] = useState(false);
   const [, setIsNewChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const searchParams = useSearchParams();
   const promptFromUrl = searchParams.get('prompt');
 
@@ -48,6 +51,30 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
 
   // Fix hydration mismatch — voice button only renders after mount
   useEffect(() => { setMounted(true) }, []);
+
+  // Cmd+F / Ctrl+F opens search
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+    };
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
+
+  const handleScrollToMessage = (messageId: string) => {
+    const el = messageRefs.current.get(messageId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Brief highlight flash
+      el.classList.add('ring-2', 'ring-[#6366F1]/60', 'rounded-xl');
+      setTimeout(() => {
+        el.classList.remove('ring-2', 'ring-[#6366F1]/60', 'rounded-xl');
+      }, 2000);
+    }
+  };
 
   // Allowlisted prompts for auto-send from URL
   const ALLOWED_PROMPTS = new Set([
@@ -112,9 +139,19 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
 
   return (
     <div className="flex flex-col h-[calc(100dvh-140px)] lg:h-[calc(100dvh-100px)] -mx-4 sm:-mx-8 -mb-6">
-      {/* New Chat button — shown when there are messages */}
+      {/* Header bar — New Chat + Search buttons */}
       {messages.length > 0 && (
-        <div className="flex justify-end px-4 sm:px-8 pt-3 pb-1">
+        <div className="flex justify-end gap-2 px-4 sm:px-8 pt-3 pb-1">
+          <button
+            onClick={() => setShowSearch(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[var(--text-secondary)] text-xs hover:bg-white/[0.08] hover:text-[var(--text)] transition-colors"
+            title="Search messages (Cmd+F)"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            </svg>
+            Search
+          </button>
           <button
             onClick={handleNewChat}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[var(--text-secondary)] text-xs hover:bg-white/[0.08] hover:text-[var(--text)] transition-colors"
@@ -127,6 +164,13 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
           </button>
         </div>
       )}
+      {/* Chat search overlay */}
+      <ChatSearch
+        messages={messages}
+        isOpen={showSearch}
+        onClose={() => setShowSearch(false)}
+        onScrollToMessage={handleScrollToMessage}
+      />
       {/* Messages */}
       <div className="flex-1 overflow-y-auto chat-scroll px-4 sm:px-8 py-6">
         {messages.length === 0 ? (
@@ -159,7 +203,19 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
         ) : (
           <div className="max-w-3xl mx-auto space-y-4">
             {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
+              <div
+                key={message.id}
+                ref={(el) => {
+                  if (el) {
+                    messageRefs.current.set(message.id, el);
+                  } else {
+                    messageRefs.current.delete(message.id);
+                  }
+                }}
+                className="transition-all duration-300"
+              >
+                <MessageBubble message={message} />
+              </div>
             ))}
             {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
               <TypingIndicator />

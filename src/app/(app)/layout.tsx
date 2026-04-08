@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { AppShell } from '@/components/AppShell';
 import { ToastProvider } from '@/components/ToastProvider';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { getActiveProfile, getAllProfiles } from '@/lib/active-profile';
 
 export default async function AppLayout({
@@ -34,6 +35,7 @@ export default async function AppLayout({
 
   return (
     <ToastProvider>
+      <OfflineIndicator />
       <AppShell
         patientName={profile?.patient_name || 'your loved one'}
         patientAge={profile?.patient_age}

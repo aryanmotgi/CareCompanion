@@ -221,6 +221,14 @@ export interface SetupFormData {
   appointments: AppointmentForm[];
 }
 
+export interface NotificationCategoryPrefs {
+  medications?: { enabled: boolean; refill_reminders: boolean; dose_reminders: boolean; interaction_alerts: boolean }
+  appointments?: { enabled: boolean; reminder_24hr: boolean; reminder_1hr: boolean; prep_reminder: boolean }
+  lab_results?: { enabled: boolean; new_results: boolean; abnormal_alerts: boolean; trend_alerts: boolean }
+  insurance?: { enabled: boolean; claim_status: boolean; prior_auth: boolean; appeal_deadlines: boolean }
+  care_team?: { enabled: boolean; wellness_checkins: boolean; shared_records: boolean }
+}
+
 export interface UserSettings {
   id: string
   user_id: string
@@ -229,6 +237,12 @@ export interface UserSettings {
   lab_alerts: boolean
   claim_updates: boolean
   ai_personality: 'professional' | 'friendly' | 'concise'
+  quiet_hours_start?: string
+  quiet_hours_end?: string
+  quiet_hours_enabled?: boolean
+  email_notifications?: boolean
+  push_notifications?: boolean
+  notification_preferences?: NotificationCategoryPrefs
   created_at: string
   updated_at: string
 }
