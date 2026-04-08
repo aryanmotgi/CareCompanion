@@ -159,7 +159,6 @@ export default function AboutPage() {
                 { icon: <><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></>, label: 'General inquiries', email: 'hello@carecompanionai.org' },
                 { icon: <><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></>, label: 'Privacy & data requests', email: 'privacy@carecompanionai.org' },
                 { icon: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></>, label: 'Security concerns', email: 'security@carecompanionai.org' },
-                { icon: <><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></>, label: 'Partnership inquiries', email: 'externqllymc@gmail.com' },
               ].map((item, i) => (
                 <a key={i} href={`mailto:${item.email}`} className="group flex items-center gap-3 p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:bg-[#6366F1]/[0.06] hover:border-[#6366F1]/20 transition-all duration-300">
                   <div className="w-10 h-10 rounded-xl bg-[#A78BFA]/10 flex items-center justify-center flex-shrink-0 group-hover:bg-[#A78BFA]/20 transition-colors">
