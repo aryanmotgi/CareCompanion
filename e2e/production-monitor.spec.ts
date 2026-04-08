@@ -53,6 +53,12 @@ test.describe('Production 24/7 Monitor', () => {
     await page.goto('/chat')
     // Should land on chat or be redirected to setup — never back to /login
     await expect(page).not.toHaveURL(/.*\/login/, { timeout: 10000 })
+    // The chat server component calls redirect('/setup') inside a Suspense boundary
+    // when the user has no care profile.  That redirect fires as part of the RSC
+    // stream *after* goto() resolves, so we must wait for the network to settle
+    // before reading the URL to avoid a race where onChat is briefly true while
+    // the page is navigating away.
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {})
     // If the user has a profile, the chat input must be present
     const onChat = page.url().includes('/chat')
     if (onChat) {
