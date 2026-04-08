@@ -6,9 +6,10 @@ interface DataConsentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConsent: () => void;
+  consentHref?: string;
 }
 
-export function DataConsentModal({ isOpen, onClose, onConsent }: DataConsentModalProps) {
+export function DataConsentModal({ isOpen, onClose, onConsent, consentHref }: DataConsentModalProps) {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -31,8 +32,8 @@ export function DataConsentModal({ isOpen, onClose, onConsent }: DataConsentModa
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-[var(--bg-elevated)] border border-white/[0.08] rounded-2xl shadow-2xl animate-fade-in-up overflow-hidden">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-[#0f172a] border border-white/[0.1] rounded-2xl shadow-2xl animate-fade-in-up overflow-hidden">
         {/* Header */}
         <div className="p-6 pb-4">
           <div className="flex items-center gap-3 mb-4">
@@ -64,7 +65,7 @@ export function DataConsentModal({ isOpen, onClose, onConsent }: DataConsentModa
               'Claims',
               'Insurance',
             ].map((item) => (
-              <div key={item} className="flex items-center gap-2 text-xs text-[var(--text-secondary)] py-1.5 px-3 rounded-lg bg-white/[0.03] border border-white/[0.04]">
+              <div key={item} className="flex items-center gap-2 text-xs text-[#e2e8f0] py-1.5 px-3 rounded-lg bg-white/[0.06] border border-white/[0.06]">
                 <span className="text-emerald-400">&#x2713;</span>
                 {item}
               </div>
@@ -98,12 +99,22 @@ export function DataConsentModal({ isOpen, onClose, onConsent }: DataConsentModa
           >
             Cancel
           </button>
-          <button
-            onClick={onConsent}
-            className="flex-1 gradient-btn text-white font-semibold text-sm py-2.5 px-4 rounded-xl"
-          >
-            I Agree &mdash; Connect
-          </button>
+          {consentHref ? (
+            <a
+              href={consentHref}
+              onClick={onConsent}
+              className="flex-1 gradient-btn text-white font-semibold text-sm py-2.5 px-4 rounded-xl text-center"
+            >
+              I Agree &mdash; Connect
+            </a>
+          ) : (
+            <button
+              onClick={onConsent}
+              className="flex-1 gradient-btn text-white font-semibold text-sm py-2.5 px-4 rounded-xl"
+            >
+              I Agree &mdash; Connect
+            </button>
+          )}
         </div>
       </div>
     </div>
