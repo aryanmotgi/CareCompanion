@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { sendEmail, careTeamInviteEmail } from '@/lib/email';
 
 // POST — invite someone to the care team by email
 export async function POST(req: Request) {
@@ -70,12 +71,12 @@ export async function POST(req: Request) {
   }
 
   // Create the invite
-  const { error } = await admin.from('care_team_invites').insert({
+  const { data: invite, error } = await admin.from('care_team_invites').insert({
     care_profile_id: membership.care_profile_id,
     invited_email: email.toLowerCase(),
     role,
     invited_by: user.id,
-  });
+  }).select('id').single();
 
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
@@ -89,6 +90,38 @@ export async function POST(req: Request) {
     user_name: displayName,
     action: `invited ${email} as ${role}`,
   });
+
+  // Send invite email
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+    || (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : 'http://localhost:3000');
+
+  const { data: profile } = await admin
+    .from('care_profiles')
+    .select('patient_name')
+    .eq('id', membership.care_profile_id)
+    .single();
+
+  const acceptUrl = `${baseUrl}/care-team?accept=${invite.id}`;
+  const patientName = profile?.patient_name || 'a patient';
+
+  const html = careTeamInviteEmail({
+    inviterName: displayName,
+    patientName,
+    role,
+    acceptUrl,
+  });
+
+  const emailResult = await sendEmail({
+    to: email.toLowerCase(),
+    subject: `${displayName} invited you to a care team on CareCompanion`,
+    html,
+  });
+
+  if (!emailResult.success) {
+    console.warn('[care-team/invite] Email send skipped/failed:', emailResult.reason);
+  }
 
   return Response.json({ success: true, message: `Invitation sent to ${email}` });
 }

@@ -10,9 +10,10 @@ interface MedicationRemindersProps {
 export function MedicationReminders({ reminders: initial }: MedicationRemindersProps) {
   const [reminders, setReminders] = useState(initial);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [successId, setSuccessId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const respond = useCallback(async (logId: string, status: 'taken' | 'snoozed') => {
+  const respond = useCallback(async (logId: string, status: 'taken' | 'snoozed' | 'missed') => {
     setLoadingId(logId);
     try {
       const res = await fetch('/api/reminders/respond', {
@@ -21,6 +22,10 @@ export function MedicationReminders({ reminders: initial }: MedicationRemindersP
         body: JSON.stringify({ log_id: logId, status }),
       });
       if (!res.ok) throw new Error('Response failed');
+      if (status === 'taken') {
+        setSuccessId(logId);
+        setTimeout(() => setSuccessId(null), 1500);
+      }
       setReminders((prev) =>
         prev.map((r) =>
           r.id === logId
@@ -119,6 +124,13 @@ export function MedicationReminders({ reminders: initial }: MedicationRemindersP
               </div>
               <div className="flex gap-2 shrink-0">
                 <button
+                  onClick={() => respond(r.id, 'missed')}
+                  disabled={loadingId === r.id}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors disabled:opacity-50 min-h-[32px]"
+                >
+                  {loadingId === r.id ? '...' : 'Miss'}
+                </button>
+                <button
                   onClick={() => respond(r.id, 'snoozed')}
                   disabled={loadingId === r.id}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors disabled:opacity-50 min-h-[32px]"
@@ -128,9 +140,13 @@ export function MedicationReminders({ reminders: initial }: MedicationRemindersP
                 <button
                   onClick={() => respond(r.id, 'taken')}
                   disabled={loadingId === r.id}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors disabled:opacity-50 min-h-[32px]"
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 min-h-[32px] ${
+                    successId === r.id
+                      ? 'bg-emerald-500/30 text-emerald-300 scale-105'
+                      : 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'
+                  }`}
                 >
-                  {loadingId === r.id ? '...' : 'Take'}
+                  {loadingId === r.id ? '...' : successId === r.id ? 'Done!' : 'Take'}
                 </button>
               </div>
             </div>

@@ -27,7 +27,48 @@ export async function checkMedicationReminders(): Promise<{ generated: number }>
 
   let generated = 0;
 
+  // Build a map of user quiet hours to skip notifications during quiet periods
+  const userIds = Array.from(new Set(reminders.map((r) => r.user_id)));
+  const { data: allSettings } = await admin
+    .from('user_settings')
+    .select('user_id, quiet_hours_enabled, quiet_hours_start, quiet_hours_end, timezone')
+    .in('user_id', userIds);
+
+  const settingsMap = new Map(
+    (allSettings || []).map((s) => [s.user_id, s])
+  );
+
   for (const reminder of reminders) {
+    // Enforce quiet hours per user
+    const userSettings = settingsMap.get(reminder.user_id);
+    if (userSettings?.quiet_hours_enabled && userSettings.quiet_hours_start && userSettings.quiet_hours_end) {
+      const tz = userSettings.timezone || 'UTC';
+      let nowHour: number;
+      let nowMinute: number;
+      try {
+        const parts = new Intl.DateTimeFormat('en-US', {
+          timeZone: tz,
+          hour: 'numeric',
+          minute: 'numeric',
+          hour12: false,
+        }).formatToParts(now);
+        nowHour = parseInt(parts.find((p) => p.type === 'hour')?.value || '0', 10);
+        nowMinute = parseInt(parts.find((p) => p.type === 'minute')?.value || '0', 10);
+      } catch {
+        nowHour = now.getUTCHours();
+        nowMinute = now.getUTCMinutes();
+      }
+      const [sh, sm] = userSettings.quiet_hours_start.split(':').map(Number);
+      const [eh, em] = userSettings.quiet_hours_end.split(':').map(Number);
+      const nowMins = nowHour * 60 + nowMinute;
+      const startMins = sh * 60 + sm;
+      const endMins = eh * 60 + em;
+      const inQuiet = startMins <= endMins
+        ? nowMins >= startMins && nowMins < endMins
+        : nowMins >= startMins || nowMins < endMins;
+      if (inQuiet) continue;
+    }
+
     for (const timeStr of reminder.reminder_times) {
       // Check if this reminder time is within our 15-minute window
       if (!isWithinWindow(currentTime, timeStr, windowMinutes)) continue;

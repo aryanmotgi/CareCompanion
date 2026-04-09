@@ -2,6 +2,7 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { detectVisitType, getVisitTemplate } from '@/lib/visit-prep-templates';
 
 export const maxDuration = 30;
 
@@ -49,6 +50,24 @@ export async function POST(req: Request) {
 
   const relevantMemories = (memories || []).map((m) => m.fact).join('\n- ');
 
+  // Detect visit type and get targeted template
+  const visitType = detectVisitType(appt.purpose, appt.specialty);
+  const template = getVisitTemplate(visitType);
+
+  const templateContext = `
+VISIT TYPE: ${template.label}
+
+SUGGESTED QUESTIONS FOR THIS TYPE OF VISIT:
+${template.questions.map((q) => `- ${q}`).join('\n')}
+
+SUGGESTED THINGS TO BRING:
+${template.things_to_bring.map((t) => `- ${t}`).join('\n')}
+
+PREP TASKS:
+${template.prep_tasks.map((t) => `- ${t}`).join('\n')}
+
+Use these as a starting point but customize based on the patient's specific data, conditions, and appointment context. Replace generic questions with ones tailored to this patient's situation.`;
+
   const { text } = await generateText({
     model: anthropic('claude-sonnet-4-6'),
     prompt: `Generate a doctor visit prep sheet. Format it as clean markdown that a caregiver can print or share.
@@ -74,6 +93,7 @@ ${(labs || []).map((l) => `- ${l.test_name}: ${l.value} ${l.unit || ''} (range: 
 
 RELEVANT NOTES FROM PAST CONVERSATIONS:
 - ${relevantMemories || 'None'}
+${templateContext}
 
 Generate the prep sheet with these sections:
 1. **Patient Summary** — one paragraph with key info the doctor needs

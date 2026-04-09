@@ -17,6 +17,45 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
 
   if (!profile) return 0;
 
+  // Enforce quiet hours — skip notification generation if inside quiet window
+  if (settings?.quiet_hours_enabled) {
+    const tz = settings.timezone || 'UTC';
+    let nowHour: number;
+    let nowMinute: number;
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: false,
+      }).formatToParts(new Date());
+      nowHour = parseInt(parts.find((p) => p.type === 'hour')?.value || '0', 10);
+      nowMinute = parseInt(parts.find((p) => p.type === 'minute')?.value || '0', 10);
+    } catch {
+      // Invalid timezone — fall back to UTC
+      const utcNow = new Date();
+      nowHour = utcNow.getUTCHours();
+      nowMinute = utcNow.getUTCMinutes();
+    }
+
+    const start = settings.quiet_hours_start as string | undefined; // e.g. "22:00"
+    const end = settings.quiet_hours_end as string | undefined;     // e.g. "07:00"
+
+    if (start && end) {
+      const [sh, sm] = start.split(':').map(Number);
+      const [eh, em] = end.split(':').map(Number);
+      const nowMins = nowHour * 60 + nowMinute;
+      const startMins = sh * 60 + sm;
+      const endMins = eh * 60 + em;
+
+      const inQuietHours = startMins <= endMins
+        ? nowMins >= startMins && nowMins < endMins           // same-day range (e.g. 01:00–06:00)
+        : nowMins >= startMins || nowMins < endMins;          // overnight range (e.g. 22:00–07:00)
+
+      if (inQuietHours) return 0;
+    }
+  }
+
   // Respect user notification preferences (default to true if no settings)
   const prefs = {
     refill_reminders: settings?.refill_reminders ?? true,

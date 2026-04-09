@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { LabTrendChart } from './LabTrendChart'
 
 /* ─── Types ─── */
 
@@ -405,6 +406,8 @@ export function LabTrends() {
   const [data, setData] = useState<LabTrendsResponse['data'] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'chart' | 'cards'>('chart')
+  const [selectedTest, setSelectedTest] = useState<string | null>(null)
 
   const fetchTrends = useCallback(async () => {
     try {
@@ -459,15 +462,91 @@ export function LabTrends() {
 
   const statusConfig = STATUS_CONFIG[data.overall_status]
 
+  // Build chart data from trends
+  const chartTrends = (selectedTest
+    ? data.trends.filter((t) => t.test_name === selectedTest)
+    : data.trends
+  ).map((t) => ({
+    test_name: t.test_name,
+    values: t.values,
+    trend: t.trend,
+    prediction: t.prediction_7d ?? undefined,
+  }))
+
   return (
     <section className="space-y-4" aria-label="Lab Trends">
       {/* Section header */}
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold text-[var(--text,#f1f5f9)]">Lab Trends</h2>
-        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${statusConfig.color}`}>
-          {statusConfig.label}
-        </span>
+        <div className="flex items-center gap-2">
+          {/* View toggle */}
+          <div className="flex rounded-lg bg-white/[0.04] border border-white/[0.06] p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode('chart')}
+              className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
+                viewMode === 'chart'
+                  ? 'bg-[#6366F1]/20 text-[#A78BFA]'
+                  : 'text-[#64748b] hover:text-[#94a3b8]'
+              }`}
+            >
+              Chart
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('cards')}
+              className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
+                viewMode === 'cards'
+                  ? 'bg-[#6366F1]/20 text-[#A78BFA]'
+                  : 'text-[#64748b] hover:text-[#94a3b8]'
+              }`}
+            >
+              Cards
+            </button>
+          </div>
+          <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${statusConfig.color}`}>
+            {statusConfig.label}
+          </span>
+        </div>
       </div>
+
+      {/* Interactive chart view */}
+      {viewMode === 'chart' && data.trends.length > 0 && (
+        <div className="space-y-3">
+          {/* Test filter pills */}
+          {data.trends.length > 1 && (
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSelectedTest(null)}
+                className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-all border ${
+                  selectedTest === null
+                    ? 'bg-[#6366F1]/20 text-[#A78BFA] border-[#6366F1]/30'
+                    : 'bg-white/[0.04] text-[#64748b] border-white/[0.06] hover:bg-white/[0.08]'
+                }`}
+              >
+                All
+              </button>
+              {data.trends.map((t) => (
+                <button
+                  key={t.test_name}
+                  type="button"
+                  onClick={() => setSelectedTest(t.test_name === selectedTest ? null : t.test_name)}
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-all border ${
+                    selectedTest === t.test_name
+                      ? 'bg-[#6366F1]/20 text-[#A78BFA] border-[#6366F1]/30'
+                      : 'bg-white/[0.04] text-[#64748b] border-white/[0.06] hover:bg-white/[0.08]'
+                  }`}
+                >
+                  {t.test_name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <LabTrendChart trends={chartTrends} />
+        </div>
+      )}
 
       {/* Red flags */}
       {data.red_flags.length > 0 && (
@@ -501,11 +580,13 @@ export function LabTrends() {
       )}
 
       {/* Trend cards */}
-      <div className="space-y-3">
-        {data.trends.map((trend) => (
-          <TrendCard key={trend.test_name} trend={trend} />
-        ))}
-      </div>
+      {viewMode === 'cards' && (
+        <div className="space-y-3">
+          {data.trends.map((trend) => (
+            <TrendCard key={trend.test_name} trend={trend} />
+          ))}
+        </div>
+      )}
     </section>
   )
 }

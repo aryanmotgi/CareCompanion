@@ -23,11 +23,14 @@ async function CareContent() {
 
   const allProfiles = await getAllProfiles(supabase, user.id)
 
-  const [{ data: medications }, { data: appointments }, { data: doctors }, { data: careTeamMembers }] = await Promise.all([
+  const [{ data: medications }, { data: appointments }, { data: doctors }, { data: careTeamMembers }, { data: todayLogs }] = await Promise.all([
     supabase.from('medications').select('*').eq('care_profile_id', profile.id),
     supabase.from('appointments').select('*').eq('care_profile_id', profile.id).order('date_time', { ascending: true }),
     supabase.from('doctors').select('*').eq('care_profile_id', profile.id),
     supabase.from('care_team_members').select('*').eq('care_profile_id', profile.id),
+    supabase.from('reminder_logs').select('*').eq('user_id', user.id)
+      .gte('scheduled_time', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
+      .order('scheduled_time'),
   ])
 
   return (
@@ -45,6 +48,7 @@ async function CareContent() {
         doctors={doctors || []}
         allProfiles={allProfiles}
         careTeamMembers={careTeamMembers || []}
+        todayReminders={todayLogs || []}
       />
       <div className="px-4 sm:px-5 pb-6 space-y-5">
         <AdherenceCalendar />

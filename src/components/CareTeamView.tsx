@@ -26,7 +26,7 @@ function timeAgo(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export function CareTeamView() {
+export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | null }) {
   const [members, setMembers] = useState<CareTeamMember[]>([]);
   const [invites, setInvites] = useState<CareTeamInvite[]>([]);
   const [activity, setActivity] = useState<CareTeamActivity[]>([]);
@@ -36,12 +36,41 @@ export function CareTeamView() {
   const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('viewer');
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [acceptingInvite, setAcceptingInvite] = useState(false);
 
   const canManage = myRole === 'owner' || myRole === 'editor';
 
   useEffect(() => {
+    if (acceptInviteId) {
+      acceptInvite(acceptInviteId);
+    } else {
+      loadTeam();
+    }
+  }, [acceptInviteId]);
+
+  async function acceptInvite(inviteId: string) {
+    setAcceptingInvite(true);
+    setMessage(null);
+    try {
+      const res = await fetch('/api/care-team/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invite_id: inviteId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage({ text: data.message || 'You have joined the care team!', type: 'success' });
+      } else {
+        setMessage({ text: data.error || 'Failed to accept invitation', type: 'error' });
+      }
+    } catch {
+      setMessage({ text: 'Something went wrong accepting the invitation', type: 'error' });
+    }
+    setAcceptingInvite(false);
+    // Remove the ?accept= param from the URL without a reload
+    window.history.replaceState({}, '', '/care-team');
     loadTeam();
-  }, []);
+  }
 
   async function loadTeam() {
     setLoading(true);
@@ -85,6 +114,15 @@ export function CareTeamView() {
     });
     const data = await res.json();
     if (data.success) loadTeam();
+  }
+
+  if (acceptingInvite) {
+    return (
+      <div className="px-5 py-8 text-center">
+        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-sm text-[var(--text-secondary)]">Accepting invitation...</p>
+      </div>
+    );
   }
 
   if (loading) {

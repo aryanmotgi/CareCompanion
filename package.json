@@ -22,9 +22,12 @@
     "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.101.1",
     "ai": "^6.0.142",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18",
+    "recharts": "^3.8.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {

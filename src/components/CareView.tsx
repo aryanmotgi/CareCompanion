@@ -9,7 +9,8 @@ import { useToast } from './ToastProvider'
 import { ConfirmDialog } from './ui/ConfirmDialog'
 import { ConflictsView } from './ConflictsView'
 import { VisitPrepSheet } from './VisitPrepSheet'
-import type { Medication, Appointment, Doctor, CareProfile, CareTeamMember } from '@/lib/types'
+import { MedicationReminders } from './MedicationReminders'
+import type { Medication, Appointment, Doctor, CareProfile, CareTeamMember, ReminderLog } from '@/lib/types'
 
 interface CareViewProps {
   profileId: string
@@ -18,11 +19,12 @@ interface CareViewProps {
   doctors: Doctor[]
   allProfiles?: CareProfile[]
   careTeamMembers?: CareTeamMember[]
+  todayReminders?: ReminderLog[]
 }
 
 const inputClass = 'w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-[var(--text)] text-sm outline-none placeholder:text-[var(--text-muted)] focus:border-[#A78BFA]/40 transition-colors'
 
-export function CareView({ profileId, medications: initialMeds, appointments: initialAppts, doctors, allProfiles = [], careTeamMembers = [] }: CareViewProps) {
+export function CareView({ profileId, medications: initialMeds, appointments: initialAppts, doctors, allProfiles = [], careTeamMembers = [], todayReminders = [] }: CareViewProps) {
   const { showToast } = useToast()
   const [activeSegment, setActiveSegment] = useState(0)
   const [medications, setMedications] = useState(initialMeds)
@@ -280,6 +282,7 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
           >
             + Add Medication
           </button>
+          <MedicationReminders reminders={todayReminders} />
         </div>
       )}
 
