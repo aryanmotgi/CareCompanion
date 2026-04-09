@@ -11,6 +11,9 @@ jobs:
     name: Production Smoke Test
     timeout-minutes: 10
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
 
     steps:
       - uses: actions/checkout@v4
@@ -26,8 +29,11 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E Production Monitor
-        # Run only the production monitor file to avoid trashing data with other test files
-        run: npx playwright test e2e/production-monitor.spec.ts
+        id: e2e
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npx playwright test e2e/production-monitor.spec.ts 2>&1 | tee playwright-output.txt
         env:
           # Point the Playwright test directly at the live Production URL
           PLAYWRIGHT_BASE_URL: https://carecompanionai.org
@@ -38,14 +44,14 @@ jobs:
 
       - name: Upload Report on Failure
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: steps.e2e.outcome == 'failure'
         with:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
 
       - name: Send failure email alert
-        if: failure()
+        if: steps.e2e.outcome == 'failure'
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -66,8 +72,57 @@ jobs:
 
             This alert was triggered automatically by the scheduled Playwright smoke test.
 
+      - name: Create auto-fix issue
+        if: steps.e2e.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const output = fs.readFileSync('playwright-output.txt', 'utf8');
+
+            // Check for an existing open auto-fix issue to avoid duplicates
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'playwright-auto-fix',
+              state: 'open',
+            });
+            if (existing.data.length > 0) {
+              console.log('Open auto-fix issue already exists, skipping creation.');
+              return;
+            }
+
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const date = new Date().toISOString().split('T')[0];
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🔧 Auto-fix: Production monitor failure (${date})`,
+              labels: ['playwright-auto-fix', 'bug'],
+              body: [
+                '## Production Monitor Failure',
+                '',
+                `The production monitor detected a failure on **${date}**.`,
+                '',
+                `**Workflow run:** ${runUrl}`,
+                '',
+                '### Playwright Output',
+                '',
+                '```',
+                output.slice(-3000),
+                '```',
+                '',
+                '### Instructions for auto-fix agent',
+                '',
+                'Analyze the Playwright test failure above. The test file is `e2e/production-monitor.spec.ts`.',
+                'Find the root cause in the application code (not the test) and create a PR with a fix.',
+                'The production site is a Next.js app. Check the relevant page components under `src/`.',
+              ].join('\n'),
+            });
+
       - name: Send success email alert
-        if: success()
+        if: steps.e2e.outcome == 'success'
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -91,3 +146,7 @@ jobs:
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
             This alert was triggered automatically by the scheduled Playwright smoke test.
+
+      - name: Fail job if tests failed
+        if: steps.e2e.outcome == 'failure'
+        run: exit 1

@@ -1,0 +1,23 @@
+name: Auto-fix Playwright Failures
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  auto-fix:
+    if: contains(github.event.issue.labels.*.name, 'playwright-auto-fix')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-20250514
+          allowed_tools: "Bash,Read,Write,Edit,Glob,Grep,WebSearch,WebFetch"
