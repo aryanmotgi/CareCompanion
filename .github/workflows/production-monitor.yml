@@ -65,3 +65,29 @@ jobs:
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
             This alert was triggered automatically by the scheduled Playwright smoke test.
+
+      - name: Send success email alert
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.ALERT_EMAIL_USERNAME }}
+          password: ${{ secrets.ALERT_EMAIL_PASSWORD }}
+          subject: "✅ CareCompanion Production Monitor — All Clear"
+          to: ${{ secrets.ALERT_EMAIL_TO }}
+          from: CareCompanion Alerts <${{ secrets.ALERT_EMAIL_USERNAME }}>
+          body: |
+            The CareCompanion production monitor ran successfully against carecompanionai.org.
+
+            All checks passed:
+            - Dashboard renders and shows navigation
+            - Care page loads without errors
+            - 1upHealth connect page renders
+            - AI chat interface renders
+
+            Workflow run details:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            This alert was triggered automatically by the scheduled Playwright smoke test.
