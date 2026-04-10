@@ -3,17 +3,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 
-const FHIR_RESOURCES = [
-  'Patient',
-  'Condition',
-  'MedicationRequest',
-  'Observation (Labs)',
-  'AllergyIntolerance',
-  'Encounter',
-  'Practitioner',
-  'Coverage (Insurance)',
-];
-
 const EXPLORE_LINKS = [
   { href: '/dashboard', label: 'Dashboard', desc: 'Health cards and quick actions', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
   { href: '/medications', label: 'Medications', desc: 'Full medication list with refill tracking', icon: 'M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5' },
@@ -67,133 +56,139 @@ export default function DemoWalkthroughPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-5 py-6 sm:py-8 space-y-6">
+      {/* Back to landing */}
+      <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors">
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+        </svg>
+        Back to home
+      </Link>
+
       {/* Header */}
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/15 border border-violet-500/25">
           <svg className="w-4 h-4 text-violet-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
           </svg>
-          <span className="text-xs font-medium text-violet-300">For 1upHealth Review Team</span>
+          <span className="text-xs font-medium text-violet-300">How CareCompanion Works</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white">1upHealth Integration Demo</h1>
-        <p className="text-sm text-white/50 max-w-lg mx-auto">
-          A guided walkthrough of how CareCompanion integrates with 1upHealth to deliver a personalized cancer care experience.
+        <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white via-violet-200 to-white bg-clip-text text-transparent">See it in action</h1>
+        <p className="text-sm sm:text-base text-white/50 max-w-lg mx-auto">
+          A guided walkthrough of how CareCompanion helps cancer patients and caregivers manage treatment, medications, lab results, and more.
         </p>
       </div>
 
-      {/* Step 1: Data Connection Flow */}
-      <StepCard step={1} title="Data Connection Flow">
+      {/* Step 1: Connect Your Health Records */}
+      <StepCard step={1} title="Connect Your Health Records">
         <p className="text-sm text-white/60 mb-4">
-          Users connect their health records through a standard OAuth 2.0 flow powered by 1upHealth.
-          They search for their health system, authenticate, and grant read-only access to their medical data.
+          Stop manually entering medications and lab results. CareCompanion connects securely to your hospital&apos;s patient portal and imports everything automatically.
         </p>
         <div className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-4 space-y-3 mb-4">
           <div className="flex items-start gap-3">
             <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center mt-0.5">1</span>
-            <p className="text-sm text-white/70">User clicks &quot;Connect Health Records&quot; on the Connect page</p>
+            <p className="text-sm text-white/70">Click &quot;Connect Health Records&quot; and pick your hospital from 700+ supported systems</p>
           </div>
           <div className="flex items-start gap-3">
             <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center mt-0.5">2</span>
-            <p className="text-sm text-white/70">Redirected to 1upHealth system search (Epic, Cerner, etc.)</p>
+            <p className="text-sm text-white/70">Log in with your existing MyChart, Kaiser, or Sutter credentials</p>
           </div>
           <div className="flex items-start gap-3">
             <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center mt-0.5">3</span>
-            <p className="text-sm text-white/70">Patient authenticates with their health system portal</p>
+            <p className="text-sm text-white/70">Grant read-only access — we never see or store your password</p>
           </div>
           <div className="flex items-start gap-3">
             <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center mt-0.5">4</span>
-            <p className="text-sm text-white/70">Callback returns tokens; CareCompanion begins FHIR sync</p>
+            <p className="text-sm text-white/70">Your medications, labs, conditions, and appointments appear automatically</p>
           </div>
         </div>
-        <a
-          href="/api/fhir/authorize?provider=1uphealth"
+        <Link
+          href="/login"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/15 border border-blue-500/25 text-blue-400 text-sm font-medium hover:bg-blue-500/25 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
           </svg>
-          Try the OAuth Flow
-        </a>
+          Start for free
+        </Link>
       </StepCard>
 
-      {/* Step 2: Data Sync */}
-      <StepCard step={2} title="FHIR Data Sync">
+      {/* Step 2: What Gets Imported */}
+      <StepCard step={2} title="Everything Auto-Imported">
         <p className="text-sm text-white/60 mb-4">
-          After authorization, our sync engine pulls FHIR R4 resources from 1upHealth and maps them into CareCompanion&apos;s data model.
-          A 24-hour auto-sync cron keeps data fresh.
+          Once connected, every piece of your medical history flows into CareCompanion. No manual entry. Updates automatically every 24 hours.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-          {FHIR_RESOURCES.map((resource) => (
+          {['Medications', 'Conditions', 'Lab Results', 'Allergies', 'Appointments', 'Doctors', 'Claims', 'Insurance'].map((item) => (
             <div
-              key={resource}
+              key={item}
               className="rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 py-2 text-center"
             >
-              <span className="text-xs font-medium text-cyan-300">{resource}</span>
+              <span className="text-xs font-medium text-cyan-300">{item}</span>
             </div>
           ))}
         </div>
         <div className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-4 space-y-2">
-          <p className="text-xs font-medium text-white/40 uppercase tracking-wider">Sync Pipeline</p>
+          <p className="text-xs font-medium text-white/40 uppercase tracking-wider">What happens next</p>
           <ul className="space-y-1.5 text-sm text-white/60">
             <li className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              Fetch resources via 1upHealth FHIR API
+              Active medications with doses and prescribing doctors
             </li>
             <li className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              Map FHIR R4 to CareCompanion schema (medications, labs, doctors, etc.)
+              Lab results with automatic abnormal flagging
             </li>
             <li className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              Upsert with deduplication to avoid duplicates
+              Upcoming appointments and your full care team
             </li>
             <li className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              Trigger AI profile detection (cancer type, stage, treatment)
+              Insurance claims and coverage details
             </li>
             <li className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-              Auto-sync cron runs every 24 hours
+              Refreshes every 24 hours without you doing anything
             </li>
           </ul>
         </div>
       </StepCard>
 
-      {/* Step 3: AI-Powered Profile */}
-      <StepCard step={3} title="AI-Powered Cancer Profile">
+      {/* Step 3: AI That Knows Your Care */}
+      <StepCard step={3} title="AI That Knows Your Treatment">
         <p className="text-sm text-white/60 mb-4">
-          After syncing, CareCompanion uses Claude to analyze the patient&apos;s conditions and medications to automatically detect cancer type, stage, and treatment phase.
+          CareCompanion&apos;s AI doesn&apos;t just answer generic health questions. It knows your specific medications, lab results, and treatment plan — and it answers questions in that context.
         </p>
         <div className="rounded-xl bg-gradient-to-br from-violet-500/10 to-blue-500/10 border border-violet-500/20 p-4 space-y-3">
-          <p className="text-xs font-medium text-white/40 uppercase tracking-wider">Example Detection</p>
+          <p className="text-xs font-medium text-white/40 uppercase tracking-wider">Example conversation</p>
           <div className="space-y-2">
             <div className="flex items-start gap-3">
-              <span className="text-sm text-white/40 font-mono">IN</span>
+              <span className="text-sm text-violet-400 font-medium">You</span>
               <div className="text-sm text-white/70">
-                <p>Medications: Trastuzumab, Pertuzumab, Docetaxel</p>
-                <p>Conditions: HER2-positive breast carcinoma, Stage IIIA</p>
+                <p>What side effects should I watch for with my chemo?</p>
               </div>
             </div>
             <div className="w-full h-px bg-white/[0.06]" />
             <div className="flex items-start gap-3">
-              <span className="text-sm text-emerald-400 font-mono">OUT</span>
+              <span className="text-sm text-emerald-400 font-medium">AI</span>
               <div className="text-sm text-white/70">
-                <p><span className="text-emerald-400 font-medium">Cancer Type:</span> HER2+ Breast Cancer</p>
-                <p><span className="text-emerald-400 font-medium">Stage:</span> Stage IIIA</p>
-                <p><span className="text-emerald-400 font-medium">Treatment Phase:</span> Active Treatment</p>
+                <p>Since you&apos;re on <span className="text-white">Trastuzumab + Taxotere</span>, watch for:</p>
+                <p className="mt-1">• Cardiac changes (echo every 3 months)</p>
+                <p>• Fever over 100.4°F → call oncology immediately</p>
+                <p>• Fatigue and nausea (your Zofran prescription helps)</p>
               </div>
             </div>
           </div>
         </div>
         <p className="text-xs text-white/40 mt-3">
-          This powers personalized AI responses, medication interaction checks, and treatment-aware notifications.
+          Ask anything about medications, lab results, appointment prep, or drug interactions. It knows your history.
         </p>
       </StepCard>
 
-      {/* Step 4: User Experience */}
-      <StepCard step={4} title="User Experience">
+      {/* Step 4: Everything in One Place */}
+      <StepCard step={4} title="Everything in One Place">
         <p className="text-sm text-white/60 mb-4">
-          Synced data flows into every part of the app. Here are the key pages that use 1upHealth data:
+          Your medications, labs, appointments, care team, and AI chat all live in one app. No more juggling five different tools.
         </p>
         <div className="space-y-2">
           {EXPLORE_LINKS.map((link) => (
@@ -247,10 +242,10 @@ export default function DemoWalkthroughPage() {
         </div>
       </StepCard>
 
-      {/* Step 6: Try with Demo Data */}
-      <StepCard step={6} title="Try with Demo Data">
+      {/* Step 6: Try It With Demo Data */}
+      <StepCard step={6} title="Try It Right Now">
         <p className="text-sm text-white/60 mb-4">
-          Load a realistic cancer care dataset to explore the full experience. This creates a demo patient profile with HER2+ Breast Cancer, medications, lab results, appointments, and care team.
+          Sign up for free and load a realistic cancer care dataset to explore the full experience. You&apos;ll see a demo patient with HER2+ Breast Cancer, medications, lab results, and appointments.
         </p>
 
         {!seeded ? (
@@ -324,18 +319,21 @@ export default function DemoWalkthroughPage() {
         )}
       </StepCard>
 
-      {/* Footer */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 text-center space-y-2">
-        <p className="text-sm text-white/40">
-          CareCompanion &mdash; AI-Powered Cancer Care Management
+      {/* Final CTA */}
+      <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/10 to-blue-500/10 p-6 text-center space-y-4">
+        <h3 className="text-xl font-bold text-white">Ready to get started?</h3>
+        <p className="text-sm text-white/60 max-w-md mx-auto">
+          Join cancer patients and caregivers using CareCompanion to simplify their treatment journey. Free forever.
         </p>
-        <p className="text-xs text-white/25">
-          Questions? Reach out at{' '}
-          <a href="mailto:aryan@carecompanion.app" className="text-blue-400/60 hover:text-blue-400 transition-colors">
-            aryan@carecompanion.app
-          </a>
-        </p>
-        <p className="text-xs text-white/20">v1.0 &middot; Built for 1upHealth Integration Review</p>
+        <Link
+          href="/login"
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-violet-500 text-white text-sm font-semibold hover:from-blue-400 hover:to-violet-400 transition-all"
+        >
+          Start for free
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+          </svg>
+        </Link>
       </div>
     </div>
   );

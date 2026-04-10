@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import { DemoOverlay } from '@/components/DemoOverlay';
 
 /* ── Cycling keyword with typing effect ── */
 const CYCLING_WORDS = ['chemo schedules', 'tumor markers', 'oncology visits', 'treatment side effects', 'lab results'];
@@ -991,7 +990,6 @@ function BeforeAfterSection() {
 export default function LandingPage() {
   useScrollReveal();
   const [headerVisible, setHeaderVisible] = useState(false);
-  const [showDemo, setShowDemo] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -1070,12 +1068,12 @@ export default function LandingPage() {
               >
                 Start for free
               </Link>
-              <button
-                onClick={() => setShowDemo(true)}
+              <Link
+                href="/demo-walkthrough"
                 className="px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-[var(--text)] font-semibold text-sm hover:bg-white/[0.08] transition-colors"
               >
                 See how it works
-              </button>
+              </Link>
             </div>
           </div>
         </div>
@@ -1209,7 +1207,6 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-      <DemoOverlay isOpen={showDemo} onClose={() => setShowDemo(false)} />
     </main>
   );
 }
