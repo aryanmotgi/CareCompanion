@@ -145,7 +145,8 @@ describe('API routes', () => {
       const res = await POST(req)
       const body = await res.json()
       expect(res.status).toBe(200)
-      expect(body.success).toBe(true)
+      expect(body.ok).toBe(true)
+      expect(body.data.success).toBe(true)
     })
   })
 
