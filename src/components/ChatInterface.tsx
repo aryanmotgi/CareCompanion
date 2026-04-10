@@ -184,7 +184,7 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
               Hi, how can I help?
             </h2>
             <p className="text-[var(--text-secondary)] mb-8 max-w-sm text-sm">
-              Ask me anything about {patientName}&apos;s care, medications, appointments, or health records.
+              Ask me anything about {patientName === 'your loved one' ? 'your' : `${patientName}\u2019s`} care, medications, appointments, or health records.
             </p>
             <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
               {starterPrompts.map((prompt) => (

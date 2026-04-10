@@ -390,6 +390,24 @@ export function DashboardView({
       )}
       {!cancerType && !treatmentPhase && <div className="mb-3 sm:mb-4" />}
 
+      {/* Resume onboarding banner for users who skipped */}
+      {onboardingComplete && !cancerType && (
+        <a
+          href="/onboarding"
+          className="block rounded-2xl bg-gradient-to-r from-violet-500/10 to-blue-500/10 border border-violet-500/20 p-4 mb-4 hover:border-violet-500/30 transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-white">Finish setting up your profile</p>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">Add your diagnosis, medications, and priorities for a personalized experience</p>
+            </div>
+            <svg className="w-5 h-5 text-violet-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+            </svg>
+          </div>
+        </a>
+      )}
+
       {/* Onboarding banner for existing users */}
       {!onboardingComplete && (
         <a

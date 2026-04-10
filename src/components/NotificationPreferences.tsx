@@ -291,10 +291,7 @@ export function NotificationPreferences({ settings, onSettingsChange }: Notifica
   return (
     <div className="space-y-4">
       {/* Save indicator */}
-      <div className="flex items-center justify-between">
-        <div className="text-[#64748b] text-[11px] uppercase tracking-wider">
-          Notifications
-        </div>
+      <div className="flex items-center justify-end">
         {saveStatus !== 'idle' && (
           <div
             className={`text-[11px] font-medium transition-opacity duration-300 ${

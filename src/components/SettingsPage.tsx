@@ -71,6 +71,68 @@ export function SettingsPage({ settings: initialSettings, connectedApps, medicat
   const [newPassword, setNewPassword] = useState('')
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [showCsvMenu, setShowCsvMenu] = useState(false)
+
+  const handleExportCsv = async (type: string) => {
+    setShowCsvMenu(false)
+    setExporting(true)
+    try {
+      const res = await fetch(`/api/export/csv?type=${type}`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Export failed')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${type}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      showToast('CSV exported', 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to export CSV', 'error')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleImport = async () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json'
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+      setImporting(true)
+      try {
+        const text = await file.text()
+        const json = JSON.parse(text)
+        const res = await fetch('/api/import-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(json),
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err.error || 'Import failed')
+        }
+        const result = await res.json()
+        const counts = result.imported
+        const parts = []
+        if (counts.medications) parts.push(`${counts.medications} medications`)
+        if (counts.appointments) parts.push(`${counts.appointments} appointments`)
+        if (counts.lab_results) parts.push(`${counts.lab_results} lab results`)
+        showToast(parts.length ? `Imported ${parts.join(', ')}` : 'No data imported', parts.length ? 'success' : 'error')
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : 'Failed to import data', 'error')
+      } finally {
+        setImporting(false)
+      }
+    }
+    input.click()
+  }
 
   const handleChangePassword = async () => {
     if (!newPassword || newPassword.length < 6) return
@@ -197,12 +259,47 @@ export function SettingsPage({ settings: initialSettings, connectedApps, medicat
         />
       </SettingsGroup>
 
-      <SectionLabel>Privacy &amp; Security</SectionLabel>
+      <SectionLabel>Data Management</SectionLabel>
       <SettingsGroup>
         <SettingsRow
-          label={exporting ? 'Exporting...' : 'Export My Data'}
+          label={exporting ? 'Exporting...' : 'Export JSON (All Data)'}
+          description="Download all your data as a JSON file"
           onClick={exporting ? undefined : handleExport}
         />
+        <div className="relative">
+          <SettingsRow
+            label={exporting ? 'Exporting...' : 'Export CSV'}
+            description="Download specific data as a CSV file"
+            onClick={exporting ? undefined : () => setShowCsvMenu(!showCsvMenu)}
+          />
+          {showCsvMenu && (
+            <div className="mx-4 mb-3 bg-white/[0.06] rounded-lg overflow-hidden">
+              {[
+                { key: 'medications', label: 'Medications' },
+                { key: 'lab_results', label: 'Lab Results' },
+                { key: 'appointments', label: 'Appointments' },
+                { key: 'journal', label: 'Journal Entries' },
+              ].map(item => (
+                <button
+                  key={item.key}
+                  onClick={() => handleExportCsv(item.key)}
+                  className="w-full text-left px-4 py-2.5 text-sm text-[#e2e8f0] hover:bg-white/[0.04] transition-colors"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <SettingsRow
+          label={importing ? 'Importing...' : 'Import Data'}
+          description="Import data from a JSON file"
+          onClick={importing ? undefined : handleImport}
+        />
+      </SettingsGroup>
+
+      <SectionLabel>Privacy &amp; Security</SectionLabel>
+      <SettingsGroup>
         <SettingsRow
           label="Change Password"
           onClick={() => setShowPasswordForm(!showPasswordForm)}
@@ -277,7 +374,7 @@ export function SettingsPage({ settings: initialSettings, connectedApps, medicat
       <SettingsGroup>
         <SettingsRow
           label="App Version"
-          right={<span className="text-[#64748b] text-sm">1.0.0</span>}
+          right={<span className="text-[#64748b] text-sm">0.1.2.0</span>}
         />
         <SettingsRow label="Terms &amp; Privacy Policy" onClick={() => {}} />
       </SettingsGroup>
