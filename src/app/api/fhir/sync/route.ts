@@ -74,10 +74,11 @@ export async function POST(req: Request) {
   }
 
   // Decrypt stored token (handles legacy plaintext gracefully during migration)
-  let accessToken = safeDecryptToken(connection.access_token);
-  if (!accessToken) {
+  const decryptedToken = safeDecryptToken(connection.access_token);
+  if (!decryptedToken) {
     return Response.json({ error: 'Token decryption failed — please reconnect' }, { status: 401 });
   }
+  let accessToken: string = decryptedToken;
 
   // Check if token is expired and refresh if needed
   if (connection.expires_at && new Date(connection.expires_at) < new Date()) {

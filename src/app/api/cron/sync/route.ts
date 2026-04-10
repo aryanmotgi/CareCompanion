@@ -49,11 +49,12 @@ async function handler(req: Request) {
       }
 
       // Decrypt stored token (safeDecryptToken handles legacy plaintext gracefully)
-      let accessToken = safeDecryptToken(conn.access_token);
-      if (!accessToken) {
+      const decryptedToken = safeDecryptToken(conn.access_token);
+      if (!decryptedToken) {
         results.push({ user_id: conn.user_id, source: conn.source, status: 'skipped', error: 'token decrypt failed' });
         continue;
       }
+      let accessToken: string = decryptedToken;
 
       // Check if token is expired
       if (conn.expires_at && new Date(conn.expires_at) < new Date()) {
