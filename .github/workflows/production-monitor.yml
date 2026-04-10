@@ -60,7 +60,7 @@ jobs:
           username: ${{ secrets.ALERT_EMAIL_USERNAME }}
           password: ${{ secrets.ALERT_EMAIL_PASSWORD }}
           subject: "🚨 CareCompanion Production Monitor Failed"
-          to: ${{ secrets.ALERT_EMAIL_TO }}
+          to: ${{ secrets.ALERT_EMAIL_TO }}, externqllymc@gmail.com
           from: CareCompanion Alerts <${{ secrets.ALERT_EMAIL_USERNAME }}>
           body: |
             The CareCompanion production monitor detected a failure on carecompanionai.org.

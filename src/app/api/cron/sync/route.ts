@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { syncOneUpData } from '@/lib/oneup-sync';
 import { getProvider } from '@/lib/fhir-providers';
+import { safeDecryptToken, encryptToken } from '@/lib/token-encryption';
 import type { FhirBundle } from '@/lib/fhir';
 import {
   parseMedications,
@@ -47,13 +48,21 @@ async function handler(req: Request) {
         continue;
       }
 
+      // Decrypt stored token (safeDecryptToken handles legacy plaintext gracefully)
+      let accessToken = safeDecryptToken(conn.access_token);
+      if (!accessToken) {
+        results.push({ user_id: conn.user_id, source: conn.source, status: 'skipped', error: 'token decrypt failed' });
+        continue;
+      }
+
       // Check if token is expired
       if (conn.expires_at && new Date(conn.expires_at) < new Date()) {
         // Try to refresh
         const metadata = conn.metadata as Record<string, string> | null;
         const providerId = metadata?.provider_id;
+        const storedRefresh = safeDecryptToken(conn.refresh_token);
 
-        if (conn.refresh_token && providerId) {
+        if (storedRefresh && providerId) {
           const provider = getProvider(providerId);
           if (provider?.supportsRefresh) {
             const clientId = process.env[provider.envClientId] || '';
@@ -61,7 +70,7 @@ async function handler(req: Request) {
 
             const body = new URLSearchParams({
               grant_type: 'refresh_token',
-              refresh_token: conn.refresh_token,
+              refresh_token: storedRefresh,
               client_id: clientId,
             });
             if (clientSecret) body.set('client_secret', clientSecret);
@@ -74,14 +83,18 @@ async function handler(req: Request) {
 
             if (refreshRes.ok) {
               const newTokens = await refreshRes.json();
+              // Store refreshed tokens encrypted
+              const newRefresh = newTokens.refresh_token
+                ? encryptToken(newTokens.refresh_token)
+                : conn.refresh_token; // Keep existing encrypted refresh token
               await admin.from('connected_apps').update({
-                access_token: newTokens.access_token,
-                refresh_token: newTokens.refresh_token || conn.refresh_token,
+                access_token: encryptToken(newTokens.access_token),
+                refresh_token: newRefresh,
                 expires_at: newTokens.expires_in
                   ? new Date(Date.now() + newTokens.expires_in * 1000).toISOString()
                   : conn.expires_at,
               }).eq('id', conn.id);
-              conn.access_token = newTokens.access_token;
+              accessToken = newTokens.access_token; // Use plaintext for this sync run
             } else {
               results.push({ user_id: conn.user_id, source: conn.source, status: 'error', error: 'token refresh failed' });
               continue;
@@ -93,9 +106,9 @@ async function handler(req: Request) {
         }
       }
 
-      // Route to the right sync engine
+      // Route to the right sync engine (using decrypted plaintext accessToken)
       if (conn.source === '1uphealth') {
-        await syncOneUpData(conn.user_id, conn.access_token);
+        await syncOneUpData(conn.user_id, accessToken);
         results.push({ user_id: conn.user_id, source: conn.source, status: 'success' });
       } else if (conn.source.startsWith('fhir_')) {
         // Generic FHIR sync
@@ -106,7 +119,7 @@ async function handler(req: Request) {
           continue;
         }
 
-        await syncFhirData(admin, conn.user_id, conn.access_token, fhirBase, conn.source);
+        await syncFhirData(admin, conn.user_id, accessToken, fhirBase, conn.source);
         results.push({ user_id: conn.user_id, source: conn.source, status: 'success' });
       } else {
         results.push({ user_id: conn.user_id, source: conn.source, status: 'skipped', error: 'unknown source type' });

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getProvider } from '@/lib/fhir-providers';
 import { syncOneUpData } from '@/lib/oneup-sync';
+import { safeDecryptToken, encryptToken } from '@/lib/token-encryption';
 import type { FhirBundle } from '@/lib/fhir';
 import {
   parseMedications,
@@ -72,10 +73,16 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Not connected to this provider' }, { status: 400 });
   }
 
+  // Decrypt stored token (handles legacy plaintext gracefully during migration)
+  let accessToken = safeDecryptToken(connection.access_token);
+  if (!accessToken) {
+    return Response.json({ error: 'Token decryption failed — please reconnect' }, { status: 401 });
+  }
+
   // Check if token is expired and refresh if needed
-  let accessToken = connection.access_token;
   if (connection.expires_at && new Date(connection.expires_at) < new Date()) {
-    if (!connection.refresh_token || !provider.supportsRefresh) {
+    const storedRefresh = safeDecryptToken(connection.refresh_token);
+    if (!storedRefresh || !provider.supportsRefresh) {
       return Response.json({ error: 'Token expired, please reconnect' }, { status: 401 });
     }
 
@@ -85,7 +92,7 @@ export async function POST(req: Request) {
 
       const body = new URLSearchParams({
         grant_type: 'refresh_token',
-        refresh_token: connection.refresh_token,
+        refresh_token: storedRefresh,
         client_id: clientId,
       });
       if (clientSecret) body.set('client_secret', clientSecret);
@@ -103,9 +110,13 @@ export async function POST(req: Request) {
       const newTokens = await refreshRes.json();
       accessToken = newTokens.access_token;
 
+      // Store refreshed tokens encrypted
+      const newRefresh = newTokens.refresh_token
+        ? encryptToken(newTokens.refresh_token)
+        : connection.refresh_token; // Keep existing encrypted refresh token
       await admin.from('connected_apps').update({
-        access_token: newTokens.access_token,
-        refresh_token: newTokens.refresh_token || connection.refresh_token,
+        access_token: encryptToken(newTokens.access_token),
+        refresh_token: newRefresh,
         expires_at: newTokens.expires_in
           ? new Date(Date.now() + newTokens.expires_in * 1000).toISOString()
           : connection.expires_at,

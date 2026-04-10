@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { syncOneUpData } from '@/lib/oneup-sync';
 import { verifyCronRequest } from '@/lib/cron-auth';
+import { safeDecryptToken } from '@/lib/token-encryption';
 
 export const maxDuration = 300;
 
@@ -26,7 +27,12 @@ export async function GET(req: Request) {
 
   for (const app of apps) {
     try {
-      const synced = await syncOneUpData(app.user_id, app.access_token);
+      const accessToken = safeDecryptToken(app.access_token);
+      if (!accessToken) {
+        results.push({ userId: app.user_id, status: 'error' });
+        continue;
+      }
+      const synced = await syncOneUpData(app.user_id, accessToken);
       results.push({ userId: app.user_id, status: 'ok', data: synced });
     } catch (err) {
       console.error(`Sync failed for user ${app.user_id}:`, err);

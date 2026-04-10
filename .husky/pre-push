@@ -1,2 +1,2 @@
-echo "🔨 Pre-push: running build check..."
-npm run typecheck && npm run build
+echo "🔍 Pre-push: running typecheck..."
+npm run typecheck

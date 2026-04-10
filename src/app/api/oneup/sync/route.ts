@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { syncOneUpData } from '@/lib/oneup-sync';
+import { safeDecryptToken } from '@/lib/token-encryption';
 
 export const maxDuration = 60;
 
@@ -26,8 +27,13 @@ export async function POST() {
     return Response.json({ error: 'Not connected to 1upHealth' }, { status: 400 });
   }
 
+  const accessToken = safeDecryptToken(app.access_token);
+  if (!accessToken) {
+    return Response.json({ error: 'Token decryption failed — please reconnect' }, { status: 401 });
+  }
+
   try {
-    const results = await syncOneUpData(user.id, app.access_token);
+    const results = await syncOneUpData(user.id, accessToken);
     return Response.json({ success: true, synced: results });
   } catch (err) {
     console.error('1upHealth sync error:', err);
