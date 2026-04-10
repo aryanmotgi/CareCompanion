@@ -10,21 +10,60 @@ export async function POST() {
 
     console.log(`[delete-account] Starting account deletion for user ${user.id}`)
 
-    // Delete all user data (cascading from care_profiles handles medications, appointments, doctors, documents)
-    await supabase.from('care_profiles').delete().eq('user_id', user.id)
-    await supabase.from('lab_results').delete().eq('user_id', user.id)
-    await supabase.from('claims').delete().eq('user_id', user.id)
-    await supabase.from('notifications').delete().eq('user_id', user.id)
-    await supabase.from('user_settings').delete().eq('user_id', user.id)
-    await supabase.from('connected_apps').delete().eq('user_id', user.id)
-    await supabase.from('messages').delete().eq('user_id', user.id)
-
-    // Delete auth user using service-role admin client
-    const adminSupabase = createAdminClient(
+    // Use admin client to bypass RLS policies
+    const admin = createAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
-    const { error: authError } = await adminSupabase.auth.admin.deleteUser(user.id)
+
+    // Delete in dependency order (children first, then parents)
+    // Tables with foreign keys to care_profiles
+    const { data: profiles } = await admin.from('care_profiles').select('id').eq('user_id', user.id)
+    const profileIds = (profiles || []).map(p => p.id)
+
+    if (profileIds.length > 0) {
+      // Delete care_profile children
+      for (const pid of profileIds) {
+        await admin.from('medications').delete().eq('care_profile_id', pid)
+        await admin.from('appointments').delete().eq('care_profile_id', pid)
+        await admin.from('doctors').delete().eq('care_profile_id', pid)
+        await admin.from('documents').delete().eq('care_profile_id', pid)
+        await admin.from('care_team_members').delete().eq('care_profile_id', pid)
+        await admin.from('shared_links').delete().eq('care_profile_id', pid)
+      }
+    }
+
+    // Delete all user-level tables (order doesn't matter for these)
+    const userTables = [
+      'reminder_logs',
+      'medication_reminders',
+      'symptom_entries',
+      'memories',
+      'conversation_summaries',
+      'health_summaries',
+      'audit_logs',
+      'lab_results',
+      'claims',
+      'prior_authorizations',
+      'fsa_hsa',
+      'insurance',
+      'notifications',
+      'user_settings',
+      'user_preferences',
+      'connected_apps',
+      'messages',
+      'care_profiles',
+    ]
+
+    for (const table of userTables) {
+      const { error } = await admin.from(table).delete().eq('user_id', user.id)
+      if (error) {
+        console.log(`[delete-account] Note: ${table} delete: ${error.message}`)
+      }
+    }
+
+    // Delete auth user
+    const { error: authError } = await admin.auth.admin.deleteUser(user.id)
     if (authError) {
       console.error(`[delete-account] Failed to delete auth user ${user.id}:`, authError)
       return NextResponse.json({ error: 'Failed to delete auth account' }, { status: 500 })

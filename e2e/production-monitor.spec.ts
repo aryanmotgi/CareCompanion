@@ -62,7 +62,7 @@ test.describe('Production 24/7 Monitor', () => {
     // If the user has a profile, the chat input must be present
     const onChat = page.url().includes('/chat')
     if (onChat) {
-      await expect(page.locator('textarea, input[type="text"]').first()).toBeVisible({ timeout: 10000 })
+      await expect(page.getByRole('textbox').first()).toBeVisible({ timeout: 10000 })
     }
   })
 })
