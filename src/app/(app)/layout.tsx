@@ -6,7 +6,6 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
 import { CsrfProvider } from '@/components/CsrfProvider';
-import { DemoBanner } from '@/components/DemoBanner';
 import { getActiveProfile, getAllProfiles } from '@/lib/active-profile';
 
 export default async function AppLayout({
@@ -44,7 +43,6 @@ export default async function AppLayout({
     <ToastProvider>
       <OfflineIndicator />
       <ServiceWorkerRegistration />
-      {isDemo && <DemoBanner />}
       <AppShell
         patientName={profile?.patient_name || 'your loved one'}
         patientAge={profile?.patient_age}
@@ -53,6 +51,7 @@ export default async function AppLayout({
         notifications={notifications || []}
         profiles={allProfiles}
         activeProfileId={profile?.id || null}
+        isDemo={isDemo}
       >
         <div className="animate-page-blur-in">
           {children}

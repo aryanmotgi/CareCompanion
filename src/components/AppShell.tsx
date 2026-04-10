@@ -7,6 +7,7 @@ import { AmbientBackground } from './AmbientBackground'
 import { NotificationBell } from './NotificationBell'
 import { GlobalSearch } from './GlobalSearch'
 import { ProfileSwitcher } from './ProfileSwitcher'
+import { DemoBanner } from './DemoBanner'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import type { CareProfile } from '@/lib/types'
@@ -21,6 +22,7 @@ interface AppShellProps {
   notifications: any[]
   profiles?: CareProfile[]
   activeProfileId?: string | null
+  isDemo?: boolean
 }
 
 const MENU_ITEMS = [
@@ -51,6 +53,7 @@ export function AppShell({
   notifications,
   profiles = [],
   activeProfileId = null,
+  isDemo = false,
 }: AppShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuVisible, setMenuVisible] = useState(false)
@@ -100,6 +103,7 @@ export function AppShell({
             borderBottom: '1px solid rgba(255,255,255,0.06)',
           }}
         >
+          {isDemo && <DemoBanner />}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: 56 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Link href="/dashboard" className="text-[var(--text)] text-lg font-bold">CareCompanion</Link>
@@ -143,7 +147,7 @@ export function AppShell({
         </header>
       )}
 
-      <main id="main-content" className={`${isSetup ? '' : 'pt-14 pb-24'} min-h-screen min-h-dvh`}>
+      <main id="main-content" className={`${isSetup ? '' : (isDemo ? 'pt-[104px] pb-24' : 'pt-14 pb-24')} min-h-screen min-h-dvh`}>
         <div className="max-w-lg lg:max-w-2xl xl:max-w-3xl mx-auto px-1 sm:px-0">
           {children}
         </div>
