@@ -64,6 +64,78 @@ export default function DemoWalkthroughPage() {
         Back to home
       </Link>
 
+      {/* Reviewer credentials card — only for 1upHealth review team */}
+      <details className="rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-500/[0.06] to-orange-500/[0.04] overflow-hidden group">
+        <summary className="cursor-pointer list-none p-4 sm:p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-amber-500/15 flex items-center justify-center">
+              <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+              </svg>
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-white">For 1upHealth Review Team</p>
+              <p className="text-xs text-white/50">Test credentials and review checklist</p>
+            </div>
+          </div>
+          <svg className="w-4 h-4 text-white/40 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+        </summary>
+        <div className="px-4 sm:px-5 pb-5 space-y-4 border-t border-white/[0.06] pt-4">
+          <div>
+            <p className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider mb-2">Test credentials</p>
+            <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 space-y-2 font-mono text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-white/40">URL:</span>
+                <Link href="/login" className="text-blue-400 hover:text-blue-300 transition-colors">carecompanionai.org/login</Link>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-white/40">Email:</span>
+                <span className="text-white select-all">reviewer@carecompanionai.org</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-white/40">Password:</span>
+                <span className="text-white select-all">OneUpReview2026!</span>
+              </div>
+            </div>
+            <p className="text-[11px] text-white/30 mt-2">Account pre-loaded with realistic HER2+ Breast Cancer demo data.</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider mb-2">What to verify</p>
+            <ul className="space-y-1.5 text-xs text-white/70">
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-400 mt-0.5">✓</span>
+                <span>1upHealth OAuth flow works end-to-end (connect page → authorize → callback)</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-400 mt-0.5">✓</span>
+                <span>FHIR data imports correctly (medications, conditions, labs, appointments, practitioners)</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-400 mt-0.5">✓</span>
+                <span>Data consent modal appears before OAuth redirect</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-400 mt-0.5">✓</span>
+                <span>User can disconnect and data sync stops</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-400 mt-0.5">✓</span>
+                <span>Privacy policy and terms are accessible and thorough</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-400 mt-0.5">✓</span>
+                <span>No credentials exposed in client-side code</span>
+              </li>
+            </ul>
+          </div>
+          <div className="rounded-lg bg-blue-500/[0.08] border border-blue-500/15 p-3 text-xs text-blue-200/80">
+            <p><strong className="text-blue-300">Contact:</strong> <a href="mailto:privacy@carecompanionai.org" className="underline hover:text-blue-300">privacy@carecompanionai.org</a> for questions about this review.</p>
+          </div>
+        </div>
+      </details>
+
       {/* Header */}
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/15 border border-violet-500/25">
