@@ -11,9 +11,11 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { rateLimit } from '@/lib/rate-limit';
+import { env } from '@/lib/env';
 import crypto from 'crypto';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 10 });
@@ -60,8 +62,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Failed to seed demo data' }, { status: 500 });
   }
 
-  // 3. Sign the user in server-side (sets httpOnly cookies)
-  const supabase = await createClient();
+  // 3. Sign the user in server-side with a client that can WRITE cookies
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
+
   const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
   if (signInError) {
