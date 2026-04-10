@@ -31,25 +31,23 @@ function StepCard({ step, title, children }: { step: number; title: string; chil
 
 export default function DemoWalkthroughPage() {
   const [loading, setLoading] = useState(false);
-  const [seeded, setSeeded] = useState(false);
-  const [counts, setCounts] = useState<{ medications: number; labs: number; appointments: number; doctors: number } | null>(null);
   const [error, setError] = useState('');
 
   async function handleSeedDemo() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/seed-demo', { method: 'POST' });
+      const res = await fetch('/api/demo/start', { method: 'POST' });
       const data = await res.json();
       if (data.success) {
-        setSeeded(true);
-        setCounts(data.counts);
+        // Redirect to the dashboard as the demo user
+        window.location.href = data.redirect || '/dashboard';
       } else {
-        setError(data.error || 'Failed to load demo data');
+        setError(data.error || 'Failed to start demo');
+        setLoading(false);
       }
     } catch {
       setError('Network error — please try again');
-    } finally {
       setLoading(false);
     }
   }
@@ -315,80 +313,60 @@ export default function DemoWalkthroughPage() {
       </StepCard>
 
       {/* Step 6: Try It With Demo Data */}
-      <StepCard step={6} title="Try It Right Now">
+      <StepCard step={6} title="Try It — No Sign Up Required">
         <p className="text-sm text-white/60 mb-4">
-          Sign up for free and load a realistic cancer care dataset to explore the full experience. You&apos;ll see a demo patient with HER2+ Breast Cancer, medications, lab results, and appointments.
+          Click the button below to instantly experience the full app as a demo patient with{' '}
+          <span className="text-white font-medium">HER2+ Breast Cancer (Stage IIIA)</span>. You&apos;ll see a realistic
+          care profile with chemotherapy medications, recent lab results, upcoming oncology appointments, a full care team, and more.
         </p>
 
-        {!seeded ? (
-          <div className="space-y-3">
-            <button
-              onClick={handleSeedDemo}
-              disabled={loading}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-violet-500 text-white text-sm font-semibold hover:from-blue-400 hover:to-violet-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <>
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Loading Demo Data...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                  </svg>
-                  Load Demo Data
-                </>
-              )}
-            </button>
-            {error && (
-              <p className="text-sm text-red-400">{error}</p>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-sm font-medium text-emerald-400">Demo data loaded successfully</span>
+        <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 mb-4">
+          <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-2">What you&apos;ll see</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              { label: '8', sub: 'Medications' },
+              { label: '10', sub: 'Lab results' },
+              { label: '5', sub: 'Appointments' },
+              { label: '5', sub: 'Care team' },
+            ].map((item) => (
+              <div key={item.sub} className="rounded-lg bg-white/[0.03] border border-white/[0.04] px-3 py-2 text-center">
+                <p className="text-lg font-bold text-white">{item.label}</p>
+                <p className="text-[11px] text-white/40">{item.sub}</p>
               </div>
-              {counts && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {[
-                    { label: 'Medications', count: counts.medications },
-                    { label: 'Lab Results', count: counts.labs },
-                    { label: 'Appointments', count: counts.appointments },
-                    { label: 'Doctors', count: counts.doctors },
-                  ].map((item) => (
-                    <div key={item.label} className="rounded-lg bg-white/[0.04] px-3 py-2 text-center">
-                      <p className="text-lg font-bold text-white">{item.count}</p>
-                      <p className="text-xs text-white/40">{item.label}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <p className="text-sm text-white/50">Explore the app with demo data:</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {EXPLORE_LINKS.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-3 text-center hover:bg-white/[0.07] transition-colors"
-                >
-                  <p className="text-sm font-medium text-blue-400">{link.label}</p>
-                  <p className="text-xs text-white/30 mt-0.5">View &rarr;</p>
-                </Link>
-              ))}
-            </div>
+            ))}
           </div>
-        )}
+        </div>
+
+        <div className="space-y-3">
+          <button
+            onClick={handleSeedDemo}
+            disabled={loading}
+            className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-blue-500 to-violet-500 text-white text-sm font-semibold hover:from-blue-400 hover:to-violet-400 shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <>
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Launching demo...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                </svg>
+                Launch interactive demo
+              </>
+            )}
+          </button>
+          <p className="text-[11px] text-center text-white/30">
+            No sign up · No credit card · Leave anytime
+          </p>
+          {error && (
+            <p className="text-sm text-red-400 text-center">{error}</p>
+          )}
+        </div>
       </StepCard>
 
       {/* Final CTA */}
