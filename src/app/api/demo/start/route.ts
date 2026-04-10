@@ -110,9 +110,6 @@ async function seedDemoData(admin: any, userId: string) {
       conditions: 'Stage IIIA Breast Cancer (HER2+, ER+)\nHypertension\nOsteoporosis\nAnxiety',
       allergies: 'Sulfa drugs\nLatex\nIbuprofen (causes GI upset)',
       onboarding_completed: true,
-      onboarding_priorities: ['Tracking side effects', 'Managing medications', 'Understanding lab results'],
-      emergency_contact_name: 'Michael Mitchell (husband)',
-      emergency_contact_phone: '555-0188',
     })
     .select('id')
     .single();
