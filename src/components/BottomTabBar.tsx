@@ -81,7 +81,7 @@ export function BottomTabBar() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0C0E1A]/90 backdrop-blur-xl border-t border-[var(--border)]" data-tour="tab-nav">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--bg)]/90 backdrop-blur-xl border-t border-[var(--border)]" aria-label="Main navigation" data-tour="tab-nav">
       <div ref={navRef} className="flex justify-around items-center px-2 pt-3 pb-5 relative">
         {/* Animated active indicator dot */}
         {activeIndex >= 0 && (
@@ -97,6 +97,7 @@ export function BottomTabBar() {
               key={tab.href}
               href={tab.href}
               onClick={() => handleClick(tab.href)}
+              aria-current={active ? 'page' : undefined}
               className="flex flex-col items-center gap-1 relative"
               {...(tab.label === 'Care' ? { 'data-tour': 'tab-care' } : {})}
               {...(tab.label === 'Scan' ? { 'data-tour': 'tab-scan' } : {})}

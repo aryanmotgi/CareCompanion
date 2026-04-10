@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useToast } from '@/components/ToastProvider';
 import type { ReminderLog } from '@/lib/types';
 
 interface MedicationRemindersProps {
@@ -8,6 +9,7 @@ interface MedicationRemindersProps {
 }
 
 export function MedicationReminders({ reminders: initial }: MedicationRemindersProps) {
+  const { showToast } = useToast();
   const [reminders, setReminders] = useState(initial);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
@@ -33,12 +35,14 @@ export function MedicationReminders({ reminders: initial }: MedicationRemindersP
             : r
         )
       );
+      showToast('Response recorded', 'success');
     } catch {
       setError('Failed to update — tap to retry');
       setTimeout(() => setError(null), 3000);
+      showToast('Failed to record response', 'error');
     }
     setLoadingId(null);
-  }, []);
+  }, [showToast]);
 
   const formatTime = (iso: string) => {
     try {

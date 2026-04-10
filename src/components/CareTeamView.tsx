@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { CareTeamMember, CareTeamInvite, CareTeamActivity } from '@/lib/types';
+import { useToast } from '@/components/ToastProvider';
 
 const ROLE_LABELS: Record<string, string> = {
   owner: 'Owner',
@@ -27,6 +28,7 @@ function timeAgo(dateStr: string) {
 }
 
 export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | null }) {
+  const { showToast } = useToast();
   const [members, setMembers] = useState<CareTeamMember[]>([]);
   const [invites, setInvites] = useState<CareTeamInvite[]>([]);
   const [activity, setActivity] = useState<CareTeamActivity[]>([]);
@@ -60,11 +62,14 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
       const data = await res.json();
       if (data.success) {
         setMessage({ text: data.message || 'You have joined the care team!', type: 'success' });
+        showToast('Invite accepted', 'success');
       } else {
         setMessage({ text: data.error || 'Failed to accept invitation', type: 'error' });
+        showToast(data.error || 'Failed to accept invitation', 'error');
       }
     } catch {
       setMessage({ text: 'Something went wrong accepting the invitation', type: 'error' });
+      showToast('Something went wrong accepting the invitation', 'error');
     }
     setAcceptingInvite(false);
     // Remove the ?accept= param from the URL without a reload
@@ -99,21 +104,32 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
     if (data.success) {
       setMessage({ text: data.message, type: 'success' });
       setInviteEmail('');
+      showToast('Invite sent', 'success');
       loadTeam();
     } else {
       setMessage({ text: data.error, type: 'error' });
+      showToast(data.error || 'Failed to send invite', 'error');
     }
     setSending(false);
   }
 
   async function removeMember(memberId: string) {
-    const res = await fetch('/api/care-team/remove', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ member_id: memberId }),
-    });
-    const data = await res.json();
-    if (data.success) loadTeam();
+    try {
+      const res = await fetch('/api/care-team/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ member_id: memberId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Member removed', 'success');
+        loadTeam();
+      } else {
+        showToast(data.error || 'Failed to remove member', 'error');
+      }
+    } catch {
+      showToast('Something went wrong removing the member', 'error');
+    }
   }
 
   if (acceptingInvite) {

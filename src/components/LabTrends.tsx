@@ -383,7 +383,7 @@ function TrendCard({ trend }: { trend: LabTrend }) {
       {/* Discuss with AI */}
       <Link
         href={`/chat?prompt=${encodeURIComponent(chatPrompt)}`}
-        className="flex items-center justify-center gap-1.5 w-full py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-[11px] font-medium text-[var(--text-secondary,#94a3b8)] hover:text-[var(--text,#f1f5f9)] transition-all"
+        className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-xs font-medium text-[var(--text-secondary,#94a3b8)] hover:text-[var(--text,#f1f5f9)] transition-all"
       >
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
           <path
@@ -443,7 +443,7 @@ export function LabTrends() {
           <p className="text-sm text-red-400 mb-2">{error}</p>
           <button
             onClick={fetchTrends}
-            className="text-xs font-medium text-[#6366F1] hover:text-[#A78BFA] transition-colors"
+            className="text-sm font-medium text-[#6366F1] hover:text-[#A78BFA] transition-colors min-h-[44px] px-4"
           >
             Try again
           </button>
@@ -476,7 +476,7 @@ export function LabTrends() {
   return (
     <section className="space-y-4" aria-label="Lab Trends">
       {/* Section header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-base font-semibold text-[var(--text,#f1f5f9)]">Lab Trends</h2>
         <div className="flex items-center gap-2">
           {/* View toggle */}
@@ -484,7 +484,7 @@ export function LabTrends() {
             <button
               type="button"
               onClick={() => setViewMode('chart')}
-              className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
+              className={`px-3 py-1.5 min-h-[44px] rounded-md text-xs font-medium transition-all ${
                 viewMode === 'chart'
                   ? 'bg-[#6366F1]/20 text-[#A78BFA]'
                   : 'text-[#64748b] hover:text-[#94a3b8]'
@@ -495,7 +495,7 @@ export function LabTrends() {
             <button
               type="button"
               onClick={() => setViewMode('cards')}
-              className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
+              className={`px-3 py-1.5 min-h-[44px] rounded-md text-xs font-medium transition-all ${
                 viewMode === 'cards'
                   ? 'bg-[#6366F1]/20 text-[#A78BFA]'
                   : 'text-[#64748b] hover:text-[#94a3b8]'
@@ -515,11 +515,11 @@ export function LabTrends() {
         <div className="space-y-3">
           {/* Test filter pills */}
           {data.trends.length > 1 && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none">
               <button
                 type="button"
                 onClick={() => setSelectedTest(null)}
-                className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-all border ${
+                className={`px-2.5 py-1.5 min-h-[44px] rounded-full text-xs font-medium whitespace-nowrap transition-all border ${
                   selectedTest === null
                     ? 'bg-[#6366F1]/20 text-[#A78BFA] border-[#6366F1]/30'
                     : 'bg-white/[0.04] text-[#64748b] border-white/[0.06] hover:bg-white/[0.08]'
@@ -532,7 +532,7 @@ export function LabTrends() {
                   key={t.test_name}
                   type="button"
                   onClick={() => setSelectedTest(t.test_name === selectedTest ? null : t.test_name)}
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-all border ${
+                  className={`px-2.5 py-1.5 min-h-[44px] rounded-full text-xs font-medium whitespace-nowrap transition-all border ${
                     selectedTest === t.test_name
                       ? 'bg-[#6366F1]/20 text-[#A78BFA] border-[#6366F1]/30'
                       : 'bg-white/[0.04] text-[#64748b] border-white/[0.06] hover:bg-white/[0.08]'

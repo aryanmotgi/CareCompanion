@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { AppShell } from '@/components/AppShell';
 import { ToastProvider } from '@/components/ToastProvider';
+import { ThemeProvider } from '@/components/ThemeProvider';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { getActiveProfile, getAllProfiles } from '@/lib/active-profile';
 
@@ -34,6 +35,7 @@ export default async function AppLayout({
   const displayName = user.user_metadata?.display_name || '';
 
   return (
+    <ThemeProvider>
     <ToastProvider>
       <OfflineIndicator />
       <AppShell
@@ -50,5 +52,6 @@ export default async function AppLayout({
         </div>
       </AppShell>
     </ToastProvider>
+    </ThemeProvider>
   );
 }

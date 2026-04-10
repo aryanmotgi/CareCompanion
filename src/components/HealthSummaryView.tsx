@@ -1,24 +1,35 @@
 'use client';
 
 import { useState } from 'react';
+import { useToast } from '@/components/ToastProvider';
 
 interface HealthSummaryViewProps {
   patientName: string;
 }
 
 export function HealthSummaryView({ patientName }: HealthSummaryViewProps) {
+  const { showToast } = useToast();
   const [summary, setSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function generateSummary() {
     setLoading(true);
-    const res = await fetch('/api/health-summary', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    const data = await res.json();
-    if (data.summary) setSummary(data.summary);
-    setLoading(false);
+    try {
+      const res = await fetch('/api/health-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) throw new Error('Failed to generate summary');
+      const data = await res.json();
+      if (data.summary) {
+        setSummary(data.summary);
+        showToast('Summary generated', 'success');
+      }
+    } catch {
+      showToast('Failed to generate summary', 'error');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleShare() {
@@ -36,8 +47,8 @@ export function HealthSummaryView({ patientName }: HealthSummaryViewProps) {
           navigator.share({ title: `Health Summary — ${patientName}`, url });
         } else {
           navigator.clipboard.writeText(url);
-          alert('Share link copied to clipboard!');
         }
+        showToast('Summary shared', 'success');
         return;
       }
     } catch {
@@ -47,8 +58,8 @@ export function HealthSummaryView({ patientName }: HealthSummaryViewProps) {
       navigator.share({ title: `Health Summary — ${patientName}`, text: summary });
     } else {
       navigator.clipboard.writeText(summary);
-      alert('Copied to clipboard!');
     }
+    showToast('Summary shared', 'success');
   }
 
   function handlePrint() {

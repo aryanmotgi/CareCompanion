@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Medication } from '@/lib/types';
+import { useToast } from '@/components/ToastProvider';
 
 interface Interaction {
   drug_a: string;
@@ -71,6 +72,7 @@ const SEVERITY_CONFIG = {
 } as const;
 
 export function InteractionChecker({ medications }: InteractionCheckerProps) {
+  const { showToast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<InteractionResult | null>(null);
@@ -95,12 +97,14 @@ export function InteractionChecker({ medications }: InteractionCheckerProps) {
       }
 
       setResult(json.data);
+      showToast('Interactions checked', 'success');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
+      showToast('Failed to check interactions', 'error');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   // Auto-check on mount if there are 2+ medications
   useEffect(() => {

@@ -323,7 +323,7 @@ export function ComplianceReport() {
         <button
           key={days}
           onClick={() => setPeriod(days)}
-          className={`flex-1 text-center py-2 px-4 rounded-[11px] text-[13px] font-semibold transition-all duration-200 ${
+          className={`flex-1 text-center py-2 px-4 min-h-[44px] rounded-[11px] text-[13px] font-semibold transition-all duration-200 ${
             days === period
               ? 'bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white shadow-lg shadow-[#6366F1]/20'
               : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
@@ -506,25 +506,25 @@ export function ComplianceReport() {
       )}
 
       {/* Summary stats row */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-3 text-center">
-          <p className="text-lg font-bold text-[#10b981] tabular-nums">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="rounded-xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-2.5 sm:p-3 text-center">
+          <p className="text-base sm:text-lg font-bold text-[#10b981] tabular-nums">
             {data.total_taken}
           </p>
           <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">
             Taken
           </p>
         </div>
-        <div className="rounded-xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-3 text-center">
-          <p className="text-lg font-bold text-[#f59e0b] tabular-nums">
+        <div className="rounded-xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-2.5 sm:p-3 text-center">
+          <p className="text-base sm:text-lg font-bold text-[#f59e0b] tabular-nums">
             {data.total_snoozed}
           </p>
           <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">
             Snoozed
           </p>
         </div>
-        <div className="rounded-xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-3 text-center">
-          <p className="text-lg font-bold text-[#ef4444] tabular-nums">
+        <div className="rounded-xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-2.5 sm:p-3 text-center">
+          <p className="text-base sm:text-lg font-bold text-[#ef4444] tabular-nums">
             {data.total_missed}
           </p>
           <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">

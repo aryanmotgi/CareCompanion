@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import type { Appointment } from '@/lib/types';
+import { useToast } from '@/components/ToastProvider';
 import jsPDF from 'jspdf';
 
 interface VisitPrepViewProps {
@@ -93,6 +94,7 @@ function renderMarkdown(text: string) {
 }
 
 export function VisitPrepView({ appointments }: VisitPrepViewProps) {
+  const { showToast } = useToast();
   const [prepState, setPrepState] = useState<PrepState>(() => {
     const initial: PrepState = {};
     for (const appt of appointments) {
@@ -131,20 +133,23 @@ export function VisitPrepView({ appointments }: VisitPrepViewProps) {
           [appointmentId]: { content: data.prep_sheet, loading: false, error: null },
         }));
         setExpandedId(appointmentId);
+        showToast('Visit prep generated', 'success');
       } else {
         throw new Error(data.error || 'Failed to generate prep sheet');
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong';
       setPrepState((prev) => ({
         ...prev,
         [appointmentId]: {
           ...prev[appointmentId],
           loading: false,
-          error: err instanceof Error ? err.message : 'Something went wrong',
+          error: message,
         },
       }));
+      showToast('Failed to generate prep', 'error');
     }
-  }, []);
+  }, [showToast]);
 
   const handleShare = useCallback(async (appt: Appointment, content: string) => {
     const title = `Visit Prep — ${appt.doctor_name || 'Appointment'}`;

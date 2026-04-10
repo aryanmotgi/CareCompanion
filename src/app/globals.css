@@ -57,6 +57,47 @@
   --radius-xl: 24px;
 }
 
+/* ===== LIGHT MODE ===== */
+[data-theme="light"] {
+  --bg: #F8F9FC;
+  --bg-warm: #FFFFFF;
+  --bg-card: rgba(99, 102, 241, 0.04);
+  --bg-elevated: rgba(99, 102, 241, 0.06);
+  --bg-glass: rgba(99, 102, 241, 0.03);
+
+  --accent: #6366F1;
+  --accent-light: rgba(99, 102, 241, 0.1);
+  --accent-glow: rgba(99, 102, 241, 0.15);
+  --accent-hover: #4F46E5;
+
+  --lavender: #7C3AED;
+  --lavender-light: rgba(124, 58, 237, 0.1);
+  --lavender-glow: rgba(124, 58, 237, 0.12);
+
+  --cyan: #0891B2;
+  --cyan-glow: rgba(8, 145, 178, 0.1);
+  --violet: #7C3AED;
+  --violet-glow: rgba(124, 58, 237, 0.12);
+  --emerald: #059669;
+  --emerald-glow: rgba(5, 150, 105, 0.1);
+  --amber: #D97706;
+  --rose: #E11D48;
+
+  --text: #1E1B4B;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+
+  --border: rgba(99, 102, 241, 0.12);
+  --border-hover: rgba(99, 102, 241, 0.25);
+  --border-glow: rgba(99, 102, 241, 0.3);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.06);
+  --shadow-glow-cyan: 0 0 20px rgba(8, 145, 178, 0.05);
+  --shadow-glow-violet: 0 0 20px rgba(124, 58, 237, 0.06);
+}
+
 /* ===== BASE RESET ===== */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -287,6 +328,22 @@ body {
   .animate-page-in {
     animation: page-in 0.25s ease-out;
   }
+
+  .animate-fade-in {
+    animation: fade-in 0.2s ease-out both;
+  }
+
+  .animate-stagger-in > * {
+    animation: fade-in-up 0.3s ease-out both;
+  }
+  .animate-stagger-in > *:nth-child(1) { animation-delay: 0ms; }
+  .animate-stagger-in > *:nth-child(2) { animation-delay: 50ms; }
+  .animate-stagger-in > *:nth-child(3) { animation-delay: 100ms; }
+  .animate-stagger-in > *:nth-child(4) { animation-delay: 150ms; }
+  .animate-stagger-in > *:nth-child(5) { animation-delay: 200ms; }
+  .animate-stagger-in > *:nth-child(6) { animation-delay: 250ms; }
+  .animate-stagger-in > *:nth-child(7) { animation-delay: 300ms; }
+  .animate-stagger-in > *:nth-child(8) { animation-delay: 350ms; }
 }
 
 /* ===== ANIMATIONS ===== */

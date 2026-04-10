@@ -69,11 +69,13 @@ export function NotificationBell({ initialNotifications, initialCount }: Notific
   const [count, setCount] = useState(initialCount);
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const bellButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setOpen(false);
+        bellButtonRef.current?.focus();
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -104,9 +106,12 @@ export function NotificationBell({ initialNotifications, initialCount }: Notific
   return (
     <div className="relative" ref={dropdownRef}>
       <button
+        ref={bellButtonRef}
         onClick={() => setOpen(!open)}
         className="relative p-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-[var(--bg-elevated)] transition-colors"
-        title="Notifications"
+        aria-label={`Notifications${count > 0 ? `, ${count} unread` : ''}`}
+        aria-expanded={open}
+        aria-haspopup="dialog"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
@@ -119,7 +124,7 @@ export function NotificationBell({ initialNotifications, initialCount }: Notific
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 max-h-[70vh] bg-[var(--bg-card)] rounded-2xl shadow-lg border border-[var(--border)] z-[150] overflow-hidden animate-card-in">
+        <div role="dialog" aria-label="Notifications" className="absolute right-0 top-full mt-2 w-80 max-h-[70vh] bg-[var(--bg-card)] rounded-2xl shadow-lg border border-[var(--border)] z-[150] overflow-hidden animate-card-in">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
             <h3 className="font-display font-semibold text-white text-sm">Notifications</h3>
@@ -146,7 +151,7 @@ export function NotificationBell({ initialNotifications, initialCount }: Notific
                   className={`px-4 py-3 border-b border-[var(--border)] ${TYPE_COLORS[n.type] || (!n.is_read ? 'bg-blue-500/10' : '')}`}
                 >
                   <div className="flex items-start gap-2.5">
-                    <span className="text-base mt-0.5 flex-shrink-0">{TYPE_ICONS[n.type] || '🔔'}</span>
+                    <span className="text-base mt-0.5 flex-shrink-0" aria-hidden="true">{TYPE_ICONS[n.type] || '🔔'}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-white leading-snug">{n.title}</p>
                       {n.message && (
@@ -176,6 +181,12 @@ export function NotificationBell({ initialNotifications, initialCount }: Notific
                 </div>
               ))
             )}
+          </div>
+          <div className="px-4 py-3 border-t border-[var(--border)]">
+            <Link href="/notifications" onClick={() => setOpen(false)} className="text-xs text-[#A78BFA] hover:text-[#C4B5FD] font-medium transition-colors flex items-center justify-center gap-1">
+              View all notifications
+              <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" /></svg>
+            </Link>
           </div>
         </div>
       )}

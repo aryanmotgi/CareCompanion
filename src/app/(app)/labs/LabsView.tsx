@@ -59,7 +59,7 @@ export function LabsView({ labResults }: { labResults: LabResult[] }) {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="px-4 sm:px-5 space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-[var(--text)]">Lab Results</h1>
@@ -72,13 +72,13 @@ export function LabsView({ labResults }: { labResults: LabResult[] }) {
       <LabTrends />
 
       {/* Filters */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:-mx-5 sm:px-5 scrollbar-none flex-nowrap">
         {filters.map((f) => (
           <button
             key={f.key}
             type="button"
             onClick={() => setFilter(f.key)}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+            className={`px-3.5 py-1.5 min-h-[44px] rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 ${
               filter === f.key
                 ? 'bg-[#6366F1]/20 text-[#A78BFA] border border-[#6366F1]/30'
                 : 'bg-white/[0.04] text-[var(--text-muted)] border border-white/[0.06] hover:bg-white/[0.08]'

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
+import { useToast } from '@/components/ToastProvider'
 
 interface ClaimInfo {
   provider_name: string
@@ -24,6 +25,7 @@ interface AppealGeneratorProps {
 }
 
 export function AppealGenerator({ claimId, claimInfo }: AppealGeneratorProps) {
+  const { showToast } = useToast()
   const [additionalContext, setAdditionalContext] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -49,8 +51,11 @@ export function AppealGenerator({ claimId, claimInfo }: AppealGeneratorProps) {
       }
       const json = await res.json()
       setAppeal(json.data)
+      showToast('Appeal generated', 'success')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      const errMsg = err instanceof Error ? err.message : 'Something went wrong'
+      setError(errMsg)
+      showToast(errMsg, 'error')
     } finally {
       setLoading(false)
     }

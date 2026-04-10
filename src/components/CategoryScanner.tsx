@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
+import { useToast } from '@/components/ToastProvider';
 
 export type ScanCategory = 'medication' | 'lab_report' | 'insurance' | 'eob' | 'doctor_note';
 
@@ -75,6 +76,7 @@ const CATEGORY_CONFIG: Record<ScanCategory, {
 };
 
 export function CategoryScanner({ category, onClose, onSaved }: CategoryScannerProps) {
+  const { showToast } = useToast();
   const config = CATEGORY_CONFIG[category];
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -115,8 +117,10 @@ export function CategoryScanner({ category, onClose, onSaved }: CategoryScannerP
       if (!res.ok) throw new Error('Scan failed');
       const data = await res.json();
       setResult(data);
+      showToast('Document scanned', 'success');
     } catch {
       setError('Failed to analyze the document. Please try a clearer photo.');
+      showToast('Failed to scan document', 'error');
     } finally {
       setScanning(false);
     }
@@ -136,8 +140,10 @@ export function CategoryScanner({ category, onClose, onSaved }: CategoryScannerP
       if (!res.ok) throw new Error('Save failed');
       setSaved(true);
       onSaved?.();
+      showToast('Data saved', 'success');
     } catch {
       setError('Failed to save. Please try again.');
+      showToast('Failed to save data', 'error');
     } finally {
       setSaving(false);
     }

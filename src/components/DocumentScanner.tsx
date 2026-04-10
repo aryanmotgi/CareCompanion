@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
+import { useToast } from '@/components/ToastProvider';
 
 interface DocumentScannerProps {
   onClose: () => void;
@@ -44,6 +45,7 @@ const DOC_TYPE_ICONS: Record<string, string> = {
 };
 
 export function DocumentScanner({ onClose, onSaved }: DocumentScannerProps) {
+  const { showToast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -82,8 +84,10 @@ export function DocumentScanner({ onClose, onSaved }: DocumentScannerProps) {
       if (!res.ok) throw new Error('Scan failed');
       const data = await res.json();
       setResult(data);
+      showToast('Document scanned', 'success');
     } catch {
       setError('Failed to analyze the document. Please try a clearer photo.');
+      showToast('Failed to scan document', 'error');
     } finally {
       setScanning(false);
     }
@@ -103,8 +107,10 @@ export function DocumentScanner({ onClose, onSaved }: DocumentScannerProps) {
       if (!res.ok) throw new Error('Save failed');
       setSaved(true);
       onSaved?.();
+      showToast('Document saved', 'success');
     } catch {
       setError('Failed to save. Please try again.');
+      showToast('Failed to save document', 'error');
     } finally {
       setSaving(false);
     }

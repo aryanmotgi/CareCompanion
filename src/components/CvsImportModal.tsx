@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
+import { useToast } from '@/components/ToastProvider';
 
 interface CvsImportModalProps {
   onClose: () => void;
@@ -14,6 +15,7 @@ interface ExtractedMedication {
 }
 
 export function CvsImportModal({ onClose }: CvsImportModalProps) {
+  const { showToast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
@@ -51,8 +53,10 @@ export function CvsImportModal({ onClose }: CvsImportModalProps) {
       if (!res.ok) throw new Error('Failed to extract medications');
       const data = await res.json();
       setExtracted(data.medications);
+      showToast('Data extracted', 'success');
     } catch {
       setError('Failed to extract medications from the image. Please try a clearer screenshot.');
+      showToast('Failed to extract medications', 'error');
     } finally {
       setExtracting(false);
     }
@@ -71,8 +75,10 @@ export function CvsImportModal({ onClose }: CvsImportModalProps) {
       });
       if (!res.ok) throw new Error('Failed to save medications');
       setSaved(true);
+      showToast('Import saved', 'success');
     } catch {
       setError('Failed to save medications. Please try again.');
+      showToast('Failed to save medications', 'error');
     } finally {
       setSaving(false);
     }

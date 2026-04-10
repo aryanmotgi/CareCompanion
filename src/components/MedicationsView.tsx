@@ -72,12 +72,12 @@ export function MedicationsView({ medications: initial, profileId }: Medications
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h2 className="font-display text-lg font-bold text-white">Medications</h2>
           <p className="text-sm text-[var(--text-secondary)]">{medications.length} medication{medications.length !== 1 ? 's' : ''} tracked</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="secondary" onClick={() => setShowScanner(true)} className="!py-2 !px-4 !min-h-0 text-sm">
             Scan Medication
           </Button>

@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
+import { useToast } from '@/components/ToastProvider';
 import type { MedicationReminder, Medication } from '@/lib/types';
 
 interface ReminderManagerProps {
@@ -20,6 +21,7 @@ const ALL_DAYS = [
 ];
 
 export function ReminderManager({ reminders: initial, medications }: ReminderManagerProps) {
+  const { showToast } = useToast();
   const [reminders, setReminders] = useState(initial);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -109,9 +111,11 @@ export function ReminderManager({ reminders: initial, medications }: ReminderMan
         setReminders(data.reminders || []);
       }
       showMessage(editingId ? 'Reminder updated!' : 'Reminder created!');
+      showToast('Reminder saved', 'success');
       resetForm();
     } catch {
       showMessage('Failed to save reminder');
+      showToast('Failed to save reminder', 'error');
     }
     setSaving(false);
   };
@@ -140,6 +144,7 @@ export function ReminderManager({ reminders: initial, medications }: ReminderMan
         }),
       });
       if (!res.ok) throw new Error('Toggle failed');
+      showToast('Reminder toggled', 'success');
     } catch {
       // Revert on failure
       setReminders((prev) =>
@@ -148,6 +153,7 @@ export function ReminderManager({ reminders: initial, medications }: ReminderMan
         )
       );
       showMessage('Failed to update reminder');
+      showToast('Failed to toggle reminder', 'error');
     }
     setTogglingId(null);
   };
@@ -163,8 +169,10 @@ export function ReminderManager({ reminders: initial, medications }: ReminderMan
       if (!res.ok) throw new Error('Delete failed');
       setReminders((prev) => prev.filter((r) => r.id !== id));
       showMessage('Reminder removed');
+      showToast('Reminder deleted', 'success');
     } catch {
       showMessage('Failed to remove reminder');
+      showToast('Failed to delete reminder', 'error');
     }
     setDeletingId(null);
   };

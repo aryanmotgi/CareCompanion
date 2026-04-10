@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useToast } from '@/components/ToastProvider';
 
 interface VisitPrepSheetProps {
   appointmentId: string;
@@ -10,23 +11,31 @@ interface VisitPrepSheetProps {
 }
 
 export function VisitPrepSheet({ appointmentId, doctorName, dateTime, existingPrep }: VisitPrepSheetProps) {
+  const { showToast } = useToast();
   const [prep, setPrep] = useState<string | null>(existingPrep);
   const [loading, setLoading] = useState(false);
   const [showSheet, setShowSheet] = useState(false);
 
   async function generatePrep() {
     setLoading(true);
-    const res = await fetch('/api/visit-prep', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ appointment_id: appointmentId }),
-    });
-    const data = await res.json();
-    if (data.prep_sheet) {
-      setPrep(data.prep_sheet);
-      setShowSheet(true);
+    try {
+      const res = await fetch('/api/visit-prep', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointment_id: appointmentId }),
+      });
+      if (!res.ok) throw new Error('Failed to generate prep');
+      const data = await res.json();
+      if (data.prep_sheet) {
+        setPrep(data.prep_sheet);
+        setShowSheet(true);
+        showToast('Visit prep generated', 'success');
+      }
+    } catch {
+      showToast('Failed to generate visit prep', 'error');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   // Simple markdown-to-html (bold, headers, lists, checkboxes)

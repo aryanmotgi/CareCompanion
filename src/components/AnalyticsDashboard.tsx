@@ -72,7 +72,7 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
       <p className="text-xs text-[var(--text-muted)] mb-5">{patientName}&apos;s trends and insights</p>
 
       {/* Stat cards row */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-white">{medications.length}</p>
           <p className="text-[10px] text-[var(--text-muted)] uppercase">Medications</p>
@@ -99,7 +99,7 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
             </div>
             <span className="text-sm text-emerald-400 font-mono">{takenCount}/{totalReminders}</span>
           </div>
-          <div className="flex gap-4 text-xs">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
             <span className="text-emerald-400">Taken: {takenCount}</span>
             <span className="text-red-400">Missed: {missedCount}</span>
             <span className="text-[var(--text-muted)]">Snoozed: {reminderLogs.filter((l) => l.status === 'snoozed').length}</span>

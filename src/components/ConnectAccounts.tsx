@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
 import { DataConsentModal } from '@/components/DataConsentModal';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
+import { useToast } from '@/components/ToastProvider';
 import type { ConnectedApp } from '@/lib/types';
 
 interface ConnectAccountsProps {
@@ -83,6 +84,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
+  const { showToast } = useToast();
 
   const [apps, setApps] = useState(connectedApps);
   const [managingFor, setManagingFor] = useState<'self' | 'other'>(patientName ? 'other' : 'self');
@@ -191,8 +193,10 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
       }
 
       setShowPatientForm(false);
+      showToast('Profile saved', 'success');
     } catch (err) {
       console.error('Save patient info error:', err);
+      showToast('Failed to save profile', 'error');
     } finally {
       setSavingProfile(false);
     }
@@ -202,9 +206,10 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
     setSyncing(true);
     try {
       await fetch('/api/oneup/sync', { method: 'POST' });
+      showToast('Sync started', 'success');
       router.refresh();
     } catch {
-      // silent
+      showToast('Failed to sync', 'error');
     } finally {
       setSyncing(false);
     }
@@ -216,6 +221,9 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
     const { error } = await supabase.from('connected_apps').delete().eq('id', app.id);
     if (!error) {
       setApps((prev) => prev.filter((a) => a.id !== app.id));
+      showToast('Account disconnected', 'success');
+    } else {
+      showToast('Failed to disconnect account', 'error');
     }
   };
 
@@ -581,9 +589,11 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
                   }
 
                   await fetch('/api/seed-demo', { method: 'POST' });
+                  showToast('Demo data loaded', 'success');
                   router.push('/dashboard');
                 } catch (err) {
                   console.error('Demo seed error:', err);
+                  showToast('Failed to load demo data', 'error');
                 } finally {
                   setSavingProfile(false);
                 }
@@ -642,7 +652,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
                     } catch {
                       setDeleting(false);
                       setShowDeleteConfirm(false);
-                      setConnectError('Failed to delete account. Please try again.');
+                      showToast('Failed to delete account', 'error');
                     }
                   }}
                   disabled={deleting}

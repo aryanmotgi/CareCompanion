@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ToastProvider';
 import type { CareProfile } from '@/lib/types';
 
 interface ProfileSwitcherProps {
@@ -14,6 +15,7 @@ export function ProfileSwitcher({ profiles, activeProfileId }: ProfileSwitcherPr
   const [switching, setSwitching] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { showToast } = useToast();
 
   const activeProfile = profiles.find((p) => p.id === activeProfileId) || profiles[0];
 
@@ -36,11 +38,17 @@ export function ProfileSwitcher({ profiles, activeProfileId }: ProfileSwitcherPr
       return;
     }
     setSwitching(true);
-    await fetch('/api/profile-switch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ profile_id: profileId }),
-    });
+    try {
+      const res = await fetch('/api/profile-switch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile_id: profileId }),
+      });
+      if (!res.ok) throw new Error('Switch failed');
+      showToast('Profile switched', 'success');
+    } catch {
+      showToast('Failed to switch profile', 'error');
+    }
     setIsOpen(false);
     setSwitching(false);
     router.refresh();

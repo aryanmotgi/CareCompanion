@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { BottomTabBar } from './BottomTabBar'
 import { AmbientBackground } from './AmbientBackground'
@@ -25,11 +25,16 @@ interface AppShellProps {
 const MENU_ITEMS = [
   { label: 'Emergency Card', href: '/emergency', icon: '🚨' },
   { label: 'Care Profile', href: '/profile', icon: '👤' },
+  { label: 'Appointments', href: '/appointments', icon: '📅' },
+  { label: 'Medications', href: '/medications', icon: '💊' },
   { label: 'Treatment Timeline', href: '/timeline', icon: '📈' },
   { label: 'Visit Prep', href: '/visit-prep', icon: '📝' },
   { label: 'Lab Results', href: '/labs', icon: '🔬' },
+  { label: 'Insurance & Claims', href: '/insurance', icon: '🏥' },
+  { label: 'Health Records', href: '/records', icon: '📁' },
   { label: 'Treatment Journal', href: '/journal', icon: '📓' },
   { label: 'Health Summary', href: '/health-summary', icon: '📋' },
+  { label: 'Notifications', href: '/notifications', icon: '🔔' },
   { label: 'Calendar', href: '/calendar', icon: '📅' },
   { label: 'Analytics', href: '/analytics', icon: '📊' },
   { label: 'Connected Accounts', href: '/connect', icon: '🔗' },
@@ -48,16 +53,20 @@ export function AppShell({
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuVisible, setMenuVisible] = useState(false)
   const pathname = usePathname()
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
 
   const openMenu = () => {
     setMenuOpen(true)
     requestAnimationFrame(() => setMenuVisible(true))
   }
 
-  const closeMenu = () => {
+  const closeMenu = useCallback(() => {
     setMenuVisible(false)
-    setTimeout(() => setMenuOpen(false), 300)
-  }
+    setTimeout(() => {
+      setMenuOpen(false)
+      menuButtonRef.current?.focus()
+    }, 300)
+  }, [])
 
   // Hide nav on setup/onboarding pages
   const setupRoutes = ['/connect', '/manual-setup', '/setup']
@@ -72,6 +81,9 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[99999] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[var(--accent)] focus:text-white focus:text-sm focus:font-medium">
+        Skip to content
+      </a>
       <AmbientBackground />
 
       {!isSetup && (
@@ -82,7 +94,7 @@ export function AppShell({
             left: 0,
             right: 0,
             zIndex: 9999,
-            background: 'rgba(12, 14, 26, 0.95)',
+            background: 'color-mix(in srgb, var(--bg-warm) 95%, transparent)',
             borderBottom: '1px solid rgba(255,255,255,0.06)',
           }}
         >
@@ -102,8 +114,10 @@ export function AppShell({
                 initialCount={notifications.filter((n: { is_read: boolean }) => !n.is_read).length}
               />
               <button
+                ref={menuButtonRef}
                 type="button"
                 onClick={openMenu}
+                aria-label="Open menu"
                 style={{
                   width: 36,
                   height: 36,
@@ -126,7 +140,7 @@ export function AppShell({
         </header>
       )}
 
-      <main className={`${isSetup ? '' : 'pt-14 pb-24'} min-h-screen min-h-dvh`}>
+      <main id="main-content" className={`${isSetup ? '' : 'pt-14 pb-24'} min-h-screen min-h-dvh`}>
         <div className="max-w-lg lg:max-w-2xl xl:max-w-3xl mx-auto px-1 sm:px-0">
           {children}
         </div>
@@ -154,7 +168,7 @@ export function AppShell({
               right: 0,
               bottom: 0,
               width: 280,
-              background: '#1a1d2e',
+              background: 'var(--bg-warm)',
               display: 'flex',
               flexDirection: 'column',
               transform: menuVisible ? 'translateX(0)' : 'translateX(100%)',
@@ -173,7 +187,7 @@ export function AppShell({
             </div>
 
             {/* Menu items */}
-            <div style={{ flex: 1, padding: '12px', overflowY: 'auto' }}>
+            <nav role="navigation" aria-label="Main menu" style={{ flex: 1, padding: '12px', overflowY: 'auto' }}>
               {MENU_ITEMS.map((item) => (
                 <Link
                   key={item.label}
@@ -181,14 +195,14 @@ export function AppShell({
                   onClick={closeMenu}
                   className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-white/[0.06] transition-colors"
                 >
-                  <span className="text-lg">{item.icon}</span>
+                  <span className="text-lg" aria-hidden="true">{item.icon}</span>
                   <span className="text-[var(--text)] text-sm flex-1">{item.label}</span>
-                  <svg width="14" height="14" fill="none" stroke="var(--text-muted)" strokeWidth="2" viewBox="0 0 24 24">
+                  <svg width="14" height="14" fill="none" stroke="var(--text-muted)" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
                     <polyline points="9 18 15 12 9 6" />
                   </svg>
                 </Link>
               ))}
-            </div>
+            </nav>
 
             {/* Sign out */}
             <div style={{ padding: 12, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
@@ -200,7 +214,7 @@ export function AppShell({
                 }}
                 className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-red-500/10 transition-colors w-full"
               >
-                <span className="text-lg">🚪</span>
+                <span className="text-lg" aria-hidden="true">🚪</span>
                 <span className="text-[#ef4444] text-sm">Sign Out</span>
               </button>
             </div>

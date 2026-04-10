@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from './ToastProvider'
+import { ThemeToggle } from './ThemeToggle'
 import { ReminderManager } from './ReminderManager'
 import { NotificationPreferences } from './NotificationPreferences'
 import type { UserSettings, ConnectedApp, MedicationReminder, Medication } from '@/lib/types'
@@ -169,10 +170,10 @@ export function SettingsPage({ settings: initialSettings, connectedApps, medicat
 
       <SectionLabel>App Preferences</SectionLabel>
       <SettingsGroup>
-        <SettingsRow
-          label="Theme"
-          right={<span className="text-[#64748b] text-sm">Dark</span>}
-        />
+        <div className="px-4 py-3.5">
+          <div className="text-sm text-[var(--text)] mb-2">Theme</div>
+          <ThemeToggle />
+        </div>
         <SettingsRow
           label="AI Personality"
           right={

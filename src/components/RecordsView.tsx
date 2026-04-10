@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import Link from 'next/link'
+import { useToast } from '@/components/ToastProvider'
 import type { ConnectedApp, Medication, Appointment, LabResult, Document } from '@/lib/types'
 
 /* ─── Types ─── */
@@ -530,6 +531,7 @@ export function RecordsView({
   conditions,
   allergies,
 }: RecordsViewProps) {
+  const { showToast } = useToast()
   const [activeCategory, setActiveCategory] = useState<Category>('all')
   const [search, setSearch] = useState('')
   const [syncingSource, setSyncingSource] = useState<string | null>(null)
@@ -690,16 +692,20 @@ export function RecordsView({
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setSyncMessage(data.error || 'Sync failed')
+        const errMsg = data.error || 'Sync failed'
+        setSyncMessage(errMsg)
+        showToast(errMsg, 'error')
       } else {
         setSyncMessage('Sync complete! Refresh to see updated records.')
+        showToast('Records synced', 'success')
       }
     } catch {
       setSyncMessage('Sync failed. Please try again.')
+      showToast('Sync failed. Please try again.', 'error')
     } finally {
       setSyncingSource(null)
     }
-  }, [])
+  }, [showToast])
 
   const categories: { key: Category; label: string; count: number }[] = [
     { key: 'all', label: 'All', count: allRecords.length },

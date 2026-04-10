@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { SymptomEntry } from '@/lib/types';
+import { useToast } from '@/components/ToastProvider';
 
 interface SymptomJournalProps {
   patientName: string;
@@ -15,6 +16,7 @@ const ENERGY_LABELS: Record<string, string> = { high: '⚡ High', normal: '✅ N
 const COMMON_SYMPTOMS = ['Nausea', 'Vomiting', 'Fatigue', 'Mouth sores', 'Neuropathy', 'Chemo brain', 'Hair loss', 'Loss of appetite', 'Constipation', 'Diarrhea', 'Bone pain', 'Skin changes', 'Hand-foot syndrome', 'Shortness of breath', 'Anxiety', 'Fever/chills'];
 
 export function SymptomJournal({ patientName, initialEntries }: SymptomJournalProps) {
+  const { showToast } = useToast();
   const [entries, setEntries] = useState(initialEntries);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -56,13 +58,14 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
     const fullNotes = [...extraNotes, notes.trim()].filter(Boolean).join(' | ');
     if (fullNotes) body.notes = fullNotes;
 
-    const res = await fetch('/api/journal', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    try {
+      const res = await fetch('/api/journal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
 
-    if (res.ok) {
+      if (!res.ok) throw new Error('Failed to save entry');
       const data = await res.json();
       // Update local entries
       setEntries((prev) => {
@@ -72,8 +75,12 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
       setMessage('Saved!');
       setShowForm(false);
       setTimeout(() => setMessage(null), 2000);
+      showToast('Entry saved', 'success');
+    } catch {
+      showToast('Failed to save entry', 'error');
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   return (
