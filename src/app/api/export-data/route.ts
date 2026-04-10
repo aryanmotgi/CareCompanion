@@ -1,11 +1,27 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { rateLimit } from '@/lib/rate-limit'
+import { logAudit } from '@/lib/audit'
 
-export async function GET() {
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 5 })
+
+export async function GET(req: Request) {
+  const ip = req.headers.get('x-forwarded-for') || 'unknown'
+  const { success } = limiter.check(ip)
+  if (!success) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+  }
+
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+
+    await logAudit({
+      user_id: user.id,
+      action: 'export_data',
+      ip_address: req.headers.get('x-forwarded-for') || undefined,
+    })
 
     const { data: profile } = await supabase.from('care_profiles').select('*').eq('user_id', user.id).single()
     const profileId = profile?.id

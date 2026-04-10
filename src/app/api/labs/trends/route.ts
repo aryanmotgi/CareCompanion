@@ -5,8 +5,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { analyzeAllTrends } from '@/lib/lab-trends'
 import { apiSuccess, ApiErrors } from '@/lib/api-response'
+import { rateLimit } from '@/lib/rate-limit'
 
-export async function GET() {
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 5 })
+
+export async function GET(req: Request) {
+  const ip = req.headers.get('x-forwarded-for') || 'unknown'
+  const { success } = limiter.check(ip)
+  if (!success) return ApiErrors.rateLimited()
+
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()

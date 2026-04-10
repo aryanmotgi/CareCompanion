@@ -3,9 +3,12 @@
  * GET: Retrieve current preferences.
  * PUT: Update preferences (granular control over notification types, quiet hours).
  */
-import { createClient } from '@/lib/supabase/server'
-import { apiSuccess, ApiErrors } from '@/lib/api-response'
+import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers'
+import { apiError, apiSuccess } from '@/lib/api-response'
+import { rateLimit } from '@/lib/rate-limit'
 import { z } from 'zod'
+
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 20 })
 
 const PreferencesSchema = z.object({
   refill_reminders: z.boolean().optional(),
@@ -21,9 +24,8 @@ const PreferencesSchema = z.object({
 
 export async function GET() {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return ApiErrors.unauthorized()
+    const { user, supabase, error: authError } = await getAuthenticatedUser()
+    if (authError) return authError
 
     const { data: settings } = await supabase
       .from('user_settings')
@@ -45,23 +47,24 @@ export async function GET() {
     }
 
     return apiSuccess(prefs)
-  } catch (error) {
-    console.error('[notification-prefs] GET error:', error)
-    return ApiErrors.internal()
+  } catch (err) {
+    console.error('[notification-prefs] GET error:', err)
+    return apiError('Internal server error', 500)
   }
 }
 
 export async function PUT(req: Request) {
+  const ip = req.headers.get('x-forwarded-for') || 'unknown'
+  const { success } = limiter.check(ip)
+  if (!success) return apiError('Too many requests', 429)
+
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return ApiErrors.unauthorized()
+    const { user, supabase, error: authError } = await getAuthenticatedUser()
+    if (authError) return authError
 
     const body = await req.json()
-    const parsed = PreferencesSchema.safeParse(body)
-    if (!parsed.success) {
-      return ApiErrors.badRequest('Invalid preferences: ' + parsed.error.issues.map(i => `${i.path}: ${i.message}`).join(', '))
-    }
+    const { data: validated, error: valError } = validateBody(PreferencesSchema, body)
+    if (valError) return valError
 
     // Upsert settings
     const { data: existing } = await supabase
@@ -73,27 +76,27 @@ export async function PUT(req: Request) {
     if (existing) {
       const { error } = await supabase
         .from('user_settings')
-        .update({ ...parsed.data, updated_at: new Date().toISOString() })
+        .update({ ...validated, updated_at: new Date().toISOString() })
         .eq('user_id', user.id)
 
       if (error) {
         console.error('[notification-prefs] Update error:', error)
-        return ApiErrors.internal('Failed to update preferences')
+        return apiError('Failed to update preferences', 500)
       }
     } else {
       const { error } = await supabase
         .from('user_settings')
-        .insert({ user_id: user.id, ...parsed.data })
+        .insert({ user_id: user.id, ...validated })
 
       if (error) {
         console.error('[notification-prefs] Insert error:', error)
-        return ApiErrors.internal('Failed to save preferences')
+        return apiError('Failed to save preferences', 500)
       }
     }
 
-    return apiSuccess({ updated: true, preferences: parsed.data })
-  } catch (error) {
-    console.error('[notification-prefs] PUT error:', error)
-    return ApiErrors.internal()
+    return apiSuccess({ updated: true, preferences: validated })
+  } catch (err) {
+    console.error('[notification-prefs] PUT error:', err)
+    return apiError('Internal server error', 500)
   }
 }

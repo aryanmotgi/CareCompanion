@@ -4,6 +4,8 @@ import { AppShell } from '@/components/AppShell';
 import { ToastProvider } from '@/components/ToastProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
+import { CsrfProvider } from '@/components/CsrfProvider';
 import { getActiveProfile, getAllProfiles } from '@/lib/active-profile';
 
 export default async function AppLayout({
@@ -36,8 +38,10 @@ export default async function AppLayout({
 
   return (
     <ThemeProvider>
+    <CsrfProvider>
     <ToastProvider>
       <OfflineIndicator />
+      <ServiceWorkerRegistration />
       <AppShell
         patientName={profile?.patient_name || 'your loved one'}
         patientAge={profile?.patient_age}
@@ -52,6 +56,7 @@ export default async function AppLayout({
         </div>
       </AppShell>
     </ToastProvider>
+    </CsrfProvider>
     </ThemeProvider>
   );
 }

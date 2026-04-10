@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
+import { sendEmail, welcomeEmailHtml } from '@/lib/email';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 3 });
 
@@ -21,20 +22,21 @@ export async function POST(req: Request) {
   const email = user.email;
   const name = user.user_metadata?.display_name || user.user_metadata?.full_name || 'there';
 
-  // TODO: Integrate with Resend or SendGrid to actually send emails
-  // For now, log the intent and return success
-  // To enable: npm install resend, add RESEND_API_KEY to env
-  //
-  // import { Resend } from 'resend';
-  // const resend = new Resend(process.env.RESEND_API_KEY);
-  // await resend.emails.send({
-  //   from: 'CareCompanion <welcome@carecompanionai.org>',
-  //   to: email,
-  //   subject: 'Welcome to CareCompanion',
-  //   html: welcomeEmailHtml(name),
-  // });
+  if (!email) {
+    return NextResponse.json({ error: 'No email on account' }, { status: 400 });
+  }
 
-  console.log(`[Welcome Email] Would send to: ${email}, name: ${name}`);
+  const result = await sendEmail({
+    to: email,
+    subject: 'Welcome to CareCompanion',
+    html: welcomeEmailHtml(name),
+  });
+
+  if (!result.success) {
+    console.warn(`[Welcome Email] Could not send to ${email}: ${result.reason}`);
+    // Still return 200 — email failure shouldn't block sign-up flows
+    return NextResponse.json({ sent: false, email, reason: result.reason });
+  }
 
   return NextResponse.json({ sent: true, email });
 }

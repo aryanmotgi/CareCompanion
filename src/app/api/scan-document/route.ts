@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { extractDocument } from '@/lib/extract-document'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { logAudit } from '@/lib/audit'
+import { withMetrics } from '@/lib/api-metrics'
 
 export const maxDuration = 60
 
@@ -13,13 +15,19 @@ export const maxDuration = 60
  * Accepts FormData with `file` and optional `category`.
  * Returns the legacy response shape (flat arrays, uppercase doc types).
  */
-export async function POST(req: Request) {
+async function handler(req: Request) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       return new Response('Unauthorized', { status: 401 })
     }
+
+    await logAudit({
+      user_id: user.id,
+      action: 'scan_document',
+      ip_address: req.headers.get('x-forwarded-for') || undefined,
+    })
 
     // Rate limiting (shared with /api/documents/extract)
     const rateCheck = checkRateLimit(`extract:${user.id}`, { maxRequests: 10, windowMs: 60_000 })
@@ -85,6 +93,8 @@ export async function POST(req: Request) {
     })
   }
 }
+
+export const POST = withMetrics('/api/scan-document', handler);
 
 function mapDocType(type: string): string {
   const map: Record<string, string> = {

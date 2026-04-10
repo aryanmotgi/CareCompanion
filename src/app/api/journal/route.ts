@@ -1,76 +1,123 @@
-import { createClient } from '@/lib/supabase/server';
+import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
+import { apiError, apiSuccess } from '@/lib/api-response';
+import { rateLimit } from '@/lib/rate-limit';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 20 });
+
+const PostSchema = z.object({
+  mood: z.number().min(1).max(10).optional(),
+  energy: z.number().min(1).max(10).optional(),
+  pain: z.number().min(0).max(10).optional(),
+  sleep_hours: z.number().min(0).max(24).optional(),
+  symptoms: z.array(z.string()).optional(),
+  notes: z.string().max(2000).optional(),
+}).passthrough();
+
+const DeleteSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format'),
+});
 
 // POST — save or update today's symptom entry
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new Response('Unauthorized', { status: 401 });
+  const ip = req.headers.get('x-forwarded-for') || 'unknown';
+  const { success } = limiter.check(ip);
+  if (!success) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
 
-  const body = await req.json();
-  const today = new Date().toISOString().split('T')[0];
+  try {
+    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    if (authError) return authError;
 
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
+    const body = await req.json();
+    const { data: validated, error: valError } = validateBody(PostSchema, body);
+    if (valError) return valError;
 
-  const { data: entry, error } = await supabase
-    .from('symptom_entries')
-    .upsert({
-      user_id: user.id,
-      care_profile_id: profile?.id || null,
-      date: today,
-      ...body,
-    }, { onConflict: 'user_id,date' })
-    .select()
-    .single();
+    const today = new Date().toISOString().split('T')[0];
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ success: true, entry });
+    const { data: profile } = await supabase
+      .from('care_profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+
+    const { data: entry, error } = await supabase
+      .from('symptom_entries')
+      .upsert({
+        user_id: user.id,
+        care_profile_id: profile?.id || null,
+        date: today,
+        ...validated,
+      }, { onConflict: 'user_id,date' })
+      .select()
+      .single();
+
+    if (error) return apiError(error.message, 500);
+    return apiSuccess({ success: true, entry });
+  } catch (err) {
+    console.error('[journal] POST error:', err);
+    return apiError('Internal server error', 500);
+  }
 }
 
 // GET — fetch symptom entries
 export async function GET(req: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new Response('Unauthorized', { status: 401 });
+  try {
+    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    if (authError) return authError;
 
-  const url = new URL(req.url);
-  const days = parseInt(url.searchParams.get('days') || '14');
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const url = new URL(req.url);
+    const days = parseInt(url.searchParams.get('days') || '14');
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-  const { data } = await supabase
-    .from('symptom_entries')
-    .select('*')
-    .eq('user_id', user.id)
-    .gte('date', since)
-    .order('date', { ascending: false });
+    const { data } = await supabase
+      .from('symptom_entries')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('date', since)
+      .order('date', { ascending: false });
 
-  return Response.json({ entries: data || [] });
+    return apiSuccess({ entries: data || [] });
+  } catch (err) {
+    console.error('[journal] GET error:', err);
+    return apiError('Internal server error', 500);
+  }
 }
 
 // DELETE — remove a symptom entry by date
 export async function DELETE(req: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new Response('Unauthorized', { status: 401 });
-
-  let date: string | undefined;
-  try {
-    const body = await req.json();
-    date = body?.date;
-  } catch {
-    // empty or invalid JSON body
+  const ip = req.headers.get('x-forwarded-for') || 'unknown';
+  const { success: rlSuccess } = limiter.check(ip);
+  if (!rlSuccess) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
-  if (!date) return Response.json({ error: 'date is required' }, { status: 400 });
 
-  const { error } = await supabase
-    .from('symptom_entries')
-    .delete()
-    .eq('user_id', user.id)
-    .eq('date', date);
+  try {
+    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    if (authError) return authError;
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ success: true });
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return apiError('Invalid or missing request body', 400);
+    }
+
+    const { data: validated, error: valError } = validateBody(DeleteSchema, body);
+    if (valError) return valError;
+
+    const { error } = await supabase
+      .from('symptom_entries')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('date', validated.date);
+
+    if (error) return apiError(error.message, 500);
+    return apiSuccess({ success: true });
+  } catch (err) {
+    console.error('[journal] DELETE error:', err);
+    return apiError('Internal server error', 500);
+  }
 }

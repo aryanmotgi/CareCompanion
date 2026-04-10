@@ -1,52 +1,72 @@
-import { createClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
+import { apiError, apiSuccess } from '@/lib/api-response';
+import { rateLimit } from '@/lib/rate-limit';
+import { logAudit } from '@/lib/audit';
+import { validateCsrf } from '@/lib/csrf';
 import { randomUUID } from 'crypto';
+import { z } from 'zod';
+
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 20 });
+
+const ShareSchema = z.object({
+  type: z.enum(['health_summary', 'medications', 'lab_results', 'care_plan']).default('health_summary'),
+});
 
 // Generate a shareable link for a health summary
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { valid, error: csrfError } = await validateCsrf(request);
+  if (!valid) return csrfError!;
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const ip = request.headers.get('x-forwarded-for') || 'unknown';
+  const { success } = limiter.check(ip);
+  if (!success) {
+    return apiError('Too many requests', 429);
   }
 
-  const body = await request.json();
-  const { type = 'health_summary' } = body;
+  try {
+    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    if (authError) return authError;
 
-  // Generate a unique share token
-  const shareToken = randomUUID();
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    await logAudit({
+      user_id: user.id,
+      action: 'share_data',
+      ip_address: request.headers.get('x-forwarded-for') || undefined,
+    });
 
-  // Store the share link
-  const { error } = await supabase.from('shared_links').insert({
-    user_id: user.id,
-    token: shareToken,
-    type,
-    expires_at: expiresAt.toISOString(),
-  });
+    const body = await request.json();
+    const { data: validated, error: valError } = validateBody(ShareSchema, body);
+    if (valError) return valError;
 
-  if (error) {
-    // If the shared_links table doesn't exist yet, return a helpful message
-    if (error.code === '42P01') {
-      return NextResponse.json({
-        error: 'Share feature not yet configured. Run the SQL migration to create the shared_links table.',
-        sql: `CREATE TABLE shared_links (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
-  token text UNIQUE NOT NULL,
-  type text NOT NULL DEFAULT 'health_summary',
-  expires_at timestamptz NOT NULL,
-  created_at timestamptz DEFAULT now()
-);
-ALTER TABLE shared_links ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can manage own links" ON shared_links FOR ALL USING (auth.uid() = user_id);`,
-      }, { status: 500 });
+    const { type } = validated;
+
+    // Generate a unique share token
+    const shareToken = randomUUID();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    // Store the share link
+    const { error } = await supabase.from('shared_links').insert({
+      user_id: user.id,
+      token: shareToken,
+      type,
+      expires_at: expiresAt.toISOString(),
+    });
+
+    if (error) {
+      // If the shared_links table doesn't exist yet, return a helpful message
+      if (error.code === '42P01') {
+        return apiError(
+          'Share feature not yet configured. Run the SQL migration to create the shared_links table.',
+          500
+        );
+      }
+      return apiError(error.message, 500);
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+
+    const shareUrl = `https://carecompanionai.org/shared/${shareToken}`;
+
+    return apiSuccess({ url: shareUrl, expiresAt: expiresAt.toISOString() });
+  } catch (err) {
+    console.error('[share] POST error:', err);
+    return apiError('Internal server error', 500);
   }
-
-  const shareUrl = `https://carecompanionai.org/shared/${shareToken}`;
-
-  return NextResponse.json({ url: shareUrl, expiresAt: expiresAt.toISOString() });
 }

@@ -1,7 +1,9 @@
+import dynamic from 'next/dynamic';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getActiveProfile } from '@/lib/active-profile';
-import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
+
+const AnalyticsDashboard = dynamic(() => import('@/components/AnalyticsDashboard').then(m => m.AnalyticsDashboard));
 
 export default async function AnalyticsPage() {
   const supabase = await createClient();

@@ -1,8 +1,10 @@
 import { Suspense } from 'react'
+import dynamic from 'next/dynamic'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import type { Claim } from '@/lib/types'
-import { InsuranceView } from '@/components/InsuranceView'
+
+const InsuranceView = dynamic(() => import('@/components/InsuranceView').then(m => m.InsuranceView))
 
 export const metadata = {
   title: 'Insurance & Claims — CareCompanion',

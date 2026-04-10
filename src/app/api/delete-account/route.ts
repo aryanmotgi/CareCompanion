@@ -1,12 +1,32 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { rateLimit } from '@/lib/rate-limit'
+import { logAudit } from '@/lib/audit'
+import { validateCsrf } from '@/lib/csrf'
 
-export async function POST() {
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 5 })
+
+export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req)
+  if (!valid) return csrfError!
+
+  const ip = req.headers.get('x-forwarded-for') || 'unknown'
+  const { success } = limiter.check(ip)
+  if (!success) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+  }
+
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+
+    await logAudit({
+      user_id: user.id,
+      action: 'delete_account',
+      ip_address: req.headers.get('x-forwarded-for') || undefined,
+    })
 
     console.log(`[delete-account] Starting account deletion for user ${user.id}`)
 

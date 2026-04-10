@@ -91,6 +91,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${outfit.variable} ${sourceSans.variable}`}>
+      <head>
+        <meta name="theme-color" content="#6366F1" />
+      </head>
       <body className="font-sans antialiased">
         <script
           type="application/ld+json"

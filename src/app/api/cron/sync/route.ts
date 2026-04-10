@@ -9,12 +9,13 @@ import {
   parseAppointments,
   parseLabResults,
 } from '@/lib/fhir';
+import { withMetrics } from '@/lib/api-metrics';
 
 export const maxDuration = 300; // 5 minutes max for cron
 
 // Vercel cron calls this endpoint on schedule
 // Configured in vercel.json: every 24 hours
-export async function GET(req: Request) {
+async function handler(req: Request) {
   // Verify cron secret to prevent unauthorized access
   const authHeader = req.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
@@ -139,6 +140,8 @@ export async function GET(req: Request) {
     results,
   });
 }
+
+export const GET = withMetrics('/api/cron/sync', handler);
 
 // Lightweight FHIR sync for cron (reuses existing parsers)
 async function syncFhirData(

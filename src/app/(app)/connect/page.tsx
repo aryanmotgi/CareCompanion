@@ -1,8 +1,10 @@
 // Note: This page is also accessible from Settings > Connected Accounts.
 // It works as a standalone page and is linked from the sidebar menu and settings.
+import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { ConnectAccounts } from '@/components/ConnectAccounts';
+
+const ConnectAccounts = dynamic(() => import('@/components/ConnectAccounts').then(m => m.ConnectAccounts));
 
 export default async function ConnectPage() {
   const supabase = await createClient();

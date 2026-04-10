@@ -8,12 +8,13 @@ import { extractAndSaveMemories, loadMemories, loadConversationSummaries, touchR
 import { orchestrate } from '@/lib/agents/orchestrator';
 import { rateLimit } from '@/lib/rate-limit';
 import { NextResponse } from 'next/server';
+import { withMetrics } from '@/lib/api-metrics';
 
-const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 20 });
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 5 });
 
 export const maxDuration = 60;
 
-export async function POST(req: Request) {
+async function handler(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   const { success } = limiter.check(ip);
   if (!success) {
@@ -173,3 +174,5 @@ export async function POST(req: Request) {
 
   return result.toUIMessageStreamResponse();
 }
+
+export const POST = withMetrics('/api/chat', handler);

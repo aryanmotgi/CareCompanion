@@ -49,6 +49,20 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Set CSRF cookie if it doesn't exist (double-submit cookie pattern)
+  if (!request.cookies.get('cc-csrf-token')) {
+    const array = new Uint8Array(32)
+    crypto.getRandomValues(array)
+    const token = Array.from(array, b => b.toString(16).padStart(2, '0')).join('')
+    supabaseResponse.cookies.set('cc-csrf-token', token, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 60 * 60 * 24,
+    })
+  }
+
   return supabaseResponse;
 }
 

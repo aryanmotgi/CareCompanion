@@ -1,7 +1,9 @@
+import dynamic from 'next/dynamic';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { AmbientBackground } from '@/components/AmbientBackground';
+
+const OnboardingWizard = dynamic(() => import('@/components/OnboardingWizard').then(m => m.OnboardingWizard));
 
 export default async function OnboardingPage() {
   const supabase = await createClient();

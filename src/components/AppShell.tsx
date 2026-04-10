@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { BottomTabBar } from './BottomTabBar'
 import { AmbientBackground } from './AmbientBackground'
 import { NotificationBell } from './NotificationBell'
+import { GlobalSearch } from './GlobalSearch'
 import { ProfileSwitcher } from './ProfileSwitcher'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
@@ -38,6 +39,7 @@ const MENU_ITEMS = [
   { label: 'Calendar', href: '/calendar', icon: '📅' },
   { label: 'Analytics', href: '/analytics', icon: '📊' },
   { label: 'Connected Accounts', href: '/connect', icon: '🔗' },
+  { label: 'Sync Status', href: '/sync-status', icon: '🔄' },
   { label: 'Settings', href: '/settings', icon: '⚙️' },
   { label: 'Care Team', href: '/care-team', icon: '👥' },
 ]
@@ -109,6 +111,7 @@ export function AppShell({
               )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <GlobalSearch />
               <NotificationBell
                 initialNotifications={notifications}
                 initialCount={notifications.filter((n: { is_read: boolean }) => !n.is_read).length}

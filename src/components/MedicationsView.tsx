@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { CategoryScanner } from '@/components/CategoryScanner';
+import { InteractionWarning } from '@/components/InteractionWarning';
 import type { Medication } from '@/lib/types';
 
 interface MedicationsViewProps {
@@ -24,6 +25,8 @@ export function MedicationsView({ medications: initial, profileId }: Medications
   const [saving, setSaving] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null);
   const [removing, setRemoving] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [interactionWarning, setInteractionWarning] = useState<{ interactions: any[]; medName: string } | null>(null);
 
   const addMedication = async () => {
     if (!name.trim()) return;
@@ -45,6 +48,23 @@ export function MedicationsView({ medications: initial, profileId }: Medications
       setDose('');
       setFrequency('');
       setShowAdd(false);
+
+      // Automatically check for drug interactions with existing medications
+      try {
+        const checkRes = await fetch('/api/interactions/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ medication: data.name }),
+        });
+        if (checkRes.ok) {
+          const checkData = await checkRes.json();
+          if (checkData.data?.interactions?.length > 0) {
+            setInteractionWarning({ interactions: checkData.data.interactions, medName: data.name });
+          }
+        }
+      } catch {
+        // Interaction check is non-blocking; silently ignore failures
+      }
     }
   };
 
@@ -100,6 +120,15 @@ export function MedicationsView({ medications: initial, profileId }: Medications
             <Button variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
           </div>
         </div>
+      )}
+
+      {/* Interaction warning */}
+      {interactionWarning && (
+        <InteractionWarning
+          interactions={interactionWarning.interactions}
+          newMedication={interactionWarning.medName}
+          onDismiss={() => setInteractionWarning(null)}
+        />
       )}
 
       {/* List */}

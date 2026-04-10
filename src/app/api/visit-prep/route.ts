@@ -3,11 +3,22 @@ import { generateText } from 'ai';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { detectVisitType, getVisitTemplate } from '@/lib/visit-prep-templates';
+import { rateLimit } from '@/lib/rate-limit';
+import { NextResponse } from 'next/server';
+import { withMetrics } from '@/lib/api-metrics';
+
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 5 });
 
 export const maxDuration = 30;
 
 // POST — generate a structured visit prep sheet for an appointment
-export async function POST(req: Request) {
+async function handler(req: Request) {
+  const ip = req.headers.get('x-forwarded-for') || 'unknown';
+  const { success } = limiter.check(ip);
+  if (!success) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Response('Unauthorized', { status: 401 });
@@ -113,3 +124,5 @@ Keep it warm but professional. This is for a family caregiver, not a clinician.`
 
   return Response.json({ success: true, prep_sheet: text });
 }
+
+export const POST = withMetrics('/api/visit-prep', handler);

@@ -2,14 +2,32 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { rateLimit } from '@/lib/rate-limit';
+import { logAudit } from '@/lib/audit';
+import { NextResponse } from 'next/server';
+import { withMetrics } from '@/lib/api-metrics';
+
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 5 });
 
 export const maxDuration = 30;
 
 // POST — generate a comprehensive health summary document
-export async function POST() {
+async function postHandler(req: Request) {
+  const ip = req.headers.get('x-forwarded-for') || 'unknown';
+  const { success } = limiter.check(ip);
+  if (!success) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Response('Unauthorized', { status: 401 });
+
+  await logAudit({
+    user_id: user.id,
+    action: 'generate_summary',
+    ip_address: req.headers.get('x-forwarded-for') || undefined,
+  });
 
   const admin = createAdminClient();
 
@@ -109,8 +127,11 @@ Make it professional but readable. A doctor should be able to scan it in 2 minut
   return Response.json({ success: true, summary: text, generated_at: new Date().toISOString() });
 }
 
+export const POST = withMetrics('/api/health-summary', postHandler);
+
 // GET — retrieve the most recent cached health summary
-export async function GET() {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function getHandler(_req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Response('Unauthorized', { status: 401 });
@@ -129,3 +150,5 @@ export async function GET() {
 
   return Response.json({ summary: data.content, generated_at: data.generated_at });
 }
+
+export const GET = withMetrics('/api/health-summary', getHandler);

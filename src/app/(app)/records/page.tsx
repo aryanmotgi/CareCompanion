@@ -1,8 +1,10 @@
 import { Suspense } from 'react'
+import dynamic from 'next/dynamic'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import type { ConnectedApp, Medication, Appointment, LabResult, Document } from '@/lib/types'
-import { RecordsView } from '@/components/RecordsView'
+
+const RecordsView = dynamic(() => import('@/components/RecordsView').then(m => m.RecordsView))
 
 export const metadata = {
   title: 'Health Records — CareCompanion',
