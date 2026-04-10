@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from './ToastProvider'
+import { useCsrfToken } from './CsrfProvider'
 import { ThemeToggle } from './ThemeToggle'
 import { ReminderManager } from './ReminderManager'
 import { NotificationPreferences } from './NotificationPreferences'
@@ -65,6 +66,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export function SettingsPage({ settings: initialSettings, connectedApps, medicationReminders = [], medications = [] }: SettingsPageProps) {
   const router = useRouter()
   const { showToast } = useToast()
+  const csrfToken = useCsrfToken()
   const [settings, setSettings] = useState<UserSettings | null>(initialSettings)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showPasswordForm, setShowPasswordForm] = useState(false)
@@ -153,7 +155,10 @@ export function SettingsPage({ settings: initialSettings, connectedApps, medicat
   const handleDeleteAccount = async () => {
     setSaving(true)
     try {
-      const res = await fetch('/api/delete-account', { method: 'POST' })
+      const res = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: { 'x-csrf-token': csrfToken },
+      })
       if (!res.ok) throw new Error('Delete failed')
       window.location.href = '/login'
     } catch {

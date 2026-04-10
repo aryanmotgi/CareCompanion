@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useToast } from '@/components/ToastProvider';
+import { useCsrfToken } from '@/components/CsrfProvider';
 
 interface HealthSummaryViewProps {
   patientName: string;
@@ -9,6 +10,7 @@ interface HealthSummaryViewProps {
 
 export function HealthSummaryView({ patientName }: HealthSummaryViewProps) {
   const { showToast } = useToast();
+  const csrfToken = useCsrfToken();
   const [summary, setSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -38,7 +40,7 @@ export function HealthSummaryView({ patientName }: HealthSummaryViewProps) {
     try {
       const res = await fetch('/api/share', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
         body: JSON.stringify({ type: 'health_summary' }),
       });
       if (res.ok) {

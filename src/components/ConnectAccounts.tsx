@@ -647,7 +647,11 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
                   onClick={async () => {
                     setDeleting(true);
                     try {
-                      const res = await fetch('/api/delete-account', { method: 'POST' });
+                      const csrfMatch = document.cookie.match(/(?:^|; )cc-csrf-token=([^;]+)/);
+                      const res = await fetch('/api/delete-account', {
+                        method: 'POST',
+                        headers: csrfMatch ? { 'x-csrf-token': csrfMatch[1] } : {},
+                      });
                       if (!res.ok) throw new Error('Delete failed');
                       window.location.href = '/login';
                     } catch {

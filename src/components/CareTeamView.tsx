@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import type { CareTeamMember, CareTeamInvite, CareTeamActivity } from '@/lib/types';
 import { useToast } from '@/components/ToastProvider';
+import { useCsrfToken } from '@/components/CsrfProvider';
 
 const ROLE_LABELS: Record<string, string> = {
   owner: 'Owner',
@@ -29,6 +30,7 @@ function timeAgo(dateStr: string) {
 
 export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | null }) {
   const { showToast } = useToast();
+  const csrfToken = useCsrfToken();
   const [members, setMembers] = useState<CareTeamMember[]>([]);
   const [invites, setInvites] = useState<CareTeamInvite[]>([]);
   const [activity, setActivity] = useState<CareTeamActivity[]>([]);
@@ -96,7 +98,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
 
     const res = await fetch('/api/care-team/invite', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
       body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
     });
 
@@ -117,7 +119,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
     try {
       const res = await fetch('/api/care-team/remove', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
         body: JSON.stringify({ member_id: memberId }),
       });
       const data = await res.json();
