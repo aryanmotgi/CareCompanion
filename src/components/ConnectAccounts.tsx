@@ -155,6 +155,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
       }
     };
     if (!connected && !error) autoSync();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, supabase]);
 
   const handleManagingForChange = (value: 'self' | 'other') => {

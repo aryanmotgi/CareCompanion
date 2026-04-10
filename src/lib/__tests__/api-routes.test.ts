@@ -153,7 +153,7 @@ describe('API routes', () => {
     it('returns trend data structure', async () => {
       const { GET } = await import('@/app/api/labs/trends/route')
 
-      const res = await GET()
+      const res = await GET(new Request('http://localhost/api/labs/trends'))
       const body = await res.json()
 
       expect(res.status).toBe(200)

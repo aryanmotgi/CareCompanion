@@ -494,8 +494,8 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
       {step === 1 && (
         <div key={animKey} className="space-y-6" style={{ animation: `${slideDir === 'left' ? 'slideInLeft' : 'slideInRight'} 0.35s ease-out` }}>
           <div className="text-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             {userAvatar && (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={userAvatar}
                 alt=""
