@@ -3,6 +3,7 @@
  * Receives push notifications from Epic/1upHealth when new health data arrives.
  * Eliminates polling delay — lab results appear immediately.
  */
+import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { z } from 'zod'
@@ -15,8 +16,9 @@ const WebhookPayloadSchema = z.object({
   timestamp: z.string().optional(),
 })
 
-// Verify webhook signature (basic HMAC — replace with provider-specific verification)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// Verify webhook signature using HMAC-SHA256 + constant-time comparison.
+// Providers send: x-webhook-signature: sha256=<hex_digest>
+// We compute HMAC-SHA256(secret, rawBody) and compare with timingSafeEqual.
 function verifyWebhookSignature(req: Request, body: string): boolean {
   const signature = req.headers.get('x-webhook-signature')
   const secret = process.env.FHIR_WEBHOOK_SECRET
@@ -28,9 +30,24 @@ function verifyWebhookSignature(req: Request, body: string): boolean {
 
   if (!signature) return false
 
-  // In production, implement proper HMAC-SHA256 verification here
-  // For now, simple secret comparison
-  return signature === secret
+  const expectedHex = crypto
+    .createHmac('sha256', secret)
+    .update(body, 'utf8')
+    .digest('hex')
+
+  // Support both "sha256=<hex>" (GitHub-style) and raw hex
+  const receivedHex = signature.startsWith('sha256=')
+    ? signature.slice(7)
+    : signature
+
+  try {
+    const receivedBuf = Buffer.from(receivedHex, 'hex')
+    const expectedBuf = Buffer.from(expectedHex, 'hex')
+    if (receivedBuf.length !== expectedBuf.length) return false
+    return crypto.timingSafeEqual(receivedBuf, expectedBuf)
+  } catch {
+    return false
+  }
 }
 
 export async function POST(req: Request) {

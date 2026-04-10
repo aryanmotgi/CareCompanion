@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getProvider } from '@/lib/fhir-providers';
 import { syncOneUpData } from '@/lib/oneup-sync';
+import { encryptToken, verifyState } from '@/lib/token-encryption';
 
 export const maxDuration = 60;
 
@@ -23,14 +24,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${baseUrl}/connect?error=missing_code`);
   }
 
-  // Decode state
-  let userId: string;
-  let providerId: string;
-  try {
-    const stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
-    userId = stateData.userId;
-    providerId = stateData.provider;
-  } catch {
+  // Verify HMAC-signed state — rejects tampered or forged state values
+  const stateData = verifyState(state);
+  if (!stateData) {
+    return NextResponse.redirect(`${baseUrl}/connect?error=invalid_state`);
+  }
+
+  const userId = stateData.userId;
+  const providerId = stateData.provider;
+
+  if (!userId || !providerId) {
     return NextResponse.redirect(`${baseUrl}/connect?error=invalid_state`);
   }
 
@@ -39,7 +42,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${baseUrl}/connect?error=unknown_provider`);
   }
 
-  // Verify the authenticated user matches
+  // Verify the authenticated user matches the one who initiated the flow
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -64,7 +67,7 @@ export async function GET(req: NextRequest) {
       body.set('client_secret', clientSecret);
     }
 
-    // PKCE: include code_verifier if present
+    // PKCE: include code_verifier if this provider requires it
     if (provider.requiresPkce) {
       const codeVerifier = req.cookies.get('fhir_pkce_verifier')?.value;
       if (codeVerifier) {
@@ -95,13 +98,13 @@ export async function GET(req: NextRequest) {
 
     const admin = createAdminClient();
 
-    // Save the connection
+    // Save the connection — tokens encrypted at rest
     const { error: upsertError } = await admin.from('connected_apps').upsert(
       {
         user_id: user.id,
         source,
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token || null,
+        access_token: encryptToken(tokens.access_token),
+        refresh_token: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
         expires_at: expiresAt,
         metadata: {
           provider_id: providerId,
@@ -119,14 +122,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${baseUrl}/connect?error=save_failed`);
     }
 
-    // Trigger sync based on provider type
+    // Trigger initial sync — pass plaintext token directly (not re-read from DB)
     if (providerId === '1uphealth') {
-      // Use the dedicated 1upHealth sync engine
       syncOneUpData(user.id, tokens.access_token).catch((err) => {
         console.error('1upHealth initial sync error:', err);
       });
     } else {
-      // Generic FHIR sync for other providers
       fetch(`${baseUrl}/api/fhir/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

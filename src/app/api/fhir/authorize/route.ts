@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getProvider } from '@/lib/fhir-providers';
+import { encryptToken, safeDecryptToken, signState } from '@/lib/token-encryption';
 import crypto from 'crypto';
 
 export async function GET(req: NextRequest) {
@@ -37,11 +38,8 @@ export async function GET(req: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const redirectUri = `${baseUrl}/api/fhir/callback`;
 
-  // Encode state with user ID and provider
-  const state = Buffer.from(JSON.stringify({
-    userId: user.id,
-    provider: providerId,
-  })).toString('base64url');
+  // HMAC-signed state — prevents CSRF and state tampering
+  const state = signState({ userId: user.id, provider: providerId });
 
   // 1upHealth uses a different connect flow:
   // 1. Create a 1up user → get auth code
@@ -51,7 +49,7 @@ export async function GET(req: NextRequest) {
     try {
       const admin = createAdminClient();
 
-      // Check if we already have a valid access token stored
+      // Check if we already have a valid (non-expired) token stored
       const { data: existingConn } = await admin
         .from('connected_apps')
         .select('access_token, expires_at')
@@ -59,8 +57,11 @@ export async function GET(req: NextRequest) {
         .eq('source', '1uphealth')
         .single();
 
-      let accessToken = existingConn?.access_token;
       const isExpired = existingConn?.expires_at && new Date(existingConn.expires_at) < new Date();
+      // Decrypt the stored token for use (may be legacy plaintext during migration)
+      let accessToken = existingConn?.access_token
+        ? safeDecryptToken(existingConn.access_token)
+        : null;
 
       if (!accessToken || isExpired) {
         // Step 1: Create a 1up user, or get a new auth code if they already exist
@@ -122,13 +123,13 @@ export async function GET(req: NextRequest) {
         const tokenData = await tokenRes.json();
         accessToken = tokenData.access_token;
 
-        // Store the connection so we can reuse the token
+        // Store the connection — tokens encrypted at rest
         await admin.from('connected_apps').upsert(
           {
             user_id: user.id,
             source: '1uphealth',
-            access_token: tokenData.access_token,
-            refresh_token: tokenData.refresh_token || null,
+            access_token: encryptToken(tokenData.access_token),
+            refresh_token: tokenData.refresh_token ? encryptToken(tokenData.refresh_token) : null,
             expires_at: tokenData.expires_in
               ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
               : null,
@@ -142,7 +143,7 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      // Step 3: Redirect to 1upHealth system search UI
+      // Step 3: Redirect to 1upHealth system search UI (requires plaintext token)
       const connectParams = new URLSearchParams({
         client_id: clientId,
         access_token: accessToken!,
@@ -170,7 +171,7 @@ export async function GET(req: NextRequest) {
     params.set('aud', provider.fhirBaseUrl);
   }
 
-  // PKCE support
+  // PKCE support (required for Epic, Cerner, VA)
   if (provider.requiresPkce) {
     const codeVerifier = crypto.randomBytes(32).toString('base64url');
     const codeChallenge = crypto
