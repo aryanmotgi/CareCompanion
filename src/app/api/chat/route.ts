@@ -7,7 +7,7 @@ import { buildTools } from '@/lib/tools';
 import { extractAndSaveMemories, loadMemories, loadConversationSummaries, touchReferencedMemories, summarizeConversation } from '@/lib/memory';
 import { orchestrate } from '@/lib/agents/orchestrator';
 import { rateLimit } from '@/lib/rate-limit';
-import { NextResponse } from 'next/server';
+import { ApiErrors } from '@/lib/api-response';
 import { withMetrics } from '@/lib/api-metrics';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 5 });
@@ -18,7 +18,7 @@ async function handler(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   const { success } = limiter.check(ip);
   if (!success) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    return ApiErrors.rateLimited();
   }
 
   const supabase = await createClient();

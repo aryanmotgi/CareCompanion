@@ -3,7 +3,7 @@
 import { useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { SupabaseContext } from '@/lib/hooks/useSupabase';
+import { SupabaseContext } from '@/hooks/useSupabase';
 
 export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();

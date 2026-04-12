@@ -1,5 +1,6 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
+import { validateCsrf } from '@/lib/csrf';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { rateLimit } from '@/lib/rate-limit';
 import { logAudit } from '@/lib/audit';
@@ -20,6 +21,9 @@ export async function POST(req: Request) {
   }
 
   try {
+    const { valid, error: csrfError } = await validateCsrf(req);
+    if (!valid) return csrfError!;
+
     const { user, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
 

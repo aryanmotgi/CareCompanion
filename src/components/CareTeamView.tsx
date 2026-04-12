@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { CareTeamMember, CareTeamInvite, CareTeamActivity } from '@/lib/types';
 import { useToast } from '@/components/ToastProvider';
 import { useCsrfToken } from '@/components/CsrfProvider';
@@ -44,15 +44,18 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
 
   const canManage = myRole === 'owner' || myRole === 'editor';
 
-  useEffect(() => {
-    if (acceptInviteId) {
-      acceptInvite(acceptInviteId);
-    } else {
-      loadTeam();
-    }
-  }, [acceptInviteId]);
+  const loadTeam = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch('/api/care-team');
+    const data = await res.json();
+    setMembers(data.members || []);
+    setInvites(data.invites || []);
+    setActivity(data.activity || []);
+    setMyRole(data.role);
+    setLoading(false);
+  }, []);
 
-  async function acceptInvite(inviteId: string) {
+  const acceptInvite = useCallback(async (inviteId: string) => {
     setAcceptingInvite(true);
     setMessage(null);
     try {
@@ -77,18 +80,15 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
     // Remove the ?accept= param from the URL without a reload
     window.history.replaceState({}, '', '/care-team');
     loadTeam();
-  }
+  }, [showToast, loadTeam]);
 
-  async function loadTeam() {
-    setLoading(true);
-    const res = await fetch('/api/care-team');
-    const data = await res.json();
-    setMembers(data.members || []);
-    setInvites(data.invites || []);
-    setActivity(data.activity || []);
-    setMyRole(data.role);
-    setLoading(false);
-  }
+  useEffect(() => {
+    if (acceptInviteId) {
+      acceptInvite(acceptInviteId);
+    } else {
+      loadTeam();
+    }
+  }, [acceptInviteId, acceptInvite, loadTeam]);
 
   async function sendInvite(e: React.FormEvent) {
     e.preventDefault();

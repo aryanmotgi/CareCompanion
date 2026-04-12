@@ -1,7 +1,6 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
-import { apiError, apiSuccess } from '@/lib/api-response';
+import { apiError, apiSuccess, ApiErrors } from '@/lib/api-response';
 import { rateLimit } from '@/lib/rate-limit';
-import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 20 });
@@ -23,9 +22,7 @@ const DeleteSchema = z.object({
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   const { success } = limiter.check(ip);
-  if (!success) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
-  }
+  if (!success) return ApiErrors.rateLimited();
 
   try {
     const { user, supabase, error: authError } = await getAuthenticatedUser();
@@ -54,7 +51,10 @@ export async function POST(req: Request) {
       .select()
       .single();
 
-    if (error) return apiError(error.message, 500);
+    if (error) {
+      console.error('[journal] POST db error:', error.message);
+      return apiError('Failed to save journal entry', 500);
+    }
     return apiSuccess({ success: true, entry });
   } catch (err) {
     console.error('[journal] POST error:', err);
@@ -90,9 +90,7 @@ export async function GET(req: Request) {
 export async function DELETE(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   const { success: rlSuccess } = limiter.check(ip);
-  if (!rlSuccess) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
-  }
+  if (!rlSuccess) return ApiErrors.rateLimited();
 
   try {
     const { user, supabase, error: authError } = await getAuthenticatedUser();
@@ -114,7 +112,10 @@ export async function DELETE(req: Request) {
       .eq('user_id', user.id)
       .eq('date', validated.date);
 
-    if (error) return apiError(error.message, 500);
+    if (error) {
+      console.error('[journal] DELETE db error:', error.message);
+      return apiError('Failed to delete journal entry', 500);
+    }
     return apiSuccess({ success: true });
   } catch (err) {
     console.error('[journal] DELETE error:', err);

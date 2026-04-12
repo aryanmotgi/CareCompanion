@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { apiError, ApiErrors } from '@/lib/api-response'
 import { rateLimit } from '@/lib/rate-limit'
 import { logAudit } from '@/lib/audit'
 
@@ -8,14 +8,11 @@ const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxReq
 export async function GET(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown'
   const { success } = limiter.check(ip)
-  if (!success) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
-  }
+  if (!success) return ApiErrors.rateLimited()
 
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    const { user, supabase, error: authError } = await getAuthenticatedUser()
+    if (authError) return authError
 
     await logAudit({
       user_id: user.id,
@@ -48,7 +45,7 @@ export async function GET(req: Request) {
       notifications: notifications.data,
     }
 
-    return new NextResponse(JSON.stringify(exportData, null, 2), {
+    return new Response(JSON.stringify(exportData, null, 2), {
       headers: {
         'Content-Type': 'application/json',
         'Content-Disposition': 'attachment; filename="carecompanion-data.json"',
@@ -56,6 +53,6 @@ export async function GET(req: Request) {
     })
   } catch (error) {
     console.error('[export-data] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return apiError('Internal server error', 500)
   }
 }

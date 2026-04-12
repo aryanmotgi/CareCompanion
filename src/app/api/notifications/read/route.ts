@@ -1,7 +1,6 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
-import { apiError, apiSuccess } from '@/lib/api-response';
+import { apiError, apiSuccess, ApiErrors } from '@/lib/api-response';
 import { rateLimit } from '@/lib/rate-limit';
-import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 20 });
@@ -17,7 +16,7 @@ export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   const { success } = limiter.check(ip);
   if (!success) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    return ApiErrors.rateLimited();
   }
 
   try {

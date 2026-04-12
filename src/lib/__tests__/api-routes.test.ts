@@ -80,12 +80,12 @@ describe('API routes', () => {
       const body = await res.json()
 
       expect(res.status).toBe(200)
-      expect(body.success).toBe(true)
-      expect(body.counts).toBeDefined()
-      expect(typeof body.counts.medications).toBe('number')
-      expect(typeof body.counts.labs).toBe('number')
-      expect(typeof body.counts.appointments).toBe('number')
-      expect(typeof body.counts.doctors).toBe('number')
+      expect(body.ok).toBe(true)
+      expect(body.data.counts).toBeDefined()
+      expect(typeof body.data.counts.medications).toBe('number')
+      expect(typeof body.data.counts.labs).toBe('number')
+      expect(typeof body.data.counts.appointments).toBe('number')
+      expect(typeof body.data.counts.doctors).toBe('number')
     })
   })
 

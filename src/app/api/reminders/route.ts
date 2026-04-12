@@ -1,8 +1,7 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
-import { apiError, apiSuccess } from '@/lib/api-response';
+import { apiError, apiSuccess, ApiErrors } from '@/lib/api-response';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { rateLimit } from '@/lib/rate-limit';
-import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 20 });
@@ -47,7 +46,7 @@ export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   const { success } = limiter.check(ip);
   if (!success) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    return ApiErrors.rateLimited();
   }
 
   try {
@@ -71,7 +70,10 @@ export async function POST(req: Request) {
       is_active: true,
     }, { onConflict: 'user_id,medication_id' });
 
-    if (error) return apiError(error.message, 500);
+    if (error) {
+      console.error('[reminders] POST db error:', error.message);
+      return apiError('Failed to save reminder', 500);
+    }
     return apiSuccess({ success: true, message: `Reminder set for ${medication_name}.` });
   } catch (err) {
     console.error('[reminders] POST error:', err);
@@ -84,7 +86,7 @@ export async function DELETE(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   const { success: rlSuccess } = limiter.check(ip);
   if (!rlSuccess) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    return ApiErrors.rateLimited();
   }
 
   try {

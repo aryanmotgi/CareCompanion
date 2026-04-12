@@ -1,6 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { apiSuccess, apiError, ApiErrors } from '@/lib/api-response'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
 import { rateLimit } from '@/lib/rate-limit'
 import { logAudit } from '@/lib/audit'
 import { validateCsrf } from '@/lib/csrf'
@@ -13,14 +13,11 @@ export async function POST(req: Request) {
 
   const ip = req.headers.get('x-forwarded-for') || 'unknown'
   const { success } = limiter.check(ip)
-  if (!success) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
-  }
+  if (!success) return ApiErrors.rateLimited()
 
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    const { user, error: authError } = await getAuthenticatedUser()
+    if (authError) return authError
 
     await logAudit({
       user_id: user.id,
@@ -83,16 +80,16 @@ export async function POST(req: Request) {
     }
 
     // Delete auth user
-    const { error: authError } = await admin.auth.admin.deleteUser(user.id)
-    if (authError) {
-      console.error(`[delete-account] Failed to delete auth user ${user.id}:`, authError)
-      return NextResponse.json({ error: 'Failed to delete auth account' }, { status: 500 })
+    const { error: deleteAuthError } = await admin.auth.admin.deleteUser(user.id)
+    if (deleteAuthError) {
+      console.error(`[delete-account] Failed to delete auth user ${user.id}:`, deleteAuthError)
+      return apiError('Failed to delete auth account', 500)
     }
 
     console.log(`[delete-account] Successfully deleted user ${user.id}`)
-    return NextResponse.json({ success: true })
+    return apiSuccess({ success: true })
   } catch (error) {
     console.error('[delete-account] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return apiError('Internal server error', 500)
   }
 }

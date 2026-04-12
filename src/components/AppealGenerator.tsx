@@ -59,7 +59,7 @@ export function AppealGenerator({ claimId, claimInfo }: AppealGeneratorProps) {
     } finally {
       setLoading(false)
     }
-  }, [claimId, additionalContext])
+  }, [claimId, additionalContext, showToast])
 
   const copyLetter = useCallback(async () => {
     if (!appeal) return

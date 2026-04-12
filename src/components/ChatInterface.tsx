@@ -8,7 +8,7 @@ import { MessageBubble } from '@/components/MessageBubble';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { DocumentScanner } from '@/components/DocumentScanner';
 import { ChatSearch } from '@/components/ChatSearch';
-import { useVoiceInput } from '@/lib/hooks/useVoiceInput';
+import { useVoiceInput } from '@/hooks/useVoiceInput';
 
 interface ChatInterfaceProps {
   initialMessages: UIMessage[];

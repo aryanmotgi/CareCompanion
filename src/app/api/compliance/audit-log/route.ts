@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { apiSuccess, apiError } from '@/lib/api-response'
 
 /**
  * GET /api/compliance/audit-log
@@ -12,20 +12,24 @@ import { NextResponse } from 'next/server'
  *   - offset: pagination offset (default 0)
  */
 export async function GET(req: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const { user, supabase, error: authError } = await getAuthenticatedUser()
+    if (authError) return authError
 
-  const { searchParams } = new URL(req.url)
-  const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
-  const offset = parseInt(searchParams.get('offset') || '0')
+    const { searchParams } = new URL(req.url)
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
+    const offset = parseInt(searchParams.get('offset') || '0')
 
-  const { data, count } = await supabase
-    .from('audit_logs')
-    .select('*', { count: 'exact' })
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1)
+    const { data, count } = await supabase
+      .from('audit_logs')
+      .select('*', { count: 'exact' })
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
 
-  return NextResponse.json({ logs: data || [], total: count || 0, limit, offset })
+    return apiSuccess({ logs: data || [], total: count || 0, limit, offset })
+  } catch (err) {
+    console.error('[audit-log] GET error:', err)
+    return apiError('Internal server error', 500)
+  }
 }
