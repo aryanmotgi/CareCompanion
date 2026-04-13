@@ -10,6 +10,9 @@
  *     -H "Authorization: Bearer YOUR_CRON_SECRET"
  *
  * Safe to call multiple times — skips if the account already exists.
+ *
+ * Add ?reseed_reminders=true to re-run medication reminder seeding for an
+ * existing reviewer account (e.g. provisioned before reminders were added).
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -31,12 +34,26 @@ export async function POST(req: NextRequest) {
   const existing = existingUsers?.users.find((u) => u.email === REVIEWER_EMAIL);
 
   if (existing) {
+    const reseedReminders = req.nextUrl.searchParams.get('reseed_reminders') === 'true';
+
     // Verify they have a care profile (seeded data)
     const { data: profile } = await admin
       .from('care_profiles')
       .select('id')
       .eq('user_id', existing.id)
       .single();
+
+    if (profile && reseedReminders) {
+      // Re-seed only the reminder portion for accounts provisioned before
+      // medication_reminders seeding was added.
+      await seedReminders(admin, existing.id, profile.id);
+      return NextResponse.json({
+        success: true,
+        status: 'reminders_reseeded',
+        email: REVIEWER_EMAIL,
+        userId: existing.id,
+      });
+    }
 
     if (profile) {
       return NextResponse.json({
@@ -200,4 +217,56 @@ async function seedDemoData(admin: any, userId: string) {
   }
 
   await admin.from('user_settings').upsert({ user_id: userId, refill_reminders: true, appointment_reminders: true, lab_alerts: true, claim_updates: true, ai_personality: 'friendly' });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function seedReminders(admin: any, userId: string, careProfileId: string) {
+  const now = new Date();
+  const day = (d: number) => { const x = new Date(now); x.setDate(x.getDate() + d); return x; };
+
+  // Fetch existing medications to get IDs
+  const { data: meds } = await admin
+    .from('medications')
+    .select('id, name')
+    .eq('care_profile_id', careProfileId)
+    .in('name', ['Tamoxifen', 'Lisinopril']);
+
+  if (!meds || meds.length === 0) return;
+
+  // Clear any existing reminders/logs to avoid duplicates
+  const { data: existingReminders } = await admin
+    .from('medication_reminders')
+    .select('id')
+    .eq('user_id', userId);
+
+  if (existingReminders && existingReminders.length > 0) {
+    const reminderIds = existingReminders.map((r: { id: string }) => r.id);
+    await admin.from('reminder_logs').delete().in('reminder_id', reminderIds);
+    await admin.from('medication_reminders').delete().in('id', reminderIds);
+  }
+
+  for (const med of meds) {
+    const reminderTime = med.name === 'Lisinopril' ? '08:00' : '21:00';
+    const { data: reminder } = await admin.from('medication_reminders').insert({
+      user_id: userId, medication_id: med.id, medication_name: med.name,
+      dose: med.name === 'Tamoxifen' ? '20mg' : '10mg',
+      reminder_times: [reminderTime],
+      days_of_week: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+      is_active: true,
+    }).select('id').single();
+    if (!reminder) continue;
+    const logEntries = [];
+    for (let d = 7; d >= 1; d--) {
+      const scheduledDate = day(-d);
+      scheduledDate.setHours(parseInt(reminderTime.split(':')[0]), 0, 0, 0);
+      const isMissed = d === 4 && med.name === 'Tamoxifen';
+      logEntries.push({
+        user_id: userId, reminder_id: reminder.id, medication_name: med.name,
+        scheduled_time: scheduledDate.toISOString(),
+        status: isMissed ? 'missed' : 'taken',
+        responded_at: isMissed ? null : new Date(scheduledDate.getTime() + 5 * 60000).toISOString(),
+      });
+    }
+    await admin.from('reminder_logs').insert(logEntries);
+  }
 }
