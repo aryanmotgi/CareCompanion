@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
 import { DataConsentModal } from '@/components/DataConsentModal';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ToastProvider';
 import type { ConnectedApp } from '@/lib/types';
 
@@ -99,6 +100,8 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
   const [showConsent, setShowConsent] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [disconnectSource, setDisconnectSource] = useState<string | null>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   const isOneUpConnected = apps.some((a) => a.source === '1uphealth');
 
@@ -216,15 +219,31 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
     }
   };
 
-  const handleDisconnect = async (source: string) => {
-    const app = apps.find((a) => a.source === source);
-    if (!app) return;
-    const { error } = await supabase.from('connected_apps').delete().eq('id', app.id);
-    if (!error) {
-      setApps((prev) => prev.filter((a) => a.id !== app.id));
+  const handleDisconnect = (source: string) => {
+    setDisconnectSource(source);
+  };
+
+  const confirmDisconnect = async () => {
+    if (!disconnectSource) return;
+    setDisconnecting(true);
+    try {
+      if (disconnectSource === '1uphealth') {
+        // Server-side: revokes token at 1upHealth then deletes local record
+        const res = await fetch('/api/oneup/revoke', { method: 'POST' });
+        if (!res.ok) throw new Error('Revoke failed');
+      } else {
+        const app = apps.find((a) => a.source === disconnectSource);
+        if (!app) return;
+        const { error } = await supabase.from('connected_apps').delete().eq('id', app.id);
+        if (error) throw new Error(error.message);
+      }
+      setApps((prev) => prev.filter((a) => a.source !== disconnectSource));
       showToast('Account disconnected', 'success');
-    } else {
+    } catch {
       showToast('Failed to disconnect account', 'error');
+    } finally {
+      setDisconnecting(false);
+      setDisconnectSource(null);
     }
   };
 
@@ -704,6 +723,18 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
         onConsent={() => {
           setShowConsent(false);
         }}
+      />
+
+      <ConfirmDialog
+        open={!!disconnectSource}
+        title="Disconnect health records?"
+        description="This will revoke CareCompanion's access to your health data and stop future syncs. Your existing data won't be deleted — you can reconnect anytime."
+        confirmLabel="Disconnect"
+        cancelLabel="Keep connected"
+        variant="danger"
+        loading={disconnecting}
+        onConfirm={confirmDisconnect}
+        onCancel={() => setDisconnectSource(null)}
       />
     </div>
   );

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useCallback } from 'react';
 
 interface DataConsentModalProps {
@@ -88,7 +89,7 @@ export function DataConsentModal({ isOpen, onClose, onConsent, consentHref }: Da
         </div>
 
         {/* Promises */}
-        <div className="px-6 pb-5">
+        <div className="px-6 pb-4">
           <div className="space-y-2 text-xs text-[#64748b]">
             <div className="flex items-start gap-2">
               <span className="text-[#A78BFA] mt-0.5">&#x2022;</span>
@@ -96,13 +97,29 @@ export function DataConsentModal({ isOpen, onClose, onConsent, consentHref }: Da
             </div>
             <div className="flex items-start gap-2">
               <span className="text-[#A78BFA] mt-0.5">&#x2022;</span>
-              <span><strong className="text-[#94a3b8]">You can disconnect</strong> at any time from Settings</span>
+              <span><strong className="text-[#94a3b8]">Disconnect anytime</strong> &mdash; removes access and stops all future syncs</span>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-[#A78BFA] mt-0.5">&#x2022;</span>
-              <span><strong className="text-[#94a3b8]">We never sell</strong> your health data to third parties</span>
+              <span><strong className="text-[#94a3b8]">Never sold</strong> &mdash; your health data is never shared with advertisers or third parties</span>
             </div>
           </div>
+        </div>
+
+        {/* Privacy policy link */}
+        <div className="px-6 pb-5">
+          <p className="text-[11px] text-[#475569]">
+            By connecting, you agree to our{' '}
+            <Link href="/privacy" target="_blank" className="text-[#A78BFA] hover:text-[#c4b5fd] underline underline-offset-2 transition-colors">
+              Privacy Policy
+            </Link>
+            {' '}and{' '}
+            <Link href="/terms" target="_blank" className="text-[#A78BFA] hover:text-[#c4b5fd] underline underline-offset-2 transition-colors">
+              Terms of Service
+            </Link>
+            . Connection is powered by{' '}
+            <strong className="text-[#64748b]">1upHealth</strong>.
+          </p>
         </div>
 
         {/* Actions */}
