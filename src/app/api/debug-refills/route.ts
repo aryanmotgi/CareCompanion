@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { checkRefillStatus } from '@/lib/refill-tracker'
 
 export async function GET() {
   try {
@@ -20,19 +21,18 @@ export async function GET() {
       .select('id, name')
       .eq('care_profile_id', profile?.id || 'none')
 
-    const { data: allProfiles } = await admin
-      .from('care_profiles')
-      .select('id, patient_name')
-      .eq('user_id', user.id)
+    // Also test checkRefillStatus directly
+    const checkResult = profile?.id ? await checkRefillStatus(profile.id) : []
 
     return NextResponse.json({
       user_id: user.id,
-      profile,
+      profile_id: profile?.id,
       profile_error: profileErr?.message,
-      all_profiles: allProfiles,
       admin_meds_count: adminMeds?.length,
       admin_meds: adminMeds?.map(m => m.name),
       admin_error: adminErr?.message,
+      check_refill_status_count: checkResult.length,
+      check_refill_meds: checkResult.map(r => r.medication_name),
     })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
