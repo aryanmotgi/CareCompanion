@@ -137,7 +137,7 @@ async function seedDemoData(admin: any, userId: string) {
   const careProfileId = profile.id;
 
   // ── MEDICATIONS (8 — full chemo + supportive care regimen) ────
-  await admin.from('medications').insert([
+  const { data: insertedMeds } = await admin.from('medications').insert([
     {
       care_profile_id: careProfileId,
       name: 'Trastuzumab (Herceptin)',
@@ -215,7 +215,45 @@ async function seedDemoData(admin: any, userId: string) {
       quantity_remaining: 15,
       notes: 'PRN for anxiety before scans or procedures. Do not mix with alcohol.',
     },
-  ]);
+  ]).select('id, name');
+
+  // ── MEDICATION REMINDERS & LOGS (7 days — powers compliance/adherence UI) ─
+  // Create daily reminders for Tamoxifen and Lisinopril (oral once-daily meds)
+  const dailyMeds = (insertedMeds || []).filter((m: { id: string; name: string }) =>
+    m.name === 'Tamoxifen' || m.name === 'Lisinopril'
+  );
+
+  for (const med of dailyMeds) {
+    const reminderTime = med.name === 'Lisinopril' ? '08:00' : '21:00';
+    const { data: reminder } = await admin.from('medication_reminders').insert({
+      user_id: userId,
+      medication_id: med.id,
+      medication_name: med.name,
+      dose: med.name === 'Tamoxifen' ? '20mg' : '10mg',
+      reminder_times: [reminderTime],
+      days_of_week: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+      is_active: true,
+    }).select('id').single();
+
+    if (!reminder) continue;
+
+    // Seed 7 days of realistic logs: mostly taken, one missed day
+    const logEntries = [];
+    for (let d = 7; d >= 1; d--) {
+      const scheduledDate = day(-d);
+      scheduledDate.setHours(parseInt(reminderTime.split(':')[0]), 0, 0, 0);
+      const isMissed = d === 4 && med.name === 'Tamoxifen'; // one missed day for realism
+      logEntries.push({
+        user_id: userId,
+        reminder_id: reminder.id,
+        medication_name: med.name,
+        scheduled_time: scheduledDate.toISOString(),
+        status: isMissed ? 'missed' : 'taken',
+        responded_at: isMissed ? null : new Date(scheduledDate.getTime() + 5 * 60000).toISOString(),
+      });
+    }
+    await admin.from('reminder_logs').insert(logEntries);
+  }
 
   // ── LAB RESULTS (10 — realistic oncology panel with trends) ───
   await admin.from('lab_results').insert([
@@ -334,6 +372,25 @@ async function seedDemoData(admin: any, userId: string) {
       is_read: true,
     },
   ]);
+
+  // ── SYMPTOM JOURNAL (7 days — powers Treatment Journal UI) ───
+  const SYMPTOM_PATTERNS = [
+    { pain_level: 3, mood: 'okay', energy: 'low', sleep_hours: 7, symptoms: ['Fatigue', 'Nausea'], notes: 'Rough morning, better by afternoon.' },
+    { pain_level: 2, mood: 'good', energy: 'normal', sleep_hours: 7.5, symptoms: ['Mild fatigue'], notes: null },
+    { pain_level: 4, mood: 'bad', energy: 'very_low', sleep_hours: 6, symptoms: ['Fatigue', 'Joint pain', 'Nausea'], notes: 'Nadir day 8 — feeling it today.' },
+    { pain_level: 3, mood: 'okay', energy: 'low', sleep_hours: 7, symptoms: ['Fatigue', 'Mouth sores'], notes: 'Rinsing with saltwater helping.' },
+    { pain_level: 2, mood: 'okay', energy: 'low', sleep_hours: 8, symptoms: ['Mild neuropathy'], notes: 'Feet tingling slightly.' },
+    { pain_level: 2, mood: 'good', energy: 'normal', sleep_hours: 7.5, symptoms: ['Mild fatigue'], notes: 'Better energy today!' },
+    { pain_level: 1, mood: 'good', energy: 'normal', sleep_hours: 8, symptoms: [], notes: 'Feeling stronger as we near next infusion.' },
+  ];
+  await admin.from('symptom_entries').insert(
+    SYMPTOM_PATTERNS.map((p, i) => ({
+      user_id: userId,
+      care_profile_id: careProfileId,
+      date: dayISO(-(7 - i)),
+      ...p,
+    }))
+  );
 
   // ── USER SETTINGS ─────────────────────────────────────────────
   await admin.from('user_settings').upsert({

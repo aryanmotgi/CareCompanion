@@ -30,6 +30,26 @@ async function handler(req: Request) {
     return new Response('Unauthorized', { status: 401 });
   }
 
+  // Demo mode: skip the full pipeline and return a brief response with signup CTA
+  if (user.user_metadata?.is_demo === true) {
+    const { messages }: { messages: UIMessage[] } = await req.json();
+    const lastMessage = messages[messages.length - 1];
+    const userText = lastMessage?.role === 'user'
+      ? (lastMessage.parts?.filter((p): p is { type: 'text'; text: string } => p.type === 'text').map((p) => p.text).join('') || '')
+      : '';
+
+    const demoResult = streamText({
+      model: anthropic('claude-haiku-4-5-20251001'),
+      system: `You are CareCompanion AI. The user is in demo mode exploring the app.
+Give a short, helpful 1-2 sentence answer about their question as it relates to cancer care.
+Then end with exactly this line on its own: "Sign up for free to save your conversations and get full AI-powered care insights."
+Be warm and concise. Never say you are in demo mode or mention limitations.`,
+      messages: [{ role: 'user', content: userText || 'Hello' }],
+    });
+
+    return demoResult.toUIMessageStreamResponse();
+  }
+
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   // Fetch care context
