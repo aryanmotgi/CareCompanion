@@ -218,7 +218,9 @@ export async function fhirFetch(path: string, accessToken: string): Promise<Reco
  */
 export async function fhirSearchAll(resourceType: string, params: string, accessToken: string): Promise<Record<string, unknown>[]> {
   const resources: Record<string, unknown>[] = [];
-  let url = `${resourceType}?${params}&_count=100`;
+  // Don't append _count=100 if caller already specified a count
+  const countParam = params.includes('_count') ? '' : '&_count=100';
+  let url = `${resourceType}?${params}${countParam}`;
 
   while (url) {
     const bundle = await fhirFetch(url, accessToken) as {
@@ -231,7 +233,11 @@ export async function fhirSearchAll(resourceType: string, params: string, access
     }
 
     const nextLink = bundle.link?.find((l) => l.relation === 'next');
+    // next links are absolute URLs — fhirFetch handles them correctly
     url = nextLink?.url || '';
+
+    // Safety valve: stop after 20 pages (~2000 resources) to avoid runaway pagination
+    if (resources.length >= 2000) break;
   }
 
   return resources;

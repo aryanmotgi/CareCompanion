@@ -1,7 +1,7 @@
 import { fhirSearchAll } from './oneup';
 import { createAdminClient } from './supabase/admin';
 import { anthropic } from '@ai-sdk/anthropic';
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import { z } from 'zod';
 
 interface SyncResults {
@@ -329,26 +329,29 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
   // === COVERAGE (Insurance) ===
   try {
     const coverages = await fhirSearchAll('Coverage', 'status=active', accessToken);
-    for (const c of coverages) {
+    const coverageRows = coverages.map((c) => {
       const coverage = c as {
         payor?: Array<{ display?: string }>;
         subscriberId?: string;
         class?: Array<{ type?: { coding?: Array<{ code?: string }> }; value?: string }>;
       };
 
-      const provider = coverage.payor?.[0]?.display || 'Unknown insurer';
-      const memberId = coverage.subscriberId || null;
       const groupClass = coverage.class?.find((cl) => cl.type?.coding?.[0]?.code === 'group');
-      const groupNumber = groupClass?.value || null;
-
-      await admin.from('insurance').upsert({
+      return {
         user_id: userId,
-        provider,
-        member_id: memberId,
-        group_number: groupNumber,
+        provider: coverage.payor?.[0]?.display || 'Unknown insurer',
+        member_id: coverage.subscriberId || null,
+        group_number: groupClass?.value || null,
         plan_year: new Date().getFullYear(),
-      }, { onConflict: 'id' });
-      results.insurance++;
+      };
+    });
+
+    if (coverageRows.length > 0) {
+      // Delete+reinsert avoids the duplicate-row bug that onConflict:'id' caused
+      // (id is auto-generated, so every upsert without an id was actually an insert)
+      await admin.from('insurance').delete().eq('user_id', userId);
+      await admin.from('insurance').insert(coverageRows);
+      results.insurance = coverageRows.length;
     }
   } catch (e) { console.error('Sync coverage error:', e); }
 
@@ -381,12 +384,14 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
 
       // Only run AI detection if we have data to analyze AND fields are missing
       if ((hasConditions || hasMeds) && missingFields) {
-        const { object: detected } = await generateObject({
-          model: anthropic('claude-haiku-4-5-20251001'),
-          schema: z.object({
-            cancer_type: z.string().nullable().describe('The specific cancer type if detectable, e.g. "Breast Cancer", "Lung Cancer", "Colon Cancer". null if not a cancer patient or unclear.'),
-            cancer_stage: z.string().nullable().describe('Cancer stage if detectable, e.g. "Stage II", "Stage IIIA", "Stage IV". null if unclear.'),
-            treatment_phase: z.string().nullable().describe('Current treatment phase, e.g. "active_treatment", "post_surgery", "chemotherapy", "radiation", "maintenance", "remission", "palliative". null if unclear.'),
+        const { output: detected } = await generateText({
+          model: anthropic('claude-haiku-4.5'),
+          output: Output.object({
+            schema: z.object({
+              cancer_type: z.string().nullable().describe('The specific cancer type if detectable, e.g. "Breast Cancer", "Lung Cancer", "Colon Cancer". null if not a cancer patient or unclear.'),
+              cancer_stage: z.string().nullable().describe('Cancer stage if detectable, e.g. "Stage II", "Stage IIIA", "Stage IV". null if unclear.'),
+              treatment_phase: z.string().nullable().describe('Current treatment phase, e.g. "active_treatment", "post_surgery", "chemotherapy", "radiation", "maintenance", "remission", "palliative". null if unclear.'),
+            }),
           }),
           prompt: `Analyze this patient's medical data and detect their cancer type, stage, and treatment phase.
 
