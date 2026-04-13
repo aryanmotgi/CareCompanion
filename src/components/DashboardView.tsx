@@ -7,6 +7,7 @@ import { AnimatedNumber } from './AnimatedNumber'
 import { AlertInsights } from './AlertInsights'
 import { GuidedTour } from './GuidedTour'
 import { NudgeManager } from './NudgeManager'
+import { ConnectHealthModal } from './ConnectHealthModal'
 import { ProfileCompleteness } from './ProfileCompleteness'
 import { AppealGenerator } from './AppealGenerator'
 import { parseLabValue } from '@/lib/lab-parsing'
@@ -363,6 +364,8 @@ export function DashboardView({
   }, [priorities])
 
   return (
+    <>
+    <ConnectHealthModal show={!hasHealthRecords} />
     <div className="px-4 sm:px-5 py-5 sm:py-6">
       <div className="mb-1 text-[var(--text-secondary)] text-xs uppercase tracking-wider">{greeting}</div>
       <h2 className="text-fluid-xl font-bold mb-2 animate-greeting">
@@ -615,5 +618,6 @@ export function DashboardView({
       {/* Guided tour for new users */}
       <GuidedTour />
     </div>
+    </>
   )
 }
