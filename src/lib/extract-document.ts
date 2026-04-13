@@ -1,5 +1,5 @@
 import { anthropic } from '@ai-sdk/anthropic'
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { ExtractionSchema, type Extraction } from '@/lib/extraction-schema'
 
 /**
@@ -16,9 +16,9 @@ export async function extractDocument(
   const safeCategory = category && VALID_CATEGORIES.includes(category) ? category : null
   const prompt = buildExtractionPrompt(safeCategory)
 
-  const { object: extraction } = await generateObject({
-    model: anthropic('claude-sonnet-4-6'),
-    schema: ExtractionSchema,
+  const { output: extraction } = await generateText({
+    model: anthropic('claude-sonnet-4.6'),
+    output: Output.object({ schema: ExtractionSchema }),
     messages: [
       {
         role: 'user',

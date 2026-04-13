@@ -2,7 +2,7 @@
  * Insurance appeal letter generator.
  * Takes a denied claim and generates a structured appeal letter using AI.
  */
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -52,9 +52,9 @@ export async function POST(req: Request) {
       supabase.from('insurance').select('provider, member_id, group_number').eq('user_id', user.id).single(),
     ])
 
-    const { object: appeal } = await generateObject({
-      model: anthropic('claude-haiku-4-5-20251001'),
-      schema: AppealLetterSchema,
+    const { output: appeal } = await generateText({
+      model: anthropic('claude-haiku-4.5'),
+      output: Output.object({ schema: AppealLetterSchema }),
       prompt: `You are a patient advocacy expert. Generate an insurance appeal letter for a denied claim.
 
 DENIED CLAIM:
