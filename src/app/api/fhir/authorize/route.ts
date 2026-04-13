@@ -8,49 +8,68 @@ import crypto from 'crypto';
 /**
  * Get a fresh 1upHealth auth code for the given user.
  *
- * 1upHealth can return HTTP 200 with { success: false, code: null } when:
- * - The sandbox has reset and the user no longer exists on their end
- * - The user was created via a different client_id
+ * 1upHealth has two relevant states:
+ *   A) User does not yet exist on 1upHealth → auth-code fails, user-create returns a code
+ *   B) User exists on 1upHealth → auth-code should return a code
  *
- * Strategy: try auth-code first (for existing users), then fall back to
- * user-create (which also returns a code on success).
+ * However, auth-code can return HTTP 200 with { success: false, code: null }
+ * transiently (flaky API, sandbox resets, etc.) even when the user exists.
+ * In that case, user-create returns HTTP 200 with fhir_user_id but NO code.
+ *
+ * Full strategy:
+ *   1. Try auth-code  →  success: return code
+ *   2. Try user-create → if new user (code present): return code
+ *   3. user-create confirms user exists (fhir_user_id, no code) → retry auth-code once
+ *   4. All three fail → return error
  */
 async function getOneUpAuthCode(
   clientId: string,
   clientSecret: string,
   appUserId: string,
 ): Promise<{ code: string } | { error: string; status: number }> {
-  // Try to get a code for an existing user first
-  const codeRes = await fetch('https://api.1up.health/user-management/v1/user/auth-code', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, app_user_id: appUserId }),
-  });
-
-  const codeData = await codeRes.json().catch(() => ({}));
-
-  // Explicit success check: HTTP 2xx AND a non-empty code field
-  if (codeRes.ok && codeData.code) {
-    return { code: codeData.code };
+  async function tryAuthCode() {
+    const res = await fetch('https://api.1up.health/user-management/v1/user/auth-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, app_user_id: appUserId }),
+    });
+    const data = await res.json().catch(() => ({})) as Record<string, unknown>;
+    return { res, data };
   }
 
-  // Auth-code failed (user may not exist on 1upHealth's side — sandbox resets, etc.)
-  // Fall back to creating the user, which also returns a code on first create.
-  console.warn('[1upHealth] auth-code returned no code, attempting user create:', codeData);
+  // Step 1: auth-code (works for existing users)
+  const { res: codeRes, data: codeData } = await tryAuthCode();
+  if (codeRes.ok && codeData.code) {
+    return { code: codeData.code as string };
+  }
+  console.warn('[1upHealth] auth-code attempt 1 returned no code:', codeData);
 
+  // Step 2: user-create (works for new users, also confirms existing users)
   const createRes = await fetch('https://api.1up.health/user-management/v1/user', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, app_user_id: appUserId }),
   });
-
-  const createData = await createRes.json().catch(() => ({}));
+  const createData = await createRes.json().catch(() => ({})) as Record<string, unknown>;
 
   if (createRes.ok && createData.code) {
-    return { code: createData.code };
+    // New user created — code returned
+    return { code: createData.code as string };
   }
 
-  const errDetail = createData?.error || codeData?.error || `HTTP ${createRes.status}`;
+  if (createRes.ok && createData.fhir_user_id) {
+    // User already existed on 1upHealth's side, auth-code was just flaky.
+    // Retry auth-code once more.
+    console.warn('[1upHealth] user exists but auth-code was flaky — retrying auth-code');
+    const { res: retryRes, data: retryData } = await tryAuthCode();
+    if (retryRes.ok && retryData.code) {
+      return { code: retryData.code as string };
+    }
+    console.error('[1upHealth] auth-code retry also failed:', retryData);
+    return { error: (retryData?.error as string) || 'auth-code retry failed', status: retryRes.status };
+  }
+
+  const errDetail = (createData?.error as string) || (codeData?.error as string) || `HTTP ${createRes.status}`;
   console.error('[1upHealth] user create also failed:', createData);
   return { error: errDetail, status: createRes.status };
 }
@@ -99,15 +118,21 @@ export async function GET(req: NextRequest) {
     try {
       const admin = createAdminClient();
 
-      // Check if we already have a valid (non-expired) token stored
+      // Check if we already have a valid (non-expired) token stored.
+      // Use maybeSingle() so duplicate rows (DB inconsistency) don't throw.
       const { data: existingConn } = await admin
         .from('connected_apps')
         .select('access_token, expires_at')
         .eq('user_id', user.id)
         .eq('source', '1uphealth')
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      // Treat token as expired if expires_at is missing (unknown expiry) or in the past
+      // Treat token as expired if expires_at is missing (unknown expiry) or in the past.
+      // Legacy rows may have expires_at=null — treat them as expired and re-auth.
+      // All new connections now store expires_at with a 1-hour default, so this
+      // null case will only arise for rows created before this fix.
       const isExpired = !existingConn?.expires_at || new Date(existingConn.expires_at) < new Date();
       // safeDecryptToken returns null on decryption failure (key rotation, corruption)
       // so we fall through to fetch a fresh token instead of crashing
@@ -147,18 +172,27 @@ export async function GET(req: NextRequest) {
         }
 
         const tokenData = await tokenRes.json();
+
+        if (!tokenData.access_token) {
+          console.error('[1upHealth] token response missing access_token:', tokenData);
+          return NextResponse.redirect(`${baseUrl}/connect?error=oneup_token_failed&detail=no_access_token`);
+        }
+
         accessToken = tokenData.access_token;
 
+        // Default expires_in to 1 hour if the response doesn't include it.
+        // Storing null causes isExpired=false every time (good), but a default
+        // gives us accurate expiry tracking for cache purposes.
+        const expiresIn = typeof tokenData.expires_in === 'number' ? tokenData.expires_in : 3600;
+
         // Store the connection — tokens encrypted at rest
-        await admin.from('connected_apps').upsert(
+        const { error: upsertErr } = await admin.from('connected_apps').upsert(
           {
             user_id: user.id,
             source: '1uphealth',
             access_token: encryptToken(tokenData.access_token),
             refresh_token: tokenData.refresh_token ? encryptToken(tokenData.refresh_token) : null,
-            expires_at: tokenData.expires_in
-              ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
-              : null,
+            expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
             metadata: {
               oneup_user_id: user.id,
               provider_id: '1uphealth',
@@ -167,6 +201,10 @@ export async function GET(req: NextRequest) {
           },
           { onConflict: 'user_id,source' }
         );
+        if (upsertErr) {
+          // Non-fatal: we still have the token in memory; log and continue
+          console.error('[1upHealth] failed to cache connection in DB:', upsertErr.message);
+        }
       }
 
       // Step 3: Redirect to 1upHealth system search UI (requires plaintext token)
