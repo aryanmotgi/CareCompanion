@@ -116,7 +116,7 @@ export function RefillStatusCard() {
         throw new Error(`Failed to fetch refill status (${res.status})`)
       }
       const json = await res.json()
-      const sorted = [...(json.data ?? [])].sort(sortByUrgency)
+      const sorted = [...(json.data?.medications ?? json.data ?? [])].sort(sortByUrgency)
       setMedications(sorted)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
