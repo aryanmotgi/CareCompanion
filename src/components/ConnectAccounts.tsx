@@ -218,6 +218,12 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
     try {
       const res = await fetch('/api/oneup/sync', { method: 'POST' });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 401 && data.error === 'token_expired') {
+        // Token expired at 1upHealth — remove stale connected state so user can reconnect
+        setApps((prev) => prev.filter((a) => a.source !== '1uphealth'));
+        setConnectError('Your health records connection expired. Please reconnect below.');
+        return;
+      }
       if (!res.ok) throw new Error(data.error || 'Sync failed');
       showToast('Health records synced', 'success');
       router.refresh();

@@ -21,8 +21,16 @@ interface SyncResults {
  * Sync all FHIR data from 1upHealth into our Supabase tables.
  * This is the core engine that auto-populates the user's care profile.
  */
+export class TokenExpiredError extends Error {
+  constructor() {
+    super('1upHealth access token is invalid or expired');
+    this.name = 'TokenExpiredError';
+  }
+}
+
 export async function syncOneUpData(userId: string, accessToken: string): Promise<SyncResults> {
   const admin = createAdminClient();
+  let saw401 = false;
   const results: SyncResults = {
     medications: 0,
     conditions: 0,
@@ -82,7 +90,7 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
         results.patient_age = age;
       }
     }
-  } catch (e) { console.error('Sync patient demographics error:', e); }
+  } catch (e) { if (e instanceof Error && e.message.includes("FHIR fetch failed: 401")) saw401 = true; console.error(e); }
 
   // === MEDICATIONS (MedicationRequest) ===
   try {
@@ -129,7 +137,7 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
       await admin.from('medications').insert(rows);
       results.medications = rows.length;
     }
-  } catch (e) { console.error('Sync medications error:', e); }
+  } catch (e) { if (e instanceof Error && e.message.includes("FHIR fetch failed: 401")) saw401 = true; console.error(e); }
 
   // === CONDITIONS ===
   try {
@@ -150,7 +158,7 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
         results.conditions = newOnes.length;
       }
     }
-  } catch (e) { console.error('Sync conditions error:', e); }
+  } catch (e) { if (e instanceof Error && e.message.includes("FHIR fetch failed: 401")) saw401 = true; console.error(e); }
 
   // === ALLERGIES ===
   try {
@@ -171,7 +179,7 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
         results.allergies = newOnes.length;
       }
     }
-  } catch (e) { console.error('Sync allergies error:', e); }
+  } catch (e) { if (e instanceof Error && e.message.includes("FHIR fetch failed: 401")) saw401 = true; console.error(e); }
 
   // === LAB RESULTS (Observation) ===
   try {
@@ -210,7 +218,7 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
       await admin.from('lab_results').insert(rows);
       results.lab_results = rows.length;
     }
-  } catch (e) { console.error('Sync lab results error:', e); }
+  } catch (e) { if (e instanceof Error && e.message.includes("FHIR fetch failed: 401")) saw401 = true; console.error(e); }
 
   // === APPOINTMENTS ===
   try {
@@ -251,7 +259,7 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
         }
       }
     }
-  } catch (e) { console.error('Sync appointments error:', e); }
+  } catch (e) { if (e instanceof Error && e.message.includes("FHIR fetch failed: 401")) saw401 = true; console.error(e); }
 
   // === PRACTITIONERS (Doctors) ===
   try {
@@ -288,7 +296,7 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
       await admin.from('doctors').insert(rows);
       results.doctors = rows.length;
     }
-  } catch (e) { console.error('Sync practitioners error:', e); }
+  } catch (e) { if (e instanceof Error && e.message.includes("FHIR fetch failed: 401")) saw401 = true; console.error(e); }
 
   // === CLAIMS / EOBs ===
   try {
@@ -324,7 +332,7 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
       await admin.from('claims').insert(rows);
       results.claims = rows.length;
     }
-  } catch (e) { console.error('Sync claims error:', e); }
+  } catch (e) { if (e instanceof Error && e.message.includes("FHIR fetch failed: 401")) saw401 = true; console.error(e); }
 
   // === COVERAGE (Insurance) ===
   try {
@@ -353,9 +361,13 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
       await admin.from('insurance').insert(coverageRows);
       results.insurance = coverageRows.length;
     }
-  } catch (e) { console.error('Sync coverage error:', e); }
+  } catch (e) { if (e instanceof Error && e.message.includes("FHIR fetch failed: 401")) saw401 = true; console.error(e); }
 
-  // Update last_synced
+  // If all FHIR calls returned 401, the stored token is invalid.
+  // Throw so the caller can invalidate the token and prompt reconnect.
+  if (saw401) throw new TokenExpiredError();
+
+  // Update last_synced — only reached if at least some syncs succeeded
   await admin.from('connected_apps')
     .update({ last_synced: new Date().toISOString() })
     .eq('user_id', userId)
