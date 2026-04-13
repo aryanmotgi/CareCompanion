@@ -21,42 +21,60 @@ interface RefillStatus {
 export async function checkRefillStatus(careProfileId: string): Promise<RefillStatus[]> {
   const admin = createAdminClient()
 
-  const { data: medications } = await admin
+  const { data: medications, error: medsError } = await admin
     .from('medications')
     .select('id, name, dose, refill_date, pharmacy_phone, prescribing_doctor')
     .eq('care_profile_id', careProfileId)
     .is('deleted_at', null)
+
+  if (medsError) {
+    // deleted_at column may not exist in older DB versions — retry without it
+    console.warn('[refill-tracker] deleted_at filter failed, retrying without it:', medsError.message)
+    const { data: fallback } = await admin
+      .from('medications')
+      .select('id, name, dose, refill_date, pharmacy_phone, prescribing_doctor')
+      .eq('care_profile_id', careProfileId)
+    if (!fallback || fallback.length === 0) return []
+    // Use fallback medications
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    return fallback.map(med => buildRefillStatus(med, now))
+  }
 
   if (!medications || medications.length === 0) return []
 
   const now = new Date()
   now.setHours(0, 0, 0, 0)
 
-  return medications.map(med => {
-    if (!med.refill_date) {
-      return {
-        medication_id: med.id,
-        medication_name: med.name,
-        dose: med.dose,
-        refill_date: null,
-        days_until_refill: null,
-        status: 'unknown' as const,
-        pharmacy_phone: med.pharmacy_phone,
-        prescribing_doctor: med.prescribing_doctor,
-      }
-    }
+  return medications.map(med => buildRefillStatus(med, now))
+}
 
-    const refillDate = new Date(med.refill_date)
-    refillDate.setHours(0, 0, 0, 0)
-    const diffDays = Math.ceil((refillDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-
-    let status: RefillStatus['status'] = 'ok'
-    if (diffDays < 0) status = 'overdue'
-    else if (diffDays === 0) status = 'due_today'
-    else if (diffDays <= 3) status = 'due_soon'
-    else if (diffDays <= 7) status = 'upcoming'
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildRefillStatus(med: any, now: Date): RefillStatus {
+  if (!med.refill_date) {
     return {
+      medication_id: med.id,
+      medication_name: med.name,
+      dose: med.dose,
+      refill_date: null,
+      days_until_refill: null,
+      status: 'unknown' as const,
+      pharmacy_phone: med.pharmacy_phone,
+      prescribing_doctor: med.prescribing_doctor,
+    }
+  }
+
+  const refillDate = new Date(med.refill_date)
+  refillDate.setHours(0, 0, 0, 0)
+  const diffDays = Math.ceil((refillDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+  let status: RefillStatus['status'] = 'ok'
+  if (diffDays < 0) status = 'overdue'
+  else if (diffDays === 0) status = 'due_today'
+  else if (diffDays <= 3) status = 'due_soon'
+  else if (diffDays <= 7) status = 'upcoming'
+
+  return {
       medication_id: med.id,
       medication_name: med.name,
       dose: med.dose,
@@ -66,7 +84,6 @@ export async function checkRefillStatus(careProfileId: string): Promise<RefillSt
       pharmacy_phone: med.pharmacy_phone,
       prescribing_doctor: med.prescribing_doctor,
     }
-  })
 }
 
 /**
