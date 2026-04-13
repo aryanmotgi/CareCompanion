@@ -3,6 +3,47 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 
+/* ── Interactive demo button — starts a pre-loaded demo session ── */
+function DemoButton() {
+  const [loading, setLoading] = useState(false);
+
+  async function handleClick() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/demo/start', { method: 'POST' });
+      const data = await res.json();
+      if (data.redirectTo) {
+        window.location.href = data.redirectTo;
+      } else {
+        window.location.href = '/dashboard';
+      }
+    } catch {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={loading}
+      className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl border font-semibold text-sm transition-all disabled:opacity-60"
+      style={{ borderColor: 'rgba(167,139,250,0.4)', background: 'rgba(167,139,250,0.08)', color: '#A78BFA' }}
+    >
+      {loading ? (
+        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+        </svg>
+      ) : (
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      )}
+      {loading ? 'Loading demo...' : 'Try interactive demo'}
+    </button>
+  );
+}
+
 /* ── Cycling keyword with typing effect ── */
 const CYCLING_WORDS = ['chemo schedules', 'tumor markers', 'oncology visits', 'treatment side effects', 'lab results'];
 function CyclingWord() {
@@ -1068,6 +1109,7 @@ export default function LandingPage() {
               >
                 Start for free
               </Link>
+              <DemoButton />
               <Link
                 href="/demo-walkthrough"
                 className="px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-[var(--text)] font-semibold text-sm hover:bg-white/[0.08] transition-colors"
