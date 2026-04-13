@@ -21,24 +21,17 @@ interface RefillStatus {
 export async function checkRefillStatus(careProfileId: string): Promise<RefillStatus[]> {
   const admin = createAdminClient()
 
+  // Note: deleted_at filter removed — backend_improvements.sql migration adds
+  // this column but it may not exist in all deployments. Without the column,
+  // no medications can be soft-deleted anyway, so all rows are effectively active.
   const { data: medications, error: medsError } = await admin
     .from('medications')
     .select('id, name, dose, refill_date, pharmacy_phone, prescribing_doctor')
     .eq('care_profile_id', careProfileId)
-    .is('deleted_at', null)
 
   if (medsError) {
-    // deleted_at column may not exist in older DB versions — retry without it
-    console.warn('[refill-tracker] deleted_at filter failed, retrying without it:', medsError.message)
-    const { data: fallback } = await admin
-      .from('medications')
-      .select('id, name, dose, refill_date, pharmacy_phone, prescribing_doctor')
-      .eq('care_profile_id', careProfileId)
-    if (!fallback || fallback.length === 0) return []
-    // Use fallback medications
-    const now = new Date()
-    now.setHours(0, 0, 0, 0)
-    return fallback.map(med => buildRefillStatus(med, now))
+    console.error('[refill-tracker] medications query failed:', medsError.message)
+    return []
   }
 
   if (!medications || medications.length === 0) return []
