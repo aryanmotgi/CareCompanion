@@ -207,10 +207,12 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Step 3: Redirect to 1upHealth system search UI (requires plaintext token)
+      // Step 3: Redirect to 1upHealth system search UI (requires plaintext token).
+      // redirect_uri tells 1upHealth where to send the user after hospital login.
       const connectParams = new URLSearchParams({
         client_id: clientId,
         access_token: accessToken!,
+        redirect_uri: `${baseUrl}/api/oneup/connected`,
       });
 
       return NextResponse.redirect(
