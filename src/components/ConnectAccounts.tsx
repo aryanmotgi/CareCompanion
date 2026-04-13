@@ -26,7 +26,7 @@ const OTHER_SERVICES = [
     accentColor: 'text-emerald-400',
     accentBg: 'bg-emerald-500/15',
     glowColor: 'rgba(52, 211, 153, 0.3)',
-    available: true,
+    available: false,
   },
   {
     id: 'withings',
@@ -36,7 +36,7 @@ const OTHER_SERVICES = [
     accentColor: 'text-cyan-400',
     accentBg: 'bg-cyan-500/15',
     glowColor: 'rgba(34, 211, 238, 0.3)',
-    available: true,
+    available: false,
   },
   {
     id: 'oura',
@@ -46,17 +46,18 @@ const OTHER_SERVICES = [
     accentColor: 'text-violet-400',
     accentBg: 'bg-violet-500/15',
     glowColor: 'rgba(167, 139, 250, 0.3)',
-    available: true,
+    available: false,
   },
   {
     id: 'google_calendar',
     name: 'Google Calendar',
-    description: 'Sync medical appointments',
+    description: 'Sync medical appointments to your calendar',
     icon: 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5',
     accentColor: 'text-amber-400',
     accentBg: 'bg-amber-500/15',
     glowColor: 'rgba(251, 191, 36, 0.3)',
     available: true,
+    connectHref: '/api/auth/google-calendar',
   },
   {
     id: 'walgreens',
@@ -209,11 +210,13 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
   const handleSync = async () => {
     setSyncing(true);
     try {
-      await fetch('/api/oneup/sync', { method: 'POST' });
-      showToast('Sync started', 'success');
+      const res = await fetch('/api/oneup/sync', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Sync failed');
+      showToast('Health records synced', 'success');
       router.refresh();
     } catch {
-      showToast('Failed to sync', 'error');
+      showToast('Failed to sync health records', 'error');
     } finally {
       setSyncing(false);
     }
@@ -527,9 +530,15 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
                           Disconnect
                         </button>
                       ) : (
-                        <button className="text-xs font-medium text-[#A78BFA] bg-blue-500/10 hover:bg-blue-500/20 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] px-3.5 py-1.5 rounded-lg transition-all">
-                          Connect
-                        </button>
+                        'connectHref' in svc ? (
+                          <a href={svc.connectHref} className="text-xs font-medium text-[#A78BFA] bg-blue-500/10 hover:bg-blue-500/20 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] px-3.5 py-1.5 rounded-lg transition-all inline-block">
+                            Connect
+                          </a>
+                        ) : (
+                          <button className="text-xs font-medium text-[#A78BFA] bg-blue-500/10 hover:bg-blue-500/20 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] px-3.5 py-1.5 rounded-lg transition-all">
+                            Connect
+                          </button>
+                        )
                       )
                     ) : (
                       <span className="text-[10px] font-medium text-[var(--text-muted)]/60 bg-white/[0.03] px-2.5 py-1 rounded-md whitespace-nowrap border border-white/[0.04]">
