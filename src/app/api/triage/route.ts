@@ -3,7 +3,7 @@
  * Structured symptom input → urgency classification.
  * The "2am nausea" use case — fast, structured, actionable.
  */
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
@@ -71,9 +71,9 @@ export async function POST(req: Request) {
       ? `Cancer type: ${profile.cancer_type || 'unknown'}. Stage: ${profile.cancer_stage || 'unknown'}. Phase: ${profile.treatment_phase || 'unknown'}. Other conditions: ${profile.conditions || 'none'}. Allergies: ${profile.allergies || 'none'}. Current meds: ${(medications || []).map(m => m.name).join(', ') || 'none'}.`
       : 'No patient profile available.'
 
-    const { object: triage } = await generateObject({
-      model: anthropic('claude-haiku-4-5-20251001'),
-      schema: TriageResultSchema,
+    const { output: triage } = await generateText({
+      model: anthropic('claude-haiku-4.5'),
+      output: Output.object({ schema: TriageResultSchema }),
       prompt: `You are an oncology triage nurse AI. Assess the following symptoms and provide structured triage guidance.
 
 PATIENT CONTEXT: ${patientContext}
