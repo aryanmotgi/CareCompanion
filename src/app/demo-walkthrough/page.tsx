@@ -72,7 +72,7 @@ export default function DemoWalkthroughPage() {
               </svg>
             </div>
             <div className="text-left">
-              <p className="text-sm font-semibold text-white">For 1upHealth Review Team</p>
+              <p className="text-sm font-semibold text-white">For Reviewers</p>
               <p className="text-xs text-white/50">Test credentials and review checklist</p>
             </div>
           </div>
@@ -171,15 +171,9 @@ export default function DemoWalkthroughPage() {
             <p className="text-sm text-white/70">Your medications, labs, conditions, and appointments appear automatically</p>
           </div>
         </div>
-        <Link
-          href="/login"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/15 border border-blue-500/25 text-blue-400 text-sm font-medium hover:bg-blue-500/25 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-          </svg>
-          Start for free
-        </Link>
+        <p className="text-xs text-white/40 mt-1">
+          Works with Epic MyChart, Kaiser Permanente, Sutter Health, and 700+ more health systems.
+        </p>
       </StepCard>
 
       {/* Step 2: What Gets Imported */}
@@ -262,10 +256,9 @@ export default function DemoWalkthroughPage() {
         </p>
         <div className="space-y-2">
           {EXPLORE_LINKS.map((link) => (
-            <Link
+            <div
               key={link.href}
-              href={link.href}
-              className="flex items-center gap-3 rounded-xl bg-white/[0.04] border border-white/[0.06] p-3 hover:bg-white/[0.07] transition-colors group"
+              className="flex items-center gap-3 rounded-xl bg-white/[0.04] border border-white/[0.06] p-3 opacity-70"
             >
               <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-blue-500/15 flex items-center justify-center">
                 <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -276,12 +269,12 @@ export default function DemoWalkthroughPage() {
                 <p className="text-sm font-medium text-white">{link.label}</p>
                 <p className="text-xs text-white/40">{link.desc}</p>
               </div>
-              <svg className="w-4 h-4 text-white/20 group-hover:text-white/40 transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
-            </Link>
+            </div>
           ))}
         </div>
+        <p className="text-[11px] text-white/30 mt-3">
+          Launch the interactive demo below to explore each section with real data.
+        </p>
       </StepCard>
 
       {/* Step 5: Privacy & Security */}
@@ -313,61 +306,74 @@ export default function DemoWalkthroughPage() {
       </StepCard>
 
       {/* Step 6: Try It With Demo Data */}
-      <StepCard step={6} title="Try It — No Sign Up Required">
-        <p className="text-sm text-white/60 mb-4">
-          Click the button below to instantly experience the full app as a demo patient with{' '}
-          <span className="text-white font-medium">HER2+ Breast Cancer (Stage IIIA)</span>. You&apos;ll see a realistic
-          care profile with chemotherapy medications, recent lab results, upcoming oncology appointments, a full care team, and more.
-        </p>
+      <div className="relative rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/[0.08] to-blue-500/[0.06] backdrop-blur-xl overflow-hidden ring-1 ring-violet-500/10">
+        {/* Step number accent */}
+        <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-violet-400 to-blue-500 rounded-l-2xl" />
+        <div className="p-5 sm:p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-violet-500/25 text-violet-300 text-sm font-bold flex items-center justify-center">
+              6
+            </span>
+            <h2 className="text-lg font-semibold text-white">Try It — No Sign Up Required</h2>
+            <span className="ml-auto flex-shrink-0 text-[11px] font-semibold text-violet-300 bg-violet-500/15 border border-violet-500/25 px-2 py-0.5 rounded-full">
+              Start here
+            </span>
+          </div>
+          <p className="text-sm text-white/60 mb-4">
+            Click the button below to instantly experience the full app as a demo patient with{' '}
+            <span className="text-white font-medium">HER2+ Breast Cancer (Stage IIIA)</span>. You&apos;ll see a realistic
+            care profile with chemotherapy medications, recent lab results, upcoming oncology appointments, a full care team, and more.
+          </p>
 
-        <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 mb-4">
-          <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-2">What you&apos;ll see</p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {[
-              { label: '8', sub: 'Medications' },
-              { label: '10', sub: 'Lab results' },
-              { label: '5', sub: 'Appointments' },
-              { label: '5', sub: 'Care team' },
-            ].map((item) => (
-              <div key={item.sub} className="rounded-lg bg-white/[0.03] border border-white/[0.04] px-3 py-2 text-center">
-                <p className="text-lg font-bold text-white">{item.label}</p>
-                <p className="text-[11px] text-white/40">{item.sub}</p>
-              </div>
-            ))}
+          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 mb-4">
+            <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-2">What you&apos;ll see</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { label: '8', sub: 'Medications' },
+                { label: '10', sub: 'Lab results' },
+                { label: '5', sub: 'Appointments' },
+                { label: '5', sub: 'Care team' },
+              ].map((item) => (
+                <div key={item.sub} className="rounded-lg bg-white/[0.03] border border-white/[0.04] px-3 py-2 text-center">
+                  <p className="text-lg font-bold text-white">{item.label}</p>
+                  <p className="text-[11px] text-white/40">{item.sub}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={handleSeedDemo}
+              disabled={loading}
+              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-blue-500 to-violet-500 text-white text-sm font-semibold hover:from-blue-400 hover:to-violet-400 shadow-lg shadow-violet-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <>
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Launching demo...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                  </svg>
+                  Launch interactive demo
+                </>
+              )}
+            </button>
+            <p className="text-[11px] text-center text-white/30">
+              No sign up · No credit card · Leave anytime
+            </p>
+            {error && (
+              <p className="text-sm text-red-400 text-center">{error}</p>
+            )}
           </div>
         </div>
-
-        <div className="space-y-3">
-          <button
-            onClick={handleSeedDemo}
-            disabled={loading}
-            className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-blue-500 to-violet-500 text-white text-sm font-semibold hover:from-blue-400 hover:to-violet-400 shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <>
-                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Launching demo...
-              </>
-            ) : (
-              <>
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
-                </svg>
-                Launch interactive demo
-              </>
-            )}
-          </button>
-          <p className="text-[11px] text-center text-white/30">
-            No sign up · No credit card · Leave anytime
-          </p>
-          {error && (
-            <p className="text-sm text-red-400 text-center">{error}</p>
-          )}
-        </div>
-      </StepCard>
+      </div>
 
       {/* Final CTA */}
       <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/10 to-blue-500/10 p-6 text-center space-y-4">
