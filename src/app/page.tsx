@@ -12,11 +12,11 @@ function DemoButton() {
     try {
       const res = await fetch('/api/demo/start', { method: 'POST' });
       const data = await res.json();
-      if (data.redirectTo) {
-        window.location.href = data.redirectTo;
-      } else {
-        window.location.href = '/dashboard';
+      if (!res.ok || data.error) {
+        setLoading(false);
+        return;
       }
+      window.location.href = data.redirect || '/dashboard';
     } catch {
       setLoading(false);
     }
