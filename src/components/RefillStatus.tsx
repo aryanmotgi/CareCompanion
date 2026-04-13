@@ -9,7 +9,6 @@ interface RefillMedication {
   refill_date: string | null
   days_until_refill: number | null
   status: 'overdue' | 'due_today' | 'due_soon' | 'upcoming' | 'ok' | 'unknown'
-  pharmacy_phone: string | null
   prescribing_doctor: string | null
 }
 
@@ -268,24 +267,6 @@ export function RefillStatusCard() {
                       </p>
                     </div>
 
-                    {med.pharmacy_phone && (
-                      <a
-                        href={`tel:${med.pharmacy_phone}`}
-                        className="flex items-center justify-center w-7 h-7 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition-colors"
-                        aria-label={`Call pharmacy for ${med.medication_name}`}
-                        title={`Call ${med.pharmacy_phone}`}
-                      >
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-[#10b981]">
-                          <path
-                            d="M1.5 2.5A1 1 0 012.5 1.5h1.382a.5.5 0 01.474.342l.652 1.955a.5.5 0 01-.154.536L3.691 5.496a6.5 6.5 0 002.813 2.813l1.163-1.163a.5.5 0 01.536-.154l1.955.652a.5.5 0 01.342.474V9.5a1 1 0 01-1 1A8.5 8.5 0 011.5 2.5z"
-                            stroke="currentColor"
-                            strokeWidth="1.1"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </a>
-                    )}
                   </div>
                 </div>
               )

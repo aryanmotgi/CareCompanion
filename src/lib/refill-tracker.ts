@@ -11,7 +11,6 @@ interface RefillStatus {
   refill_date: string | null
   days_until_refill: number | null
   status: 'overdue' | 'due_today' | 'due_soon' | 'upcoming' | 'ok' | 'unknown'
-  pharmacy_phone: string | null
   prescribing_doctor: string | null
 }
 
@@ -26,7 +25,7 @@ export async function checkRefillStatus(careProfileId: string): Promise<RefillSt
   // no medications can be soft-deleted anyway, so all rows are effectively active.
   const { data: medications, error: medsError } = await admin
     .from('medications')
-    .select('id, name, dose, refill_date, pharmacy_phone, prescribing_doctor')
+    .select('id, name, dose, refill_date, prescribing_doctor')
     .eq('care_profile_id', careProfileId)
 
   if (medsError) {
@@ -52,7 +51,6 @@ function buildRefillStatus(med: any, now: Date): RefillStatus {
       refill_date: null,
       days_until_refill: null,
       status: 'unknown' as const,
-      pharmacy_phone: med.pharmacy_phone,
       prescribing_doctor: med.prescribing_doctor,
     }
   }
@@ -74,7 +72,6 @@ function buildRefillStatus(med: any, now: Date): RefillStatus {
       refill_date: med.refill_date,
       days_until_refill: diffDays,
       status,
-      pharmacy_phone: med.pharmacy_phone,
       prescribing_doctor: med.prescribing_doctor,
     }
 }
@@ -132,7 +129,7 @@ export async function generateRefillNotifications(): Promise<{ total: number; us
           user_id: profile.user_id,
           type: s.status === 'overdue' ? 'refill_overdue' : 'refill_soon',
           title,
-          message: `${s.medication_name}${s.dose ? ` ${s.dose}` : ''} needs a refill.${s.pharmacy_phone ? ` Pharmacy: ${s.pharmacy_phone}` : ''}${s.prescribing_doctor ? ` Prescriber: ${s.prescribing_doctor}` : ''}`,
+          message: `${s.medication_name}${s.dose ? ` ${s.dose}` : ''} needs a refill.${s.prescribing_doctor ? ` Prescriber: ${s.prescribing_doctor}` : ''}`,
         }
       })
       .filter(Boolean)
