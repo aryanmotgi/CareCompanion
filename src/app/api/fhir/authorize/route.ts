@@ -5,6 +5,56 @@ import { getProvider } from '@/lib/fhir-providers';
 import { encryptToken, safeDecryptToken, signState } from '@/lib/token-encryption';
 import crypto from 'crypto';
 
+/**
+ * Get a fresh 1upHealth auth code for the given user.
+ *
+ * 1upHealth can return HTTP 200 with { success: false, code: null } when:
+ * - The sandbox has reset and the user no longer exists on their end
+ * - The user was created via a different client_id
+ *
+ * Strategy: try auth-code first (for existing users), then fall back to
+ * user-create (which also returns a code on success).
+ */
+async function getOneUpAuthCode(
+  clientId: string,
+  clientSecret: string,
+  appUserId: string,
+): Promise<{ code: string } | { error: string; status: number }> {
+  // Try to get a code for an existing user first
+  const codeRes = await fetch('https://api.1up.health/user-management/v1/user/auth-code', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, app_user_id: appUserId }),
+  });
+
+  const codeData = await codeRes.json().catch(() => ({}));
+
+  // Explicit success check: HTTP 2xx AND a non-empty code field
+  if (codeRes.ok && codeData.code) {
+    return { code: codeData.code };
+  }
+
+  // Auth-code failed (user may not exist on 1upHealth's side — sandbox resets, etc.)
+  // Fall back to creating the user, which also returns a code on first create.
+  console.warn('[1upHealth] auth-code returned no code, attempting user create:', codeData);
+
+  const createRes = await fetch('https://api.1up.health/user-management/v1/user', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, app_user_id: appUserId }),
+  });
+
+  const createData = await createRes.json().catch(() => ({}));
+
+  if (createRes.ok && createData.code) {
+    return { code: createData.code };
+  }
+
+  const errDetail = createData?.error || codeData?.error || `HTTP ${createRes.status}`;
+  console.error('[1upHealth] user create also failed:', createData);
+  return { error: errDetail, status: createRes.status };
+}
+
 export async function GET(req: NextRequest) {
   const providerId = req.nextUrl.searchParams.get('provider');
 
@@ -30,19 +80,19 @@ export async function GET(req: NextRequest) {
 
   const clientId = process.env[provider.envClientId];
   const clientSecret = process.env[provider.envClientSecret] || '';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
   if (!clientId) {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     return NextResponse.redirect(`${baseUrl}/connect?error=provider_not_configured`);
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const redirectUri = `${baseUrl}/api/fhir/callback`;
 
   // HMAC-signed state — prevents CSRF and state tampering
   const state = signState({ userId: user.id, provider: providerId });
 
   // 1upHealth uses a different connect flow:
-  // 1. Create a 1up user → get auth code
+  // 1. Get or create a 1upHealth user → get auth code
   // 2. Exchange code for access_token
   // 3. Redirect to connect widget with access_token
   if (providerId === '1uphealth') {
@@ -59,49 +109,22 @@ export async function GET(req: NextRequest) {
 
       // Treat token as expired if expires_at is missing (unknown expiry) or in the past
       const isExpired = !existingConn?.expires_at || new Date(existingConn.expires_at) < new Date();
-      // Decrypt the stored token for use — returns null on decryption failure
-      // (e.g. after key rotation) so we fall through to fetch a fresh token
+      // safeDecryptToken returns null on decryption failure (key rotation, corruption)
+      // so we fall through to fetch a fresh token instead of crashing
       let accessToken = existingConn?.access_token
         ? safeDecryptToken(existingConn.access_token)
         : null;
 
       if (!accessToken || isExpired) {
-        // Step 1: Create a 1up user, or get a new auth code if they already exist
-        let authCode: string;
+        // Step 1: Get or create a 1upHealth user and obtain an auth code.
+        // Uses a two-stage fallback: auth-code → user-create.
+        // This handles sandbox resets, new users, and re-connects gracefully.
+        const codeResult = await getOneUpAuthCode(clientId, clientSecret, user.id);
 
-        const createRes = await fetch('https://api.1up.health/user-management/v1/user', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            client_id: clientId,
-            client_secret: clientSecret,
-            app_user_id: user.id,
-          }),
-        });
-
-        if (createRes.ok) {
-          const createData = await createRes.json();
-          authCode = createData.code;
-        } else {
-          // User already exists — generate a new auth code
-          const codeRes = await fetch('https://api.1up.health/user-management/v1/user/auth-code', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              client_id: clientId,
-              client_secret: clientSecret,
-              app_user_id: user.id,
-            }),
-          });
-
-          if (!codeRes.ok) {
-            const errText = await codeRes.text();
-            console.error('1upHealth auth-code generation failed:', codeRes.status, errText);
-            return NextResponse.redirect(`${baseUrl}/connect?error=oneup_user_failed`);
-          }
-
-          const codeData = await codeRes.json();
-          authCode = codeData.code;
+        if ('error' in codeResult) {
+          console.error('[1upHealth] could not obtain auth code:', codeResult.error);
+          const encoded = encodeURIComponent(codeResult.error.slice(0, 200));
+          return NextResponse.redirect(`${baseUrl}/connect?error=oneup_user_failed&detail=${encoded}`);
         }
 
         // Step 2: Exchange code for access_token
@@ -111,7 +134,7 @@ export async function GET(req: NextRequest) {
           body: new URLSearchParams({
             client_id: clientId,
             client_secret: clientSecret,
-            code: authCode,
+            code: codeResult.code,
             grant_type: 'authorization_code',
           }).toString(),
         });
@@ -119,7 +142,8 @@ export async function GET(req: NextRequest) {
         if (!tokenRes.ok) {
           const errText = await tokenRes.text();
           console.error('1upHealth token exchange failed:', tokenRes.status, errText);
-          return NextResponse.redirect(`${baseUrl}/connect?error=oneup_token_failed`);
+          const encoded = encodeURIComponent(errText.slice(0, 200));
+          return NextResponse.redirect(`${baseUrl}/connect?error=oneup_token_failed&detail=${encoded}`);
         }
 
         const tokenData = await tokenRes.json();
