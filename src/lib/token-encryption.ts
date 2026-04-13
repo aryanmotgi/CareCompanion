@@ -12,13 +12,16 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12; // 96-bit IV recommended for GCM
 const ENCRYPTED_PREFIX = 'enc:v1:'; // Distinguishes encrypted values from legacy plaintext
 
-function getEncryptionKey(): Buffer {
+function getEncryptionKey(): Buffer | null {
   const hex = process.env.TOKEN_ENCRYPTION_KEY;
   if (!hex) {
-    throw new Error(
-      'TOKEN_ENCRYPTION_KEY is not set. ' +
-      'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
-    );
+    if (process.env.NODE_ENV === 'production') {
+      console.warn(
+        '[token-encryption] TOKEN_ENCRYPTION_KEY not set. Storing tokens as plaintext. ' +
+        'Generate a key with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
+      );
+    }
+    return null;
   }
   if (hex.length !== 64) {
     throw new Error('TOKEN_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes)');
@@ -32,6 +35,12 @@ function getEncryptionKey(): Buffer {
  */
 export function encryptToken(plaintext: string): string {
   const key = getEncryptionKey();
+  // If no encryption key is configured, fall back to plaintext storage.
+  // This keeps OAuth flows working during bootstrap, with a warning logged.
+  if (!key) {
+    return plaintext;
+  }
+
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
@@ -61,6 +70,9 @@ export function decryptToken(encrypted: string): string {
 
   const [ivHex, authTagHex, ciphertextHex] = parts;
   const key = getEncryptionKey();
+  if (!key) {
+    throw new Error('Cannot decrypt: TOKEN_ENCRYPTION_KEY is not set');
+  }
   const iv = Buffer.from(ivHex, 'hex');
   const authTag = Buffer.from(authTagHex, 'hex');
   const ciphertext = Buffer.from(ciphertextHex, 'hex');
@@ -79,9 +91,19 @@ export function decryptToken(encrypted: string): string {
 export function safeDecryptToken(value: string | null | undefined): string | null {
   if (!value) return null;
 
-  // If it's already marked as encrypted, always decrypt (fail loudly on tamper)
+  // If it's already marked as encrypted, try to decrypt — but fall back to null
+  // on failure (e.g. key rotation, corrupted ciphertext) so the caller can
+  // fetch a fresh token instead of crashing the entire flow.
   if (value.startsWith(ENCRYPTED_PREFIX)) {
-    return decryptToken(value);
+    try {
+      return decryptToken(value);
+    } catch (err) {
+      console.error(
+        '[token-encryption] Failed to decrypt stored token — will fetch a new one.',
+        err instanceof Error ? err.message : err
+      );
+      return null;
+    }
   }
 
   // Legacy plaintext token — return as-is

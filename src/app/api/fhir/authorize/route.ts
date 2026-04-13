@@ -57,8 +57,10 @@ export async function GET(req: NextRequest) {
         .eq('source', '1uphealth')
         .single();
 
-      const isExpired = existingConn?.expires_at && new Date(existingConn.expires_at) < new Date();
-      // Decrypt the stored token for use (may be legacy plaintext during migration)
+      // Treat token as expired if expires_at is missing (unknown expiry) or in the past
+      const isExpired = !existingConn?.expires_at || new Date(existingConn.expires_at) < new Date();
+      // Decrypt the stored token for use — returns null on decryption failure
+      // (e.g. after key rotation) so we fall through to fetch a fresh token
       let accessToken = existingConn?.access_token
         ? safeDecryptToken(existingConn.access_token)
         : null;
@@ -153,8 +155,10 @@ export async function GET(req: NextRequest) {
         `https://system-search.1up.health/search?${connectParams.toString()}`
       );
     } catch (err) {
-      console.error('1upHealth authorize error:', err);
-      return NextResponse.redirect(`${baseUrl}/connect?error=oneup_error`);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error('[fhir/authorize] 1upHealth error:', errMsg, err);
+      const encodedMsg = encodeURIComponent(errMsg.slice(0, 200));
+      return NextResponse.redirect(`${baseUrl}/connect?error=oneup_error&detail=${encodedMsg}`);
     }
   }
 

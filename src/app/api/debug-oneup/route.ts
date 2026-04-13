@@ -17,11 +17,15 @@ export async function GET() {
   const clientId = process.env.ONEUP_CLIENT_ID;
   const clientSecret = process.env.ONEUP_CLIENT_SECRET;
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const tokenKey = process.env.TOKEN_ENCRYPTION_KEY;
+  const oauthSecret = process.env.OAUTH_STATE_SECRET;
 
   const env = {
     ONEUP_CLIENT_ID: clientId ? `set (${clientId.length} chars, starts with ${clientId.slice(0, 4)}...)` : 'MISSING',
     ONEUP_CLIENT_SECRET: clientSecret ? `set (${clientSecret.length} chars)` : 'MISSING',
     NEXT_PUBLIC_APP_URL: baseUrl || 'MISSING',
+    TOKEN_ENCRYPTION_KEY: tokenKey ? `set (${tokenKey.length} chars)` : 'MISSING — this is likely the problem!',
+    OAUTH_STATE_SECRET: oauthSecret ? `set (${oauthSecret.length} chars)` : 'MISSING',
   };
 
   // Test the user management endpoint
