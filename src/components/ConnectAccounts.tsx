@@ -117,9 +117,15 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
   useEffect(() => {
     const error = searchParams.get('error');
     if (error) {
-      setConnectError(ERROR_MESSAGES[error] || 'Connection failed. Please try again.');
+      const detail = searchParams.get('detail');
+      const baseMsg = ERROR_MESSAGES[error] || 'Connection failed. Please try again.';
+      const fullMsg = detail ? `${baseMsg} (${decodeURIComponent(detail)})` : baseMsg;
+      setConnectError(fullMsg);
+      // Log for debugging — detail contains the actual server-side error
+      if (detail) console.warn('[ConnectAccounts] 1upHealth error detail:', decodeURIComponent(detail));
       const url = new URL(window.location.href);
       url.searchParams.delete('error');
+      url.searchParams.delete('detail');
       window.history.replaceState({}, '', url.toString());
     }
 

@@ -131,8 +131,7 @@ export async function GET(req: NextRequest) {
 
       // Treat token as expired if expires_at is missing (unknown expiry) or in the past.
       // Legacy rows may have expires_at=null — treat them as expired and re-auth.
-      // All new connections now store expires_at with a 1-hour default, so this
-      // null case will only arise for rows created before this fix.
+      // New connections store expires_at with a 7-day default.
       const isExpired = !existingConn?.expires_at || new Date(existingConn.expires_at) < new Date();
       // safeDecryptToken returns null on decryption failure (key rotation, corruption)
       // so we fall through to fetch a fresh token instead of crashing
@@ -165,13 +164,20 @@ export async function GET(req: NextRequest) {
         });
 
         if (!tokenRes.ok) {
-          const errText = await tokenRes.text();
+          const errText = await tokenRes.text().catch(() => `HTTP ${tokenRes.status}`);
           console.error('1upHealth token exchange failed:', tokenRes.status, errText);
           const encoded = encodeURIComponent(errText.slice(0, 200));
           return NextResponse.redirect(`${baseUrl}/connect?error=oneup_token_failed&detail=${encoded}`);
         }
 
-        const tokenData = await tokenRes.json();
+        const tokenData = await tokenRes.json().catch((e: unknown) => {
+          console.error('[1upHealth] token response was not valid JSON:', e);
+          return null;
+        });
+
+        if (!tokenData) {
+          return NextResponse.redirect(`${baseUrl}/connect?error=oneup_token_failed&detail=invalid_json_response`);
+        }
 
         if (!tokenData.access_token) {
           console.error('[1upHealth] token response missing access_token:', tokenData);
@@ -180,10 +186,9 @@ export async function GET(req: NextRequest) {
 
         accessToken = tokenData.access_token;
 
-        // Default expires_in to 1 hour if the response doesn't include it.
-        // Storing null causes isExpired=false every time (good), but a default
-        // gives us accurate expiry tracking for cache purposes.
-        const expiresIn = typeof tokenData.expires_in === 'number' ? tokenData.expires_in : 3600;
+        // Default expires_in to 7 days if the response doesn't include it.
+        // 1upHealth tokens are long-lived — using 1hr caused unnecessary re-auth on every visit.
+        const expiresIn = typeof tokenData.expires_in === 'number' ? tokenData.expires_in : 7 * 24 * 3600;
 
         // Store the connection — tokens encrypted at rest
         const { error: upsertErr } = await admin.from('connected_apps').upsert(
@@ -197,6 +202,7 @@ export async function GET(req: NextRequest) {
               oneup_user_id: user.id,
               provider_id: '1uphealth',
               provider_name: '1upHealth',
+              connected_at: new Date().toISOString(),
             },
           },
           { onConflict: 'user_id,source' }
