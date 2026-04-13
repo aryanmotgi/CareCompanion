@@ -1,5 +1,5 @@
 import { anthropic } from '@ai-sdk/anthropic';
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveConflicts } from '@/lib/memory-conflict';
@@ -52,9 +52,9 @@ export async function extractAndSaveMemories(
 
     const existingFacts = existingMemories.map((m) => `[${m.category}] ${m.fact}`).join('\n');
 
-    const { object } = await generateObject({
-      model: anthropic('claude-haiku-4-5-20251001'),
-      schema: extractionSchema,
+    const { output } = await generateText({
+      model: anthropic('claude-haiku-4.5'),
+      output: Output.object({ schema: extractionSchema }),
       prompt: `You are a memory extraction system for a family caregiver AI assistant.
 
 Read this conversation exchange and extract any NEW facts worth remembering forever.
@@ -76,14 +76,14 @@ Rules:
 - Confidence: "high" if the user explicitly stated it, "medium" if strongly implied, "low" if you inferred it`,
     });
 
-    if (object.facts.length === 0) return;
+    if (output.facts.length === 0) return;
 
     // Resolve conflicts before inserting new memories
-    for (const fact of object.facts) {
+    for (const fact of output.facts) {
       await resolveConflicts(userId, fact.fact, fact.category, existingMemories);
     }
 
-    const rows = object.facts.map((f) => ({
+    const rows = output.facts.map((f) => ({
       user_id: userId,
       care_profile_id: careProfileId,
       category: f.category,
@@ -209,9 +209,9 @@ export async function summarizeConversation(
       .map((m) => `${m.role}: ${m.content}`)
       .join('\n');
 
-    const { object } = await generateObject({
-      model: anthropic('claude-haiku-4-5-20251001'),
-      schema: summarySchema,
+    const { output } = await generateText({
+      model: anthropic('claude-haiku-4.5'),
+      output: Output.object({ schema: summarySchema }),
       prompt: `Summarize this caregiver AI conversation. Focus on: decisions made, information shared, action items, and emotional state of the caregiver.
 
 ${transcript}`,
@@ -220,8 +220,8 @@ ${transcript}`,
     const admin = createAdminClient();
     await admin.from('conversation_summaries').insert({
       user_id: userId,
-      summary: object.summary,
-      topics: object.topics,
+      summary: output.summary,
+      topics: output.topics,
       message_count: messages.length,
     });
   } catch (error) {

@@ -1,5 +1,5 @@
 import { anthropic } from '@ai-sdk/anthropic';
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import type { SpecialistType } from './specialists';
 
@@ -23,9 +23,9 @@ export async function routeMessage(
   isComplex: boolean;
 }> {
   try {
-    const { object } = await generateObject({
-      model: anthropic('claude-haiku-4-5-20251001'),
-      schema: routingSchema,
+    const { output } = await generateText({
+      model: anthropic('claude-haiku-4.5'),
+      output: Output.object({ schema: routingSchema }),
       prompt: `You are a message router for a family caregiver AI assistant. Classify which specialist agent(s) should handle this message.
 
 SPECIALISTS:
@@ -51,9 +51,9 @@ ${userMessage}`,
     });
 
     return {
-      specialists: object.specialists as SpecialistType[],
-      reasoning: object.reasoning,
-      isComplex: object.is_complex,
+      specialists: output.specialists as SpecialistType[],
+      reasoning: output.reasoning,
+      isComplex: output.is_complex,
     };
   } catch (error) {
     console.error('[router] classification failed:', error);

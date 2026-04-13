@@ -3,7 +3,7 @@
  * Takes a list of current medications and a new medication,
  * returns known interactions with severity classifications.
  */
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { z } from 'zod'
 
@@ -33,9 +33,9 @@ export async function checkDrugInteractions(
 ): Promise<InteractionResult> {
   const medList = currentMedications.map(m => `${m.name}${m.dose ? ` (${m.dose})` : ''}`).join(', ')
 
-  const { object } = await generateObject({
-    model: anthropic('claude-haiku-4-5-20251001'),
-    schema: InteractionSchema,
+  const { output } = await generateText({
+    model: anthropic('claude-haiku-4.5'),
+    output: Output.object({ schema: InteractionSchema }),
     prompt: `You are a pharmacology expert. Check for drug interactions.
 
 CURRENT MEDICATIONS: ${medList || 'None'}
@@ -56,7 +56,7 @@ Only report real, documented interactions. Do NOT invent interactions.
 If no interactions exist, return empty arrays and safe_to_combine=true.`,
   })
 
-  return object
+  return output
 }
 
 /**
@@ -77,9 +77,9 @@ export async function checkAllInteractions(
 
   const medList = medications.map(m => `${m.name}${m.dose ? ` (${m.dose})` : ''}`).join(', ')
 
-  const { object } = await generateObject({
-    model: anthropic('claude-haiku-4-5-20251001'),
-    schema: InteractionSchema,
+  const { output } = await generateText({
+    model: anthropic('claude-haiku-4.5'),
+    output: Output.object({ schema: InteractionSchema }),
     prompt: `You are a pharmacology expert. Check ALL pairwise drug interactions in this medication list.
 
 MEDICATIONS: ${medList}
@@ -92,5 +92,5 @@ Classify severity: major (serious harm), moderate (monitor/adjust), minor (be aw
 Only report real, documented interactions. Do NOT invent interactions.`,
   })
 
-  return object
+  return output
 }
