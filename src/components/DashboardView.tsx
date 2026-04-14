@@ -432,6 +432,30 @@ export function DashboardView({
         </a>
       )}
 
+      {/* Connect health records — always visible until connected */}
+      {!hasHealthRecords && (
+        <a
+          href="/connect"
+          className="block mb-4 rounded-2xl p-4 hover:opacity-90 transition-opacity"
+          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(167,139,250,0.10) 100%)', border: '1px solid rgba(167,139,250,0.25)' }}
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(167,139,250,0.15)' }}>
+              <svg className="w-5 h-5 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white">Connect your health records</p>
+              <p className="text-xs text-[#A78BFA]/70 mt-0.5">Sync meds, labs &amp; appointments from Kaiser, MyChart, Medicare &amp; 700+ more</p>
+            </div>
+            <div className="gradient-btn text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex-shrink-0">
+              Connect
+            </div>
+          </div>
+        </a>
+      )}
+
       {/* Re-engagement nudges for skipped onboarding steps */}
       {onboardingComplete && profileCreatedAt && (
         <NudgeManager
