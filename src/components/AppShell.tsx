@@ -27,23 +27,9 @@ interface AppShellProps {
 
 const MENU_ITEMS = [
   { label: 'Emergency Card', href: '/emergency', icon: '🚨' },
-  { label: 'Care Profile', href: '/profile', icon: '👤' },
-  { label: 'Appointments', href: '/appointments', icon: '📅' },
-  { label: 'Medications', href: '/medications', icon: '💊' },
-  { label: 'Treatment Timeline', href: '/timeline', icon: '📈' },
-  { label: 'Visit Prep', href: '/visit-prep', icon: '📝' },
-  { label: 'Lab Results', href: '/labs', icon: '🔬' },
-  { label: 'Insurance & Claims', href: '/insurance', icon: '🏥' },
-  { label: 'Health Records', href: '/records', icon: '📁' },
-  { label: 'Treatment Journal', href: '/journal', icon: '📓' },
   { label: 'Health Summary', href: '/health-summary', icon: '📋' },
-  { label: 'Notifications', href: '/notifications', icon: '🔔' },
-  { label: 'Calendar', href: '/calendar', icon: '📅' },
-  { label: 'Analytics', href: '/analytics', icon: '📊' },
-  { label: 'Connected Accounts', href: '/connect', icon: '🔗' },
-  { label: 'Sync Status', href: '/sync-status', icon: '🔄' },
+  { label: 'Insurance & Claims', href: '/insurance', icon: '🏥' },
   { label: 'Settings', href: '/settings', icon: '⚙️' },
-  { label: 'Care Team', href: '/care-team', icon: '👥' },
 ]
 
 export function AppShell({

@@ -503,7 +503,7 @@ export function DashboardView({
               <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2 text-center">Get Started</div>
               {medications.length === 0 && (
                 <a
-                  href="/medications"
+                  href="/care?tab=meds"
                   className="flex items-center gap-3 p-4 rounded-2xl bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] transition-colors"
                 >
                   <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center flex-shrink-0">
@@ -524,7 +524,7 @@ export function DashboardView({
               )}
               {appointments.length === 0 && (
                 <a
-                  href="/appointments"
+                  href="/care?tab=appts"
                   className="flex items-center gap-3 p-4 rounded-2xl bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] transition-colors"
                 >
                   <div className="w-10 h-10 rounded-xl bg-[#22d3ee]/10 flex items-center justify-center flex-shrink-0">

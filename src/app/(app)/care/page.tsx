@@ -23,7 +23,9 @@ async function CareContent() {
 
   const allProfiles = await getAllProfiles(supabase, user.id)
 
-  const [{ data: medications }, { data: appointments }, { data: doctors }, { data: careTeamMembers }, { data: todayLogs }] = await Promise.all([
+  const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+  const [{ data: medications }, { data: appointments }, { data: doctors }, { data: careTeamMembers }, { data: todayLogs }, { data: labResults }, { data: symptoms }] = await Promise.all([
     supabase.from('medications').select('*').eq('care_profile_id', profile.id),
     supabase.from('appointments').select('*').eq('care_profile_id', profile.id).order('date_time', { ascending: true }),
     supabase.from('doctors').select('*').eq('care_profile_id', profile.id),
@@ -31,6 +33,8 @@ async function CareContent() {
     supabase.from('reminder_logs').select('*').eq('user_id', user.id)
       .gte('scheduled_time', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
       .order('scheduled_time'),
+    supabase.from('lab_results').select('*').eq('user_id', user.id).order('date_taken', { ascending: false }),
+    supabase.from('symptom_entries').select('*').eq('user_id', user.id).gte('date', since).order('date', { ascending: false }),
   ])
 
   return (
@@ -49,6 +53,9 @@ async function CareContent() {
         allProfiles={allProfiles}
         careTeamMembers={careTeamMembers || []}
         todayReminders={todayLogs || []}
+        labResults={labResults || []}
+        symptoms={symptoms || []}
+        patientName={profile.patient_name || 'Patient'}
       />
       <div className="px-4 sm:px-5 pb-6 space-y-5">
         <AdherenceCalendar />

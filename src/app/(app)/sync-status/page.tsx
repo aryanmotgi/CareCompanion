@@ -1,5 +1,2 @@
-import { SyncStatusView } from '@/components/SyncStatusView'
-
-export default function SyncStatusPage() {
-  return <SyncStatusView />
-}
+import { redirect } from 'next/navigation'
+export default function Page() { redirect('/settings') }
