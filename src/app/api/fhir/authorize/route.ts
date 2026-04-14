@@ -190,26 +190,43 @@ export async function GET(req: NextRequest) {
         // 1upHealth tokens are long-lived — using 1hr caused unnecessary re-auth on every visit.
         const expiresIn = typeof tokenData.expires_in === 'number' ? tokenData.expires_in : 7 * 24 * 3600;
 
-        // Store the connection — tokens encrypted at rest
-        const { error: upsertErr } = await admin.from('connected_apps').upsert(
-          {
-            user_id: user.id,
-            source: '1uphealth',
-            access_token: encryptToken(tokenData.access_token),
-            refresh_token: tokenData.refresh_token ? encryptToken(tokenData.refresh_token) : null,
-            expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
-            metadata: {
-              oneup_user_id: user.id,
-              provider_id: '1uphealth',
-              provider_name: '1upHealth',
-              connected_at: new Date().toISOString(),
-            },
+        // Store the connection — tokens encrypted at rest (encryptToken degrades to plaintext if key misconfigured)
+        let encryptedAccess: string;
+        let encryptedRefresh: string | null = null;
+        try {
+          encryptedAccess = encryptToken(tokenData.access_token);
+          encryptedRefresh = tokenData.refresh_token ? encryptToken(tokenData.refresh_token) : null;
+        } catch (encErr) {
+          // Should not happen after the getEncryptionKey fix, but belt-and-suspenders:
+          // store plaintext so the flow doesn't break
+          console.error('[1upHealth] encryptToken threw — storing token as plaintext:', encErr);
+          encryptedAccess = tokenData.access_token;
+          encryptedRefresh = tokenData.refresh_token ?? null;
+        }
+
+        // Delete any existing rows for this user+source, then insert fresh.
+        // Using delete+insert instead of upsert avoids needing a unique constraint on (user_id, source).
+        await admin.from('connected_apps')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('source', '1uphealth');
+
+        const { error: insertErr } = await admin.from('connected_apps').insert({
+          user_id: user.id,
+          source: '1uphealth',
+          access_token: encryptedAccess,
+          refresh_token: encryptedRefresh,
+          expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
+          metadata: {
+            oneup_user_id: user.id,
+            provider_id: '1uphealth',
+            provider_name: '1upHealth',
+            connected_at: new Date().toISOString(),
           },
-          { onConflict: 'user_id,source' }
-        );
-        if (upsertErr) {
+        });
+        if (insertErr) {
           // Non-fatal: we still have the token in memory; log and continue
-          console.error('[1upHealth] failed to cache connection in DB:', upsertErr.message);
+          console.error('[1upHealth] failed to save connection in DB:', insertErr.message);
         }
       }
 

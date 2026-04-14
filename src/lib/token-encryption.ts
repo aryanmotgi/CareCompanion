@@ -24,7 +24,12 @@ function getEncryptionKey(): Buffer | null {
     return null;
   }
   if (hex.length !== 64) {
-    throw new Error('TOKEN_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes)');
+    // Don't throw — degrade to plaintext with a loud warning so the flow still works
+    console.error(
+      `[token-encryption] TOKEN_ENCRYPTION_KEY is ${hex.length} chars — must be exactly 64 hex chars (32 bytes). ` +
+      'Falling back to plaintext token storage. Fix this env var immediately.'
+    );
+    return null;
   }
   return Buffer.from(hex, 'hex');
 }
