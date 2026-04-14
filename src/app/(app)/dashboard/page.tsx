@@ -53,7 +53,8 @@ async function DashboardContent() {
 
   // Auto-sync: if 1upHealth is connected but profile is missing cancer info, trigger a background sync
   const oneupApp = connectedApps?.find((a) => a.source === '1uphealth');
-  if (oneupApp?.access_token && (!profile.cancer_type || !profile.cancer_stage)) {
+  const oneupTokenValid = oneupApp?.expires_at && new Date(oneupApp.expires_at) > new Date();
+  if (oneupApp?.access_token && oneupTokenValid && (!profile.cancer_type || !profile.cancer_stage)) {
     // Check if last sync was more than 5 minutes ago to avoid re-syncing on every page load
     const lastSynced = oneupApp.last_synced ? new Date(oneupApp.last_synced).getTime() : 0;
     const fiveMinAgo = Date.now() - 5 * 60 * 1000;
@@ -65,7 +66,10 @@ async function DashboardContent() {
     }
   }
 
-  const hasHealthRecords = (connectedApps && connectedApps.length > 0) || false;
+  // Only count connections with a non-expired token — epoch (new Date(0)) means expired
+  const hasHealthRecords = (connectedApps && connectedApps.some(
+    (a) => a.expires_at && new Date(a.expires_at) > new Date()
+  )) || false;
   const hasEmergencyContact = !!(profile.emergency_contact_name && profile.emergency_contact_phone);
   const hasDocumentsScanned = (scannedDocCount ?? 0) > 0;
 
@@ -98,7 +102,7 @@ async function DashboardContent() {
         emergencyContactName={profile.emergency_contact_name || null}
         emergencyContactPhone={profile.emergency_contact_phone || null}
         doctorCount={doctorCount ?? 0}
-        connectedAppCount={(connectedApps && connectedApps.length) || 0}
+        connectedAppCount={(connectedApps && connectedApps.filter((a) => a.expires_at && new Date(a.expires_at) > new Date()).length) || 0}
       />
       <div className="px-4 sm:px-5 pb-6">
         <DashboardInsights />
