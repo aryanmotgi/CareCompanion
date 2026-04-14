@@ -103,8 +103,12 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
   const [deleting, setDeleting] = useState(false);
   const [disconnectSource, setDisconnectSource] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [connecting, setConnecting] = useState(false);
 
-  const isOneUpConnected = apps.some((a) => a.source === '1uphealth');
+  // Only treat as connected if the token is not expired
+  const isOneUpConnected = apps.some(
+    (a) => a.source === '1uphealth' && a.expires_at && new Date(a.expires_at) > new Date()
+  );
 
   const ERROR_MESSAGES: Record<string, string> = {
     provider_not_configured: '1upHealth is not configured yet. Please contact support.',
@@ -483,11 +487,18 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
                 </button>
               </>
             ) : (
-              <button onClick={() => setShowConsent(true)} className="relative z-10 gradient-btn inline-flex items-center gap-2.5 text-white font-semibold text-sm py-3 px-7 rounded-xl cursor-pointer">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
-                </svg>
-                Connect Health Records
+              <button onClick={() => setShowConsent(true)} disabled={connecting} className="relative z-10 gradient-btn inline-flex items-center gap-2.5 text-white font-semibold text-sm py-3 px-7 rounded-xl cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed">
+                {connecting ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+                  </svg>
+                )}
+                {connecting ? 'Connecting...' : 'Connect Health Records'}
               </button>
             )}
           </div>
@@ -743,6 +754,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
         consentHref="/api/fhir/authorize?provider=1uphealth"
         onConsent={() => {
           setShowConsent(false);
+          setConnecting(true); // show spinner while browser navigates away
         }}
       />
 
