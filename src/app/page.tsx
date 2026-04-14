@@ -1030,15 +1030,17 @@ function BeforeAfterSection() {
 /* ── Main page ── */
 export default function LandingPage() {
   useScrollReveal();
-  const [headerVisible, setHeaderVisible] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
-      setHeaderVisible(window.scrollY > 100);
+      setScrolled(window.scrollY > 50);
+      if (mobileMenuOpen) setMobileMenuOpen(false);
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [mobileMenuOpen]);
 
   return (
     <main className="min-h-screen bg-[var(--bg)] overflow-x-hidden">
@@ -1053,7 +1055,7 @@ export default function LandingPage() {
       </div>
 
       {/* Nav */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${headerVisible ? 'opacity-100 translate-y-0 bg-[var(--bg)]/80 backdrop-blur-xl border-b border-[var(--border)]' : 'opacity-0 -translate-y-full'}`}>
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? 'bg-[var(--bg)]/80 backdrop-blur-xl border-b border-[var(--border)] shadow-lg shadow-black/10' : 'bg-transparent border-b border-transparent'}`}>
         <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center shadow-lg shadow-[#6366F1]/20" role="img" aria-label="CareCompanion AI logo">
@@ -1063,28 +1065,44 @@ export default function LandingPage() {
             </div>
             <span className="font-display font-bold text-[var(--text)] text-lg">CareCompanion</span>
           </div>
-          <div className="flex items-center gap-4">
-            <Link href="/about" className="hidden sm:inline text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
-              About
-            </Link>
-            <Link href="/privacy" className="hidden sm:inline text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
-              Privacy
-            </Link>
-            <Link href="/terms" className="hidden sm:inline text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
-              Terms
-            </Link>
-            <Link
-              href="/login"
-              className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold hover:opacity-90 transition-opacity shimmer-btn relative overflow-hidden"
-            >
-              Get Started
-            </Link>
+          <div className="hidden md:flex items-center gap-6">
+            <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">Features</button>
+            <Link href="/about" className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">About</Link>
+            <Link href="/privacy" className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">Privacy</Link>
+            <Link href="/terms" className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">Terms</Link>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="hidden md:inline-block px-4 py-2 rounded-xl text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-white/[0.05] transition-all">Log In</Link>
+            <Link href="/login" className="hidden md:inline-block px-5 py-2 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold hover:opacity-90 transition-opacity shimmer-btn relative overflow-hidden">Sign Up</Link>
+            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 rounded-lg hover:bg-white/[0.05] transition-colors" aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'} aria-expanded={mobileMenuOpen}>
+              <svg className="w-5 h-5 text-[var(--text)]" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                {mobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
+                )}
+              </svg>
+            </button>
           </div>
         </div>
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-xl animate-fade-in-down">
+            <div className="max-w-5xl mx-auto px-6 py-4 flex flex-col gap-3">
+              <button onClick={() => { setMobileMenuOpen(false); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-left text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors py-2">Features</button>
+              <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors py-2">About</Link>
+              <Link href="/privacy" onClick={() => setMobileMenuOpen(false)} className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors py-2">Privacy</Link>
+              <Link href="/terms" onClick={() => setMobileMenuOpen(false)} className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors py-2">Terms</Link>
+              <div className="border-t border-[var(--border)] pt-3 mt-1 flex flex-col gap-2">
+                <Link href="/login" className="w-full text-center py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium text-[var(--text)] hover:bg-white/[0.05] transition-colors">Log In</Link>
+                <Link href="/login" className="w-full text-center py-2.5 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold shimmer-btn relative overflow-hidden">Sign Up</Link>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero */}
-      <section className="relative z-10 pt-20 sm:pt-24 pb-8 px-4 sm:px-6">
+      <section className="relative z-10 pt-24 sm:pt-28 pb-8 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto flex flex-col lg:flex-row-reverse items-center gap-6 lg:gap-12">
           {/* Phone — FIRST on mobile, right side on desktop */}
           <div className="flex-shrink-0 w-full max-w-[360px] lg:max-w-none lg:w-auto animate-fade-in-up overflow-visible flex justify-center">
@@ -1120,6 +1138,16 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Scroll indicator */}
+      <div className="relative z-10 flex flex-col items-center pb-6 animate-fade-in" style={{ animationDelay: '0.8s' }}>
+        <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="group flex flex-col items-center gap-2 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors" aria-label="Scroll to features">
+          <span className="text-xs font-medium tracking-wide uppercase">Learn more</span>
+          <svg className="w-5 h-5 animate-bounce" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
+          </svg>
+        </button>
+      </div>
 
       <SectionDivider />
 
