@@ -24,11 +24,6 @@ function useScrollReveal() {
   return ref;
 }
 
-const SECTION_ICONS: Record<number, string> = {
-  1: '✅', 2: '📱', 3: '⚕️', 4: '👤', 5: '💾', 6: '👨‍👩‍👦',
-  7: '🚫', 8: '🤖', 9: '🌐', 10: '🗑️', 11: '⚖️', 12: '📝',
-  13: '🏛️', 14: '📧',
-};
 
 export default function TermsOfService() {
   const containerRef = useScrollReveal();
@@ -100,14 +95,14 @@ export default function TermsOfService() {
             {
               num: 5, title: 'HEALTH DATA',
               content: <div className="grid gap-2">{[
-                { icon: '✅', text: 'You own all health data you enter into CareCompanion' },
-                { icon: '📄', text: 'You grant CareCompanion a limited license to store and process your data solely to provide the service' },
-                { icon: '✏️', text: 'You are responsible for the accuracy of data you enter' },
-                { icon: '🔗', text: 'When you connect a health system, you authorize CareCompanion to import your records on your behalf' },
-              ].map((item, i) => (
+                'You own all health data you enter into CareCompanion',
+                'You grant CareCompanion a limited license to store and process your data solely to provide the service',
+                'You are responsible for the accuracy of data you enter',
+                'When you connect a health system, you authorize CareCompanion to import your records on your behalf',
+              ].map((text, i) => (
                 <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:border-[#6366F1]/15 transition-colors">
-                  <span className="text-base flex-shrink-0">{item.icon}</span>
-                  <span>{item.text}</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#A78BFA] mt-1.5 flex-shrink-0" />
+                  <span>{text}</span>
                 </div>
               ))}</div>
             },
@@ -176,11 +171,10 @@ export default function TermsOfService() {
             <section key={section.num} className="reveal-item" style={{ '--delay': `${section.num * 0.04}s` } as React.CSSProperties}>
               <div className="group p-5 rounded-2xl bg-white/[0.01] border border-white/[0.04] hover:bg-white/[0.03] hover:border-white/[0.08] transition-all duration-300">
                 <h2 className="text-base font-semibold text-[var(--text)] mb-3 flex items-center gap-3">
-                  <span className="text-lg">{SECTION_ICONS[section.num]}</span>
-                  <span className="text-[#A78BFA]/60 text-xs font-mono">{String(section.num).padStart(2, '0')}</span>
+                  <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{String(section.num).padStart(2, '0')}</span>
                   {section.title}
                 </h2>
-                <div className="pl-9">{section.content}</div>
+                <div className="pl-10">{section.content}</div>
               </div>
             </section>
           ))}
