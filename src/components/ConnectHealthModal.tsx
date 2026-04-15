@@ -97,13 +97,17 @@ export function ConnectHealthModal({ show }: ConnectHealthModalProps) {
           {/* Benefits */}
           <ul className="space-y-3 mb-7">
             {[
-              { icon: '💊', label: 'Medications & refills auto-imported' },
-              { icon: '🧪', label: 'Lab results & trends tracked automatically' },
-              { icon: '📅', label: 'Upcoming appointments synced' },
-              { icon: '🏥', label: 'Insurance claims & coverage in one place' },
+              { color: '#A78BFA', label: 'Medications & refills auto-imported', path: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z' },
+              { color: '#34D399', label: 'Lab results & trends tracked automatically', path: 'M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5' },
+              { color: '#60A5FA', label: 'Upcoming appointments synced', path: 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5' },
+              { color: '#F472B6', label: 'Insurance claims & coverage in one place', path: 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z' },
             ].map((item) => (
               <li key={item.label} className="flex items-center gap-3">
-                <span className="text-base w-6 text-center flex-shrink-0">{item.icon}</span>
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: item.color + '18' }}>
+                  <svg className="w-4 h-4" fill="none" stroke={item.color} strokeWidth="1.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d={item.path} />
+                  </svg>
+                </div>
                 <span className="text-sm text-[#cbd5e1]">{item.label}</span>
               </li>
             ))}

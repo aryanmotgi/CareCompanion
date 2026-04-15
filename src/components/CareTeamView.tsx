@@ -197,7 +197,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
           <div className="space-y-2">
             {invites.map((inv) => (
               <div key={inv.id} className="flex items-center gap-3 bg-[var(--bg-card)] border border-amber-500/20 rounded-xl px-4 py-3">
-                <span className="text-base">✉️</span>
+                <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white truncate">{inv.invited_email}</p>
                   <p className="text-xs text-[var(--text-muted)]">

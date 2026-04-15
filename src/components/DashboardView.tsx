@@ -150,9 +150,9 @@ export function DashboardView({
                 </div>
               }
               insights={[
-                { emoji: '📞', text: `Call your pharmacy now to request a refill for ${med.name}. Have your prescription number ready.` },
-                { emoji: '⏰', text: `Set a reminder ${daysLeft <= 0 ? 'immediately' : 'today'} — ${med.quantity_remaining ?? 'few'} pills won't last long at your current dose.` },
-                { emoji: '💬', text: `If refills are denied, ask ${med.prescribing_doctor || 'your doctor'} for a new prescription or 90-day supply to avoid running out again.` },
+                { text: `Call your pharmacy now to request a refill for ${med.name}. Have your prescription number ready.` },
+                { text: `Set a reminder ${daysLeft <= 0 ? 'immediately' : 'today'} — ${med.quantity_remaining ?? 'few'} pills won't last long at your current dose.` },
+                { text: `If refills are denied, ask ${med.prescribing_doctor || 'your doctor'} for a new prescription or 90-day supply to avoid running out again.` },
               ]}
               chatPrompt={`Help me manage my ${med.name} refill — I have ${med.quantity_remaining ?? 'few'} pills left and it's ${daysLeft <= 0 ? 'overdue' : `due in ${daysLeft} days`}`}
             />
@@ -199,10 +199,10 @@ export function DashboardView({
                 </div>
               }
               insights={[
-                { emoji: '📝', text: `Write down your top 3 questions for ${appt.doctor_name} before you go — you'll forget in the moment.` },
-                { emoji: '📋', text: `Bring a list of current medications and any new symptoms since your last visit.` },
-                { emoji: '🕐', text: `Arrive 10-15 minutes early ${appt.location ? `at ${appt.location}` : ''} — parking and check-in take time.` },
-                { emoji: '📱', text: `Take notes during the visit or ask if you can record — details fade fast after you leave.` },
+                { text: `Write down your top 3 questions for ${appt.doctor_name} before you go — you'll forget in the moment.` },
+                { text: `Bring a list of current medications and any new symptoms since your last visit.` },
+                { text: `Arrive 10-15 minutes early ${appt.location ? `at ${appt.location}` : ''} — parking and check-in take time.` },
+                { text: `Take notes during the visit or ask if you can record — details fade fast after you leave.` },
               ]}
               chatPrompt={`Help me prepare for my ${appt.specialty} appointment with ${appt.doctor_name}${appt.purpose ? ` for ${appt.purpose}` : ''}`}
             />
@@ -249,10 +249,10 @@ export function DashboardView({
               </div>
             }
             insights={[
-              { emoji: '🩺', text: `Your ${lab.test_name} is ${lab.value} ${lab.unit}, above the normal range of ${lab.reference_range}. Schedule a follow-up to discuss this result.` },
-              { emoji: '📊', text: `Track this value over time — a single reading can be a fluke, but a trend tells the real story.` },
-              { emoji: '🥗', text: `Ask your doctor what lifestyle changes (diet, exercise, sleep) could help bring this number into range.` },
-              { emoji: '💊', text: `If you're on medication for this, ask whether your dosage needs adjusting based on this result.` },
+              { text: `Your ${lab.test_name} is ${lab.value} ${lab.unit}, above the normal range of ${lab.reference_range}. Schedule a follow-up to discuss this result.` },
+              { text: `Track this value over time — a single reading can be a fluke, but a trend tells the real story.` },
+              { text: `Ask your doctor what lifestyle changes (diet, exercise, sleep) could help bring this number into range.` },
+              { text: `If you're on medication for this, ask whether your dosage needs adjusting based on this result.` },
             ]}
             chatPrompt={`Explain my ${lab.test_name} result of ${lab.value} ${lab.unit} — it's above the normal range of ${lab.reference_range}. What should I do?`}
           />
@@ -282,10 +282,10 @@ export function DashboardView({
               </div>
             }
             insights={[
-              { emoji: '📄', text: `Request the denial letter in writing — you have the right to a formal explanation and it starts the appeal clock.` },
-              { emoji: '📞', text: `Call your insurance and ask exactly what documentation they need to overturn the denial. Get a reference number.` },
-              { emoji: '🏥', text: `Ask ${claim.provider_name} if they can resubmit with different coding — many denials are coding errors, not coverage issues.` },
-              { emoji: '⚖️', text: `You can file a formal appeal within 180 days. Most first appeals succeed when medical necessity is documented.` },
+              { text: `Request the denial letter in writing — you have the right to a formal explanation and it starts the appeal clock.` },
+              { text: `Call your insurance and ask exactly what documentation they need to overturn the denial. Get a reference number.` },
+              { text: `Ask ${claim.provider_name} if they can resubmit with different coding — many denials are coding errors, not coverage issues.` },
+              { text: `You can file a formal appeal within 180 days. Most first appeals succeed when medical necessity is documented.` },
             ]}
             chatPrompt={`Help me understand and appeal this denied claim from ${claim.provider_name} — denied for "${claim.denial_reason}". I owe $${claim.patient_responsibility}.`}
           />
@@ -418,8 +418,8 @@ export function DashboardView({
           className="block mb-4 sm:mb-5 rounded-2xl border border-[#A78BFA]/30 bg-[#A78BFA]/5 p-4 hover:bg-[#A78BFA]/10 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#A78BFA]/20 flex items-center justify-center text-lg flex-shrink-0">
-              ✨
+            <div className="w-10 h-10 rounded-xl bg-[#A78BFA]/20 flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-[#A78BFA]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white">Complete your profile</p>

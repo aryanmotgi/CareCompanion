@@ -6,9 +6,9 @@ import { CaregiverWellness } from './CaregiverWellness'
 import { RefillStatusCard } from './RefillStatus'
 
 const TABS = [
-  { key: 'trends', label: 'Lab Trends', icon: '📊' },
-  { key: 'refills', label: 'Refills', icon: '💊' },
-  { key: 'wellness', label: 'Wellness', icon: '💜' },
+  { key: 'trends', label: 'Lab Trends', icon: null },
+  { key: 'refills', label: 'Refills', icon: null },
+  { key: 'wellness', label: 'Wellness', icon: null },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
@@ -39,7 +39,6 @@ export function DashboardInsights() {
                 : 'text-[var(--text-muted)] hover:bg-white/[0.04]'
             }`}
           >
-            <span className="text-sm" aria-hidden="true">{tab.icon}</span>
             <span className="hidden sm:inline">{tab.label}</span>
             <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
           </button>

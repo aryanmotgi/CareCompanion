@@ -98,7 +98,7 @@ const CATEGORIES: CategoryConfig[] = [
   {
     key: 'medications',
     label: 'Medications',
-    icon: '💊',
+    icon: '',
     subToggles: [
       { key: 'refill_reminders', label: 'Refill Reminders', description: 'Alert when medications are running low' },
       { key: 'dose_reminders', label: 'Dose Reminders', description: 'Scheduled medication dose alerts' },
@@ -108,7 +108,7 @@ const CATEGORIES: CategoryConfig[] = [
   {
     key: 'appointments',
     label: 'Appointments',
-    icon: '📅',
+    icon: '',
     subToggles: [
       { key: 'reminder_24hr', label: '24-Hour Reminder', description: 'Reminder the day before' },
       { key: 'reminder_1hr', label: '1-Hour Reminder', description: 'Reminder one hour before' },
@@ -118,7 +118,7 @@ const CATEGORIES: CategoryConfig[] = [
   {
     key: 'lab_results',
     label: 'Lab Results',
-    icon: '🔬',
+    icon: '',
     subToggles: [
       { key: 'new_results', label: 'New Results Available', description: 'Notify when new labs come in' },
       { key: 'abnormal_alerts', label: 'Abnormal Results Alert', description: 'Flag results outside normal range' },
@@ -128,7 +128,7 @@ const CATEGORIES: CategoryConfig[] = [
   {
     key: 'insurance',
     label: 'Insurance',
-    icon: '🛡️',
+    icon: '',
     subToggles: [
       { key: 'claim_status', label: 'Claim Status Updates', description: 'Status changes on submitted claims' },
       { key: 'prior_auth', label: 'Prior Auth Updates', description: 'Authorization request status changes' },
@@ -138,7 +138,7 @@ const CATEGORIES: CategoryConfig[] = [
   {
     key: 'care_team',
     label: 'Care Team',
-    icon: '👥',
+    icon: '',
     subToggles: [
       { key: 'wellness_checkins', label: 'Caregiver Wellness Check-ins', description: 'Periodic caregiver wellness prompts' },
       { key: 'shared_records', label: 'Shared Record Notifications', description: 'When care team members update records' },
@@ -316,7 +316,7 @@ export function NotificationPreferences({ settings, onSettingsChange }: Notifica
           >
             {/* Master toggle row */}
             <SettingsRow
-              label={`${cat.icon}  ${cat.label}`}
+              label={cat.label}
               right={
                 <Toggle
                   label={`${cat.label} notifications`}

@@ -131,10 +131,10 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
   };
 
   const starterPrompts = [
-    { icon: '💉', text: 'What should I expect this chemo cycle?', desc: 'Side effects, timing, what to watch for' },
-    { icon: '📊', text: 'Explain my tumor markers', desc: 'CEA, CA-125, PSA trends explained' },
-    { icon: '📅', text: 'Prep for oncology appointment', desc: 'Questions to ask your oncologist' },
-    { icon: '🧠', text: 'Help me understand my treatment plan', desc: 'Plain-language explanations' },
+    { color: '#A78BFA', svgPath: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z', text: 'What should I expect this chemo cycle?', desc: 'Side effects, timing, what to watch for' },
+    { color: '#34D399', svgPath: 'M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5', text: 'Explain my tumor markers', desc: 'CEA, CA-125, PSA trends explained' },
+    { color: '#60A5FA', svgPath: 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5', text: 'Prep for oncology appointment', desc: 'Questions to ask your oncologist' },
+    { color: '#F472B6', svgPath: 'M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z', text: 'Help me understand my treatment plan', desc: 'Plain-language explanations' },
   ];
 
   return (
@@ -193,7 +193,9 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
                   onClick={() => handleSend(prompt.text)}
                   className="flex flex-col items-start gap-1.5 p-3.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] text-left hover:bg-[var(--bg-elevated)] hover:border-[#A78BFA]/20 transition-all active:scale-[0.97] group"
                 >
-                  <span className="text-lg">{prompt.icon}</span>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: prompt.color + '20' }}>
+                    <svg className="w-4 h-4" fill="none" stroke={prompt.color} strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={prompt.svgPath} /></svg>
+                  </div>
                   <span className="text-[13px] font-medium text-[var(--text)] group-hover:text-[#A78BFA] transition-colors leading-tight">{prompt.text}</span>
                   <span className="text-[11px] text-[var(--text-muted)] leading-tight">{prompt.desc}</span>
                 </button>
@@ -249,7 +251,7 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
                   onClick={() => handleSend(prompt.text)}
                   className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[var(--text-secondary)] text-xs hover:bg-[var(--bg-elevated)] hover:border-[#A78BFA]/20 transition-colors animate-press"
                 >
-                  {prompt.icon} {prompt.text}
+                  {prompt.text}
                 </button>
               ))}
             </div>
