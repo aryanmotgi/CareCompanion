@@ -27,6 +27,8 @@ export function PublicNav() {
 
         {/* Links */}
         <div className="hidden md:flex items-center gap-7">
+          <Link href="/" className="text-sm text-white/50 hover:text-white transition-colors">Home</Link>
+          <Link href="/#features" className="text-sm text-white/50 hover:text-white transition-colors">Features</Link>
           <Link href="/about" className="text-sm text-white/50 hover:text-white transition-colors">About</Link>
           <Link href="/privacy" className="text-sm text-white/50 hover:text-white transition-colors">Privacy</Link>
           <Link href="/terms" className="text-sm text-white/50 hover:text-white transition-colors">Terms</Link>
