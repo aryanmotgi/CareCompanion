@@ -4,8 +4,8 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useState, useRef, useEffect } from 'react'
 
-const ACTIVE_COLOR = '#A78BFA'
-const INACTIVE_COLOR = '#5B6785'
+const ACTIVE_COLOR = '#8B5CF6'
+const INACTIVE_COLOR = '#4B5568'
 
 const TABS = [
   {
@@ -86,7 +86,7 @@ export function BottomTabBar() {
         {/* Animated active indicator dot */}
         {activeIndex >= 0 && (
           <div
-            className="absolute top-0 h-[2px] rounded-full bg-gradient-to-r from-[#6366F1] to-[#A78BFA] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+            className="absolute top-0 h-[2px] rounded-full bg-gradient-to-r from-[#7C3AED] to-[#8B5CF6] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
             style={{ left: indicatorStyle.left, width: indicatorStyle.width }}
           />
         )}
@@ -105,7 +105,7 @@ export function BottomTabBar() {
               <div className={`transition-transform duration-200 ${bouncingTab === tab.href ? 'scale-90' : active ? 'scale-100' : 'scale-100'} ${active ? 'animate-tab-glow rounded-full' : ''}`}>
                 {tab.icon(active)}
               </div>
-              <span className={`text-[10px] font-medium transition-colors duration-200 ${active ? 'text-[#A78BFA] font-semibold' : 'text-[#5B6785]'}`}>
+              <span className={`text-[10px] font-medium transition-colors duration-200 ${active ? 'text-[#8B5CF6] font-semibold' : 'text-[#4B5568]'}`}>
                 {tab.label}
               </span>
             </Link>

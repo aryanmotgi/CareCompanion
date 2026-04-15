@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { PublicNav } from '@/components/PublicNav';
 
 const EXPLORE_LINKS = [
   { href: '/dashboard', label: 'Dashboard', desc: 'Health cards and quick actions', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -53,14 +54,9 @@ export default function DemoWalkthroughPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-5 py-6 sm:py-8 space-y-6">
-      {/* Back to landing */}
-      <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors">
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-        </svg>
-        Back to home
-      </Link>
+    <div className="min-h-dvh bg-[#080A14] page-grid">
+      <PublicNav />
+      <div className="max-w-3xl mx-auto px-4 sm:px-5 pt-24 pb-8 space-y-6">
 
       {/* Reviewer credentials card — only for 1upHealth review team */}
       <details className="rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-500/[0.06] to-orange-500/[0.04] overflow-hidden group">
@@ -390,6 +386,7 @@ export default function DemoWalkthroughPage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
           </svg>
         </Link>
+      </div>
       </div>
     </div>
   );

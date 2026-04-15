@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { PublicNav } from '@/components/PublicNav';
 import { useEffect, useRef } from 'react';
 
 function useScrollReveal() {
@@ -32,19 +33,14 @@ export default function PrivacyPolicy() {
   const containerRef = useScrollReveal();
 
   return (
-    <div className="min-h-dvh bg-[var(--bg)] text-[var(--text)] relative overflow-hidden">
+    <div className="min-h-dvh bg-[#080A14] text-[var(--text)] relative overflow-hidden page-grid">
       <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
         <div className="absolute -top-40 right-1/4 w-[500px] h-[500px] rounded-full bg-[#6366F1]/[0.05] blur-[120px]" />
         <div className="absolute top-[50%] -left-40 w-[400px] h-[400px] rounded-full bg-[#A78BFA]/[0.04] blur-[100px]" />
       </div>
 
-      <div ref={containerRef} className="max-w-2xl mx-auto px-5 py-12 sm:py-16">
-        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors mb-8 group">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-          Back to home
-        </Link>
+      <PublicNav />
+      <div ref={containerRef} className="max-w-2xl mx-auto px-5 pt-24 pb-12 sm:pb-16">
 
         <div className="reveal-item mb-10" style={{ '--delay': '0s' } as React.CSSProperties}>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#A78BFA]/10 border border-[#A78BFA]/20 mb-4">
