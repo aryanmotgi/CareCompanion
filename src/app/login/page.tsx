@@ -1,7 +1,13 @@
 import Link from 'next/link';
 import { LoginForm } from '@/components/LoginForm';
 
-export default function LoginPage() {
+export default function LoginPage({ searchParams }: { searchParams: { error?: string } }) {
+  const errorMsg = searchParams.error === 'db'
+    ? 'Database is temporarily unavailable. Please try again in a moment.'
+    : searchParams.error
+    ? 'Sign in failed. Please try again.'
+    : undefined
+
   return (
     <div className="min-h-screen min-h-dvh flex flex-col items-center justify-center px-4 sm:px-6 bg-[var(--bg)]">
       {/* Back to home */}
@@ -24,7 +30,7 @@ export default function LoginPage() {
           <h1 className="text-fluid-3xl font-bold text-white mb-1">CareCompanion</h1>
           <p className="text-fluid-base text-[var(--text-secondary)]">AI-powered cancer care for patients &amp; caregivers</p>
         </div>
-        <LoginForm />
+        <LoginForm initialError={errorMsg} />
       </div>
     </div>
   );
