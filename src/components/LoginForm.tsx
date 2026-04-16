@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { signIn } from 'next-auth/react'
 
 export function LoginForm({ initialError }: { initialError?: string }) {
   const [loading, setLoading] = useState(false)
@@ -10,30 +11,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
     setLoading(true)
     setError('')
     try {
-      // Get CSRF token
-      const csrfRes = await fetch('/api/auth/csrf')
-      const { csrfToken } = await csrfRes.json()
-
-      // Build and submit a form — browser handles all redirects natively,
-      // including the Auth.js → Cognito → callback chain + cookies
-      const form = document.createElement('form')
-      form.method = 'POST'
-      form.action = '/api/auth/signin/cognito'
-
-      const csrf = document.createElement('input')
-      csrf.type = 'hidden'
-      csrf.name = 'csrfToken'
-      csrf.value = csrfToken
-      form.appendChild(csrf)
-
-      const callback = document.createElement('input')
-      callback.type = 'hidden'
-      callback.name = 'callbackUrl'
-      callback.value = '/dashboard'
-      form.appendChild(callback)
-
-      document.body.appendChild(form)
-      form.submit()
+      await signIn('cognito', { callbackUrl: '/dashboard' })
     } catch {
       setLoading(false)
       setError('Connection error. Please try again.')
