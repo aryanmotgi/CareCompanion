@@ -1,6 +1,3 @@
-'use client';
-
-import { useState } from 'react';
 import Link from 'next/link';
 
 const EXPLORE_LINKS = [
@@ -30,27 +27,6 @@ function StepCard({ step, title, children }: { step: number; title: string; chil
 }
 
 export default function DemoWalkthroughPage() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  async function handleSeedDemo() {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch('/api/demo/start', { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        // Redirect to the dashboard as the demo user
-        window.location.href = data.redirect || '/dashboard';
-      } else {
-        setError(data.error || 'Failed to start demo');
-        setLoading(false);
-      }
-    } catch {
-      setError('Network error — please try again');
-      setLoading(false);
-    }
-  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-5 py-6 sm:py-8 space-y-6">
@@ -343,34 +319,18 @@ export default function DemoWalkthroughPage() {
           </div>
 
           <div className="space-y-3">
-            <button
-              onClick={handleSeedDemo}
-              disabled={loading}
-              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-blue-500 to-violet-500 text-white text-sm font-semibold hover:from-blue-400 hover:to-violet-400 shadow-lg shadow-violet-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            <Link
+              href="/login"
+              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-blue-500 to-violet-500 text-white text-sm font-semibold hover:from-blue-400 hover:to-violet-400 shadow-lg shadow-violet-500/25 transition-all"
             >
-              {loading ? (
-                <>
-                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Launching demo...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
-                  </svg>
-                  Launch interactive demo
-                </>
-              )}
-            </button>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+              </svg>
+              Launch interactive demo
+            </Link>
             <p className="text-[11px] text-center text-white/30">
-              No sign up · No credit card · Leave anytime
+              Sign in to explore the full app
             </p>
-            {error && (
-              <p className="text-sm text-red-400 text-center">{error}</p>
-            )}
           </div>
         </div>
       </div>
