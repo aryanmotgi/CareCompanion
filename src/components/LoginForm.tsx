@@ -1,10 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 export function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const err = searchParams.get('error')
+    if (err === 'db') {
+      setError('Database is temporarily unavailable. Please try again in a moment.')
+    } else if (err) {
+      setError('Sign in failed. Please try again.')
+    }
+  }, [searchParams])
 
   async function handleSignIn() {
     setLoading(true)

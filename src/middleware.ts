@@ -11,9 +11,13 @@ export default auth((req) => {
   }
 
   if (req.auth && pathname === '/login') {
-    const url = req.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
+    // Don't redirect if there's an error param — let the login page show the error
+    const errorParam = req.nextUrl.searchParams.get('error')
+    if (!errorParam) {
+      const url = req.nextUrl.clone()
+      url.pathname = '/dashboard'
+      return NextResponse.redirect(url)
+    }
   }
 
   const response = NextResponse.next()
