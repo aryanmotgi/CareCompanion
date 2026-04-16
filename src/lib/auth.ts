@@ -35,13 +35,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async signIn({ user, profile }) {
       if (!user.email) return true
       try {
-        const cognitoSub = (profile as Record<string, string>)?.sub || user.id
-        // Upsert user record so care team lookups work via DB
+        const p = profile as Record<string, string> | undefined
+        const cognitoSub = p?.sub || user.id || ''
+        if (!cognitoSub) return true
         await db
           .insert(users)
           .values({
-            cognitoSub: cognitoSub ?? '',
-            email: user.email!,
+            cognitoSub,
+            email: user.email,
             displayName: user.name || user.email || '',
             isDemo: false,
           })
@@ -52,14 +53,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               displayName: user.name || user.email,
             },
           })
-      } catch {
-        // Don't block sign-in if user upsert fails
+      } catch (e) {
+        console.error('[auth] signIn DB error (non-blocking):', e)
       }
       return true
     },
   },
   pages: {
     signIn: '/login',
+    error: '/login',
   },
-  debug: false,
+  debug: true,
 })
