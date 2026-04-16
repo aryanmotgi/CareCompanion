@@ -10,36 +10,30 @@ export function LoginForm() {
     setLoading(true)
     setError('')
     try {
-      // Get CSRF token from Auth.js
+      // Get CSRF token
       const csrfRes = await fetch('/api/auth/csrf')
       const { csrfToken } = await csrfRes.json()
 
-      // POST to Auth.js sign-in endpoint — it will redirect to Cognito
-      const res = await fetch('/api/auth/signin/cognito', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          csrfToken,
-          callbackUrl: '/dashboard',
-        }),
-        redirect: 'manual',
-      })
+      // Build and submit a form — browser handles all redirects natively,
+      // including the Auth.js → Cognito → callback chain + cookies
+      const form = document.createElement('form')
+      form.method = 'POST'
+      form.action = '/api/auth/signin/cognito'
 
-      // Auth.js returns a redirect — navigate the browser to it
-      const location = res.headers.get('location') || res.url
-      if (location && location !== window.location.href) {
-        window.location.href = location
-      } else {
-        // Fallback: try the direct Cognito URL from the response body
-        const text = await res.text()
-        const urlMatch = text.match(/https:\/\/[^"'\s]+cognito[^"'\s]+/)
-        if (urlMatch) {
-          window.location.href = urlMatch[0]
-        } else {
-          setLoading(false)
-          setError('Sign-in failed. Please try again.')
-        }
-      }
+      const csrf = document.createElement('input')
+      csrf.type = 'hidden'
+      csrf.name = 'csrfToken'
+      csrf.value = csrfToken
+      form.appendChild(csrf)
+
+      const callback = document.createElement('input')
+      callback.type = 'hidden'
+      callback.name = 'callbackUrl'
+      callback.value = '/dashboard'
+      form.appendChild(callback)
+
+      document.body.appendChild(form)
+      form.submit()
     } catch {
       setLoading(false)
       setError('Connection error. Please try again.')
