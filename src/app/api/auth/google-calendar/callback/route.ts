@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { db } from '@/lib/db';
+import { connectedApps } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
@@ -30,25 +32,20 @@ export async function GET(req: NextRequest) {
 
     const tokens = await tokenRes.json();
 
-    // Save to connected_apps using admin client (callback doesn't have user session cookies)
-    const admin = createAdminClient();
-    const { error } = await admin.from('connected_apps').upsert(
-      {
-        user_id: state,
-        source: 'google_calendar',
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token || null,
-        expires_at: tokens.expires_in
-          ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
-          : null,
-        last_synced: null,
-      },
-      { onConflict: 'user_id,source' }
+    // Save to connected_apps (delete + insert to avoid needing composite unique constraint)
+    await db.delete(connectedApps).where(
+      and(eq(connectedApps.userId, state), eq(connectedApps.source, 'google_calendar'))
     );
-
-    if (error) {
-      return NextResponse.redirect(`${appUrl}/settings?error=save_failed`);
-    }
+    await db.insert(connectedApps).values({
+      userId: state,
+      source: 'google_calendar',
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token || null,
+      expiresAt: tokens.expires_in
+        ? new Date(Date.now() + tokens.expires_in * 1000)
+        : null,
+      lastSynced: null,
+    });
 
     // Trigger initial sync (pass internal secret so sync route trusts the callback)
     await fetch(`${appUrl}/api/sync/google-calendar`, {

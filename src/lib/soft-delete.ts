@@ -3,9 +3,25 @@
  * Instead of permanently deleting records, marks them with a deleted_at timestamp.
  * Records can be recovered within 30 days. After that, a cron job can hard-delete them.
  */
-import { createAdminClient } from '@/lib/supabase/admin'
+import { db } from '@/lib/db'
+import { medications, appointments, doctors, documents, labResults, notifications, claims } from '@/lib/db/schema'
+import { eq, and, lt, isNotNull } from 'drizzle-orm'
 
 type SoftDeletableTable = 'medications' | 'appointments' | 'doctors' | 'documents' | 'lab_results' | 'notifications' | 'claims'
+
+// Map table name strings to Drizzle table objects
+const tableMap = {
+  medications,
+  appointments,
+  doctors,
+  documents,
+  lab_results: labResults,
+  notifications,
+  claims,
+} as const
+
+// Tables that are owned by user_id vs care_profile_id
+const userOwnedTables = new Set<SoftDeletableTable>(['lab_results', 'notifications', 'claims'])
 
 /**
  * Soft delete a record by setting deleted_at timestamp.
@@ -17,26 +33,29 @@ export async function softDelete(
   userId: string,
   profileId?: string,
 ): Promise<{ success: boolean; deleted_at: string }> {
-  const admin = createAdminClient()
-  const deletedAt = new Date().toISOString()
+  const deletedAt = new Date()
+  const isUserOwned = userOwnedTables.has(table)
+  const tbl = tableMap[table]
 
-  // Build query based on table's ownership field
-  const ownershipField = ['lab_results', 'notifications', 'claims'].includes(table) ? 'user_id' : 'care_profile_id'
-  const ownershipValue = ownershipField === 'user_id' ? userId : profileId
-
-  if (!ownershipValue) {
+  if (!isUserOwned && !profileId) {
     throw new Error('Profile ID required for profile-scoped tables')
   }
 
-  const { error } = await admin
-    .from(table)
-    .update({ deleted_at: deletedAt })
-    .eq('id', id)
-    .eq(ownershipField, ownershipValue)
+  // Build the where condition dynamically
+  // All soft-deletable tables have id, userId or careProfileId, and deletedAt
+  // We cast to any to allow dynamic access; the ownership logic is enforced above
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tblAny = tbl as any
+  const ownerCondition = isUserOwned
+    ? eq(tblAny.userId, userId)
+    : eq(tblAny.careProfileId, profileId!)
 
-  if (error) throw error
+  await db
+    .update(tbl)
+    .set({ deletedAt } as never)
+    .where(and(eq(tblAny.id, id), ownerCondition))
 
-  return { success: true, deleted_at: deletedAt }
+  return { success: true, deleted_at: deletedAt.toISOString() }
 }
 
 /**
@@ -48,22 +67,23 @@ export async function restore(
   userId: string,
   profileId?: string,
 ): Promise<{ success: boolean }> {
-  const admin = createAdminClient()
+  const isUserOwned = userOwnedTables.has(table)
+  const tbl = tableMap[table]
 
-  const ownershipField = ['lab_results', 'notifications', 'claims'].includes(table) ? 'user_id' : 'care_profile_id'
-  const ownershipValue = ownershipField === 'user_id' ? userId : profileId
-
-  if (!ownershipValue) {
+  if (!isUserOwned && !profileId) {
     throw new Error('Profile ID required for profile-scoped tables')
   }
 
-  const { error } = await admin
-    .from(table)
-    .update({ deleted_at: null })
-    .eq('id', id)
-    .eq(ownershipField, ownershipValue)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tblAny = tbl as any
+  const ownerCondition = isUserOwned
+    ? eq(tblAny.userId, userId)
+    : eq(tblAny.careProfileId, profileId!)
 
-  if (error) throw error
+  await db
+    .update(tbl)
+    .set({ deletedAt: null } as never)
+    .where(and(eq(tblAny.id, id), ownerCondition))
 
   return { success: true }
 }
@@ -73,22 +93,20 @@ export async function restore(
  * Run this from a cron job.
  */
 export async function purgeExpiredRecords(): Promise<{ purged: Record<string, number> }> {
-  const admin = createAdminClient()
-  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
   const tables: SoftDeletableTable[] = ['medications', 'appointments', 'doctors', 'documents', 'lab_results', 'notifications', 'claims']
   const purged: Record<string, number> = {}
 
-  for (const table of tables) {
-    const { data, error } = await admin
-      .from(table)
-      .delete()
-      .lt('deleted_at', cutoff)
-      .not('deleted_at', 'is', null)
-      .select('id')
+  for (const tableName of tables) {
+    const tbl = tableMap[tableName]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tblAny = tbl as any
+    const deleted = await db
+      .delete(tbl)
+      .where(and(lt(tblAny.deletedAt, cutoff), isNotNull(tblAny.deletedAt)))
+      .returning({ id: tblAny.id })
 
-    if (!error && data) {
-      purged[table] = data.length
-    }
+    purged[tableName] = deleted.length
   }
 
   return { purged }

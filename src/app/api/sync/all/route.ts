@@ -1,4 +1,6 @@
-import { createAdminClient } from '@/lib/supabase/admin';
+import { db } from '@/lib/db';
+import { connectedApps } from '@/lib/db/schema';
+import { and, eq, isNotNull } from 'drizzle-orm';
 import { syncOneUpData } from '@/lib/oneup-sync';
 import { verifyCronRequest } from '@/lib/cron-auth';
 import { safeDecryptToken } from '@/lib/token-encryption';
@@ -11,15 +13,13 @@ export const maxDuration = 300;
 export async function GET(req: Request) {
   const authError = verifyCronRequest(req);
   if (authError) return authError;
-  const admin = createAdminClient();
 
-  const { data: apps } = await admin
-    .from('connected_apps')
-    .select('*')
-    .eq('source', '1uphealth')
-    .not('access_token', 'is', null);
+  const apps = await db
+    .select()
+    .from(connectedApps)
+    .where(and(eq(connectedApps.source, '1uphealth'), isNotNull(connectedApps.accessToken)));
 
-  if (!apps || apps.length === 0) {
+  if (apps.length === 0) {
     return Response.json({ message: 'No apps to sync' });
   }
 
@@ -27,16 +27,16 @@ export async function GET(req: Request) {
 
   for (const app of apps) {
     try {
-      const accessToken = safeDecryptToken(app.access_token);
+      const accessToken = safeDecryptToken(app.accessToken!);
       if (!accessToken) {
-        results.push({ userId: app.user_id, status: 'error' });
+        results.push({ userId: app.userId, status: 'error' });
         continue;
       }
-      const synced = await syncOneUpData(app.user_id, accessToken);
-      results.push({ userId: app.user_id, status: 'ok', data: synced });
+      const synced = await syncOneUpData(app.userId, accessToken);
+      results.push({ userId: app.userId, status: 'ok', data: synced });
     } catch (err) {
-      console.error(`Sync failed for user ${app.user_id}:`, err);
-      results.push({ userId: app.user_id, status: 'error' });
+      console.error(`Sync failed for user ${app.userId}:`, err);
+      results.push({ userId: app.userId, status: 'error' });
     }
   }
 

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { db } from '@/lib/db';
+import { connectedApps } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
@@ -29,19 +31,18 @@ export async function GET(req: NextRequest) {
 
     const tokens = await tokenRes.json();
 
-    const admin = createAdminClient();
-    await admin.from('connected_apps').upsert(
-      {
-        user_id: state,
-        source: 'insurance',
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token || null,
-        expires_at: tokens.expires_in
-          ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
-          : null,
-      },
-      { onConflict: 'user_id,source' }
+    await db.delete(connectedApps).where(
+      and(eq(connectedApps.userId, state), eq(connectedApps.source, 'insurance'))
     );
+    await db.insert(connectedApps).values({
+      userId: state,
+      source: 'insurance',
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token || null,
+      expiresAt: tokens.expires_in
+        ? new Date(Date.now() + tokens.expires_in * 1000)
+        : null,
+    });
 
     await fetch(`${appUrl}/api/sync/insurance`, {
       method: 'POST',

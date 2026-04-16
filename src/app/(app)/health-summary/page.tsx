@@ -1,19 +1,24 @@
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { users, careProfiles } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { HealthSummaryView } from '@/components/HealthSummaryView';
 
 export default async function HealthSummaryPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('patient_name')
-    .eq('user_id', user.id)
-    .single();
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
+
+  const [profile] = await db
+    .select({ patientName: careProfiles.patientName })
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, dbUser.id))
+    .limit(1);
 
   if (!profile) redirect('/setup');
 
-  return <HealthSummaryView patientName={profile.patient_name || 'your loved one'} />;
+  return <HealthSummaryView patientName={profile.patientName || 'your loved one'} />;
 }

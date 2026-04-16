@@ -1,4 +1,7 @@
-import { createAdminClient } from '@/lib/supabase/admin';
+import { db } from '@/lib/db';
+import { connectedApps, careProfiles, medications, appointments, labResults, notifications } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
+import { getAuthenticatedUser } from '@/lib/api-helpers';
 import {
   parseMedications,
   parseConditions,
@@ -18,23 +21,21 @@ async function fetchFhirBundle(accessToken: string, resourceType: string): Promi
 }
 
 export async function POST(req: Request) {
-  const { createClient } = await import('@/lib/supabase/server');
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const body = await req.json();
+  const { user_id } = body;
 
-  const { user_id } = await req.json();
   if (!user_id) {
     return Response.json({ error: 'user_id required' }, { status: 400 });
   }
 
-  if (user && user_id !== user.id) {
-    return Response.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  // Auth: either (a) authenticated user session, or (b) server-side OAuth callback
+  const { user: dbUser, error: authError } = await getAuthenticatedUser();
 
-  const admin = createAdminClient();
-
-  // If no session (server-side OAuth callback), verify internal secret
-  if (!user) {
+  if (!authError && dbUser) {
+    if (dbUser.id !== user_id) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+  } else {
     const internalSecret = req.headers.get('x-internal-secret');
     const cronSecret = process.env.CRON_SECRET;
     if (!cronSecret || internalSecret !== cronSecret) {
@@ -42,30 +43,28 @@ export async function POST(req: Request) {
     }
   }
 
-  const { data: connection } = await admin
-    .from('connected_apps')
-    .select('*')
-    .eq('user_id', user_id)
-    .eq('source', 'health_system')
-    .single();
+  const [connection] = await db
+    .select()
+    .from(connectedApps)
+    .where(and(eq(connectedApps.userId, user_id), eq(connectedApps.source, 'health_system')))
+    .limit(1);
 
-  if (!connection?.access_token) {
+  if (!connection?.accessToken) {
     return Response.json({ error: 'Not connected' }, { status: 400 });
   }
 
-  const { data: profile } = await admin
-    .from('care_profiles')
-    .select('id, conditions, allergies')
-    .eq('user_id', user_id)
-    .single();
+  const [profile] = await db
+    .select({ id: careProfiles.id, conditions: careProfiles.conditions, allergies: careProfiles.allergies })
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, user_id))
+    .limit(1);
 
   if (!profile) {
     return Response.json({ error: 'No care profile' }, { status: 400 });
   }
 
-  const token = connection.access_token;
+  const token = connection.accessToken;
 
-  // Fetch all FHIR resources in parallel
   const [medBundle, condBundle, allergyBundle, apptBundle, labBundle] = await Promise.all([
     fetchFhirBundle(token, 'MedicationRequest'),
     fetchFhirBundle(token, 'Condition'),
@@ -74,24 +73,23 @@ export async function POST(req: Request) {
     fetchFhirBundle(token, 'Observation'),
   ]);
 
-  const medications = parseMedications(medBundle);
+  const meds = parseMedications(medBundle);
   const conditions = parseConditions(condBundle);
   const allergies = parseAllergies(allergyBundle);
-  const appointments = parseAppointments(apptBundle);
-  const labResults = parseLabResults(labBundle);
+  const appts = parseAppointments(apptBundle);
+  const labs = parseLabResults(labBundle);
 
   // Import medications
-  for (const med of medications) {
-    const { data: existing } = await admin
-      .from('medications')
-      .select('id')
-      .eq('care_profile_id', profile.id)
-      .eq('name', med.name)
+  for (const med of meds) {
+    const existing = await db
+      .select({ id: medications.id })
+      .from(medications)
+      .where(and(eq(medications.careProfileId, profile.id), eq(medications.name, med.name)))
       .limit(1);
 
-    if (!existing || existing.length === 0) {
-      await admin.from('medications').insert({
-        care_profile_id: profile.id,
+    if (existing.length === 0) {
+      await db.insert(medications).values({
+        careProfileId: profile.id,
         name: med.name,
         dose: med.dose,
         frequency: med.frequency,
@@ -100,60 +98,62 @@ export async function POST(req: Request) {
     }
   }
 
-  // Update conditions and allergies on profile
+  // Update conditions and allergies
   if (conditions.length > 0) {
-    const existingConditions = profile.conditions || '';
-    const newConditions = conditions.filter((c) => !existingConditions.includes(c));
-    if (newConditions.length > 0) {
-      const updated = existingConditions
-        ? `${existingConditions}\n${newConditions.join('\n')}`
-        : newConditions.join('\n');
-      await admin.from('care_profiles').update({ conditions: updated }).eq('id', profile.id);
+    const existing = profile.conditions || '';
+    const newOnes = conditions.filter((c) => !existing.includes(c));
+    if (newOnes.length > 0) {
+      const updated = existing ? `${existing}\n${newOnes.join('\n')}` : newOnes.join('\n');
+      await db.update(careProfiles).set({ conditions: updated }).where(eq(careProfiles.id, profile.id));
     }
   }
 
   if (allergies.length > 0) {
-    const existingAllergies = profile.allergies || '';
-    const newAllergies = allergies.filter((a) => !existingAllergies.includes(a));
-    if (newAllergies.length > 0) {
-      const updated = existingAllergies
-        ? `${existingAllergies}\n${newAllergies.join('\n')}`
-        : newAllergies.join('\n');
-      await admin.from('care_profiles').update({ allergies: updated }).eq('id', profile.id);
+    const existing = profile.allergies || '';
+    const newOnes = allergies.filter((a) => !existing.includes(a));
+    if (newOnes.length > 0) {
+      const updated = existing ? `${existing}\n${newOnes.join('\n')}` : newOnes.join('\n');
+      await db.update(careProfiles).set({ allergies: updated }).where(eq(careProfiles.id, profile.id));
     }
   }
 
   // Import appointments
-  for (const appt of appointments) {
-    await admin.from('appointments').insert({
-      care_profile_id: profile.id,
-      doctor_name: appt.doctor_name,
-      date_time: appt.date_time,
+  for (const appt of appts) {
+    await db.insert(appointments).values({
+      careProfileId: profile.id,
+      doctorName: appt.doctor_name,
+      dateTime: appt.date_time ? new Date(appt.date_time) : null,
       purpose: appt.purpose,
     });
   }
 
   // Import lab results
-  for (const lab of labResults) {
-    const { data: existing } = await admin
-      .from('lab_results')
-      .select('id')
-      .eq('user_id', user_id)
-      .eq('test_name', lab.test_name)
-      .eq('date_taken', lab.date_taken || '')
+  for (const lab of labs) {
+    const existing = await db
+      .select({ id: labResults.id })
+      .from(labResults)
+      .where(and(
+        eq(labResults.userId, user_id),
+        eq(labResults.testName, lab.test_name),
+        eq(labResults.dateTaken, lab.date_taken || ''),
+      ))
       .limit(1);
 
-    if (!existing || existing.length === 0) {
-      await admin.from('lab_results').insert({
-        user_id,
-        ...lab,
+    if (existing.length === 0) {
+      await db.insert(labResults).values({
+        userId: user_id,
+        testName: lab.test_name,
+        value: lab.value,
+        unit: lab.unit,
+        referenceRange: lab.reference_range,
+        isAbnormal: lab.is_abnormal,
+        dateTaken: lab.date_taken,
         source: 'health_system',
       });
 
-      // Create notification for abnormal results
       if (lab.is_abnormal) {
-        await admin.from('notifications').insert({
-          user_id,
+        await db.insert(notifications).values({
+          userId: user_id,
           type: 'lab_result',
           title: `Abnormal lab result: ${lab.test_name}`,
           message: `${lab.test_name}: ${lab.value} ${lab.unit || ''} (range: ${lab.reference_range || 'N/A'})`,
@@ -162,19 +162,16 @@ export async function POST(req: Request) {
     }
   }
 
-  await admin
-    .from('connected_apps')
-    .update({ last_synced: new Date().toISOString() })
-    .eq('id', connection.id);
+  await db.update(connectedApps).set({ lastSynced: new Date() }).where(eq(connectedApps.id, connection.id));
 
   return Response.json({
     success: true,
     imported: {
-      medications: medications.length,
+      medications: meds.length,
       conditions: conditions.length,
       allergies: allergies.length,
-      appointments: appointments.length,
-      labResults: labResults.length,
+      appointments: appts.length,
+      labResults: labs.length,
     },
   });
 }

@@ -1,26 +1,26 @@
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { db } from '@/lib/db';
+import { connectedApps, careProfiles, appointments } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
 
 export async function POST(req: Request) {
-  // Auth: either (a) authenticated user session, or (b) server-side OAuth callback
-  // with a valid connected app proving the user_id is legitimate.
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const body = await req.json();
+  const { user_id } = body;
 
-  const { user_id } = await req.json();
   if (!user_id) {
     return Response.json({ error: 'user_id required' }, { status: 400 });
   }
 
-  // If we have a session, verify ownership
-  if (user && user_id !== user.id) {
-    return Response.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  // Auth: either (a) authenticated user session, or (b) server-side OAuth callback
+  const { user: dbUser, error: authError } = await getAuthenticatedUser();
 
-  const admin = createAdminClient();
-
-  // If no session (server-side OAuth callback), verify internal secret
-  if (!user) {
+  if (!authError && dbUser) {
+    // Session present — verify ownership
+    if (dbUser.id !== user_id) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+  } else {
+    // No session — verify internal secret
     const internalSecret = req.headers.get('x-internal-secret');
     const cronSecret = process.env.CRON_SECRET;
     if (!cronSecret || internalSecret !== cronSecret) {
@@ -28,22 +28,19 @@ export async function POST(req: Request) {
     }
   }
 
-  // Get connection
-  const { data: connection } = await admin
-    .from('connected_apps')
-    .select('*')
-    .eq('user_id', user_id)
-    .eq('source', 'google_calendar')
-    .single();
+  const [connection] = await db
+    .select()
+    .from(connectedApps)
+    .where(and(eq(connectedApps.userId, user_id), eq(connectedApps.source, 'google_calendar')))
+    .limit(1);
 
-  if (!connection?.access_token) {
+  if (!connection?.accessToken) {
     return Response.json({ error: 'Not connected' }, { status: 400 });
   }
 
-  // Check token expiry and refresh if needed
-  let accessToken = connection.access_token;
-  if (connection.expires_at && new Date(connection.expires_at) < new Date()) {
-    if (!connection.refresh_token) {
+  let accessToken = connection.accessToken;
+  if (connection.expiresAt && new Date(connection.expiresAt) < new Date()) {
+    if (!connection.refreshToken) {
       return Response.json({ error: 'Token expired, reconnect required' }, { status: 401 });
     }
     const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -52,7 +49,7 @@ export async function POST(req: Request) {
       body: new URLSearchParams({
         client_id: process.env.GOOGLE_CLIENT_ID!,
         client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-        refresh_token: connection.refresh_token,
+        refresh_token: connection.refreshToken,
         grant_type: 'refresh_token',
       }),
     });
@@ -62,27 +59,22 @@ export async function POST(req: Request) {
     const tokens = await refreshRes.json();
     accessToken = tokens.access_token;
 
-    await admin
-      .from('connected_apps')
-      .update({
-        access_token: tokens.access_token,
-        expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
-      })
-      .eq('id', connection.id);
+    await db.update(connectedApps).set({
+      accessToken: tokens.access_token,
+      expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
+    }).where(eq(connectedApps.id, connection.id));
   }
 
-  // Get the user's care profile
-  const { data: profile } = await admin
-    .from('care_profiles')
-    .select('id')
-    .eq('user_id', user_id)
-    .single();
+  const [profile] = await db
+    .select({ id: careProfiles.id })
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, user_id))
+    .limit(1);
 
   if (!profile) {
     return Response.json({ error: 'No care profile' }, { status: 400 });
   }
 
-  // Fetch upcoming calendar events (next 90 days)
   const now = new Date().toISOString();
   const future = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
   const healthKeywords = ['doctor', 'appointment', 'medical', 'hospital', 'clinic', 'pharmacy', 'dr.', 'dentist', 'therapist', 'checkup', 'lab'];
@@ -104,43 +96,38 @@ export async function POST(req: Request) {
     location?: string;
   }>;
 
-  // Filter health-related events
   const healthEvents = events.filter((e) => {
     const text = `${e.summary || ''} ${e.description || ''}`.toLowerCase();
     return healthKeywords.some((kw) => text.includes(kw));
   });
 
-  // Import to appointments table
   let imported = 0;
   for (const event of healthEvents) {
-    const dateTime = event.start?.dateTime || event.start?.date || null;
+    const dateTimeStr = event.start?.dateTime || event.start?.date || null;
+    const dateTime = dateTimeStr ? new Date(dateTimeStr) : null;
 
-    // Check for duplicate
-    const { data: existing } = await admin
-      .from('appointments')
-      .select('id')
-      .eq('care_profile_id', profile.id)
-      .eq('doctor_name', event.summary || '')
-      .eq('date_time', dateTime || '')
+    const existing = await db
+      .select({ id: appointments.id })
+      .from(appointments)
+      .where(and(
+        eq(appointments.careProfileId, profile.id),
+        eq(appointments.doctorName, event.summary || ''),
+      ))
       .limit(1);
 
-    if (existing && existing.length > 0) continue;
+    if (existing.length > 0) continue;
 
-    await admin.from('appointments').insert({
-      care_profile_id: profile.id,
-      doctor_name: event.summary || 'Calendar Event',
-      date_time: dateTime,
+    await db.insert(appointments).values({
+      careProfileId: profile.id,
+      doctorName: event.summary || 'Calendar Event',
+      dateTime,
       purpose: event.description || null,
       location: event.location || null,
     });
     imported++;
   }
 
-  // Update last_synced
-  await admin
-    .from('connected_apps')
-    .update({ last_synced: new Date().toISOString() })
-    .eq('id', connection.id);
+  await db.update(connectedApps).set({ lastSynced: new Date() }).where(eq(connectedApps.id, connection.id));
 
   return Response.json({ success: true, imported });
 }

@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     if (authError) return authError;
 
     const email = user.email;
-    const name = user.user_metadata?.display_name || user.user_metadata?.full_name || 'there';
+    const name = user.displayName || 'there';
 
     if (!email) {
       return apiError('No email on account', 400);

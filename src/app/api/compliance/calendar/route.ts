@@ -6,8 +6,10 @@
  *   year  – 4-digit year  (default: current year)
  *   month – 1-12          (default: current month)
  */
-import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { db } from '@/lib/db'
+import { reminderLogs } from '@/lib/db/schema'
+import { and, eq, gte, lte, asc } from 'drizzle-orm'
 import { apiSuccess, ApiErrors } from '@/lib/api-response'
 
 export interface CalendarDay {
@@ -28,33 +30,34 @@ export interface CalendarData {
 
 export async function GET(req: Request) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return ApiErrors.unauthorized()
+    const { user: dbUser, error } = await getAuthenticatedUser()
+    if (error) return error
 
     const url = new URL(req.url)
     const now = new Date()
     const year = parseInt(url.searchParams.get('year') || String(now.getFullYear()))
     const month = parseInt(url.searchParams.get('month') || String(now.getMonth() + 1))
 
-    // Build date range for the requested month
     const startDate = new Date(year, month - 1, 1)
-    const endDate = new Date(year, month, 0, 23, 59, 59) // last day of month
+    const endDate = new Date(year, month, 0, 23, 59, 59)
 
-    const admin = createAdminClient()
-
-    const { data: logs } = await admin.from('reminder_logs')
-      .select('*')
-      .eq('user_id', user.id)
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString())
-      .order('created_at', { ascending: true })
+    const logs = await db
+      .select()
+      .from(reminderLogs)
+      .where(
+        and(
+          eq(reminderLogs.userId, dbUser!.id),
+          gte(reminderLogs.createdAt, startDate),
+          lte(reminderLogs.createdAt, endDate),
+        )
+      )
+      .orderBy(asc(reminderLogs.createdAt))
 
     // Group logs by day
     const dayMap = new Map<string, CalendarDay>()
 
-    for (const log of (logs || [])) {
-      const dateStr = log.created_at.split('T')[0]
+    for (const log of logs) {
+      const dateStr = log.createdAt!.toISOString().split('T')[0]
 
       if (!dayMap.has(dateStr)) {
         dayMap.set(dateStr, {
@@ -83,25 +86,29 @@ export async function GET(req: Request) {
       }
 
       day.medications.push({
-        name: log.medication_name,
-        status: log.status,
+        name: log.medicationName,
+        status: log.status as 'taken' | 'missed' | 'snoozed' | 'pending',
       })
     }
 
-    // Calculate streak from today backwards (across all logs, not just this month)
+    // Calculate streak from today backwards
     let streak = 0
-    if (logs && logs.length > 0) {
-      // Fetch recent logs for streak calculation
-      const { data: recentLogs } = await admin.from('reminder_logs')
-        .select('created_at, status')
-        .eq('user_id', user.id)
-        .gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
-        .order('created_at', { ascending: true })
+    if (logs.length > 0) {
+      const recentLogs = await db
+        .select({ createdAt: reminderLogs.createdAt, status: reminderLogs.status })
+        .from(reminderLogs)
+        .where(
+          and(
+            eq(reminderLogs.userId, dbUser!.id),
+            gte(reminderLogs.createdAt, new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)),
+          )
+        )
+        .orderBy(asc(reminderLogs.createdAt))
 
-      if (recentLogs && recentLogs.length > 0) {
+      if (recentLogs.length > 0) {
         const dailyStatus = new Map<string, boolean>()
         for (const log of recentLogs) {
-          const day = log.created_at.split('T')[0]
+          const day = log.createdAt!.toISOString().split('T')[0]
           if (log.status === 'missed') {
             dailyStatus.set(day, false)
           } else if (!dailyStatus.has(day)) {

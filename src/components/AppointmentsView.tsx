@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
 import { CategoryScanner } from '@/components/CategoryScanner';
@@ -13,7 +12,6 @@ interface AppointmentsViewProps {
 }
 
 export function AppointmentsView({ appointments: initial, profileId }: AppointmentsViewProps) {
-  const supabase = createClient();
   const [appointments, setAppointments] = useState(initial);
   const [showAdd, setShowAdd] = useState(false);
   const [doctor, setDoctor] = useState('');
@@ -22,28 +20,29 @@ export function AppointmentsView({ appointments: initial, profileId }: Appointme
   const [saving, setSaving] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
 
-  const upcoming = appointments.filter((a) => a.date_time && new Date(a.date_time) >= new Date());
-  const past = appointments.filter((a) => !a.date_time || new Date(a.date_time) < new Date());
+  const upcoming = appointments.filter((a) => a.dateTime && new Date(a.dateTime) >= new Date());
+  const past = appointments.filter((a) => !a.dateTime || new Date(a.dateTime) < new Date());
 
   const addAppointment = async () => {
     if (!doctor.trim() && !purpose.trim()) return;
     setSaving(true);
-    const { data, error } = await supabase
-      .from('appointments')
-      .insert({
+    const res = await fetch('/api/records/appointments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         care_profile_id: profileId,
-        doctor_name: doctor || null,
-        date_time: dateTime || null,
+        doctorName: doctor || null,
+        dateTime: dateTime || null,
         purpose: purpose || null,
-      })
-      .select()
-      .single();
+      }),
+    });
+    const json = await res.json();
     setSaving(false);
-    if (!error && data) {
-      setAppointments((prev) => [...prev, data].sort((a, b) => {
-        if (!a.date_time) return 1;
-        if (!b.date_time) return -1;
-        return new Date(a.date_time).getTime() - new Date(b.date_time).getTime();
+    if (res.ok && json.data) {
+      setAppointments((prev) => [...prev, json.data].sort((a, b) => {
+        if (!a.dateTime) return 1;
+        if (!b.dateTime) return -1;
+        return new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime();
       }));
       setDoctor('');
       setDateTime('');
@@ -53,21 +52,25 @@ export function AppointmentsView({ appointments: initial, profileId }: Appointme
   };
 
   const removeAppointment = async (id: string) => {
-    const { error } = await supabase.from('appointments').delete().eq('id', id);
-    if (!error) {
+    const res = await fetch('/api/records/appointments', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    if (res.ok) {
       setAppointments((prev) => prev.filter((a) => a.id !== id));
     }
   };
 
   const AppointmentCard = ({ appt }: { appt: Appointment }) => {
-    const isPast = appt.date_time && new Date(appt.date_time) < new Date();
+    const isPast = appt.dateTime && new Date(appt.dateTime) < new Date();
     return (
       <div className={`flex items-center justify-between px-5 py-4 ${isPast ? 'opacity-60' : ''}`}>
         <div className="min-w-0">
-          <p className="font-medium text-white">{appt.doctor_name || 'Appointment'}</p>
+          <p className="font-medium text-white">{appt.doctorName || 'Appointment'}</p>
           <p className="text-sm text-[var(--text-secondary)]">
-            {appt.date_time
-              ? new Date(appt.date_time).toLocaleDateString('en-US', {
+            {appt.dateTime
+              ? new Date(appt.dateTime).toLocaleDateString('en-US', {
                   weekday: 'short',
                   month: 'short',
                   day: 'numeric',

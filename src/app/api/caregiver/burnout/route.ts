@@ -2,7 +2,10 @@
  * Caregiver burnout assessment endpoint.
  * Analyzes journal entries and appointment load to detect burnout signals.
  */
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { db } from '@/lib/db'
+import { careProfiles, symptomEntries, appointments } from '@/lib/db/schema'
+import { and, eq, gte, lte, desc } from 'drizzle-orm'
 import { assessBurnout } from '@/lib/caregiver-burnout'
 import { apiSuccess, ApiErrors } from '@/lib/api-response'
 import { rateLimit } from '@/lib/rate-limit'
@@ -15,45 +18,45 @@ export async function GET(req: Request) {
   if (!success) return ApiErrors.rateLimited()
 
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return ApiErrors.unauthorized()
+    const { user: dbUser, error } = await getAuthenticatedUser()
+    if (error) return error
 
-    const { data: profile } = await supabase
-      .from('care_profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
+    const [profile] = await db
+      .select({ id: careProfiles.id })
+      .from(careProfiles)
+      .where(eq(careProfiles.userId, dbUser!.id))
+      .limit(1)
 
-    // Fetch recent journal entries and upcoming appointments
-    const twoWeeksFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
-    const [{ data: entries }, { data: appointments }] = await Promise.all([
-      supabase
-        .from('symptom_entries')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false })
+    const twoWeeksFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+
+    const [entries, appts] = await Promise.all([
+      db
+        .select()
+        .from(symptomEntries)
+        .where(eq(symptomEntries.userId, dbUser!.id))
+        .orderBy(desc(symptomEntries.date))
         .limit(14),
-      profile ? supabase
-        .from('appointments')
-        .select('id')
-        .eq('care_profile_id', profile.id)
-        .gte('date_time', new Date().toISOString())
-        .lte('date_time', twoWeeksFromNow) : Promise.resolve({ data: [] }),
+      profile
+        ? db
+            .select({ id: appointments.id })
+            .from(appointments)
+            .where(
+              and(
+                eq(appointments.careProfileId, profile.id),
+                gte(appointments.dateTime, new Date()),
+                lte(appointments.dateTime, twoWeeksFromNow),
+              )
+            )
+        : Promise.resolve([]),
     ])
 
-    // Calculate days since last journal entry
     let daysSinceLastEntry: number | null = null
-    if (entries && entries.length > 0) {
+    if (entries.length > 0) {
       const lastDate = new Date(entries[0].date)
       daysSinceLastEntry = Math.floor((Date.now() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
     }
 
-    const assessment = assessBurnout(
-      entries || [],
-      (appointments || []).length,
-      daysSinceLastEntry,
-    )
+    const assessment = assessBurnout(entries, appts.length, daysSinceLastEntry)
 
     return apiSuccess(assessment)
   } catch (error) {

@@ -1,33 +1,39 @@
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { users, careProfiles, symptomEntries } from '@/lib/db/schema';
+import { eq, desc } from 'drizzle-orm';
 import { SymptomJournal } from '@/components/SymptomJournal';
 
 export default async function JournalPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('id, patient_name')
-    .eq('user_id', user.id)
-    .single();
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
+
+  const [profile] = await db
+    .select({ id: careProfiles.id, patientName: careProfiles.patientName })
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, dbUser.id))
+    .limit(1);
 
   if (!profile) redirect('/setup');
 
   // Fetch last 14 days of entries
   const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  const { data: entries } = await supabase
-    .from('symptom_entries')
-    .select('*')
-    .eq('user_id', user.id)
-    .gte('date', since)
-    .order('date', { ascending: false });
+  const entries = await db
+    .select()
+    .from(symptomEntries)
+    .where(eq(symptomEntries.userId, dbUser.id))
+    .orderBy(desc(symptomEntries.date));
+
+  const filteredEntries = entries.filter(e => e.date && e.date >= since);
 
   return (
     <SymptomJournal
-      patientName={profile.patient_name || 'your loved one'}
-      initialEntries={entries || []}
+      patientName={profile.patientName || 'your loved one'}
+      initialEntries={filteredEntries}
     />
   );
 }

@@ -1,6 +1,8 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess, ApiErrors } from '@/lib/api-response';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { db } from '@/lib/db';
+import { medicationReminders, reminderLogs } from '@/lib/db/schema';
+import { and, eq, gte, asc } from 'drizzle-orm';
 import { rateLimit } from '@/lib/rate-limit';
 import { z } from 'zod';
 
@@ -21,20 +23,20 @@ const DeleteSchema = z.object({
 // GET — list all medication reminders for the user
 export async function GET() {
   try {
-    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    const { user: dbUser, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
 
-    const [
-      { data: reminders },
-      { data: todayLogs },
-    ] = await Promise.all([
-      supabase.from('medication_reminders').select('*').eq('user_id', user.id).order('created_at'),
-      supabase.from('reminder_logs').select('*').eq('user_id', user.id)
-        .gte('scheduled_time', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
-        .order('scheduled_time'),
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [reminders, todayLogs] = await Promise.all([
+      db.select().from(medicationReminders).where(eq(medicationReminders.userId, dbUser!.id)).orderBy(asc(medicationReminders.createdAt)),
+      db.select().from(reminderLogs).where(
+        and(eq(reminderLogs.userId, dbUser!.id), gte(reminderLogs.scheduledTime, todayStart))
+      ).orderBy(asc(reminderLogs.scheduledTime)),
     ]);
 
-    return apiSuccess({ reminders: reminders || [], todayLogs: todayLogs || [] });
+    return apiSuccess({ reminders, todayLogs });
   } catch (err) {
     console.error('[reminders] GET error:', err);
     return apiError('Internal server error', 500);
@@ -50,7 +52,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { user, error: authError } = await getAuthenticatedUser();
+    const { user: dbUser, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
 
     const body = await req.json();
@@ -58,22 +60,26 @@ export async function POST(req: Request) {
     if (valError) return valError;
 
     const { medication_id, medication_name, dose, reminder_times, days_of_week } = validated;
-    const admin = createAdminClient();
 
-    const { error } = await admin.from('medication_reminders').upsert({
-      user_id: user.id,
-      medication_id,
-      medication_name,
+    await db.insert(medicationReminders).values({
+      userId: dbUser!.id,
+      medicationId: medication_id,
+      medicationName: medication_name,
       dose: dose || null,
-      reminder_times,
-      days_of_week: days_of_week || ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
-      is_active: true,
-    }, { onConflict: 'user_id,medication_id' });
+      reminderTimes: reminder_times,
+      daysOfWeek: days_of_week || ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+      isActive: true,
+    }).onConflictDoUpdate({
+      target: [medicationReminders.userId, medicationReminders.medicationId],
+      set: {
+        medicationName: medication_name,
+        dose: dose || null,
+        reminderTimes: reminder_times,
+        daysOfWeek: days_of_week || ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+        isActive: true,
+      },
+    });
 
-    if (error) {
-      console.error('[reminders] POST db error:', error.message);
-      return apiError('Failed to save reminder', 500);
-    }
     return apiSuccess({ success: true, message: `Reminder set for ${medication_name}.` });
   } catch (err) {
     console.error('[reminders] POST error:', err);
@@ -90,14 +96,16 @@ export async function DELETE(req: Request) {
   }
 
   try {
-    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    const { user: dbUser, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
 
     const body = await req.json();
     const { data: validated, error: valError } = validateBody(DeleteSchema, body);
     if (valError) return valError;
 
-    await supabase.from('medication_reminders').delete().eq('id', validated.reminder_id).eq('user_id', user.id);
+    await db.delete(medicationReminders).where(
+      and(eq(medicationReminders.id, validated.reminder_id), eq(medicationReminders.userId, dbUser!.id))
+    );
     return apiSuccess({ success: true });
   } catch (err) {
     console.error('[reminders] DELETE error:', err);

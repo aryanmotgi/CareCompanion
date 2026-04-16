@@ -1,24 +1,47 @@
 /**
  * Start Demo Session
  *
- * Creates an anonymous demo account pre-loaded with realistic HER2+ Breast
- * Cancer care data, then signs the user in server-side. Used by the
- * /demo-walkthrough "Load Demo" button so anyone can instantly experience
- * the full app without signing up.
+ * Creates an ephemeral demo account pre-loaded with realistic HER2+ Breast
+ * Cancer care data. Returns credentials so the client can sign in via the
+ * standard Cognito login flow. Used by the /demo-walkthrough "Load Demo"
+ * button so anyone can instantly experience the full app without signing up.
  *
- * Demo accounts have `user_metadata.is_demo = true` so the DemoBanner shows
- * across the app and a cleanup job can purge them later.
+ * Demo accounts have `isDemo = true` so the DemoBanner shows across the app
+ * and a cleanup job can purge them later.
  */
 
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { createAdminClient } from '@/lib/supabase/admin';
+import {
+  CognitoIdentityProviderClient,
+  AdminCreateUserCommand,
+  AdminSetUserPasswordCommand,
+  AdminDeleteUserCommand,
+} from '@aws-sdk/client-cognito-identity-provider';
+import { db } from '@/lib/db';
+import {
+  users,
+  careProfiles,
+  medications,
+  labResults,
+  appointments,
+  doctors,
+  insurance,
+  notifications,
+  medicationReminders,
+  reminderLogs,
+  symptomEntries,
+  userSettings,
+} from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { rateLimit } from '@/lib/rate-limit';
-import { env } from '@/lib/env';
 import crypto from 'crypto';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 10 });
+
+const cognito = new CognitoIdentityProviderClient({
+  region: process.env.COGNITO_REGION || 'us-east-1',
+});
+const USER_POOL_ID = process.env.COGNITO_USER_POOL_ID!;
 
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
@@ -27,70 +50,73 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
   }
 
-  const admin = createAdminClient();
   const uuid = crypto.randomUUID();
   const shortId = uuid.slice(0, 8);
   const email = `demo-${uuid}@demo.carecompanionai.org`;
   const password = `Demo-${uuid}!`;
 
-  // 1. Create the demo auth user
-  const { data: newUser, error: createError } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: {
-      is_demo: true,
-      full_name: 'Demo User',
-      display_name: 'Demo',
-    },
-  });
+  // 1. Create the demo Cognito user
+  let cognitoSub: string | undefined;
+  try {
+    const createRes = await cognito.send(new AdminCreateUserCommand({
+      UserPoolId: USER_POOL_ID,
+      Username: email,
+      MessageAction: 'SUPPRESS',
+      UserAttributes: [
+        { Name: 'email', Value: email },
+        { Name: 'email_verified', Value: 'true' },
+        { Name: 'custom:display_name', Value: 'Demo' },
+        { Name: 'custom:is_demo', Value: 'true' },
+      ],
+      TemporaryPassword: password,
+    }));
 
-  if (createError || !newUser?.user) {
-    console.error('[demo] Create user failed:', createError);
+    cognitoSub = createRes.User?.Attributes?.find((a) => a.Name === 'sub')?.Value;
+
+    // Set permanent password so user doesn't get force-change-password challenge
+    await cognito.send(new AdminSetUserPasswordCommand({
+      UserPoolId: USER_POOL_ID,
+      Username: email,
+      Password: password,
+      Permanent: true,
+    }));
+  } catch (err) {
+    console.error('[demo] Create Cognito user failed:', err);
     return NextResponse.json({ error: 'Failed to create demo account' }, { status: 500 });
   }
 
-  const userId = newUser.user.id;
+  if (!cognitoSub) {
+    return NextResponse.json({ error: 'Failed to get Cognito sub' }, { status: 500 });
+  }
 
-  // 2. Seed the full cancer care dataset
+  // 2. Insert into local users table
+  const [newUser] = await db.insert(users).values({
+    cognitoSub,
+    email,
+    displayName: 'Demo',
+    isDemo: true,
+  }).returning({ id: users.id });
+
+  // 3. Seed the full cancer care dataset
   try {
-    await seedDemoData(admin, userId);
+    await seedDemoData(newUser.id);
   } catch (err) {
     console.error('[demo] Seed data failed:', err);
-    // Clean up the user we just created
-    await admin.auth.admin.deleteUser(userId).catch(() => {});
+    // Clean up
+    await cognito.send(new AdminDeleteUserCommand({
+      UserPoolId: USER_POOL_ID,
+      Username: email,
+    })).catch(() => {});
+    await db.delete(users).where(eq(users.id, newUser.id)).catch(() => {});
     return NextResponse.json({ error: 'Failed to seed demo data' }, { status: 500 });
   }
 
-  // 3. Sign the user in server-side with a client that can WRITE cookies
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
-
-  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (signInError) {
-    console.error('[demo] Sign in failed:', signInError);
-    await admin.auth.admin.deleteUser(userId).catch(() => {});
-    return NextResponse.json({ error: 'Failed to start demo session' }, { status: 500 });
-  }
-
+  // Return credentials for client-side sign-in redirect
+  // The client should POST to /api/auth/signin with these credentials
   return NextResponse.json({
     success: true,
+    email,
+    password,
     redirect: '/dashboard?demo=started',
     shortId,
   });
@@ -100,8 +126,7 @@ export async function POST(req: Request) {
 // Seed function — creates a realistic HER2+ Breast Cancer care profile
 // ═════════════════════════════════════════════════════════════════════════
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function seedDemoData(admin: any, userId: string) {
+async function seedDemoData(userId: string) {
   const now = new Date();
   const day = (d: number) => {
     const x = new Date(now);
@@ -112,293 +137,154 @@ async function seedDemoData(admin: any, userId: string) {
   const dayTime = (d: number, h: number, m: number) => {
     const x = day(d);
     x.setHours(h, m, 0, 0);
-    return x.toISOString();
+    return x;
   };
 
   // ── CARE PROFILE ──────────────────────────────────────────────
-  const { data: profile, error: profileErr } = await admin
-    .from('care_profiles')
-    .insert({
-      user_id: userId,
-      patient_name: 'Sarah',
-      patient_age: 58,
-      relationship: 'self',
-      cancer_type: 'HER2+ Breast Cancer',
-      cancer_stage: 'Stage IIIA',
-      treatment_phase: 'active_treatment',
-      conditions: 'Stage IIIA Breast Cancer (HER2+, ER+)\nHypertension\nOsteoporosis\nAnxiety',
-      allergies: 'Sulfa drugs\nLatex\nIbuprofen (causes GI upset)',
-      onboarding_completed: true,
-    })
-    .select('id')
-    .single();
+  const [profile] = await db.insert(careProfiles).values({
+    userId,
+    patientName: 'Sarah',
+    patientAge: 58,
+    relationship: 'self',
+    cancerType: 'HER2+ Breast Cancer',
+    cancerStage: 'Stage IIIA',
+    treatmentPhase: 'active_treatment',
+    conditions: 'Stage IIIA Breast Cancer (HER2+, ER+)\nHypertension\nOsteoporosis\nAnxiety',
+    allergies: 'Sulfa drugs\nLatex\nIbuprofen (causes GI upset)',
+    onboardingCompleted: true,
+  }).returning({ id: careProfiles.id });
 
-  if (profileErr || !profile) throw new Error('Profile insert failed: ' + profileErr?.message);
+  if (!profile) throw new Error('Profile insert failed');
   const careProfileId = profile.id;
 
   // ── MEDICATIONS (8 — full chemo + supportive care regimen) ────
-  const { data: insertedMeds } = await admin.from('medications').insert([
-    {
-      care_profile_id: careProfileId,
-      name: 'Trastuzumab (Herceptin)',
-      dose: '440mg',
-      frequency: 'IV every 3 weeks',
-      prescribing_doctor: 'Dr. Lisa Chen (Medical Oncology)',
-      refill_date: dayISO(7),
-      notes: 'HER2-targeted therapy. Monitor cardiac function (echo every 3 months).',
-    },
-    {
-      care_profile_id: careProfileId,
-      name: 'Pertuzumab (Perjeta)',
-      dose: '840mg',
-      frequency: 'IV every 3 weeks',
-      prescribing_doctor: 'Dr. Lisa Chen (Medical Oncology)',
-      refill_date: dayISO(7),
-      notes: 'HER2-targeted therapy given with Herceptin. Watch for diarrhea.',
-    },
-    {
-      care_profile_id: careProfileId,
-      name: 'Docetaxel (Taxotere)',
-      dose: '75mg/m²',
-      frequency: 'IV every 3 weeks',
-      prescribing_doctor: 'Dr. Lisa Chen (Medical Oncology)',
-      refill_date: dayISO(7),
-      notes: 'Taxane chemotherapy. Main side effects: neuropathy, hair loss, low blood counts.',
-    },
-    {
-      care_profile_id: careProfileId,
-      name: 'Ondansetron (Zofran)',
-      dose: '8mg',
-      frequency: 'As needed for nausea',
-      prescribing_doctor: 'Dr. Lisa Chen (Medical Oncology)',
-      refill_date: dayISO(3),
-      quantity_remaining: 12,
-      notes: 'Take at first sign of nausea. May cause constipation.',
-    },
-    {
-      care_profile_id: careProfileId,
-      name: 'Dexamethasone',
-      dose: '4mg',
-      frequency: 'Before chemo infusion',
-      prescribing_doctor: 'Dr. Lisa Chen (Medical Oncology)',
-      refill_date: dayISO(7),
-      quantity_remaining: 6,
-      notes: 'Pre-medication for chemo. Take night before and morning of infusion.',
-    },
-    {
-      care_profile_id: careProfileId,
-      name: 'Tamoxifen',
-      dose: '20mg',
-      frequency: 'Once daily',
-      prescribing_doctor: 'Dr. Lisa Chen (Medical Oncology)',
-      refill_date: dayISO(25),
-      quantity_remaining: 30,
-      notes: 'Hormone therapy. Long-term maintenance (5-10 years).',
-    },
-    {
-      care_profile_id: careProfileId,
-      name: 'Lisinopril',
-      dose: '10mg',
-      frequency: 'Once daily — morning',
-      prescribing_doctor: 'Dr. Maria Santos (Primary Care)',
-      refill_date: dayISO(20),
-      quantity_remaining: 24,
-      notes: 'Blood pressure control.',
-    },
-    {
-      care_profile_id: careProfileId,
-      name: 'Lorazepam (Ativan)',
-      dose: '0.5mg',
-      frequency: 'As needed for anxiety',
-      prescribing_doctor: 'Dr. Maria Santos (Primary Care)',
-      refill_date: dayISO(30),
-      quantity_remaining: 15,
-      notes: 'PRN for anxiety before scans or procedures. Do not mix with alcohol.',
-    },
-  ]).select('id, name');
+  const insertedMeds = await db.insert(medications).values([
+    { careProfileId, name: 'Trastuzumab (Herceptin)', dose: '440mg', frequency: 'IV every 3 weeks', prescribingDoctor: 'Dr. Lisa Chen (Medical Oncology)', refillDate: dayISO(7), notes: 'HER2-targeted therapy. Monitor cardiac function (echo every 3 months).' },
+    { careProfileId, name: 'Pertuzumab (Perjeta)', dose: '840mg', frequency: 'IV every 3 weeks', prescribingDoctor: 'Dr. Lisa Chen (Medical Oncology)', refillDate: dayISO(7), notes: 'HER2-targeted therapy given with Herceptin. Watch for diarrhea.' },
+    { careProfileId, name: 'Docetaxel (Taxotere)', dose: '75mg/m²', frequency: 'IV every 3 weeks', prescribingDoctor: 'Dr. Lisa Chen (Medical Oncology)', refillDate: dayISO(7), notes: 'Taxane chemotherapy. Main side effects: neuropathy, hair loss, low blood counts.' },
+    { careProfileId, name: 'Ondansetron (Zofran)', dose: '8mg', frequency: 'As needed for nausea', prescribingDoctor: 'Dr. Lisa Chen (Medical Oncology)', refillDate: dayISO(3), notes: 'Take at first sign of nausea. May cause constipation.' },
+    { careProfileId, name: 'Dexamethasone', dose: '4mg', frequency: 'Before chemo infusion', prescribingDoctor: 'Dr. Lisa Chen (Medical Oncology)', refillDate: dayISO(7), notes: 'Pre-medication for chemo. Take night before and morning of infusion.' },
+    { careProfileId, name: 'Tamoxifen', dose: '20mg', frequency: 'Once daily', prescribingDoctor: 'Dr. Lisa Chen (Medical Oncology)', refillDate: dayISO(25), notes: 'Hormone therapy. Long-term maintenance (5-10 years).' },
+    { careProfileId, name: 'Lisinopril', dose: '10mg', frequency: 'Once daily — morning', prescribingDoctor: 'Dr. Maria Santos (Primary Care)', refillDate: dayISO(20), notes: 'Blood pressure control.' },
+    { careProfileId, name: 'Lorazepam (Ativan)', dose: '0.5mg', frequency: 'As needed for anxiety', prescribingDoctor: 'Dr. Maria Santos (Primary Care)', refillDate: dayISO(30), notes: 'PRN for anxiety before scans or procedures. Do not mix with alcohol.' },
+  ]).returning({ id: medications.id, name: medications.name });
 
-  // ── MEDICATION REMINDERS & LOGS (7 days — powers compliance/adherence UI) ─
-  // Create daily reminders for Tamoxifen and Lisinopril (oral once-daily meds)
-  const dailyMeds = (insertedMeds || []).filter((m: { id: string; name: string }) =>
-    m.name === 'Tamoxifen' || m.name === 'Lisinopril'
-  );
-
+  // ── MEDICATION REMINDERS & LOGS ───────────────────────────────
+  const dailyMeds = insertedMeds.filter((m) => m.name === 'Tamoxifen' || m.name === 'Lisinopril');
   for (const med of dailyMeds) {
     const reminderTime = med.name === 'Lisinopril' ? '08:00' : '21:00';
-    const { data: reminder } = await admin.from('medication_reminders').insert({
-      user_id: userId,
-      medication_id: med.id,
-      medication_name: med.name,
+    const [reminder] = await db.insert(medicationReminders).values({
+      userId,
+      medicationId: med.id,
+      medicationName: med.name,
       dose: med.name === 'Tamoxifen' ? '20mg' : '10mg',
-      reminder_times: [reminderTime],
-      days_of_week: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
-      is_active: true,
-    }).select('id').single();
+      reminderTimes: [reminderTime],
+      daysOfWeek: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+      isActive: true,
+    }).returning({ id: medicationReminders.id });
 
     if (!reminder) continue;
 
-    // Seed 7 days of realistic logs: mostly taken, one missed day
     const logEntries = [];
     for (let d = 7; d >= 1; d--) {
       const scheduledDate = day(-d);
       scheduledDate.setHours(parseInt(reminderTime.split(':')[0]), 0, 0, 0);
-      const isMissed = d === 4 && med.name === 'Tamoxifen'; // one missed day for realism
+      const isMissed = d === 4 && med.name === 'Tamoxifen';
       logEntries.push({
-        user_id: userId,
-        reminder_id: reminder.id,
-        medication_name: med.name,
-        scheduled_time: scheduledDate.toISOString(),
+        userId,
+        reminderId: reminder.id,
+        medicationName: med.name,
+        scheduledTime: scheduledDate,
         status: isMissed ? 'missed' : 'taken',
-        responded_at: isMissed ? null : new Date(scheduledDate.getTime() + 5 * 60000).toISOString(),
+        respondedAt: isMissed ? null : new Date(scheduledDate.getTime() + 5 * 60000),
       });
     }
-    await admin.from('reminder_logs').insert(logEntries);
+    await db.insert(reminderLogs).values(logEntries);
   }
 
-  // ── LAB RESULTS (10 — realistic oncology panel with trends) ───
-  await admin.from('lab_results').insert([
-    // Most recent (2 days ago)
-    { user_id: userId, test_name: 'WBC (White Blood Cells)', value: '3.2', unit: 'K/uL', reference_range: '4.5-11.0', is_abnormal: true, date_taken: day(-2).toISOString(), source: 'Demo' },
-    { user_id: userId, test_name: 'Hemoglobin', value: '11.2', unit: 'g/dL', reference_range: '12.0-16.0', is_abnormal: true, date_taken: day(-2).toISOString(), source: 'Demo' },
-    { user_id: userId, test_name: 'Platelet Count', value: '145', unit: 'K/uL', reference_range: '150-400', is_abnormal: true, date_taken: day(-2).toISOString(), source: 'Demo' },
-    { user_id: userId, test_name: 'Creatinine', value: '0.9', unit: 'mg/dL', reference_range: '0.6-1.2', is_abnormal: false, date_taken: day(-2).toISOString(), source: 'Demo' },
-    { user_id: userId, test_name: 'ALT', value: '22', unit: 'U/L', reference_range: '7-56', is_abnormal: false, date_taken: day(-2).toISOString(), source: 'Demo' },
-    // Tumor markers (5 days ago)
-    { user_id: userId, test_name: 'HER2/neu', value: '15.8', unit: 'ng/mL', reference_range: '<15.0', is_abnormal: true, date_taken: day(-5).toISOString(), source: 'Demo' },
-    { user_id: userId, test_name: 'CA 15-3', value: '28.5', unit: 'U/mL', reference_range: '<30', is_abnormal: false, date_taken: day(-5).toISOString(), source: 'Demo' },
-    // Previous cycle (23 days ago) for trend
-    { user_id: userId, test_name: 'WBC (White Blood Cells)', value: '4.1', unit: 'K/uL', reference_range: '4.5-11.0', is_abnormal: true, date_taken: day(-23).toISOString(), source: 'Demo' },
-    { user_id: userId, test_name: 'Hemoglobin', value: '11.8', unit: 'g/dL', reference_range: '12.0-16.0', is_abnormal: true, date_taken: day(-23).toISOString(), source: 'Demo' },
-    { user_id: userId, test_name: 'Platelet Count', value: '168', unit: 'K/uL', reference_range: '150-400', is_abnormal: false, date_taken: day(-23).toISOString(), source: 'Demo' },
+  // ── LAB RESULTS ───────────────────────────────────────────────
+  await db.insert(labResults).values([
+    { userId, testName: 'WBC (White Blood Cells)', value: '3.2', unit: 'K/uL', referenceRange: '4.5-11.0', isAbnormal: true, dateTaken: day(-2).toISOString().split('T')[0], source: 'Demo' },
+    { userId, testName: 'Hemoglobin', value: '11.2', unit: 'g/dL', referenceRange: '12.0-16.0', isAbnormal: true, dateTaken: day(-2).toISOString().split('T')[0], source: 'Demo' },
+    { userId, testName: 'Platelet Count', value: '145', unit: 'K/uL', referenceRange: '150-400', isAbnormal: true, dateTaken: day(-2).toISOString().split('T')[0], source: 'Demo' },
+    { userId, testName: 'Creatinine', value: '0.9', unit: 'mg/dL', referenceRange: '0.6-1.2', isAbnormal: false, dateTaken: day(-2).toISOString().split('T')[0], source: 'Demo' },
+    { userId, testName: 'ALT', value: '22', unit: 'U/L', referenceRange: '7-56', isAbnormal: false, dateTaken: day(-2).toISOString().split('T')[0], source: 'Demo' },
+    { userId, testName: 'HER2/neu', value: '15.8', unit: 'ng/mL', referenceRange: '<15.0', isAbnormal: true, dateTaken: day(-5).toISOString().split('T')[0], source: 'Demo' },
+    { userId, testName: 'CA 15-3', value: '28.5', unit: 'U/mL', referenceRange: '<30', isAbnormal: false, dateTaken: day(-5).toISOString().split('T')[0], source: 'Demo' },
+    { userId, testName: 'WBC (White Blood Cells)', value: '4.1', unit: 'K/uL', referenceRange: '4.5-11.0', isAbnormal: true, dateTaken: day(-23).toISOString().split('T')[0], source: 'Demo' },
+    { userId, testName: 'Hemoglobin', value: '11.8', unit: 'g/dL', referenceRange: '12.0-16.0', isAbnormal: true, dateTaken: day(-23).toISOString().split('T')[0], source: 'Demo' },
+    { userId, testName: 'Platelet Count', value: '168', unit: 'K/uL', referenceRange: '150-400', isAbnormal: false, dateTaken: day(-23).toISOString().split('T')[0], source: 'Demo' },
   ]);
 
-  // ── APPOINTMENTS (5 — upcoming oncology schedule) ─────────────
-  await admin.from('appointments').insert([
-    {
-      care_profile_id: careProfileId,
-      doctor_name: 'Dr. Lisa Chen',
-      specialty: 'Medical Oncology',
-      date_time: dayTime(3, 10, 0),
-      location: 'Cancer Center — Clinic 2, Room 204',
-      purpose: 'Oncology follow-up — treatment response review',
-    },
-    {
-      care_profile_id: careProfileId,
-      doctor_name: 'Lab Work',
-      specialty: 'Laboratory',
-      date_time: dayTime(6, 8, 0),
-      location: 'Cancer Center — Lab',
-      purpose: 'Pre-chemo bloodwork (CBC, CMP, tumor markers)',
-    },
-    {
-      care_profile_id: careProfileId,
-      doctor_name: 'Infusion Center',
-      specialty: 'Medical Oncology',
-      date_time: dayTime(7, 9, 0),
-      location: 'Cancer Center — Infusion Suite B',
-      purpose: 'Chemotherapy infusion — Herceptin + Perjeta + Taxotere',
-    },
-    {
-      care_profile_id: careProfileId,
-      doctor_name: 'Dr. James Park',
-      specialty: 'Cardiology',
-      date_time: dayTime(14, 11, 0),
-      location: 'Heart & Vascular Center',
-      purpose: 'Echocardiogram — Herceptin cardiac monitoring',
-    },
-    {
-      care_profile_id: careProfileId,
-      doctor_name: 'Dr. Rachel Kim',
-      specialty: 'Breast Surgery',
-      date_time: dayTime(28, 14, 30),
-      location: 'Cancer Center — Surgery Clinic',
-      purpose: 'Post-treatment surgical consult',
-    },
+  // ── APPOINTMENTS ──────────────────────────────────────────────
+  await db.insert(appointments).values([
+    { careProfileId, doctorName: 'Dr. Lisa Chen', specialty: 'Medical Oncology', dateTime: dayTime(3, 10, 0), location: 'Cancer Center — Clinic 2, Room 204', purpose: 'Oncology follow-up — treatment response review' },
+    { careProfileId, doctorName: 'Lab Work', specialty: 'Laboratory', dateTime: dayTime(6, 8, 0), location: 'Cancer Center — Lab', purpose: 'Pre-chemo bloodwork (CBC, CMP, tumor markers)' },
+    { careProfileId, doctorName: 'Infusion Center', specialty: 'Medical Oncology', dateTime: dayTime(7, 9, 0), location: 'Cancer Center — Infusion Suite B', purpose: 'Chemotherapy infusion — Herceptin + Perjeta + Taxotere' },
+    { careProfileId, doctorName: 'Dr. James Park', specialty: 'Cardiology', dateTime: dayTime(14, 11, 0), location: 'Heart & Vascular Center', purpose: 'Echocardiogram — Herceptin cardiac monitoring' },
+    { careProfileId, doctorName: 'Dr. Rachel Kim', specialty: 'Breast Surgery', dateTime: dayTime(28, 14, 30), location: 'Cancer Center — Surgery Clinic', purpose: 'Post-treatment surgical consult' },
   ]);
 
-  // ── DOCTORS (5 — full care team) ──────────────────────────────
-  await admin.from('doctors').insert([
-    { care_profile_id: careProfileId, name: 'Dr. Lisa Chen', specialty: 'Medical Oncologist', phone: '555-0201', notes: 'Lead oncologist. Reachable via MyChart. Nurse line: 555-0211.' },
-    { care_profile_id: careProfileId, name: 'Dr. James Park', specialty: 'Cardiologist', phone: '555-0202', notes: 'Monitoring cardiac function during Herceptin treatment.' },
-    { care_profile_id: careProfileId, name: 'Dr. Maria Santos', specialty: 'Primary Care', phone: '555-0203', notes: 'Managing BP, anxiety, general health.' },
-    { care_profile_id: careProfileId, name: 'Dr. Rachel Kim', specialty: 'Breast Surgeon', phone: '555-0204', notes: 'Surgical oncologist. Did initial lumpectomy.' },
-    { care_profile_id: careProfileId, name: 'Sarah Johnson, RN', specialty: 'Oncology Nurse Navigator', phone: '555-0211', notes: 'First point of contact for treatment questions or side effects.' },
+  // ── DOCTORS ───────────────────────────────────────────────────
+  await db.insert(doctors).values([
+    { careProfileId, name: 'Dr. Lisa Chen', specialty: 'Medical Oncologist', phone: '555-0201', notes: 'Lead oncologist. Reachable via MyChart. Nurse line: 555-0211.' },
+    { careProfileId, name: 'Dr. James Park', specialty: 'Cardiologist', phone: '555-0202', notes: 'Monitoring cardiac function during Herceptin treatment.' },
+    { careProfileId, name: 'Dr. Maria Santos', specialty: 'Primary Care', phone: '555-0203', notes: 'Managing BP, anxiety, general health.' },
+    { careProfileId, name: 'Dr. Rachel Kim', specialty: 'Breast Surgeon', phone: '555-0204', notes: 'Surgical oncologist. Did initial lumpectomy.' },
+    { careProfileId, name: 'Sarah Johnson, RN', specialty: 'Oncology Nurse Navigator', phone: '555-0211', notes: 'First point of contact for treatment questions or side effects.' },
   ]);
 
   // ── INSURANCE ─────────────────────────────────────────────────
-  await admin.from('insurance').upsert({
-    user_id: userId,
+  await db.insert(insurance).values({
+    userId,
     provider: 'Blue Cross Blue Shield',
-    member_id: 'BCB-882991-04',
-    group_number: 'GRP-7420',
-    plan_year: new Date().getFullYear(),
+    memberId: 'BCB-882991-04',
+    groupNumber: 'GRP-7420',
+    planYear: new Date().getFullYear(),
+  }).onConflictDoUpdate({
+    target: insurance.userId,
+    set: { provider: 'Blue Cross Blue Shield', memberId: 'BCB-882991-04', groupNumber: 'GRP-7420' },
   });
 
-  // ── NOTIFICATIONS (5 — realistic alert mix) ───────────────────
-  await admin.from('notifications').insert([
-    {
-      user_id: userId,
-      type: 'lab_result',
-      title: 'Low WBC — Neutropenia Warning',
-      message: 'WBC is 3.2 K/uL (normal: 4.5-11.0). Watch for fever or signs of infection. Contact oncology if temp > 100.4°F.',
-      is_read: false,
-    },
-    {
-      user_id: userId,
-      type: 'refill',
-      title: 'Ondansetron (Zofran) refill soon',
-      message: '12 tablets remaining. Refill due in 3 days — you will need these for your next infusion.',
-      is_read: false,
-    },
-    {
-      user_id: userId,
-      type: 'appointment',
-      title: 'Oncology follow-up in 3 days',
-      message: 'Dr. Lisa Chen at Cancer Center — Clinic 2, 10:00 AM. Review treatment response.',
-      is_read: false,
-    },
-    {
-      user_id: userId,
-      type: 'appointment',
-      title: 'Chemo infusion in 1 week',
-      message: 'Cycle 4 infusion on Thursday. Remember pre-meds (Dexamethasone) night before and morning of.',
-      is_read: false,
-    },
-    {
-      user_id: userId,
-      type: 'lab_result',
-      title: 'HER2/neu slightly elevated',
-      message: 'HER2/neu is 15.8 ng/mL (normal: <15.0). Discuss trend with Dr. Chen at your next visit.',
-      is_read: true,
-    },
+  // ── NOTIFICATIONS ─────────────────────────────────────────────
+  await db.insert(notifications).values([
+    { userId, type: 'lab_result', title: 'Low WBC — Neutropenia Warning', message: 'WBC is 3.2 K/uL (normal: 4.5-11.0). Watch for fever or signs of infection. Contact oncology if temp > 100.4°F.', isRead: false },
+    { userId, type: 'refill', title: 'Ondansetron (Zofran) refill soon', message: '12 tablets remaining. Refill due in 3 days — you will need these for your next infusion.', isRead: false },
+    { userId, type: 'appointment', title: 'Oncology follow-up in 3 days', message: 'Dr. Lisa Chen at Cancer Center — Clinic 2, 10:00 AM. Review treatment response.', isRead: false },
+    { userId, type: 'appointment', title: 'Chemo infusion in 1 week', message: 'Cycle 4 infusion on Thursday. Remember pre-meds (Dexamethasone) night before and morning of.', isRead: false },
+    { userId, type: 'lab_result', title: 'HER2/neu slightly elevated', message: 'HER2/neu is 15.8 ng/mL (normal: <15.0). Discuss trend with Dr. Chen at your next visit.', isRead: true },
   ]);
 
-  // ── SYMPTOM JOURNAL (7 days — powers Treatment Journal UI) ───
+  // ── SYMPTOM JOURNAL ───────────────────────────────────────────
   const SYMPTOM_PATTERNS = [
-    { pain_level: 3, mood: 'okay', energy: 'low', sleep_hours: 7, symptoms: ['Fatigue', 'Nausea'], notes: 'Rough morning, better by afternoon.' },
-    { pain_level: 2, mood: 'good', energy: 'normal', sleep_hours: 7.5, symptoms: ['Mild fatigue'], notes: null },
-    { pain_level: 4, mood: 'bad', energy: 'very_low', sleep_hours: 6, symptoms: ['Fatigue', 'Joint pain', 'Nausea'], notes: 'Nadir day 8 — feeling it today.' },
-    { pain_level: 3, mood: 'okay', energy: 'low', sleep_hours: 7, symptoms: ['Fatigue', 'Mouth sores'], notes: 'Rinsing with saltwater helping.' },
-    { pain_level: 2, mood: 'okay', energy: 'low', sleep_hours: 8, symptoms: ['Mild neuropathy'], notes: 'Feet tingling slightly.' },
-    { pain_level: 2, mood: 'good', energy: 'normal', sleep_hours: 7.5, symptoms: ['Mild fatigue'], notes: 'Better energy today!' },
-    { pain_level: 1, mood: 'good', energy: 'normal', sleep_hours: 8, symptoms: [], notes: 'Feeling stronger as we near next infusion.' },
+    { painLevel: 3, mood: 'okay', energy: 'low', sleepHours: '7', symptoms: ['Fatigue', 'Nausea'], notes: 'Rough morning, better by afternoon.' },
+    { painLevel: 2, mood: 'good', energy: 'normal', sleepHours: '7.5', symptoms: ['Mild fatigue'], notes: null },
+    { painLevel: 4, mood: 'bad', energy: 'very_low', sleepHours: '6', symptoms: ['Fatigue', 'Joint pain', 'Nausea'], notes: 'Nadir day 8 — feeling it today.' },
+    { painLevel: 3, mood: 'okay', energy: 'low', sleepHours: '7', symptoms: ['Fatigue', 'Mouth sores'], notes: 'Rinsing with saltwater helping.' },
+    { painLevel: 2, mood: 'okay', energy: 'low', sleepHours: '8', symptoms: ['Mild neuropathy'], notes: 'Feet tingling slightly.' },
+    { painLevel: 2, mood: 'good', energy: 'normal', sleepHours: '7.5', symptoms: ['Mild fatigue'], notes: 'Better energy today!' },
+    { painLevel: 1, mood: 'good', energy: 'normal', sleepHours: '8', symptoms: [], notes: 'Feeling stronger as we near next infusion.' },
   ];
-  await admin.from('symptom_entries').insert(
+
+  await db.insert(symptomEntries).values(
     SYMPTOM_PATTERNS.map((p, i) => ({
-      user_id: userId,
-      care_profile_id: careProfileId,
+      userId,
+      careProfileId,
       date: dayISO(-(7 - i)),
       ...p,
     }))
   );
 
   // ── USER SETTINGS ─────────────────────────────────────────────
-  await admin.from('user_settings').upsert({
-    user_id: userId,
-    refill_reminders: true,
-    appointment_reminders: true,
-    lab_alerts: true,
-    claim_updates: true,
-    ai_personality: 'friendly',
+  await db.insert(userSettings).values({
+    userId,
+    refillReminders: true,
+    appointmentReminders: true,
+    labAlerts: true,
+    claimUpdates: true,
+    aiPersonality: 'friendly',
+  }).onConflictDoUpdate({
+    target: userSettings.userId,
+    set: { refillReminders: true, appointmentReminders: true, labAlerts: true, claimUpdates: true, aiPersonality: 'friendly' },
   });
 }

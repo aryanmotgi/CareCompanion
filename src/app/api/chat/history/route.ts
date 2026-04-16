@@ -1,5 +1,8 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { db } from '@/lib/db'
+import { messages } from '@/lib/db/schema'
+import { eq, lt, desc, and } from 'drizzle-orm'
 
 /**
  * GET /api/chat/history
@@ -9,7 +12,7 @@ import { apiSuccess, apiError } from '@/lib/api-response'
  */
 export async function GET(req: Request) {
   try {
-    const { user, supabase, error: authError } = await getAuthenticatedUser()
+    const { user, error: authError } = await getAuthenticatedUser()
     if (authError) return authError
 
     const url = new URL(req.url)
@@ -17,30 +20,28 @@ export async function GET(req: Request) {
     const limit = Number.isFinite(rawLimit) ? Math.min(rawLimit, 100) : 50
     const before = url.searchParams.get('before') // ISO timestamp cursor
 
-    let query = supabase
-      .from('messages')
-      .select('id, role, content, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+    const whereClause = before
+      ? and(eq(messages.userId, user!.id), lt(messages.createdAt, new Date(before)))
+      : eq(messages.userId, user!.id)
+
+    const rows = await db
+      .select({
+        id: messages.id,
+        role: messages.role,
+        content: messages.content,
+        createdAt: messages.createdAt,
+      })
+      .from(messages)
+      .where(whereClause)
+      .orderBy(desc(messages.createdAt))
       .limit(limit)
 
-    if (before) {
-      query = query.lt('created_at', before)
-    }
-
-    const { data, error } = await query
-
-    if (error) {
-      console.error('[chat/history] GET error:', error.message)
-      return apiError('Failed to load chat history', 500)
-    }
-
-    const messages = (data || []).reverse() // Return in chronological order
+    const result = rows.reverse() // Return in chronological order
 
     return apiSuccess({
-      messages,
-      has_more: messages.length === limit,
-      cursor: messages.length > 0 ? messages[0].created_at : null,
+      messages: result,
+      has_more: result.length === limit,
+      cursor: result.length > 0 ? result[0].createdAt : null,
     })
   } catch (err) {
     console.error('[chat/history] GET error:', err)
@@ -55,18 +56,10 @@ export async function GET(req: Request) {
  */
 export async function DELETE() {
   try {
-    const { user, supabase, error: authError } = await getAuthenticatedUser()
+    const { user, error: authError } = await getAuthenticatedUser()
     if (authError) return authError
 
-    const { error } = await supabase
-      .from('messages')
-      .delete()
-      .eq('user_id', user.id)
-
-    if (error) {
-      console.error('[chat/history] DELETE error:', error.message)
-      return apiError('Failed to clear chat history', 500)
-    }
+    await db.delete(messages).where(eq(messages.userId, user!.id))
 
     return apiSuccess({ success: true })
   } catch (err) {

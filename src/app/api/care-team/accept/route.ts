@@ -1,7 +1,9 @@
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { rateLimit } from '@/lib/rate-limit';
+import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { ApiErrors } from '@/lib/api-response';
+import { db } from '@/lib/db';
+import { careTeamInvites, careTeamMembers, careTeamActivity } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
+import { rateLimit } from '@/lib/rate-limit';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 20 });
 
@@ -13,9 +15,8 @@ export async function POST(req: Request) {
     return ApiErrors.rateLimited();
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new Response('Unauthorized', { status: 401 });
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error || !dbUser) return new Response('Unauthorized', { status: 401 });
 
   const { invite_id } = await req.json();
 
@@ -23,53 +24,51 @@ export async function POST(req: Request) {
     return Response.json({ error: 'invite_id is required' }, { status: 400 });
   }
 
-  const admin = createAdminClient();
-
   // Get the invite
-  const { data: invite } = await admin
-    .from('care_team_invites')
-    .select('*')
-    .eq('id', invite_id)
-    .eq('status', 'pending')
-    .single();
+  const [invite] = await db
+    .select()
+    .from(careTeamInvites)
+    .where(and(eq(careTeamInvites.id, invite_id), eq(careTeamInvites.status, 'pending')))
+    .limit(1);
 
   if (!invite) {
     return Response.json({ error: 'Invitation not found or already used' }, { status: 404 });
   }
 
   // Verify the invite is for this user
-  if (invite.invited_email.toLowerCase() !== user.email?.toLowerCase()) {
+  if (invite.invitedEmail.toLowerCase() !== dbUser.email?.toLowerCase()) {
     return Response.json({ error: 'This invitation is not for your account' }, { status: 403 });
   }
 
   // Check if expired
-  if (new Date(invite.expires_at) < new Date()) {
+  if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
     return Response.json({ error: 'This invitation has expired' }, { status: 410 });
   }
 
   // Add user to the care team
-  const { error: memberError } = await admin.from('care_team_members').insert({
-    care_profile_id: invite.care_profile_id,
-    user_id: user.id,
-    role: invite.role,
-    invited_by: invite.invited_by,
-  });
-
-  if (memberError) {
-    return Response.json({ error: memberError.message }, { status: 500 });
+  try {
+    await db.insert(careTeamMembers).values({
+      careProfileId: invite.careProfileId,
+      userId: dbUser.id,
+      role: invite.role,
+      invitedBy: invite.invitedBy,
+    });
+  } catch (err) {
+    console.error('[care-team/accept] insert error:', err);
+    return Response.json({ error: 'Failed to join care team' }, { status: 500 });
   }
 
   // Mark invite as accepted
-  await admin.from('care_team_invites')
-    .update({ status: 'accepted' })
-    .eq('id', invite_id);
+  await db.update(careTeamInvites)
+    .set({ status: 'accepted' })
+    .where(eq(careTeamInvites.id, invite_id));
 
   // Log activity
-  const displayName = user.user_metadata?.display_name || user.email?.split('@')[0] || 'Someone';
-  await admin.from('care_team_activity').insert({
-    care_profile_id: invite.care_profile_id,
-    user_id: user.id,
-    user_name: displayName,
+  const displayName = dbUser.displayName || dbUser.email?.split('@')[0] || 'Someone';
+  await db.insert(careTeamActivity).values({
+    careProfileId: invite.careProfileId,
+    userId: dbUser.id,
+    userName: displayName,
     action: `joined the care team as ${invite.role}`,
   });
 

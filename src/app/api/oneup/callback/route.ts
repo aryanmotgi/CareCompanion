@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { db } from '@/lib/db';
+import { connectedApps } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
 import { exchangeCode } from '@/lib/oneup';
 import { syncOneUpData } from '@/lib/oneup-sync';
 import { encryptToken, verifyState } from '@/lib/token-encryption';
@@ -26,7 +28,6 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${baseUrl}/connect?error=missing_code`);
   }
 
-  // Verify HMAC-signed state — rejects forged or tampered state values
   const stateData = verifyState(state || '');
   if (!stateData) {
     return NextResponse.redirect(`${baseUrl}/connect?error=invalid_state`);
@@ -39,10 +40,8 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${baseUrl}/connect?error=invalid_state`);
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user || user.id !== userId) {
+  const { user: dbUser, error: authError } = await getAuthenticatedUser();
+  if (authError || dbUser!.id !== userId) {
     return NextResponse.redirect(`${baseUrl}/connect?error=auth_mismatch`);
   }
 
@@ -50,27 +49,25 @@ export async function GET(req: Request) {
     const tokens = await exchangeCode(code);
 
     const expiresAt = tokens.expires_in
-      ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+      ? new Date(Date.now() + tokens.expires_in * 1000)
       : null;
 
     const source = provider === '1uphealth' ? '1uphealth' : 'epic';
 
-    const admin = createAdminClient();
-    // Store tokens encrypted at rest
-    await admin.from('connected_apps').upsert(
-      {
-        user_id: user.id,
-        source,
-        access_token: encryptToken(tokens.access_token),
-        refresh_token: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
-        expires_at: expiresAt,
-        metadata: { patient_id: tokens.patient || null, provider },
-      },
-      { onConflict: 'user_id,source' }
+    await db.delete(connectedApps).where(
+      and(eq(connectedApps.userId, dbUser!.id), eq(connectedApps.source, source))
     );
 
-    // Trigger initial sync — pass plaintext token directly (not re-read from DB)
-    syncOneUpData(user.id, tokens.access_token).catch((err) => {
+    await db.insert(connectedApps).values({
+      userId: dbUser!.id,
+      source,
+      accessToken: encryptToken(tokens.access_token),
+      refreshToken: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
+      expiresAt,
+      metadata: { patient_id: tokens.patient || null, provider },
+    });
+
+    syncOneUpData(dbUser!.id, tokens.access_token).catch((err) => {
       console.error(`Initial ${source} sync error:`, err);
     });
 

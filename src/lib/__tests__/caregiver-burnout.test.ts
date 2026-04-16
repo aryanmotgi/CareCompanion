@@ -5,18 +5,18 @@ import type { SymptomEntry } from '@/lib/types'
 function makeEntry(overrides: Partial<SymptomEntry> = {}): SymptomEntry {
   return {
     id: '1',
-    user_id: 'u1',
-    care_profile_id: 'p1',
+    userId: 'u1',
+    careProfileId: 'p1',
     date: '2026-04-01',
-    pain_level: null,
+    painLevel: null,
     mood: null,
-    sleep_quality: null,
-    sleep_hours: null,
+    sleepQuality: null,
+    sleepHours: null,
     appetite: null,
     energy: null,
     symptoms: [],
     notes: null,
-    created_at: '2026-04-01T00:00:00Z',
+    createdAt: new Date('2026-04-01T00:00:00Z'),
     ...overrides,
   }
 }
@@ -30,7 +30,7 @@ describe('caregiver-burnout', () => {
 
   it('detects poor sleep pattern', () => {
     const entries = Array.from({ length: 5 }, (_, i) =>
-      makeEntry({ id: String(i), date: `2026-04-0${i + 1}`, sleep_quality: 'poor' })
+      makeEntry({ id: String(i), date: `2026-04-0${i + 1}`, sleepQuality: 'poor' })
     )
     const result = assessBurnout(entries, 0, 0)
     expect(result.signals.some(s => s.category === 'sleep')).toBe(true)
@@ -64,10 +64,10 @@ describe('caregiver-burnout', () => {
         id: String(i),
         date: `2026-04-0${(i % 9) + 1}`,
         mood: 'terrible',
-        sleep_quality: 'terrible',
-        sleep_hours: 3,
+        sleepQuality: 'terrible',
+        sleepHours: '3',
         energy: 'very_low',
-        pain_level: 8,
+        painLevel: 8,
       })
     )
     const result = assessBurnout(entries, 7, 0)
@@ -77,7 +77,7 @@ describe('caregiver-burnout', () => {
 
   it('provides recommendations based on signals', () => {
     const entries = Array.from({ length: 5 }, (_, i) =>
-      makeEntry({ id: String(i), date: `2026-04-0${i + 1}`, mood: 'bad', sleep_quality: 'poor' })
+      makeEntry({ id: String(i), date: `2026-04-0${i + 1}`, mood: 'bad', sleepQuality: 'poor' })
     )
     const result = assessBurnout(entries, 0, 0)
     expect(result.recommendations.length).toBeGreaterThan(0)

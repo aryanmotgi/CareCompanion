@@ -148,7 +148,7 @@ export function NotificationBell({ initialNotifications, initialCount }: Notific
               notifications.map((n) => (
                 <div
                   key={n.id}
-                  className={`px-4 py-3 border-b border-[var(--border)] ${TYPE_COLORS[n.type] || (!n.is_read ? 'bg-blue-500/10' : '')}`}
+                  className={`px-4 py-3 border-b border-[var(--border)] ${TYPE_COLORS[n.type] || (!n.isRead ? 'bg-blue-500/10' : '')}`}
                 >
                   <div className="flex items-start gap-2.5">
                     <span className="text-base mt-0.5 flex-shrink-0" aria-hidden="true">{TYPE_ICONS[n.type] || '🔔'}</span>
@@ -174,7 +174,7 @@ export function NotificationBell({ initialNotifications, initialCount }: Notific
                         >
                           Dismiss
                         </button>
-                        <span className="text-[10px] text-[var(--text-muted)] ml-auto">{timeAgo(n.created_at)}</span>
+                        <span className="text-[10px] text-[var(--text-muted)] ml-auto">{n.createdAt ? timeAgo(n.createdAt.toISOString()) : ''}</span>
                       </div>
                     </div>
                   </div>

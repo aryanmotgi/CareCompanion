@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { extractDocument } from '@/lib/extract-document'
 import { checkRateLimit } from '@/lib/rate-limit'
 
@@ -15,13 +15,10 @@ export const maxDuration = 30
  */
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+    const { user: dbUser, error } = await getAuthenticatedUser()
+    if (error) return error
 
-    const rateCheck = checkRateLimit(`extract:${user.id}`, { maxRequests: 10, windowMs: 60_000 })
+    const rateCheck = checkRateLimit(`extract:${dbUser!.id}`, { maxRequests: 10, windowMs: 60_000 })
     if (!rateCheck.allowed) {
       return Response.json(
         { error: 'Too many requests.' },
@@ -38,7 +35,6 @@ export async function POST(req: Request) {
     const bytes = await imageFile.arrayBuffer()
     const base64 = Buffer.from(bytes).toString('base64')
 
-    // Use the unified extraction engine with medication hint
     const extraction = await extractDocument(base64, 'medication')
 
     return Response.json({

@@ -4,46 +4,42 @@
  * HIPAA-aligned retention rules:
  *   - Soft-deleted PHI records: hard-deleted after 90 days
  *   - Audit logs: retained for 1 year, then purged
- *
- * This complements cron/purge (which hard-deletes after 30 days for soft-deleted records)
- * by enforcing longer HIPAA-specific retention windows.
  */
 import { NextResponse } from 'next/server'
 import { verifyCronRequest } from '@/lib/cron-auth'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { db } from '@/lib/db'
+import { medications, appointments, doctors, documents, labResults, claims, auditLogs } from '@/lib/db/schema'
+import { and, isNotNull, lt } from 'drizzle-orm'
 
 export async function GET(req: Request) {
   const authError = verifyCronRequest(req)
   if (authError) return authError
 
   try {
-    const admin = createAdminClient()
-    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
-
-    // Hard delete soft-deleted records older than 90 days
-    const tables = ['medications', 'appointments', 'doctors', 'documents', 'lab_results', 'claims']
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
     const results: Record<string, number> = {}
 
-    for (const table of tables) {
-      const { data } = await admin
-        .from(table)
-        .delete()
-        .not('deleted_at', 'is', null)
-        .lt('deleted_at', ninetyDaysAgo)
-        .select('id')
+    // Hard delete soft-deleted records older than 90 days
+    const [medsDeleted, apptsDeleted, docsDeleted, documentsDeleted, labsDeleted, claimsDeleted] = await Promise.all([
+      db.delete(medications).where(and(isNotNull(medications.deletedAt), lt(medications.deletedAt, ninetyDaysAgo))).returning({ id: medications.id }),
+      db.delete(appointments).where(and(isNotNull(appointments.deletedAt), lt(appointments.deletedAt, ninetyDaysAgo))).returning({ id: appointments.id }),
+      db.delete(doctors).where(and(isNotNull(doctors.deletedAt), lt(doctors.deletedAt, ninetyDaysAgo))).returning({ id: doctors.id }),
+      db.delete(documents).where(and(isNotNull(documents.deletedAt), lt(documents.deletedAt, ninetyDaysAgo))).returning({ id: documents.id }),
+      db.delete(labResults).where(and(isNotNull(labResults.deletedAt), lt(labResults.deletedAt, ninetyDaysAgo))).returning({ id: labResults.id }),
+      db.delete(claims).where(and(isNotNull(claims.deletedAt), lt(claims.deletedAt, ninetyDaysAgo))).returning({ id: claims.id }),
+    ])
 
-      results[table] = data?.length || 0
-    }
+    results.medications = medsDeleted.length
+    results.appointments = apptsDeleted.length
+    results.doctors = docsDeleted.length
+    results.documents = documentsDeleted.length
+    results.lab_results = labsDeleted.length
+    results.claims = claimsDeleted.length
 
     // Purge old audit logs (keep 1 year per HIPAA minimum)
-    const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()
-    const { data: auditData } = await admin
-      .from('audit_logs')
-      .delete()
-      .lt('created_at', oneYearAgo)
-      .select('id')
-
-    results.audit_logs = auditData?.length || 0
+    const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+    const auditDeleted = await db.delete(auditLogs).where(lt(auditLogs.createdAt, oneYearAgo)).returning({ id: auditLogs.id })
+    results.audit_logs = auditDeleted.length
 
     const totalPurged = Object.values(results).reduce((sum, n) => sum + n, 0)
     console.log(`[cron/retention] Purged ${totalPurged} records`, results)

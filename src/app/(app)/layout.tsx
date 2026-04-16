@@ -1,41 +1,46 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { AppShell } from '@/components/AppShell';
-import { ToastProvider } from '@/components/ToastProvider';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { OfflineIndicator } from '@/components/OfflineIndicator';
-import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
-import { CsrfProvider } from '@/components/CsrfProvider';
-import { getActiveProfile, getAllProfiles } from '@/lib/active-profile';
+import { redirect } from 'next/navigation'
+import { auth } from '@/lib/auth'
+import { db } from '@/lib/db'
+import { users, notifications } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
+import { AppShell } from '@/components/AppShell'
+import { ToastProvider } from '@/components/ToastProvider'
+import { ThemeProvider } from '@/components/ThemeProvider'
+import { OfflineIndicator } from '@/components/OfflineIndicator'
+import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
+import { CsrfProvider } from '@/components/CsrfProvider'
+import { getActiveProfile, getAllProfiles } from '@/lib/active-profile'
 
 export default async function AppLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth()
+  if (!session?.user?.id) redirect('/login')
 
-  if (!user) redirect('/login');
+  // Resolve local DB user from Cognito sub
+  const [dbUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.cognitoSub, session.user.id))
+    .limit(1)
 
-  // Fetch active profile and all accessible profiles
-  const [profile, allProfiles] = await Promise.all([
-    getActiveProfile(supabase, user.id),
-    getAllProfiles(supabase, user.id),
-  ]);
+  if (!dbUser) redirect('/login')
 
-  const { data: notifications } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('is_read', false)
-    .order('created_at', { ascending: false })
-    .limit(20);
+  const userId = dbUser.id
 
-  const displayName = user.user_metadata?.display_name || '';
-  const isDemo = user.user_metadata?.is_demo === true;
+  const [profile, allProfiles, unreadNotifications] = await Promise.all([
+    getActiveProfile(userId),
+    getAllProfiles(userId),
+    db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .limit(20),
+  ])
+
+  const unread = unreadNotifications.filter(n => !n.isRead)
 
   return (
     <ThemeProvider>
@@ -44,14 +49,14 @@ export default async function AppLayout({
       <OfflineIndicator />
       <ServiceWorkerRegistration />
       <AppShell
-        patientName={profile?.patient_name || 'your loved one'}
-        patientAge={profile?.patient_age}
-        relationship={profile?.relationship}
-        userName={displayName}
-        notifications={notifications || []}
+        patientName={profile?.patientName || 'your loved one'}
+        patientAge={profile?.patientAge ?? undefined}
+        relationship={profile?.relationship ?? undefined}
+        userName={dbUser.displayName || session.user.email || ''}
+        notifications={unread}
         profiles={allProfiles}
         activeProfileId={profile?.id || null}
-        isDemo={isDemo}
+        isDemo={dbUser.isDemo ?? false}
       >
         <div className="animate-page-blur-in">
           {children}
@@ -60,5 +65,5 @@ export default async function AppLayout({
     </ToastProvider>
     </CsrfProvider>
     </ThemeProvider>
-  );
+  )
 }

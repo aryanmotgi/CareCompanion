@@ -1,54 +1,62 @@
 import { Suspense } from 'react'
-import { createClient } from '@/lib/supabase/server'
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation'
+import { db } from '@/lib/db';
+import { users, careProfiles, medications, appointments, doctors, careTeamMembers, reminderLogs } from '@/lib/db/schema';
+import { eq, and, gte, asc } from 'drizzle-orm';
+import { getAllProfiles } from '@/lib/active-profile'
 import { CareView } from '@/components/CareView'
 import { CareSkeleton } from '@/components/skeletons/CareSkeleton'
 import { ComplianceReport } from '@/components/ComplianceReport'
 import { AdherenceCalendar } from '@/components/AdherenceCalendar'
 import { TreatmentCycleTracker } from '@/components/TreatmentCycleTracker'
-import { getAllProfiles } from '@/lib/active-profile'
 
 async function CareContent() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('id, patient_name')
-    .eq('user_id', user.id)
-    .single()
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
 
-  if (!profile) redirect('/setup')
+  const [profile] = await db
+    .select({ id: careProfiles.id, patientName: careProfiles.patientName })
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, dbUser.id))
+    .limit(1);
 
-  const allProfiles = await getAllProfiles(supabase, user.id)
+  if (!profile) redirect('/setup');
 
-  const [{ data: medications }, { data: appointments }, { data: doctors }, { data: careTeamMembers }, { data: todayLogs }] = await Promise.all([
-    supabase.from('medications').select('*').eq('care_profile_id', profile.id),
-    supabase.from('appointments').select('*').eq('care_profile_id', profile.id).order('date_time', { ascending: true }),
-    supabase.from('doctors').select('*').eq('care_profile_id', profile.id),
-    supabase.from('care_team_members').select('*').eq('care_profile_id', profile.id),
-    supabase.from('reminder_logs').select('*').eq('user_id', user.id)
-      .gte('scheduled_time', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
-      .order('scheduled_time'),
-  ])
+  const allProfiles = await getAllProfiles(dbUser.id);
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [meds, appts, docs, teamMembers, todayLogs] = await Promise.all([
+    db.select().from(medications).where(eq(medications.careProfileId, profile.id)),
+    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)).orderBy(asc(appointments.dateTime)),
+    db.select().from(doctors).where(eq(doctors.careProfileId, profile.id)),
+    db.select().from(careTeamMembers).where(eq(careTeamMembers.careProfileId, profile.id)),
+    db.select().from(reminderLogs).where(
+      and(eq(reminderLogs.userId, dbUser.id), gte(reminderLogs.scheduledTime, todayStart))
+    ).orderBy(asc(reminderLogs.scheduledTime)),
+  ]);
 
   return (
     <>
       <div className="px-4 sm:px-5 pt-5">
         <TreatmentCycleTracker
-          medications={medications || []}
-          patientName={profile.patient_name || 'Patient'}
+          medications={meds}
+          patientName={profile.patientName || 'Patient'}
         />
       </div>
       <CareView
         profileId={profile.id}
-        medications={medications || []}
-        appointments={appointments || []}
-        doctors={doctors || []}
+        medications={meds}
+        appointments={appts}
+        doctors={docs}
         allProfiles={allProfiles}
-        careTeamMembers={careTeamMembers || []}
-        todayReminders={todayLogs || []}
+        careTeamMembers={teamMembers}
+        todayReminders={todayLogs}
       />
       <div className="px-4 sm:px-5 pb-6 space-y-5">
         <AdherenceCalendar />

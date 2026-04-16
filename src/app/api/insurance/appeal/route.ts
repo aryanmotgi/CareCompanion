@@ -5,7 +5,10 @@
 import { generateText, Output } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { db } from '@/lib/db'
+import { claims, careProfiles, insurance } from '@/lib/db/schema'
+import { and, eq } from 'drizzle-orm'
 import { rateLimit } from '@/lib/rate-limit'
 import { apiSuccess, apiError, ApiErrors } from '@/lib/api-response'
 
@@ -26,30 +29,28 @@ export async function POST(req: Request) {
   if (!success) return ApiErrors.rateLimited()
 
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return ApiErrors.unauthorized()
+    const { user: dbUser, error } = await getAuthenticatedUser()
+    if (error) return error
 
     const body = await req.json()
     const { claim_id, additional_context } = body
 
     if (!claim_id) return ApiErrors.badRequest('claim_id is required')
 
-    // Fetch the denied claim
-    const { data: claim } = await supabase
-      .from('claims')
-      .select('*')
-      .eq('id', claim_id)
-      .eq('user_id', user.id)
-      .single()
+    const [claim] = await db
+      .select()
+      .from(claims)
+      .where(and(eq(claims.id, claim_id), eq(claims.userId, dbUser!.id)))
+      .limit(1)
 
     if (!claim) return ApiErrors.notFound('Claim')
     if (claim.status !== 'denied') return ApiErrors.badRequest('Only denied claims can be appealed')
 
-    // Fetch patient context
-    const [{ data: profile }, { data: insurance }] = await Promise.all([
-      supabase.from('care_profiles').select('patient_name, cancer_type, cancer_stage, conditions').eq('user_id', user.id).single(),
-      supabase.from('insurance').select('provider, member_id, group_number').eq('user_id', user.id).single(),
+    const [[profile], [ins]] = await Promise.all([
+      db.select({ patientName: careProfiles.patientName, cancerType: careProfiles.cancerType, cancerStage: careProfiles.cancerStage, conditions: careProfiles.conditions })
+        .from(careProfiles).where(eq(careProfiles.userId, dbUser!.id)).limit(1),
+      db.select({ provider: insurance.provider, memberId: insurance.memberId, groupNumber: insurance.groupNumber })
+        .from(insurance).where(eq(insurance.userId, dbUser!.id)).limit(1),
     ])
 
     const { output: appeal } = await generateText({
@@ -58,22 +59,22 @@ export async function POST(req: Request) {
       prompt: `You are a patient advocacy expert. Generate an insurance appeal letter for a denied claim.
 
 DENIED CLAIM:
-- Provider: ${claim.provider_name || 'Unknown'}
-- Service date: ${claim.service_date || 'Unknown'}
-- Billed amount: $${claim.billed_amount || 'Unknown'}
-- Denial reason: ${claim.denial_reason || 'Not specified'}
-- EOB URL: ${claim.eob_url || 'N/A'}
+- Provider: ${claim.providerName || 'Unknown'}
+- Service date: ${claim.serviceDate || 'Unknown'}
+- Billed amount: $${claim.billedAmount || 'Unknown'}
+- Denial reason: ${claim.denialReason || 'Not specified'}
+- EOB URL: ${claim.eobUrl || 'N/A'}
 
 PATIENT CONTEXT:
-- Name: ${profile?.patient_name || 'Patient'}
-- Cancer type: ${profile?.cancer_type || 'Not specified'}
-- Cancer stage: ${profile?.cancer_stage || 'Not specified'}
+- Name: ${profile?.patientName || 'Patient'}
+- Cancer type: ${profile?.cancerType || 'Not specified'}
+- Cancer stage: ${profile?.cancerStage || 'Not specified'}
 - Conditions: ${profile?.conditions || 'Not specified'}
 
 INSURANCE:
-- Provider: ${insurance?.provider || 'Unknown'}
-- Member ID: ${insurance?.member_id || 'Unknown'}
-- Group: ${insurance?.group_number || 'Unknown'}
+- Provider: ${ins?.provider || 'Unknown'}
+- Member ID: ${ins?.memberId || 'Unknown'}
+- Group: ${ins?.groupNumber || 'Unknown'}
 
 ${additional_context ? `ADDITIONAL CONTEXT: ${additional_context}` : ''}
 
@@ -92,7 +93,7 @@ IMPORTANT: This is a template. Advise the patient to have their doctor provide a
       ...appeal,
       claim_id,
       claim_status: claim.status,
-      denial_reason: claim.denial_reason,
+      denial_reason: claim.denialReason,
       disclaimer: 'This appeal letter is AI-generated and should be reviewed before sending. Consider consulting a patient advocate for complex appeals.',
     })
   } catch (error) {

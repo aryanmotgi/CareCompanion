@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { extractDocument } from '@/lib/extract-document'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { logAudit } from '@/lib/audit'
@@ -17,20 +17,16 @@ export const maxDuration = 60
  */
 async function handler(req: Request) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+    const { user: dbUser, error } = await getAuthenticatedUser()
+    if (error) return new Response('Unauthorized', { status: 401 })
 
     await logAudit({
-      user_id: user.id,
+      user_id: dbUser!.id,
       action: 'scan_document',
       ip_address: req.headers.get('x-forwarded-for') || undefined,
     })
 
-    // Rate limiting (shared with /api/documents/extract)
-    const rateCheck = checkRateLimit(`extract:${user.id}`, { maxRequests: 10, windowMs: 60_000 })
+    const rateCheck = checkRateLimit(`extract:${dbUser!.id}`, { maxRequests: 10, windowMs: 60_000 })
     if (!rateCheck.allowed) {
       return Response.json(
         { error: 'Too many requests. Please wait before scanning another document.' },
@@ -49,17 +45,14 @@ async function handler(req: Request) {
     const bytes = await file.arrayBuffer()
     const base64 = Buffer.from(bytes).toString('base64')
 
-    // Reject oversized files (~10 MB decoded)
     const MAX_BASE64_LENGTH = 13_500_000
     if (base64.length > MAX_BASE64_LENGTH) {
       return Response.json({ error: 'Image too large (max 10 MB)' }, { status: 413 })
     }
 
-    // Use the unified extraction engine
     const extraction = await extractDocument(base64, category)
     const data = extraction.extracted_data
 
-    // Transform to legacy response format
     return Response.json({
       document_type: mapDocType(extraction.document_type),
       summary: data.summary || getDescription(extraction),

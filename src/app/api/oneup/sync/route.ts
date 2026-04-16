@@ -1,54 +1,42 @@
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { db } from '@/lib/db';
+import { connectedApps } from '@/lib/db/schema';
+import { and, eq, desc } from 'drizzle-orm';
 import { syncOneUpData, TokenExpiredError } from '@/lib/oneup-sync';
 import { safeDecryptToken } from '@/lib/token-encryption';
 
 export const maxDuration = 60;
 
 export async function POST() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error) return new Response('Unauthorized', { status: 401 });
 
-  if (!user) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+  const [app] = await db
+    .select()
+    .from(connectedApps)
+    .where(and(eq(connectedApps.userId, dbUser!.id), eq(connectedApps.source, '1uphealth')))
+    .orderBy(desc(connectedApps.createdAt))
+    .limit(1);
 
-  const admin = createAdminClient();
-
-  // Get 1upHealth connection — newest row first in case of duplicates
-  const { data: app } = await admin
-    .from('connected_apps')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('source', '1uphealth')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!app || !app.access_token) {
+  if (!app || !app.accessToken) {
     return Response.json({ error: 'Not connected to 1upHealth' }, { status: 400 });
   }
 
-  const accessToken = safeDecryptToken(app.access_token);
+  const accessToken = safeDecryptToken(app.accessToken);
   if (!accessToken) {
     // Token can't be decrypted — mark as expired so next authorize flow re-auths
-    await admin.from('connected_apps')
-      .update({ expires_at: new Date(0).toISOString() })
-      .eq('user_id', user.id)
-      .eq('source', '1uphealth');
+    await db.update(connectedApps).set({ expiresAt: new Date(0) })
+      .where(and(eq(connectedApps.userId, dbUser!.id), eq(connectedApps.source, '1uphealth')));
     return Response.json({ error: 'token_expired' }, { status: 401 });
   }
 
   try {
-    const results = await syncOneUpData(user.id, accessToken);
+    const results = await syncOneUpData(dbUser!.id, accessToken);
     return Response.json({ success: true, synced: results });
   } catch (err) {
     if (err instanceof TokenExpiredError) {
-      // 1upHealth rejected the token — mark expired so next authorize re-auths
-      await admin.from('connected_apps')
-        .update({ expires_at: new Date(0).toISOString() })
-        .eq('user_id', user.id)
-        .eq('source', '1uphealth');
+      await db.update(connectedApps).set({ expiresAt: new Date(0) })
+        .where(and(eq(connectedApps.userId, dbUser!.id), eq(connectedApps.source, '1uphealth')));
       return Response.json({ error: 'token_expired' }, { status: 401 });
     }
     console.error('1upHealth sync error:', err);

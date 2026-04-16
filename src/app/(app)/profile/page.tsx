@@ -1,32 +1,32 @@
 import { Suspense } from 'react'
-import { createClient } from '@/lib/supabase/server'
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation'
+import { db } from '@/lib/db';
+import { users, careProfiles, doctors, labResults } from '@/lib/db/schema';
+import { eq, desc } from 'drizzle-orm';
 import { ProfileDashboard } from '@/components/ProfileDashboard'
 import { ProfileSkeleton } from '@/components/skeletons/ProfileSkeleton'
 
 async function ProfileContent() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
 
-  if (!profile) redirect('/setup')
+  const [profile] = await db.select().from(careProfiles).where(eq(careProfiles.userId, dbUser.id)).limit(1);
+  if (!profile) redirect('/setup');
 
-  const [{ data: doctors }, { data: labResults }] = await Promise.all([
-    supabase.from('doctors').select('*').eq('care_profile_id', profile.id),
-    supabase.from('lab_results').select('*').eq('user_id', user.id).order('date_taken', { ascending: false }).limit(50),
-  ])
+  const [docs, labs] = await Promise.all([
+    db.select().from(doctors).where(eq(doctors.careProfileId, profile.id)),
+    db.select().from(labResults).where(eq(labResults.userId, dbUser.id)).orderBy(desc(labResults.dateTaken)).limit(50),
+  ]);
 
   return (
     <ProfileDashboard
       profile={profile}
-      doctors={doctors || []}
-      labResults={labResults || []}
+      doctors={docs}
+      labResults={labs}
     />
   )
 }

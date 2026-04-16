@@ -114,12 +114,12 @@ function buildEvents(
   const events: TimelineEvent[] = [];
 
   for (const med of medications) {
-    const dateStr = med.start_date || med.created_at;
+    const dateStr = med.createdAt ? med.createdAt.toISOString() : null;
     if (!dateStr) continue;
     const details: string[] = [];
     if (med.dose) details.push(med.dose);
     if (med.frequency) details.push(med.frequency);
-    if (med.prescribing_doctor) details.push(`Dr. ${med.prescribing_doctor}`);
+    if (med.prescribingDoctor) details.push(`Dr. ${med.prescribingDoctor}`);
 
     events.push({
       id: `med-${med.id}`,
@@ -133,60 +133,59 @@ function buildEvents(
   }
 
   for (const apt of appointments) {
-    const dateStr = apt.date_time || apt.created_at;
+    const dateStr = apt.dateTime ? apt.dateTime.toISOString() : (apt.createdAt ? apt.createdAt.toISOString() : null);
     if (!dateStr) continue;
     const details: string[] = [];
     if (apt.specialty) details.push(apt.specialty);
     if (apt.location) details.push(apt.location);
-    if (apt.prep_notes) details.push(`Prep: ${apt.prep_notes}`);
 
     events.push({
       id: `apt-${apt.id}`,
       type: 'appointment',
       date: new Date(dateStr),
       title: apt.purpose || 'Appointment',
-      subtitle: apt.doctor_name ? `Dr. ${apt.doctor_name}` : null,
+      subtitle: apt.doctorName ? `Dr. ${apt.doctorName}` : null,
       details,
       color: COLORS.appointment,
     });
   }
 
   for (const lab of labResults) {
-    const dateStr = lab.date_taken || lab.created_at;
+    const dateStr = lab.dateTaken || (lab.createdAt ? lab.createdAt.toISOString() : null);
     if (!dateStr) continue;
     const details: string[] = [];
     if (lab.value && lab.unit) details.push(`Result: ${lab.value} ${lab.unit}`);
     else if (lab.value) details.push(`Result: ${lab.value}`);
-    if (lab.reference_range) details.push(`Range: ${lab.reference_range}`);
-    if (lab.is_abnormal) details.push('Flagged abnormal');
+    if (lab.referenceRange) details.push(`Range: ${lab.referenceRange}`);
+    if (lab.isAbnormal) details.push('Flagged abnormal');
     if (lab.source) details.push(`Source: ${lab.source}`);
 
     events.push({
       id: `lab-${lab.id}`,
       type: 'lab',
       date: new Date(dateStr),
-      title: lab.test_name,
+      title: lab.testName,
       subtitle: 'Lab result',
       details,
-      color: lab.is_abnormal ? COLORS.labAbnormal : COLORS.lab,
-      isAbnormal: lab.is_abnormal,
+      color: lab.isAbnormal ? COLORS.labAbnormal : COLORS.lab,
+      isAbnormal: lab.isAbnormal ?? false,
     });
   }
 
   for (const entry of symptomEntries) {
-    const dateStr = entry.date || entry.created_at;
+    const dateStr = entry.date || (entry.createdAt ? entry.createdAt.toISOString() : null);
     if (!dateStr) continue;
     const details: string[] = [];
-    if (entry.pain_level !== null && entry.pain_level !== undefined) details.push(`Pain: ${entry.pain_level}/10`);
+    if (entry.painLevel !== null && entry.painLevel !== undefined) details.push(`Pain: ${entry.painLevel}/10`);
     if (entry.mood) details.push(`Mood: ${moodLabel(entry.mood)}`);
-    if (entry.sleep_quality) details.push(`Sleep: ${sleepLabel(entry.sleep_quality)}`);
-    if (entry.symptoms?.length > 0) details.push(entry.symptoms.join(', '));
+    if (entry.sleepQuality) details.push(`Sleep: ${sleepLabel(entry.sleepQuality)}`);
+    if (entry.symptoms && entry.symptoms.length > 0) details.push(entry.symptoms.join(', '));
 
     events.push({
       id: `sym-${entry.id}`,
       type: 'symptom',
       date: new Date(dateStr),
-      title: entry.symptoms?.length > 0 ? entry.symptoms.slice(0, 3).join(', ') : 'Journal entry',
+      title: entry.symptoms && entry.symptoms.length > 0 ? entry.symptoms.slice(0, 3).join(', ') : 'Journal entry',
       subtitle: entry.notes ? entry.notes.slice(0, 80) + (entry.notes.length > 80 ? '...' : '') : 'Symptom check-in',
       details,
       color: COLORS.symptom,

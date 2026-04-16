@@ -49,7 +49,7 @@ export function NotificationsView({ notifications: initial }: NotificationsViewP
 
   const filtered = notifications.filter((n) => {
     if (activeFilter === 'all') return true
-    if (activeFilter === 'unread') return !n.is_read
+    if (activeFilter === 'unread') return !n.isRead
     const tab = FILTER_TABS.find((t) => t.key === activeFilter)
     return tab?.types?.includes(n.type)
   })
@@ -64,7 +64,7 @@ export function NotificationsView({ notifications: initial }: NotificationsViewP
   }
 
   const markAllRead = async () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
     await fetch('/api/notifications/read', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -73,7 +73,7 @@ export function NotificationsView({ notifications: initial }: NotificationsViewP
     showToast('All notifications marked as read', 'success')
   }
 
-  const unreadCount = notifications.filter((n) => !n.is_read).length
+  const unreadCount = notifications.filter((n) => !n.isRead).length
 
   return (
     <div className="px-5 py-6">
@@ -121,7 +121,7 @@ export function NotificationsView({ notifications: initial }: NotificationsViewP
             <div
               key={n.id}
               className={`p-4 rounded-xl border transition-all ${
-                !n.is_read
+                !n.isRead
                   ? 'border-[var(--accent-light)] bg-[var(--accent-light)]'
                   : 'border-[var(--border)] bg-[var(--bg-card)]'
               }`}
@@ -149,7 +149,7 @@ export function NotificationsView({ notifications: initial }: NotificationsViewP
                       Dismiss
                     </button>
                     <span className="text-[10px] text-[var(--text-muted)] ml-auto">
-                      {timeAgo(n.created_at)}
+                      {n.createdAt ? timeAgo(n.createdAt.toISOString()) : ''}
                     </span>
                   </div>
                 </div>

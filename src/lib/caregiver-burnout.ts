@@ -44,9 +44,9 @@ export function assessBurnout(
   const recent = entries.slice(0, 14)
 
   // 1. Sleep quality trend (weight: 20)
-  const sleepEntries = recent.filter(e => e.sleep_quality)
+  const sleepEntries = recent.filter(e => e.sleepQuality)
   if (sleepEntries.length >= 3) {
-    const poorSleep = sleepEntries.filter(e => e.sleep_quality === 'poor' || e.sleep_quality === 'terrible')
+    const poorSleep = sleepEntries.filter(e => e.sleepQuality === 'poor' || e.sleepQuality === 'terrible')
     const poorRatio = poorSleep.length / sleepEntries.length
     if (poorRatio >= 0.6) {
       const weight = Math.round(poorRatio * 20)
@@ -56,7 +56,7 @@ export function assessBurnout(
   }
 
   // 2. Sleep hours (weight: 15)
-  const sleepHours = recent.filter(e => e.sleep_hours !== null).map(e => e.sleep_hours as number)
+  const sleepHours = recent.filter(e => e.sleepHours !== null).map(e => parseFloat(e.sleepHours as string)).filter(n => !isNaN(n))
   if (sleepHours.length >= 3) {
     const avgSleep = sleepHours.reduce((a, b) => a + b, 0) / sleepHours.length
     if (avgSleep < 5) {
@@ -107,9 +107,9 @@ export function assessBurnout(
   }
 
   // 5. Pain levels (weight: 10)
-  const painEntries = recent.filter(e => e.pain_level !== null)
+  const painEntries = recent.filter(e => e.painLevel !== null)
   if (painEntries.length >= 3) {
-    const avgPain = painEntries.reduce((s, e) => s + (e.pain_level || 0), 0) / painEntries.length
+    const avgPain = painEntries.reduce((s, e) => s + (e.painLevel || 0), 0) / painEntries.length
     if (avgPain >= 6) {
       signals.push({ category: 'pain', signal: `Average pain level ${avgPain.toFixed(1)}/10`, weight: 10 })
       score += 10

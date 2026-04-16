@@ -1,7 +1,9 @@
 import { anthropic } from '@ai-sdk/anthropic';
 import { generateText, Output } from 'ai';
 import { z } from 'zod';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { db } from '@/lib/db';
+import { memories, conversationSummaries } from '@/lib/db/schema';
+import { eq, desc, inArray } from 'drizzle-orm';
 import { resolveConflicts } from '@/lib/memory-conflict';
 import type { Memory, ConversationSummary } from './types';
 
@@ -28,7 +30,7 @@ const SKIP_PATTERNS = /^(hi|hello|hey|thanks|thank you|ok|okay|yes|no|sure|bye|g
 const MIN_MESSAGE_LENGTH = 20; // Skip if both messages are very short
 
 /**
- * Extract new facts from the latest conversation exchange and save to Supabase.
+ * Extract new facts from the latest conversation exchange and save to DB.
  * Runs asynchronously after each assistant response — does not block the chat stream.
  *
  * Includes cost-saving guards:
@@ -47,8 +49,6 @@ export async function extractAndSaveMemories(
     // Guard: skip trivial messages to save API costs
     if (SKIP_PATTERNS.test(userMessage.trim())) return;
     if (userMessage.length < MIN_MESSAGE_LENGTH && assistantMessage.length < MIN_MESSAGE_LENGTH) return;
-
-    const admin = createAdminClient();
 
     const existingFacts = existingMemories.map((m) => `[${m.category}] ${m.fact}`).join('\n');
 
@@ -84,15 +84,15 @@ Rules:
     }
 
     const rows = output.facts.map((f) => ({
-      user_id: userId,
-      care_profile_id: careProfileId,
+      userId,
+      careProfileId,
       category: f.category,
       fact: f.fact,
       source: 'conversation' as const,
       confidence: f.confidence,
     }));
 
-    await admin.from('memories').insert(rows);
+    await db.insert(memories).values(rows);
   } catch (error) {
     // Memory extraction is non-critical — log but don't throw
     console.error('[memory] extraction failed:', error);
@@ -108,19 +108,18 @@ Rules:
  * Limited to 150 to prevent context explosion in the system prompt.
  */
 export async function loadMemories(userId: string, limit = 150): Promise<Memory[]> {
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from('memories')
-    .select('*')
-    .eq('user_id', userId)
-    .order('last_referenced', { ascending: false })
-    .limit(limit);
-
-  if (error) {
+  try {
+    const data = await db
+      .select()
+      .from(memories)
+      .where(eq(memories.userId, userId))
+      .orderBy(desc(memories.lastReferenced))
+      .limit(limit);
+    return data as Memory[];
+  } catch (error) {
     console.error('[memory] load failed:', error);
     return [];
   }
-  return data || [];
 }
 
 /**
@@ -130,19 +129,18 @@ export async function loadConversationSummaries(
   userId: string,
   limit = 5,
 ): Promise<ConversationSummary[]> {
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from('conversation_summaries')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (error) {
+  try {
+    const data = await db
+      .select()
+      .from(conversationSummaries)
+      .where(eq(conversationSummaries.userId, userId))
+      .orderBy(desc(conversationSummaries.createdAt))
+      .limit(limit);
+    return data as ConversationSummary[];
+  } catch (error) {
     console.error('[memory] summaries load failed:', error);
     return [];
   }
-  return data || [];
 }
 
 // ============================================================
@@ -156,12 +154,12 @@ export async function loadConversationSummaries(
 export async function touchReferencedMemories(
   userId: string,
   userMessage: string,
-  memories: Memory[],
+  mems: Memory[],
 ): Promise<void> {
   const messageLower = userMessage.toLowerCase();
   const referencedIds: string[] = [];
 
-  for (const mem of memories) {
+  for (const mem of mems) {
     // Extract key terms from the fact (words 4+ chars, excluding common words)
     const terms = mem.fact.toLowerCase()
       .split(/\s+/)
@@ -177,11 +175,10 @@ export async function touchReferencedMemories(
 
   if (referencedIds.length === 0) return;
 
-  const admin = createAdminClient();
-  await admin
-    .from('memories')
-    .update({ last_referenced: new Date().toISOString() })
-    .in('id', referencedIds);
+  await db
+    .update(memories)
+    .set({ lastReferenced: new Date() })
+    .where(inArray(memories.id, referencedIds));
 }
 
 // ============================================================
@@ -199,12 +196,12 @@ const summarySchema = z.object({
  */
 export async function summarizeConversation(
   userId: string,
-  messages: { role: string; content: string }[],
+  msgs: { role: string; content: string }[],
 ): Promise<void> {
-  if (messages.length < 4) return; // Not enough to summarize
+  if (msgs.length < 4) return; // Not enough to summarize
 
   try {
-    const transcript = messages
+    const transcript = msgs
       .slice(-30) // Last 30 messages max
       .map((m) => `${m.role}: ${m.content}`)
       .join('\n');
@@ -217,12 +214,11 @@ export async function summarizeConversation(
 ${transcript}`,
     });
 
-    const admin = createAdminClient();
-    await admin.from('conversation_summaries').insert({
-      user_id: userId,
+    await db.insert(conversationSummaries).values({
+      userId,
       summary: output.summary,
       topics: output.topics,
-      message_count: messages.length,
+      messageCount: msgs.length,
     });
   } catch (error) {
     console.error('[memory] summarization failed:', error);

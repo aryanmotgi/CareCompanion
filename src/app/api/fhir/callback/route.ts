@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { db } from '@/lib/db';
+import { connectedApps } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
 import { getProvider } from '@/lib/fhir-providers';
 import { syncOneUpData } from '@/lib/oneup-sync';
 import { encryptToken, verifyState } from '@/lib/token-encryption';
@@ -24,7 +26,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${baseUrl}/connect?error=missing_code`);
   }
 
-  // Verify HMAC-signed state — rejects tampered or forged state values
   const stateData = verifyState(state);
   if (!stateData) {
     return NextResponse.redirect(`${baseUrl}/connect?error=invalid_state`);
@@ -43,10 +44,8 @@ export async function GET(req: NextRequest) {
   }
 
   // Verify the authenticated user matches the one who initiated the flow
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user || user.id !== userId) {
+  const { user: dbUser, error: authError } = await getAuthenticatedUser();
+  if (authError || dbUser!.id !== userId) {
     return NextResponse.redirect(`${baseUrl}/connect?error=auth_mismatch`);
   }
 
@@ -55,7 +54,6 @@ export async function GET(req: NextRequest) {
   const redirectUri = `${baseUrl}/api/fhir/callback`;
 
   try {
-    // Build token exchange request
     const body = new URLSearchParams({
       grant_type: 'authorization_code',
       code,
@@ -67,7 +65,6 @@ export async function GET(req: NextRequest) {
       body.set('client_secret', clientSecret);
     }
 
-    // PKCE: include code_verifier if this provider requires it
     if (provider.requiresPkce) {
       const codeVerifier = req.cookies.get('fhir_pkce_verifier')?.value;
       if (codeVerifier) {
@@ -90,41 +87,34 @@ export async function GET(req: NextRequest) {
     const tokens = await tokenRes.json();
 
     const expiresAt = tokens.expires_in
-      ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+      ? new Date(Date.now() + tokens.expires_in * 1000)
       : null;
 
-    // For 1upHealth, use '1uphealth' as source to match oneup-sync expectations
     const source = providerId === '1uphealth' ? '1uphealth' : `fhir_${providerId}`;
 
-    const admin = createAdminClient();
-
-    // Save the connection — tokens encrypted at rest
-    const { error: upsertError } = await admin.from('connected_apps').upsert(
-      {
-        user_id: user.id,
-        source,
-        access_token: encryptToken(tokens.access_token),
-        refresh_token: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
-        expires_at: expiresAt,
-        metadata: {
-          provider_id: providerId,
-          provider_name: provider.name,
-          patient_id: tokens.patient || null,
-          fhir_base_url: provider.fhirBaseUrl,
-          connected_at: new Date().toISOString(),
-        },
-      },
-      { onConflict: 'user_id,source' }
+    // Delete existing row then insert fresh (avoids needing unique constraint)
+    await db.delete(connectedApps).where(
+      and(eq(connectedApps.userId, dbUser!.id), eq(connectedApps.source, source))
     );
 
-    if (upsertError) {
-      console.error('Failed to save connection:', upsertError);
-      return NextResponse.redirect(`${baseUrl}/connect?error=save_failed`);
-    }
+    await db.insert(connectedApps).values({
+      userId: dbUser!.id,
+      source,
+      accessToken: encryptToken(tokens.access_token),
+      refreshToken: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
+      expiresAt,
+      metadata: {
+        provider_id: providerId,
+        provider_name: provider.name,
+        patient_id: tokens.patient || null,
+        fhir_base_url: provider.fhirBaseUrl,
+        connected_at: new Date().toISOString(),
+      },
+    });
 
-    // Trigger initial sync — pass plaintext token directly (not re-read from DB)
+    // Trigger initial sync
     if (providerId === '1uphealth') {
-      syncOneUpData(user.id, tokens.access_token).catch((err) => {
+      syncOneUpData(dbUser!.id, tokens.access_token).catch((err) => {
         console.error('1upHealth initial sync error:', err);
       });
     } else {
@@ -137,7 +127,6 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Clear PKCE cookie if used
     const response = NextResponse.redirect(`${baseUrl}/connect?connected=${providerId}`);
     if (provider.requiresPkce) {
       response.cookies.delete('fhir_pkce_verifier');

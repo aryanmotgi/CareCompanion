@@ -1,51 +1,47 @@
 import { Suspense } from 'react'
-import { createClient } from '@/lib/supabase/server'
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation'
+import { db } from '@/lib/db';
+import { users, userSettings, connectedApps, medicationReminders, medications } from '@/lib/db/schema';
+import { eq, desc } from 'drizzle-orm';
+import { getActiveProfile } from '@/lib/active-profile'
 import { SettingsPage } from '@/components/SettingsPage'
 import { SettingsSkeleton } from '@/components/skeletons/SettingsSkeleton'
-import { getActiveProfile } from '@/lib/active-profile'
 
 async function SettingsContent() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  const profile = await getActiveProfile(supabase, user.id)
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
+
+  const profile = await getActiveProfile(dbUser.id);
 
   // Fetch or create user settings
-  let { data: settings } = await supabase
-    .from('user_settings')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
+  let [settings] = await db.select().from(userSettings).where(eq(userSettings.userId, dbUser.id)).limit(1);
 
   if (!settings) {
-    const { data: newSettings } = await supabase
-      .from('user_settings')
-      .insert({ user_id: user.id })
-      .select()
-      .single()
-    settings = newSettings
+    const [newSettings] = await db
+      .insert(userSettings)
+      .values({ userId: dbUser.id })
+      .returning();
+    settings = newSettings;
   }
 
-  const [
-    { data: connectedApps },
-    { data: medicationReminders },
-    { data: medications },
-  ] = await Promise.all([
-    supabase.from('connected_apps').select('*').eq('user_id', user.id),
-    supabase.from('medication_reminders').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+  const [apps, reminders, meds] = await Promise.all([
+    db.select().from(connectedApps).where(eq(connectedApps.userId, dbUser.id)),
+    db.select().from(medicationReminders).where(eq(medicationReminders.userId, dbUser.id)).orderBy(desc(medicationReminders.createdAt)),
     profile
-      ? supabase.from('medications').select('*').eq('care_profile_id', profile.id)
-      : Promise.resolve({ data: [] }),
-  ])
+      ? db.select().from(medications).where(eq(medications.careProfileId, profile.id))
+      : Promise.resolve([]),
+  ]);
 
   return (
     <SettingsPage
       settings={settings}
-      connectedApps={connectedApps || []}
-      medicationReminders={medicationReminders || []}
-      medications={medications || []}
+      connectedApps={apps}
+      medicationReminders={reminders}
+      medications={meds}
     />
   )
 }

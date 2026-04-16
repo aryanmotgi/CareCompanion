@@ -4,7 +4,10 @@
  * 1. Check a NEW medication against all current meds (POST with { medication })
  * 2. Check ALL current medications against each other (POST with { check_all: true })
  */
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { db } from '@/lib/db'
+import { careProfiles, medications } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { rateLimit } from '@/lib/rate-limit'
 import { checkDrugInteractions, checkAllInteractions } from '@/lib/drug-interactions'
 import { apiSuccess, apiError, ApiErrors } from '@/lib/api-response'
@@ -17,29 +20,26 @@ export async function POST(req: Request) {
   if (!success) return ApiErrors.rateLimited()
 
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return ApiErrors.unauthorized()
+    const { user: dbUser, error } = await getAuthenticatedUser()
+    if (error) return error
 
     const body = await req.json()
 
-    // Get user's profile and current medications
-    const { data: profile } = await supabase
-      .from('care_profiles')
-      .select('id, allergies')
-      .eq('user_id', user.id)
-      .single()
+    const [profile] = await db
+      .select({ id: careProfiles.id, allergies: careProfiles.allergies })
+      .from(careProfiles)
+      .where(eq(careProfiles.userId, dbUser!.id))
+      .limit(1)
 
     if (!profile) return ApiErrors.notFound('Care profile')
 
-    const { data: medications } = await supabase
-      .from('medications')
-      .select('name, dose')
-      .eq('care_profile_id', profile.id)
+    const meds = await db
+      .select({ name: medications.name, dose: medications.dose })
+      .from(medications)
+      .where(eq(medications.careProfileId, profile.id))
 
-    const currentMeds = (medications || []).map(m => ({ name: m.name, dose: m.dose }))
+    const currentMeds = meds.map(m => ({ name: m.name, dose: m.dose }))
 
-    // Mode 1: Check all current meds against each other
     if (body.check_all) {
       if (currentMeds.length < 2) {
         return apiSuccess({
@@ -54,7 +54,6 @@ export async function POST(req: Request) {
       return apiSuccess(result)
     }
 
-    // Mode 2: Check a new medication against current meds
     if (!body.medication || typeof body.medication !== 'string') {
       return ApiErrors.badRequest('Provide { medication: "drug name" } or { check_all: true }')
     }

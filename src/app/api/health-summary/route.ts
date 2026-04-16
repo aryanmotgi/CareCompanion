@@ -1,7 +1,9 @@
 import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { db } from '@/lib/db';
+import { careProfiles, medications, doctors, appointments, labResults, insurance, claims, priorAuths, memories, symptomEntries, healthSummaries } from '@/lib/db/schema';
+import { eq, desc } from 'drizzle-orm';
 import { rateLimit } from '@/lib/rate-limit';
 import { logAudit } from '@/lib/audit';
 import { ApiErrors } from '@/lib/api-response';
@@ -11,7 +13,6 @@ const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxReq
 
 export const maxDuration = 30;
 
-// POST — generate a comprehensive health summary document
 async function postHandler(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   const { success } = limiter.check(ip);
@@ -19,87 +20,73 @@ async function postHandler(req: Request) {
     return ApiErrors.rateLimited();
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new Response('Unauthorized', { status: 401 });
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error) return error;
 
   await logAudit({
-    user_id: user.id,
+    user_id: dbUser!.id,
     action: 'generate_summary',
     ip_address: req.headers.get('x-forwarded-for') || undefined,
   });
 
-  const admin = createAdminClient();
-
-  const { data: profile } = await admin.from('care_profiles')
-    .select('*')
-    .eq('user_id', user.id)
-    .single();
+  const [profile] = await db
+    .select()
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, dbUser!.id))
+    .limit(1);
 
   if (!profile) return Response.json({ error: 'No care profile found' }, { status: 400 });
 
-  // Gather everything
-  const [
-    { data: meds },
-    { data: doctors },
-    { data: appointments },
-    { data: labs },
-    { data: insurance },
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    { data: claims },
-    { data: priorAuths },
-    { data: memories },
-    { data: symptoms },
-  ] = await Promise.all([
-    admin.from('medications').select('*').eq('care_profile_id', profile.id),
-    admin.from('doctors').select('*').eq('care_profile_id', profile.id),
-    admin.from('appointments').select('*').eq('care_profile_id', profile.id).order('date_time', { ascending: false }).limit(10),
-    admin.from('lab_results').select('*').eq('user_id', user.id).order('date_taken', { ascending: false }).limit(25),
-    admin.from('insurance').select('*').eq('user_id', user.id).limit(1).single(),
-    admin.from('claims').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10),
-    admin.from('prior_auths').select('*').eq('user_id', user.id),
-    admin.from('memories').select('fact, category').eq('user_id', user.id).order('last_referenced', { ascending: false }).limit(30),
-    admin.from('symptom_entries').select('*').eq('user_id', user.id).order('date', { ascending: false }).limit(14),
+  const [meds, docs, appts, labs, [ins],, priorAuthsData, memoriesData, symptoms] = await Promise.all([
+    db.select().from(medications).where(eq(medications.careProfileId, profile.id)),
+    db.select().from(doctors).where(eq(doctors.careProfileId, profile.id)),
+    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)).orderBy(desc(appointments.dateTime)).limit(10),
+    db.select().from(labResults).where(eq(labResults.userId, dbUser!.id)).orderBy(desc(labResults.dateTaken)).limit(25),
+    db.select().from(insurance).where(eq(insurance.userId, dbUser!.id)).limit(1),
+    db.select().from(claims).where(eq(claims.userId, dbUser!.id)).orderBy(desc(claims.createdAt)).limit(10),
+    db.select().from(priorAuths).where(eq(priorAuths.userId, dbUser!.id)),
+    db.select({ fact: memories.fact, category: memories.category }).from(memories).where(eq(memories.userId, dbUser!.id)).orderBy(desc(memories.lastReferenced)).limit(30),
+    db.select().from(symptomEntries).where(eq(symptomEntries.userId, dbUser!.id)).orderBy(desc(symptomEntries.date)).limit(14),
   ]);
 
-  const abnormalLabs = (labs || []).filter((l) => l.is_abnormal);
+  const abnormalLabs = labs.filter((l) => l.isAbnormal);
 
   const { text } = await generateText({
-    model: anthropic('claude-haiku-4-5-20251001'),
+    model: anthropic('claude-haiku-4.5'),
     prompt: `Generate a comprehensive patient health summary document. This is designed to be printed or shared with a new doctor, specialist, or hospital. Format as clean markdown.
 
 PATIENT INFORMATION:
-- Name: ${profile.patient_name || 'Unknown'}
-- Age: ${profile.patient_age || 'Unknown'}
+- Name: ${profile.patientName || 'Unknown'}
+- Age: ${profile.patientAge || 'Unknown'}
 - Relationship to caregiver: ${profile.relationship || 'Not specified'}
 - Known Conditions: ${profile.conditions || 'None listed'}
 - Known Allergies: ${profile.allergies || 'None listed'}
-- Emergency Contact: ${profile.emergency_contact_name || 'Not set'} ${profile.emergency_contact_phone || ''}
+- Emergency Contact: ${profile.emergencyContactName || 'Not set'} ${profile.emergencyContactPhone || ''}
 
-CURRENT MEDICATIONS (${(meds || []).length}):
-${(meds || []).map((m) => `- ${m.name} ${m.dose || ''} ${m.frequency || ''} | Prescribed by: ${m.prescribing_doctor || 'unknown'} | Refill: ${m.refill_date || 'N/A'}`).join('\n') || '- None'}
+CURRENT MEDICATIONS (${meds.length}):
+${meds.map((m) => `- ${m.name} ${m.dose || ''} ${m.frequency || ''} | Prescribed by: ${m.prescribingDoctor || 'unknown'} | Refill: ${m.refillDate || 'N/A'}`).join('\n') || '- None'}
 
-CARE TEAM (${(doctors || []).length} providers):
-${(doctors || []).map((d) => `- ${d.name} (${d.specialty || 'General'}) | Phone: ${d.phone || 'N/A'}`).join('\n') || '- None'}
+CARE TEAM (${docs.length} providers):
+${docs.map((d) => `- ${d.name} (${d.specialty || 'General'}) | Phone: ${d.phone || 'N/A'}`).join('\n') || '- None'}
 
 RECENT APPOINTMENTS:
-${(appointments || []).map((a) => `- ${a.doctor_name || 'Unknown'} on ${a.date_time ? new Date(a.date_time).toLocaleDateString() : 'N/A'} — ${a.purpose || ''}${a.follow_up_notes ? ` | Notes: ${a.follow_up_notes}` : ''}`).join('\n') || '- None'}
+${appts.map((a) => `- ${a.doctorName || 'Unknown'} on ${a.dateTime ? new Date(a.dateTime).toLocaleDateString() : 'N/A'} — ${a.purpose || ''}`).join('\n') || '- None'}
 
-LAB RESULTS (${(labs || []).length} total, ${abnormalLabs.length} abnormal):
-${(labs || []).map((l) => `- ${l.test_name}: ${l.value} ${l.unit || ''} (range: ${l.reference_range || 'N/A'})${l.is_abnormal ? ' ⚠️ ABNORMAL' : ''} [${l.date_taken || 'no date'}]`).join('\n') || '- None'}
+LAB RESULTS (${labs.length} total, ${abnormalLabs.length} abnormal):
+${labs.map((l) => `- ${l.testName}: ${l.value} ${l.unit || ''} (range: ${l.referenceRange || 'N/A'})${l.isAbnormal ? ' ⚠️ ABNORMAL' : ''} [${l.dateTaken || 'no date'}]`).join('\n') || '- None'}
 
 INSURANCE:
-${insurance ? `- Provider: ${insurance.provider} | Member ID: ${insurance.member_id || 'N/A'} | Group: ${insurance.group_number || 'N/A'}
-- Deductible: $${insurance.deductible_used || 0} / $${insurance.deductible_limit || 'N/A'} | OOP: $${insurance.oop_used || 0} / $${insurance.oop_limit || 'N/A'}` : '- Not on file'}
+${ins ? `- Provider: ${ins.provider} | Member ID: ${ins.memberId || 'N/A'} | Group: ${ins.groupNumber || 'N/A'}
+- Deductible: $${ins.deductibleUsed || 0} / $${ins.deductibleLimit || 'N/A'} | OOP: $${ins.oopUsed || 0} / $${ins.oopLimit || 'N/A'}` : '- Not on file'}
 
 PRIOR AUTHORIZATIONS:
-${(priorAuths || []).map((a) => `- ${a.service}: ${a.status || 'active'} | Expires: ${a.expiry_date || 'N/A'} | Sessions: ${a.sessions_used}/${a.sessions_approved || '?'}`).join('\n') || '- None'}
+${priorAuthsData.map((a) => `- ${a.service}: ${a.status || 'active'} | Expires: ${a.expiryDate || 'N/A'} | Sessions: ${a.sessionsUsed}/${a.sessionsApproved || '?'}`).join('\n') || '- None'}
 
 RECENT SYMPTOM JOURNAL (last 14 days):
-${(symptoms || []).map((s) => `- ${s.date}: Pain ${s.pain_level ?? 'N/A'}/10 | Mood: ${s.mood || 'N/A'} | Sleep: ${s.sleep_quality || 'N/A'} (${s.sleep_hours || '?'}h) | Symptoms: ${s.symptoms?.join(', ') || 'none'}`).join('\n') || '- No entries'}
+${symptoms.map((s) => `- ${s.date}: Pain ${s.painLevel ?? 'N/A'}/10 | Mood: ${s.mood || 'N/A'} | Sleep: ${s.sleepQuality || 'N/A'} (${s.sleepHours || '?'}h) | Symptoms: ${s.symptoms?.join(', ') || 'none'}`).join('\n') || '- No entries'}
 
 KEY NOTES FROM CARE HISTORY:
-${(memories || []).map((m) => `- [${m.category}] ${m.fact}`).join('\n') || '- None'}
+${memoriesData.map((m) => `- [${m.category}] ${m.fact}`).join('\n') || '- None'}
 
 Generate the summary with these sections:
 1. **Patient Overview** — demographics, conditions, allergies (highlighted)
@@ -117,38 +104,35 @@ Make it professional but readable. A doctor should be able to scan it in 2 minut
   });
 
   // Cache the generated summary
-  await admin.from('health_summaries').upsert({
-    user_id: user.id,
-    care_profile_id: profile.id,
-    content: text,
-    generated_at: new Date().toISOString(),
-  }, { onConflict: 'user_id' });
+  await db.insert(healthSummaries).values({
+    userId: dbUser!.id,
+    careProfileId: profile.id,
+    summary: { content: text },
+    generatedAt: new Date(),
+  });
 
   return Response.json({ success: true, summary: text, generated_at: new Date().toISOString() });
 }
 
 export const POST = withMetrics('/api/health-summary', postHandler);
 
-// GET — retrieve the most recent cached health summary
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function getHandler(_req: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new Response('Unauthorized', { status: 401 });
+async function getHandler(/* req: Request */) {
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error) return error;
 
-  const { data } = await supabase
-    .from('health_summaries')
-    .select('content, generated_at')
-    .eq('user_id', user.id)
-    .order('generated_at', { ascending: false })
-    .limit(1)
-    .single();
+  const [data] = await db
+    .select({ summary: healthSummaries.summary, generatedAt: healthSummaries.generatedAt })
+    .from(healthSummaries)
+    .where(eq(healthSummaries.userId, dbUser!.id))
+    .orderBy(desc(healthSummaries.generatedAt))
+    .limit(1);
 
   if (!data) {
     return Response.json({ summary: null, message: 'No health summary generated yet. Use POST to generate one.' });
   }
 
-  return Response.json({ summary: data.content, generated_at: data.generated_at });
+  const summaryContent = (data.summary as Record<string, unknown>)?.content || data.summary;
+  return Response.json({ summary: summaryContent, generated_at: data.generatedAt });
 }
 
 export const GET = withMetrics('/api/health-summary', getHandler);

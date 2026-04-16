@@ -1,6 +1,9 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { db } from '@/lib/db';
+import { careProfiles, medications } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 const MAX_MEDICATIONS_PER_IMPORT = 50;
@@ -20,11 +23,11 @@ const ImportSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    const { user, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
 
     // Rate limit: 20 imports per minute
-    const rateCheck = checkRateLimit(`import-meds:${user.id}`, { maxRequests: 20, windowMs: 60_000 });
+    const rateCheck = checkRateLimit(`import-meds:${user!.id}`, { maxRequests: 20, windowMs: 60_000 });
     if (!rateCheck.allowed) {
       return Response.json(
         { error: 'Too many requests' },
@@ -36,33 +39,29 @@ export async function POST(req: Request) {
     const { data: validated, error: valError } = validateBody(ImportSchema, body);
     if (valError) return valError;
 
-    const { medications, source } = validated;
+    const { medications: meds, source } = validated;
 
     // Get care profile
-    const { data: profile } = await supabase
-      .from('care_profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
+    const [profile] = await db
+      .select({ id: careProfiles.id })
+      .from(careProfiles)
+      .where(eq(careProfiles.userId, user!.id))
+      .limit(1);
 
     if (!profile) {
       return apiError('No care profile found', 400);
     }
 
     // Insert all medications
-    const rows = medications.map((med) => ({
-      care_profile_id: profile.id,
+    const rows = meds.map((med) => ({
+      careProfileId: profile.id,
       name: med.name,
-      dose: med.dose || null,
-      frequency: med.frequency || null,
+      dose: med.dose ?? null,
+      frequency: med.frequency ?? null,
       notes: source ? `Imported from ${source}` : null,
     }));
 
-    const { error } = await supabase.from('medications').insert(rows);
-
-    if (error) {
-      return apiError(error.message, 500);
-    }
+    await db.insert(medications).values(rows);
 
     return apiSuccess({ success: true, count: rows.length });
   } catch (err) {

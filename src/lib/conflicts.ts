@@ -35,17 +35,17 @@ export function detectConflicts(
   for (const profile of profiles) {
     const appts = appointmentsByProfile.get(profile.id) || []
     for (const appt of appts) {
-      if (!appt.date_time) continue
+      if (!appt.dateTime) continue
       allAppts.push({
         ...appt,
-        profileName: profile.patient_name || 'Unknown',
+        profileName: profile.patientName || 'Unknown',
         relationship: profile.relationship,
       })
     }
   }
 
   // Sort by date_time
-  allAppts.sort((a, b) => new Date(a.date_time!).getTime() - new Date(b.date_time!).getTime())
+  allAppts.sort((a, b) => new Date(a.dateTime!).getTime() - new Date(b.dateTime!).getTime())
 
   const conflicts: Conflict[] = []
   const now = new Date()
@@ -53,17 +53,17 @@ export function detectConflicts(
   // Compare each pair (only future appointments)
   for (let i = 0; i < allAppts.length; i++) {
     const a = allAppts[i]
-    const aStart = new Date(a.date_time!)
+    const aStart = new Date(a.dateTime!)
     if (aStart < now) continue
     const aEnd = new Date(aStart.getTime() + ASSUMED_DURATION_MS)
 
     for (let j = i + 1; j < allAppts.length; j++) {
       const b = allAppts[j]
-      const bStart = new Date(b.date_time!)
+      const bStart = new Date(b.dateTime!)
       if (bStart < now) continue
 
       // Skip if same profile (not a cross-profile conflict)
-      if (a.care_profile_id === b.care_profile_id) continue
+      if (a.careProfileId === b.careProfileId) continue
 
       // Check for overlap
       const bEnd = new Date(bStart.getTime() + ASSUMED_DURATION_MS)

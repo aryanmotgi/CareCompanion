@@ -118,8 +118,8 @@ export function DashboardView({
 
     // Medication refill cards
     medications.forEach((med) => {
-      if (!med.refill_date) return
-      const refillDate = new Date(med.refill_date)
+      if (!med.refillDate) return
+      const refillDate = new Date(med.refillDate)
       const daysLeft = Math.ceil((refillDate.getTime() - now.getTime()) / 86400000)
       if (daysLeft <= 3) {
         result.push({
@@ -127,7 +127,7 @@ export function DashboardView({
           variant: 'urgent',
           label: 'URGENT',
           title: `${med.name} refill ${daysLeft <= 0 ? 'overdue' : daysLeft === 1 ? 'due tomorrow' : `due in ${daysLeft} days`}`,
-          subtitle: `${med.quantity_remaining ?? '?'} pills remaining · ${med.prescribing_doctor || 'Unknown doctor'}`,
+          subtitle: `${med.prescribingDoctor || 'Unknown doctor'} · refill needed`,
           priority: 1,
           expandedContent: (
             <AlertInsights
@@ -136,12 +136,12 @@ export function DashboardView({
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div><span className="text-[var(--text-muted)]">Dose:</span> <span className="text-[var(--text)]">{med.dose}</span></div>
                     <div><span className="text-[var(--text-muted)]">Frequency:</span> <span className="text-[var(--text)]">{med.frequency}</span></div>
-                    <div><span className="text-[var(--text-muted)]">Doctor:</span> <span className="text-[var(--text)]">{med.prescribing_doctor}</span></div>
-                    <div><span className="text-[var(--text-muted)]">Remaining:</span> <span className="text-[#fbbf24]">{med.quantity_remaining} pills</span></div>
+                    <div><span className="text-[var(--text-muted)]">Doctor:</span> <span className="text-[var(--text)]">{med.prescribingDoctor}</span></div>
+                    <div><span className="text-[var(--text-muted)]">Notes:</span> <span className="text-[#fbbf24]">{med.notes || '—'}</span></div>
                   </div>
-                  {med.pharmacy_phone && (
+                  {med.pharmacyPhone && (
                     <a
-                      href={`tel:${med.pharmacy_phone}`}
+                      href={`tel:${med.pharmacyPhone}`}
                       className="block w-full text-center py-2 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-xs font-semibold"
                     >
                       Call Pharmacy
@@ -151,10 +151,10 @@ export function DashboardView({
               }
               insights={[
                 { emoji: '📞', text: `Call your pharmacy now to request a refill for ${med.name}. Have your prescription number ready.` },
-                { emoji: '⏰', text: `Set a reminder ${daysLeft <= 0 ? 'immediately' : 'today'} — ${med.quantity_remaining ?? 'few'} pills won't last long at your current dose.` },
-                { emoji: '💬', text: `If refills are denied, ask ${med.prescribing_doctor || 'your doctor'} for a new prescription or 90-day supply to avoid running out again.` },
+                { emoji: '⏰', text: `Set a reminder ${daysLeft <= 0 ? 'immediately' : 'today'} to follow up on refill for ${med.name}.` },
+                { emoji: '💬', text: `If refills are denied, ask ${med.prescribingDoctor || 'your doctor'} for a new prescription or 90-day supply to avoid running out again.` },
               ]}
-              chatPrompt={`Help me manage my ${med.name} refill — I have ${med.quantity_remaining ?? 'few'} pills left and it's ${daysLeft <= 0 ? 'overdue' : `due in ${daysLeft} days`}`}
+              chatPrompt={`Help me manage my ${med.name} refill — it's ${daysLeft <= 0 ? 'overdue' : `due in ${daysLeft} days`}`}
             />
           ),
         })
@@ -163,8 +163,8 @@ export function DashboardView({
 
     // Appointment cards (next 7 days)
     appointments.forEach((appt) => {
-      if (!appt.date_time) return
-      const apptDate = new Date(appt.date_time)
+      if (!appt.dateTime) return
+      const apptDate = new Date(appt.dateTime)
       const daysUntil = Math.ceil((apptDate.getTime() - now.getTime()) / 86400000)
       if (daysUntil >= 0 && daysUntil <= 7) {
         const timeStr = apptDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -173,7 +173,7 @@ export function DashboardView({
           id: `appt-${appt.id}`,
           variant: 'upcoming',
           label: 'UPCOMING',
-          title: `${appt.doctor_name} — ${appt.specialty}`,
+          title: `${appt.doctorName} — ${appt.specialty}`,
           subtitle: `${dayStr} at ${timeStr} · ${appt.purpose || ''}`,
           priority: 2,
           expandedContent: (
@@ -199,12 +199,12 @@ export function DashboardView({
                 </div>
               }
               insights={[
-                { emoji: '📝', text: `Write down your top 3 questions for ${appt.doctor_name} before you go — you'll forget in the moment.` },
+                { emoji: '📝', text: `Write down your top 3 questions for ${appt.doctorName} before you go — you'll forget in the moment.` },
                 { emoji: '📋', text: `Bring a list of current medications and any new symptoms since your last visit.` },
                 { emoji: '🕐', text: `Arrive 10-15 minutes early ${appt.location ? `at ${appt.location}` : ''} — parking and check-in take time.` },
                 { emoji: '📱', text: `Take notes during the visit or ask if you can record — details fade fast after you leave.` },
               ]}
-              chatPrompt={`Help me prepare for my ${appt.specialty} appointment with ${appt.doctor_name}${appt.purpose ? ` for ${appt.purpose}` : ''}`}
+              chatPrompt={`Help me prepare for my ${appt.specialty} appointment with ${appt.doctorName}${appt.purpose ? ` for ${appt.purpose}` : ''}`}
             />
           ),
         })
@@ -213,14 +213,14 @@ export function DashboardView({
 
     // Abnormal lab alerts
     labResults.forEach((lab) => {
-      if (!lab.is_abnormal) return
-      const parsed = parseLabValue(lab.value, lab.reference_range || '')
+      if (!lab.isAbnormal) return
+      const parsed = parseLabValue(lab.value, lab.referenceRange || '')
       result.push({
         id: `lab-${lab.id}`,
         variant: 'alert',
         label: 'ALERT',
-        title: `${lab.test_name} — ${lab.value} ${lab.unit}`,
-        subtitle: `${lab.is_abnormal ? 'Above normal' : 'Normal'} range (${lab.reference_range}) · ${lab.source || ''}`,
+        title: `${lab.testName} — ${lab.value} ${lab.unit}`,
+        subtitle: `${lab.isAbnormal ? 'Above normal' : 'Normal'} range (${lab.referenceRange}) · ${lab.source || ''}`,
         priority: 3,
         expandedContent: (
           <AlertInsights
@@ -228,9 +228,9 @@ export function DashboardView({
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div><span className="text-[var(--text-muted)]">Value:</span> <span className="text-[#ef4444]">{lab.value} {lab.unit}</span></div>
-                  <div><span className="text-[var(--text-muted)]">Normal:</span> <span className="text-[var(--text)]">{lab.reference_range}</span></div>
+                  <div><span className="text-[var(--text-muted)]">Normal:</span> <span className="text-[var(--text)]">{lab.referenceRange}</span></div>
                   <div><span className="text-[var(--text-muted)]">Source:</span> <span className="text-[var(--text)]">{lab.source}</span></div>
-                  <div><span className="text-[var(--text-muted)]">Date:</span> <span className="text-[var(--text)]">{lab.date_taken ? new Date(lab.date_taken).toLocaleDateString() : '—'}</span></div>
+                  <div><span className="text-[var(--text-muted)]">Date:</span> <span className="text-[var(--text)]">{lab.dateTaken ? new Date(lab.dateTaken).toLocaleDateString() : '—'}</span></div>
                 </div>
                 {parsed.progressPercent !== null && (
                   <div>
@@ -249,12 +249,12 @@ export function DashboardView({
               </div>
             }
             insights={[
-              { emoji: '🩺', text: `Your ${lab.test_name} is ${lab.value} ${lab.unit}, above the normal range of ${lab.reference_range}. Schedule a follow-up to discuss this result.` },
+              { emoji: '🩺', text: `Your ${lab.testName} is ${lab.value} ${lab.unit}, above the normal range of ${lab.referenceRange}. Schedule a follow-up to discuss this result.` },
               { emoji: '📊', text: `Track this value over time — a single reading can be a fluke, but a trend tells the real story.` },
               { emoji: '🥗', text: `Ask your doctor what lifestyle changes (diet, exercise, sleep) could help bring this number into range.` },
               { emoji: '💊', text: `If you're on medication for this, ask whether your dosage needs adjusting based on this result.` },
             ]}
-            chatPrompt={`Explain my ${lab.test_name} result of ${lab.value} ${lab.unit} — it's above the normal range of ${lab.reference_range}. What should I do?`}
+            chatPrompt={`Explain my ${lab.testName} result of ${lab.value} ${lab.unit} — it's above the normal range of ${lab.referenceRange}. What should I do?`}
           />
         ),
       })
@@ -267,36 +267,36 @@ export function DashboardView({
         id: `claim-${claim.id}`,
         variant: 'alert',
         label: 'ALERT',
-        title: `Claim denied — ${claim.provider_name}`,
-        subtitle: `$${claim.patient_responsibility} patient responsibility · ${claim.denial_reason || ''}`,
+        title: `Claim denied — ${claim.providerName}`,
+        subtitle: `$${claim.patientResponsibility} patient responsibility · ${claim.denialReason || ''}`,
         priority: 3,
         expandedContent: (
           <>
           <AlertInsights
             details={
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div><span className="text-[var(--text-muted)]">Billed:</span> <span className="text-[var(--text)]">${claim.billed_amount}</span></div>
-                <div><span className="text-[var(--text-muted)]">Paid:</span> <span className="text-[var(--text)]">${claim.paid_amount}</span></div>
-                <div><span className="text-[var(--text-muted)]">Your cost:</span> <span className="text-[#ef4444]">${claim.patient_responsibility}</span></div>
-                <div><span className="text-[var(--text-muted)]">Reason:</span> <span className="text-[#fbbf24]">{claim.denial_reason}</span></div>
+                <div><span className="text-[var(--text-muted)]">Billed:</span> <span className="text-[var(--text)]">${claim.billedAmount}</span></div>
+                <div><span className="text-[var(--text-muted)]">Paid:</span> <span className="text-[var(--text)]">${claim.paidAmount}</span></div>
+                <div><span className="text-[var(--text-muted)]">Your cost:</span> <span className="text-[#ef4444]">${claim.patientResponsibility}</span></div>
+                <div><span className="text-[var(--text-muted)]">Reason:</span> <span className="text-[#fbbf24]">{claim.denialReason}</span></div>
               </div>
             }
             insights={[
               { emoji: '📄', text: `Request the denial letter in writing — you have the right to a formal explanation and it starts the appeal clock.` },
               { emoji: '📞', text: `Call your insurance and ask exactly what documentation they need to overturn the denial. Get a reference number.` },
-              { emoji: '🏥', text: `Ask ${claim.provider_name} if they can resubmit with different coding — many denials are coding errors, not coverage issues.` },
+              { emoji: '🏥', text: `Ask ${claim.providerName} if they can resubmit with different coding — many denials are coding errors, not coverage issues.` },
               { emoji: '⚖️', text: `You can file a formal appeal within 180 days. Most first appeals succeed when medical necessity is documented.` },
             ]}
-            chatPrompt={`Help me understand and appeal this denied claim from ${claim.provider_name} — denied for "${claim.denial_reason}". I owe $${claim.patient_responsibility}.`}
+            chatPrompt={`Help me understand and appeal this denied claim from ${claim.providerName} — denied for "${claim.denialReason}". I owe $${claim.patientResponsibility}.`}
           />
           <div className="mt-3 pt-3 border-t border-white/[0.06]">
             <AppealGenerator
               claimId={claim.id}
               claimInfo={{
-                provider_name: claim.provider_name || 'Unknown',
-                denial_reason: claim.denial_reason || 'Not specified',
-                billed_amount: claim.billed_amount || 0,
-                patient_responsibility: claim.patient_responsibility || 0,
+                provider_name: claim.providerName || 'Unknown',
+                denial_reason: claim.denialReason || 'Not specified',
+                billed_amount: claim.billedAmount || 0,
+                patient_responsibility: claim.patientResponsibility || 0,
               }}
             />
           </div>

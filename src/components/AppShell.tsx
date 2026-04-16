@@ -8,7 +8,7 @@ import { NotificationBell } from './NotificationBell'
 import { GlobalSearch } from './GlobalSearch'
 import { ProfileSwitcher } from './ProfileSwitcher'
 import { DemoBanner } from './DemoBanner'
-import { createClient } from '@/lib/supabase/client'
+import { signOut } from 'next-auth/react'
 import Link from 'next/link'
 import type { CareProfile } from '@/lib/types'
 
@@ -214,11 +214,7 @@ export function AppShell({
             {/* Sign out */}
             <div style={{ padding: 12, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               <button
-                onClick={async () => {
-                  const supabase = createClient()
-                  await supabase.auth.signOut()
-                  window.location.href = '/login'
-                }}
+                onClick={() => signOut({ callbackUrl: '/login' })}
                 className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-red-500/10 transition-colors w-full"
               >
                 <span className="text-lg" aria-hidden="true">🚪</span>

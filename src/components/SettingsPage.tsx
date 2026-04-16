@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { useToast } from './ToastProvider'
 import { useCsrfToken } from './CsrfProvider'
 import { ThemeToggle } from './ThemeToggle'
@@ -140,9 +139,12 @@ export function SettingsPage({ settings: initialSettings, connectedApps, medicat
     if (!newPassword || newPassword.length < 6) return
     setSaving(true)
     try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
-      if (error) throw error
+      const res = await fetch('/api/account/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPassword }),
+      })
+      if (!res.ok) throw new Error('Failed to update password')
       setNewPassword('')
       setShowPasswordForm(false)
       showToast('Password updated', 'success')
@@ -226,7 +228,7 @@ export function SettingsPage({ settings: initialSettings, connectedApps, medicat
             <SettingsRow
               key={app.id}
               label={app.source}
-              description={app.last_synced ? `Last synced ${new Date(app.last_synced).toLocaleDateString()}` : undefined}
+              description={app.lastSynced ? `Last synced ${new Date(app.lastSynced).toLocaleDateString()}` : undefined}
               right={<span className="text-[#10b981] text-xs font-semibold">Connected</span>}
               onClick={() => router.push('/connect')}
             />
@@ -245,13 +247,16 @@ export function SettingsPage({ settings: initialSettings, connectedApps, medicat
           label="AI Personality"
           right={
             <select
-              value={settings?.ai_personality || 'professional'}
+              value={settings?.aiPersonality || 'professional'}
               onChange={async (e) => {
                 if (!settings) return
                 const val = e.target.value as 'professional' | 'friendly' | 'concise'
-                setSettings({ ...settings, ai_personality: val })
-                const supabase = createClient()
-                await supabase.from('user_settings').update({ ai_personality: val, updated_at: new Date().toISOString() }).eq('user_id', settings.user_id)
+                setSettings({ ...settings, aiPersonality: val })
+                await fetch('/api/records/settings', {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ aiPersonality: val }),
+                })
               }}
               className="bg-transparent text-[#64748b] text-sm outline-none cursor-pointer"
               aria-label="AI Personality"

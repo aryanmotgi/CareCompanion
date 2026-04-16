@@ -1,9 +1,9 @@
 /**
  * Audit logging for API requests.
  * Logs every API call with user, action, and metadata for debugging and compliance.
- * Currently logs to console + Supabase. Ready for external log services.
  */
-import { createAdminClient } from '@/lib/supabase/admin'
+import { db } from '@/lib/db'
+import { auditLogs } from '@/lib/db/schema'
 
 export interface AuditEntry {
   user_id: string | null
@@ -33,18 +33,17 @@ export async function logAudit(entry: AuditEntry): Promise<void> {
       })
     )
 
-    // Persist to Supabase (best-effort)
-    const admin = createAdminClient()
-    await admin.from('audit_logs').insert({
-      user_id: entry.user_id,
+    // Persist to DB (best-effort)
+    await db.insert(auditLogs).values({
+      userId: entry.user_id,
       action: entry.action,
       resource: entry.resource,
-      resource_id: entry.resource_id || null,
-      ip_address: entry.ip || null,
+      resourceId: entry.resource_id || null,
+      ipAddress: entry.ip || null,
       method: entry.method,
       path: entry.path,
-      status_code: entry.status_code,
-      duration_ms: entry.duration_ms,
+      statusCode: entry.status_code,
+      durationMs: entry.duration_ms,
       metadata: entry.metadata || {},
     })
   } catch {

@@ -1,29 +1,27 @@
 import { Suspense } from 'react'
-import { createClient } from '@/lib/supabase/server';
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import { db } from '@/lib/db';
+import { users, careProfiles, medications, appointments, labResults, claims, reminderLogs, connectedApps, scannedDocuments, doctors } from '@/lib/db/schema';
+import { eq, and, gte, lte, desc, asc, count } from 'drizzle-orm';
 import { DashboardView } from '@/components/DashboardView';
 import { DashboardSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { MedicationReminders } from '@/components/MedicationReminders';
 import { DashboardInsights } from '@/components/DashboardInsights';
 import { syncOneUpData } from '@/lib/oneup-sync';
+import { safeDecryptToken } from '@/lib/token-encryption';
 
 async function DashboardContent() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  if (!user) redirect('/login');
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('*')
-    .eq('user_id', user.id)
-    .single();
-
+  const [profile] = await db.select().from(careProfiles).where(eq(careProfiles.userId, dbUser.id)).limit(1);
   if (!profile) redirect('/onboarding');
 
-  const onboardingComplete = profile.onboarding_completed === true;
+  const onboardingComplete = profile.onboardingCompleted === true;
 
   // Get today's date boundaries for reminder logs
   const todayStart = new Date();
@@ -32,77 +30,82 @@ async function DashboardContent() {
   todayEnd.setHours(23, 59, 59, 999);
 
   const [
-    { data: medications },
-    { data: appointments },
-    { data: labResults },
-    { data: claims },
-    { data: reminderLogs },
-    { data: connectedApps },
-    { count: scannedDocCount },
-    { count: doctorCount },
+    meds,
+    appts,
+    labs,
+    claimsData,
+    reminderLogsData,
+    connectedAppsData,
+    [scannedDocCount],
+    [doctorCount],
   ] = await Promise.all([
-    supabase.from('medications').select('*').eq('care_profile_id', profile.id),
-    supabase.from('appointments').select('*').eq('care_profile_id', profile.id).order('date_time', { ascending: true }),
-    supabase.from('lab_results').select('*').eq('user_id', user.id).order('date_taken', { ascending: false }).limit(5),
-    supabase.from('claims').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
-    supabase.from('reminder_logs').select('*').eq('user_id', user.id).gte('scheduled_time', todayStart.toISOString()).lte('scheduled_time', todayEnd.toISOString()).order('scheduled_time', { ascending: true }),
-    supabase.from('connected_apps').select('*').eq('user_id', user.id),
-    supabase.from('scanned_documents').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-    supabase.from('doctors').select('*', { count: 'exact', head: true }).eq('care_profile_id', profile.id),
+    db.select().from(medications).where(eq(medications.careProfileId, profile.id)),
+    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)).orderBy(asc(appointments.dateTime)),
+    db.select().from(labResults).where(eq(labResults.userId, dbUser.id)).orderBy(desc(labResults.dateTaken)).limit(5),
+    db.select().from(claims).where(eq(claims.userId, dbUser.id)).orderBy(desc(claims.createdAt)).limit(5),
+    db.select().from(reminderLogs).where(
+      and(
+        eq(reminderLogs.userId, dbUser.id),
+        gte(reminderLogs.scheduledTime, todayStart),
+        lte(reminderLogs.scheduledTime, todayEnd),
+      )
+    ).orderBy(asc(reminderLogs.scheduledTime)),
+    db.select().from(connectedApps).where(eq(connectedApps.userId, dbUser.id)),
+    db.select({ value: count() }).from(scannedDocuments).where(eq(scannedDocuments.userId, dbUser.id)),
+    db.select({ value: count() }).from(doctors).where(eq(doctors.careProfileId, profile.id)),
   ]);
 
   // Auto-sync: if 1upHealth is connected but profile is missing cancer info, trigger a background sync
-  const oneupApp = connectedApps?.find((a) => a.source === '1uphealth');
-  const oneupTokenValid = oneupApp?.expires_at && new Date(oneupApp.expires_at) > new Date();
-  if (oneupApp?.access_token && oneupTokenValid && (!profile.cancer_type || !profile.cancer_stage)) {
-    // Check if last sync was more than 5 minutes ago to avoid re-syncing on every page load
-    const lastSynced = oneupApp.last_synced ? new Date(oneupApp.last_synced).getTime() : 0;
+  const oneupApp = connectedAppsData.find((a) => a.source === '1uphealth');
+  const oneupTokenValid = oneupApp?.expiresAt && new Date(oneupApp.expiresAt) > new Date();
+  if (oneupApp?.accessToken && oneupTokenValid && (!profile.cancerType || !profile.cancerStage)) {
+    const lastSynced = oneupApp.lastSynced ? new Date(oneupApp.lastSynced).getTime() : 0;
     const fiveMinAgo = Date.now() - 5 * 60 * 1000;
-    if (lastSynced < fiveMinAgo && oneupApp.access_token !== 'demo-token') {
-      // Non-blocking background sync
-      syncOneUpData(user.id, oneupApp.access_token).catch((err) => {
+    const accessToken = safeDecryptToken(oneupApp.accessToken);
+    if (lastSynced < fiveMinAgo && accessToken && accessToken !== 'demo-token') {
+      syncOneUpData(dbUser.id, accessToken).catch((err) => {
         console.error('[dashboard] Auto-sync error:', err);
       });
     }
   }
 
-  // Only count connections with a non-expired token — epoch (new Date(0)) means expired
-  const hasHealthRecords = (connectedApps && connectedApps.some(
-    (a) => a.expires_at && new Date(a.expires_at) > new Date()
-  )) || false;
-  const hasEmergencyContact = !!(profile.emergency_contact_name && profile.emergency_contact_phone);
-  const hasDocumentsScanned = (scannedDocCount ?? 0) > 0;
+  // Only count connections with a non-expired token
+  const hasHealthRecords = connectedAppsData.some(
+    (a) => a.expiresAt && new Date(a.expiresAt) > new Date()
+  );
+  const hasEmergencyContact = !!(profile.emergencyContactName && profile.emergencyContactPhone);
+  const hasDocumentsScanned = (scannedDocCount?.value ?? 0) > 0;
 
-  const patientName = profile.patient_name || 'your loved one';
+  const patientName = profile.patientName || 'your loved one';
 
   return (
     <>
-      {(reminderLogs && reminderLogs.length > 0) && (
+      {reminderLogsData.length > 0 && (
         <div className="px-4 sm:px-5 pt-5 sm:pt-6">
-          <MedicationReminders reminders={reminderLogs} />
+          <MedicationReminders reminders={reminderLogsData} />
         </div>
       )}
       <DashboardView
         patientName={patientName}
-        medications={medications || []}
-        appointments={appointments || []}
-        labResults={labResults || []}
-        claims={claims || []}
-        cancerType={profile.cancer_type || null}
-        cancerStage={profile.cancer_stage || null}
-        treatmentPhase={profile.treatment_phase || null}
+        medications={meds}
+        appointments={appts}
+        labResults={labs}
+        claims={claimsData}
+        cancerType={profile.cancerType || null}
+        cancerStage={profile.cancerStage || null}
+        treatmentPhase={profile.treatmentPhase || null}
         onboardingComplete={onboardingComplete}
-        priorities={profile.onboarding_priorities || null}
+        priorities={profile.onboardingPriorities || null}
         hasHealthRecords={hasHealthRecords}
         hasEmergencyContact={hasEmergencyContact}
         hasDocumentsScanned={hasDocumentsScanned}
-        profileCreatedAt={profile.created_at}
+        profileCreatedAt={profile.createdAt?.toISOString() ?? ''}
         allergies={profile.allergies || null}
         conditions={profile.conditions || null}
-        emergencyContactName={profile.emergency_contact_name || null}
-        emergencyContactPhone={profile.emergency_contact_phone || null}
-        doctorCount={doctorCount ?? 0}
-        connectedAppCount={(connectedApps && connectedApps.filter((a) => a.expires_at && new Date(a.expires_at) > new Date()).length) || 0}
+        emergencyContactName={profile.emergencyContactName || null}
+        emergencyContactPhone={profile.emergencyContactPhone || null}
+        doctorCount={doctorCount?.value ?? 0}
+        connectedAppCount={connectedAppsData.filter((a) => a.expiresAt && new Date(a.expiresAt) > new Date()).length}
       />
       <div className="px-4 sm:px-5 pb-6">
         <DashboardInsights />

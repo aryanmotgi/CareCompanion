@@ -4,7 +4,9 @@
  * Eliminates polling delay — lab results appear immediately.
  */
 import crypto from 'crypto'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { db } from '@/lib/db'
+import { connectedApps, notifications } from '@/lib/db/schema'
+import { and, inArray, isNotNull } from 'drizzle-orm'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { z } from 'zod'
 
@@ -65,7 +67,6 @@ export async function POST(req: Request) {
     }
 
     const { event, resource_type } = parsed.data
-    const admin = createAdminClient()
 
     console.log(`[fhir-webhook] Received: ${event} (${resource_type || 'unknown'})`)
 
@@ -77,17 +78,21 @@ export async function POST(req: Request) {
       case 'DiagnosticReport.create': {
         // New lab results — trigger sync for affected users
         // Find users with active FHIR connections
-        const { data: connections } = await admin
-          .from('connected_apps')
-          .select('user_id')
-          .in('source', ['epic', '1uphealth', 'fhir'])
-          .not('access_token', 'is', null)
+        const connections = await db
+          .select({ userId: connectedApps.userId })
+          .from(connectedApps)
+          .where(
+            and(
+              inArray(connectedApps.source, ['epic', '1uphealth', 'fhir']),
+              isNotNull(connectedApps.accessToken)
+            )
+          )
 
-        if (connections && connections.length > 0) {
+        if (connections.length > 0) {
           // Queue sync for each user (in a real system, use a job queue)
           for (const conn of connections) {
-            await admin.from('notifications').insert({
-              user_id: conn.user_id,
+            await db.insert(notifications).values({
+              userId: conn.userId,
               type: 'data_sync',
               title: 'New health data available',
               message: `New ${resource_type || 'health'} data has been received from your provider. Syncing now.`,

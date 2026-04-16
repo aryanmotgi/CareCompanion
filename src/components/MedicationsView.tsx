@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -15,7 +14,6 @@ interface MedicationsViewProps {
 }
 
 export function MedicationsView({ medications: initial, profileId }: MedicationsViewProps) {
-  const supabase = createClient();
   const [medications, setMedications] = useState(initial);
   const [showAdd, setShowAdd] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
@@ -31,19 +29,20 @@ export function MedicationsView({ medications: initial, profileId }: Medications
   const addMedication = async () => {
     if (!name.trim()) return;
     setSaving(true);
-    const { data, error } = await supabase
-      .from('medications')
-      .insert({
+    const res = await fetch('/api/records/medications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         care_profile_id: profileId,
         name: name.trim(),
         dose: dose || null,
         frequency: frequency || null,
-      })
-      .select()
-      .single();
+      }),
+    });
+    const json = await res.json();
     setSaving(false);
-    if (!error && data) {
-      setMedications((prev) => [...prev, data]);
+    if (res.ok && json.data) {
+      setMedications((prev) => [...prev, json.data]);
       setName('');
       setDose('');
       setFrequency('');
@@ -54,12 +53,12 @@ export function MedicationsView({ medications: initial, profileId }: Medications
         const checkRes = await fetch('/api/interactions/check', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ medication: data.name }),
+          body: JSON.stringify({ medication: json.data.name }),
         });
         if (checkRes.ok) {
           const checkData = await checkRes.json();
           if (checkData.data?.interactions?.length > 0) {
-            setInteractionWarning({ interactions: checkData.data.interactions, medName: data.name });
+            setInteractionWarning({ interactions: checkData.data.interactions, medName: json.data.name });
           }
         }
       } catch {
@@ -71,8 +70,12 @@ export function MedicationsView({ medications: initial, profileId }: Medications
   const removeMedication = async () => {
     if (!confirmRemove) return;
     setRemoving(true);
-    const { error } = await supabase.from('medications').delete().eq('id', confirmRemove.id);
-    if (!error) {
+    const res = await fetch('/api/records/medications', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: confirmRemove.id }),
+    });
+    if (res.ok) {
       setMedications((prev) => prev.filter((m) => m.id !== confirmRemove.id));
     }
     setRemoving(false);
@@ -81,12 +84,9 @@ export function MedicationsView({ medications: initial, profileId }: Medications
 
   const handleScanSaved = async () => {
     // Refetch medications instead of reloading the whole page
-    const { data } = await supabase
-      .from('medications')
-      .select('*')
-      .eq('care_profile_id', profileId)
-      .order('created_at', { ascending: false });
-    if (data) setMedications(data);
+    const res = await fetch(`/api/records/medications?care_profile_id=${profileId}`);
+    const json = await res.json();
+    if (res.ok && json.data) setMedications(json.data);
     setShowScanner(false);
   };
 
@@ -151,9 +151,9 @@ export function MedicationsView({ medications: initial, profileId }: Medications
                 <p className="text-sm text-[var(--text-secondary)]">
                   {[med.dose, med.frequency].filter(Boolean).join(' · ')}
                 </p>
-                {med.refill_date && (
+                {med.refillDate && (
                   <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                    Refill: {new Date(med.refill_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    Refill: {new Date(med.refillDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </p>
                 )}
                 {med.notes && (

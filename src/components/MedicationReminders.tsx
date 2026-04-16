@@ -31,7 +31,7 @@ export function MedicationReminders({ reminders: initial }: MedicationRemindersP
       setReminders((prev) =>
         prev.map((r) =>
           r.id === logId
-            ? { ...r, status: status === 'snoozed' ? 'pending' as const : status, responded_at: new Date().toISOString() }
+            ? { ...r, status: status === 'snoozed' ? 'pending' as const : status, respondedAt: new Date() }
             : r
         )
       );
@@ -44,9 +44,10 @@ export function MedicationReminders({ reminders: initial }: MedicationRemindersP
     setLoadingId(null);
   }, [showToast]);
 
-  const formatTime = (iso: string) => {
+  const formatTime = (dt: Date | string | null) => {
+    if (!dt) return '';
     try {
-      const d = new Date(iso);
+      const d = typeof dt === 'string' ? new Date(dt) : dt;
       return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     } catch {
       return '';
@@ -119,11 +120,11 @@ export function MedicationReminders({ reminders: initial }: MedicationRemindersP
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-[#6366F1] animate-pulse shrink-0" />
                   <p className="text-sm font-medium text-[var(--text)] truncate">
-                    {r.medication_name}
+                    {r.medicationName}
                   </p>
                 </div>
                 <p className="text-xs text-[var(--text-muted)] mt-1 ml-4">
-                  {formatTime(r.scheduled_time)}
+                  {formatTime(r.scheduledTime)}
                 </p>
               </div>
               <div className="flex gap-2 shrink-0">
@@ -168,16 +169,16 @@ export function MedicationReminders({ reminders: initial }: MedicationRemindersP
                 <path d="M20 6L9 17l-5-5" />
               </svg>
               <p className="text-sm font-medium text-emerald-400/80 truncate flex-1">
-                {r.medication_name}
+                {r.medicationName}
               </p>
               <span className="text-[10px] text-emerald-500/60 uppercase tracking-wider font-medium">
                 Taken
               </span>
             </div>
             <p className="text-xs text-emerald-500/40 mt-1 ml-6">
-              {formatTime(r.scheduled_time)}
-              {r.responded_at && (
-                <> &middot; confirmed {formatTime(r.responded_at)}</>
+              {formatTime(r.scheduledTime)}
+              {r.respondedAt && (
+                <> &middot; confirmed {formatTime(r.respondedAt)}</>
               )}
             </p>
           </div>
@@ -196,14 +197,14 @@ export function MedicationReminders({ reminders: initial }: MedicationRemindersP
                 <path d="M9 9l6 6" />
               </svg>
               <p className="text-sm font-medium text-red-400/80 truncate flex-1">
-                {r.medication_name}
+                {r.medicationName}
               </p>
               <span className="text-[10px] text-red-500/60 uppercase tracking-wider font-medium">
                 Missed
               </span>
             </div>
             <p className="text-xs text-red-500/40 mt-1 ml-6">
-              {formatTime(r.scheduled_time)}
+              {formatTime(r.scheduledTime)}
             </p>
           </div>
         ))}

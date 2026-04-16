@@ -1,14 +1,25 @@
 import { z } from 'zod';
 import { tool } from 'ai';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { db } from '@/lib/db';
+import {
+  medications,
+  appointments,
+  doctors,
+  careProfiles,
+  labResults,
+  insurance,
+  memories,
+  medicationReminders,
+  symptomEntries,
+  careTeamActivity,
+} from '@/lib/db/schema';
+import { and, asc, desc, eq, gte, sql } from 'drizzle-orm';
 
 /**
  * Build all CareCompanion tools for a given user session.
- * Each tool can read/write to Supabase on behalf of the user.
+ * Each tool reads/writes to the database on behalf of the user.
  */
 export function buildTools(userId: string, careProfileId: string | null) {
-  const admin = createAdminClient();
-
   return {
     // ============================================================
     // MEDICATION TOOLS
@@ -25,12 +36,20 @@ export function buildTools(userId: string, careProfileId: string | null) {
       }),
       execute: async (params) => {
         if (!careProfileId) return { success: false, error: 'No care profile found. Please complete setup first.' };
-        const { error } = await admin.from('medications').insert({
-          care_profile_id: careProfileId,
-          ...params,
-        });
-        if (error) return { success: false, error: error.message };
-        return { success: true, message: `Saved ${params.name}${params.dose ? ` ${params.dose}` : ''} to medications.` };
+        try {
+          await db.insert(medications).values({
+            careProfileId,
+            name: params.name,
+            dose: params.dose,
+            frequency: params.frequency,
+            prescribingDoctor: params.prescribing_doctor,
+            refillDate: params.refill_date,
+            notes: params.notes,
+          });
+          return { success: true, message: `Saved ${params.name}${params.dose ? ` ${params.dose}` : ''} to medications.` };
+        } catch (err) {
+          return { success: false, error: String(err) };
+        }
       },
     }),
 
@@ -46,17 +65,25 @@ export function buildTools(userId: string, careProfileId: string | null) {
       execute: async (params) => {
         if (!careProfileId) return { success: false, error: 'No care profile found.' };
         const { name, ...updates } = params;
-        const cleanUpdates = Object.fromEntries(
-          Object.entries(updates).filter(([, v]) => v !== undefined)
-        );
-        const { data, error } = await admin.from('medications')
-          .update(cleanUpdates)
-          .eq('care_profile_id', careProfileId)
-          .ilike('name', name)
-          .select();
-        if (error) return { success: false, error: error.message };
-        if (!data || data.length === 0) return { success: false, error: `No medication named "${name}" found.` };
-        return { success: true, message: `Updated ${name}.` };
+        const setValues: Record<string, unknown> = {};
+        if (updates.dose !== undefined) setValues.dose = updates.dose;
+        if (updates.frequency !== undefined) setValues.frequency = updates.frequency;
+        if (updates.refill_date !== undefined) setValues.refillDate = updates.refill_date;
+        if (updates.notes !== undefined) setValues.notes = updates.notes;
+
+        try {
+          const rows = await db.update(medications)
+            .set(setValues)
+            .where(and(
+              eq(medications.careProfileId, careProfileId),
+              sql`lower(${medications.name}) like lower(${'%' + name + '%'})`
+            ))
+            .returning({ id: medications.id });
+          if (rows.length === 0) return { success: false, error: `No medication named "${name}" found.` };
+          return { success: true, message: `Updated ${name}.` };
+        } catch (err) {
+          return { success: false, error: String(err) };
+        }
       },
     }),
 
@@ -68,12 +95,15 @@ export function buildTools(userId: string, careProfileId: string | null) {
       }),
       execute: async (params) => {
         if (!careProfileId) return { success: false, error: 'No care profile found.' };
-        const { error } = await admin.from('medications')
-          .delete()
-          .eq('care_profile_id', careProfileId)
-          .ilike('name', params.name);
-        if (error) return { success: false, error: error.message };
-        return { success: true, message: `Removed ${params.name} from medications.${params.reason ? ` Reason: ${params.reason}` : ''}` };
+        try {
+          await db.delete(medications).where(and(
+            eq(medications.careProfileId, careProfileId),
+            sql`lower(${medications.name}) like lower(${'%' + params.name + '%'})`
+          ));
+          return { success: true, message: `Removed ${params.name} from medications.${params.reason ? ` Reason: ${params.reason}` : ''}` };
+        } catch (err) {
+          return { success: false, error: String(err) };
+        }
       },
     }),
 
@@ -87,16 +117,21 @@ export function buildTools(userId: string, careProfileId: string | null) {
         date_time: z.string().max(100).describe('Date and time (ISO format or natural like "next Tuesday at 2pm")'),
         purpose: z.string().max(500).optional().describe('Reason for visit'),
         location: z.string().max(500).optional().describe('Clinic or hospital name/address'),
-        prep_notes: z.string().max(2000).optional().describe('How to prepare for the visit'),
       }),
       execute: async (params) => {
         if (!careProfileId) return { success: false, error: 'No care profile found.' };
-        const { error } = await admin.from('appointments').insert({
-          care_profile_id: careProfileId,
-          ...params,
-        });
-        if (error) return { success: false, error: error.message };
-        return { success: true, message: `Scheduled appointment with ${params.doctor_name}${params.date_time ? ` on ${params.date_time}` : ''}.` };
+        try {
+          await db.insert(appointments).values({
+            careProfileId,
+            doctorName: params.doctor_name,
+            dateTime: params.date_time ? new Date(params.date_time) : null,
+            purpose: params.purpose,
+            location: params.location,
+          });
+          return { success: true, message: `Scheduled appointment with ${params.doctor_name}${params.date_time ? ` on ${params.date_time}` : ''}.` };
+        } catch (err) {
+          return { success: false, error: String(err) };
+        }
       },
     }),
 
@@ -109,17 +144,22 @@ export function buildTools(userId: string, careProfileId: string | null) {
         name: z.string().min(1).max(200).describe('Doctor\'s full name'),
         specialty: z.string().max(200).optional().describe('Medical specialty (e.g. Cardiology, Primary Care)'),
         phone: z.string().max(30).optional().describe('Office phone number'),
-        address: z.string().max(500).optional().describe('Office address'),
         notes: z.string().max(1000).optional().describe('Any notes about this doctor'),
       }),
       execute: async (params) => {
         if (!careProfileId) return { success: false, error: 'No care profile found.' };
-        const { error } = await admin.from('doctors').insert({
-          care_profile_id: careProfileId,
-          ...params,
-        });
-        if (error) return { success: false, error: error.message };
-        return { success: true, message: `Added Dr. ${params.name}${params.specialty ? ` (${params.specialty})` : ''} to care team.` };
+        try {
+          await db.insert(doctors).values({
+            careProfileId,
+            name: params.name,
+            specialty: params.specialty,
+            phone: params.phone,
+            notes: params.notes,
+          });
+          return { success: true, message: `Added Dr. ${params.name}${params.specialty ? ` (${params.specialty})` : ''} to care team.` };
+        } catch (err) {
+          return { success: false, error: String(err) };
+        }
       },
     }),
 
@@ -136,29 +176,36 @@ export function buildTools(userId: string, careProfileId: string | null) {
       execute: async (params) => {
         if (!careProfileId) return { success: false, error: 'No care profile found.' };
 
-        const updateData: Record<string, unknown> = {};
+        const setValues: Record<string, unknown> = {};
 
-        // For conditions and allergies, append rather than replace
         if (params.conditions || params.allergies) {
-          const { data: current } = await admin.from('care_profiles').select('conditions, allergies').eq('id', careProfileId).single();
+          const [current] = await db
+            .select({ conditions: careProfiles.conditions, allergies: careProfiles.allergies })
+            .from(careProfiles)
+            .where(eq(careProfiles.id, careProfileId))
+            .limit(1);
+
           if (params.conditions) {
-            updateData.conditions = current?.conditions
+            setValues.conditions = current?.conditions
               ? `${current.conditions}, ${params.conditions}`
               : params.conditions;
           }
           if (params.allergies) {
-            updateData.allergies = current?.allergies
+            setValues.allergies = current?.allergies
               ? `${current.allergies}, ${params.allergies}`
               : params.allergies;
           }
         }
         if (params.patient_age !== undefined) {
-          updateData.patient_age = params.patient_age;
+          setValues.patientAge = params.patient_age;
         }
 
-        const { error } = await admin.from('care_profiles').update(updateData).eq('id', careProfileId);
-        if (error) return { success: false, error: error.message };
-        return { success: true, message: `Updated care profile.` };
+        try {
+          await db.update(careProfiles).set(setValues).where(eq(careProfiles.id, careProfileId));
+          return { success: true, message: `Updated care profile.` };
+        } catch (err) {
+          return { success: false, error: String(err) };
+        }
       },
     }),
 
@@ -176,14 +223,22 @@ export function buildTools(userId: string, careProfileId: string | null) {
         date_taken: z.string().max(20).optional().describe('Date the test was taken (YYYY-MM-DD)'),
       }),
       execute: async (params) => {
-        const { error } = await admin.from('lab_results').insert({
-          user_id: userId,
-          ...params,
-          source: 'conversation',
-        });
-        if (error) return { success: false, error: error.message };
-        const flag = params.is_abnormal ? ' (flagged as abnormal)' : '';
-        return { success: true, message: `Saved ${params.test_name}: ${params.value}${params.unit ? ` ${params.unit}` : ''}${flag}.` };
+        try {
+          await db.insert(labResults).values({
+            userId,
+            testName: params.test_name,
+            value: params.value,
+            unit: params.unit,
+            referenceRange: params.reference_range,
+            isAbnormal: params.is_abnormal,
+            dateTaken: params.date_taken,
+            source: 'conversation',
+          });
+          const flag = params.is_abnormal ? ' (flagged as abnormal)' : '';
+          return { success: true, message: `Saved ${params.test_name}: ${params.value}${params.unit ? ` ${params.unit}` : ''}${flag}.` };
+        } catch (err) {
+          return { success: false, error: String(err) };
+        }
       },
     }),
 
@@ -193,14 +248,28 @@ export function buildTools(userId: string, careProfileId: string | null) {
         test_name: z.string().describe('Name of the test to look up (e.g. A1C, Blood Pressure, Cholesterol)'),
       }),
       execute: async (params) => {
-        const { data, error } = await admin.from('lab_results')
-          .select('test_name, value, unit, reference_range, is_abnormal, date_taken')
-          .eq('user_id', userId)
-          .ilike('test_name', `%${params.test_name}%`)
-          .order('date_taken', { ascending: true });
-        if (error) return { success: false, error: error.message };
-        if (!data || data.length === 0) return { success: true, results: [], message: `No results found for "${params.test_name}".` };
-        return { success: true, results: data, message: `Found ${data.length} result(s) for ${params.test_name}.` };
+        try {
+          const data = await db
+            .select({
+              testName: labResults.testName,
+              value: labResults.value,
+              unit: labResults.unit,
+              referenceRange: labResults.referenceRange,
+              isAbnormal: labResults.isAbnormal,
+              dateTaken: labResults.dateTaken,
+            })
+            .from(labResults)
+            .where(and(
+              eq(labResults.userId, userId),
+              sql`lower(${labResults.testName}) like lower(${'%' + params.test_name + '%'})`
+            ))
+            .orderBy(asc(labResults.dateTaken));
+
+          if (data.length === 0) return { success: true, results: [], message: `No results found for "${params.test_name}".` };
+          return { success: true, results: data, message: `Found ${data.length} result(s) for ${params.test_name}.` };
+        } catch (err) {
+          return { success: false, error: String(err) };
+        }
       },
     }),
 
@@ -217,13 +286,29 @@ export function buildTools(userId: string, careProfileId: string | null) {
         oop_limit: z.number().optional().describe('Out-of-pocket maximum'),
       }),
       execute: async (params) => {
-        const { error } = await admin.from('insurance').upsert({
-          user_id: userId,
-          ...params,
-          plan_year: new Date().getFullYear(),
-        }, { onConflict: 'id' });
-        if (error) return { success: false, error: error.message };
-        return { success: true, message: `Saved ${params.provider} insurance details.` };
+        try {
+          await db.insert(insurance).values({
+            userId,
+            provider: params.provider,
+            memberId: params.member_id,
+            groupNumber: params.group_number,
+            deductibleLimit: params.deductible_limit?.toString(),
+            oopLimit: params.oop_limit?.toString(),
+            planYear: new Date().getFullYear(),
+          }).onConflictDoUpdate({
+            target: insurance.userId,
+            set: {
+              provider: params.provider,
+              memberId: params.member_id,
+              groupNumber: params.group_number,
+              deductibleLimit: params.deductible_limit?.toString(),
+              oopLimit: params.oop_limit?.toString(),
+            },
+          });
+          return { success: true, message: `Saved ${params.provider} insurance details.` };
+        } catch (err) {
+          return { success: false, error: String(err) };
+        }
       },
     }),
 
@@ -240,29 +325,47 @@ export function buildTools(userId: string, careProfileId: string | null) {
       execute: async (params) => {
         if (!careProfileId) return { success: false, error: 'No care profile found.' };
 
-        // Gather all relevant data
-        const [
-          { data: profile },
-          { data: meds },
-          { data: labs },
-          { data: recentMemories },
-        ] = await Promise.all([
-          admin.from('care_profiles').select('patient_name, patient_age, conditions, allergies').eq('id', careProfileId).single(),
-          admin.from('medications').select('name, dose, frequency, prescribing_doctor').eq('care_profile_id', careProfileId),
-          admin.from('lab_results').select('test_name, value, unit, reference_range, is_abnormal, date_taken').eq('user_id', userId).order('date_taken', { ascending: false }).limit(15),
-          admin.from('memories').select('fact, category').eq('user_id', userId).order('last_referenced', { ascending: false }).limit(20),
+        const [profile, meds, labs, recentMemories] = await Promise.all([
+          db.select({
+            patientName: careProfiles.patientName,
+            patientAge: careProfiles.patientAge,
+            conditions: careProfiles.conditions,
+            allergies: careProfiles.allergies,
+          }).from(careProfiles).where(eq(careProfiles.id, careProfileId)).limit(1),
+          db.select({
+            name: medications.name,
+            dose: medications.dose,
+            frequency: medications.frequency,
+            prescribingDoctor: medications.prescribingDoctor,
+          }).from(medications).where(eq(medications.careProfileId, careProfileId)),
+          db.select({
+            testName: labResults.testName,
+            value: labResults.value,
+            unit: labResults.unit,
+            referenceRange: labResults.referenceRange,
+            isAbnormal: labResults.isAbnormal,
+            dateTaken: labResults.dateTaken,
+          }).from(labResults)
+            .where(eq(labResults.userId, userId))
+            .orderBy(desc(labResults.dateTaken))
+            .limit(15),
+          db.select({ fact: memories.fact, category: memories.category })
+            .from(memories)
+            .where(eq(memories.userId, userId))
+            .orderBy(desc(memories.lastReferenced))
+            .limit(20),
         ]);
 
         return {
           success: true,
           prep_data: {
-            patient: profile,
+            patient: profile[0] || null,
             doctor: params.doctor_name,
             purpose: params.purpose || 'General visit',
             concerns: params.concerns,
-            medications: meds || [],
-            recent_labs: labs || [],
-            relevant_memories: (recentMemories || []).map((m) => m.fact),
+            medications: meds,
+            recent_labs: labs,
+            relevant_memories: recentMemories.map((m) => m.fact),
           },
           message: `Prepared visit summary for appointment with ${params.doctor_name}. I'll format this as a prep sheet now.`,
           instructions: 'Format this data as a clear, printable appointment prep sheet with sections: Patient Info, Current Medications, Recent Lab Results (flag abnormals), Questions to Ask (generate 3-5 based on the data and concerns), and Things to Bring.',
@@ -284,14 +387,6 @@ export function buildTools(userId: string, careProfileId: string | null) {
       execute: async (params) => {
         if (!careProfileId) return { success: false, error: 'No care profile found.' };
 
-        // Find the matching appointment and update it with follow-up notes
-        const { data: appointments } = await admin.from('appointments')
-          .select('id')
-          .eq('care_profile_id', careProfileId)
-          .ilike('doctor_name', params.doctor_name)
-          .order('date_time', { ascending: false })
-          .limit(1);
-
         const followUpNotes = [
           params.summary,
           params.medication_changes ? `Medication changes: ${params.medication_changes}` : null,
@@ -299,20 +394,30 @@ export function buildTools(userId: string, careProfileId: string | null) {
           params.referrals ? `Referrals: ${params.referrals}` : null,
         ].filter(Boolean).join('\n');
 
-        if (appointments && appointments.length > 0) {
-          await admin.from('appointments')
-            .update({ follow_up_notes: followUpNotes })
-            .eq('id', appointments[0].id);
+        // Find and update the most recent matching appointment
+        const matchingAppts = await db
+          .select({ id: appointments.id })
+          .from(appointments)
+          .where(and(
+            eq(appointments.careProfileId, careProfileId),
+            sql`lower(${appointments.doctorName}) like lower(${'%' + params.doctor_name + '%'})`
+          ))
+          .orderBy(desc(appointments.dateTime))
+          .limit(1);
+
+        if (matchingAppts.length > 0) {
+          await db.update(appointments)
+            .set({ purpose: followUpNotes })
+            .where(eq(appointments.id, matchingAppts[0].id));
         }
 
         // Schedule follow-up appointment if provided
         if (params.follow_up_date) {
-          await admin.from('appointments').insert({
-            care_profile_id: careProfileId,
-            doctor_name: params.doctor_name,
-            date_time: params.follow_up_date,
+          await db.insert(appointments).values({
+            careProfileId,
+            doctorName: params.doctor_name,
+            dateTime: new Date(params.follow_up_date),
             purpose: 'Follow-up',
-            prep_notes: params.follow_up_instructions || null,
           });
         }
 
@@ -327,10 +432,10 @@ export function buildTools(userId: string, careProfileId: string | null) {
           memoryFacts.push({ category: 'provider', fact: `${params.doctor_name} referred to: ${params.referrals}` });
         }
 
-        await admin.from('memories').insert(
+        await db.insert(memories).values(
           memoryFacts.map((m) => ({
-            user_id: userId,
-            care_profile_id: careProfileId,
+            userId,
+            careProfileId,
             category: m.category,
             fact: m.fact,
             source: 'conversation',
@@ -338,11 +443,11 @@ export function buildTools(userId: string, careProfileId: string | null) {
           }))
         );
 
-        // Log activity for care team (table may not exist yet)
+        // Log activity for care team
         try {
-          await admin.from('care_team_activity').insert({
-            care_profile_id: careProfileId,
-            user_id: userId,
+          await db.insert(careTeamActivity).values({
+            careProfileId,
+            userId,
             action: `added visit notes from ${params.doctor_name} (${params.visit_date})`,
           });
         } catch { /* care_team_activity might not exist yet */ }
@@ -364,16 +469,19 @@ export function buildTools(userId: string, careProfileId: string | null) {
         fact: z.string().min(5).max(1000).describe('The specific fact to remember'),
       }),
       execute: async (params) => {
-        const { error } = await admin.from('memories').insert({
-          user_id: userId,
-          care_profile_id: careProfileId,
-          category: params.category,
-          fact: params.fact,
-          source: 'conversation',
-          confidence: 'high',
-        });
-        if (error) return { success: false, error: error.message };
-        return { success: true, message: `Remembered: "${params.fact}"` };
+        try {
+          await db.insert(memories).values({
+            userId,
+            careProfileId,
+            category: params.category,
+            fact: params.fact,
+            source: 'conversation',
+            confidence: 'high',
+          });
+          return { success: true, message: `Remembered: "${params.fact}"` };
+        } catch (err) {
+          return { success: false, error: String(err) };
+        }
       },
     }),
 
@@ -392,31 +500,43 @@ export function buildTools(userId: string, careProfileId: string | null) {
         if (!careProfileId) return { success: false, error: 'No care profile found.' };
 
         // Find the medication
-        const { data: med } = await admin.from('medications')
-          .select('id')
-          .eq('care_profile_id', careProfileId)
-          .ilike('name', `%${params.medication_name}%`)
-          .limit(1)
-          .single();
+        const [med] = await db
+          .select({ id: medications.id })
+          .from(medications)
+          .where(and(
+            eq(medications.careProfileId, careProfileId),
+            sql`lower(${medications.name}) like lower(${'%' + params.medication_name + '%'})`
+          ))
+          .limit(1);
 
         if (!med) return { success: false, error: `Medication "${params.medication_name}" not found. Add it first.` };
 
-        const { error } = await admin.from('medication_reminders').upsert({
-          user_id: userId,
-          medication_id: med.id,
-          medication_name: params.medication_name,
-          dose: params.dose || null,
-          reminder_times: params.reminder_times,
-          days_of_week: params.days_of_week || ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
-          is_active: true,
-        }, { onConflict: 'user_id,medication_id' });
+        try {
+          await db.insert(medicationReminders).values({
+            userId,
+            medicationId: med.id,
+            medicationName: params.medication_name,
+            dose: params.dose || null,
+            reminderTimes: params.reminder_times,
+            daysOfWeek: params.days_of_week || ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+            isActive: true,
+          }).onConflictDoUpdate({
+            target: [medicationReminders.userId, medicationReminders.medicationId],
+            set: {
+              reminderTimes: params.reminder_times,
+              daysOfWeek: params.days_of_week || ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+              isActive: true,
+            },
+          });
 
-        if (error) return { success: false, error: error.message };
-        const timesStr = params.reminder_times.map((t) => {
-          const [h, m] = t.split(':').map(Number);
-          return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
-        }).join(', ');
-        return { success: true, message: `Reminder set for ${params.medication_name} at ${timesStr}.` };
+          const timesStr = params.reminder_times.map((t) => {
+            const [h, m] = t.split(':').map(Number);
+            return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+          }).join(', ');
+          return { success: true, message: `Reminder set for ${params.medication_name} at ${timesStr}.` };
+        } catch (err) {
+          return { success: false, error: String(err) };
+        }
       },
     }),
 
@@ -437,25 +557,43 @@ export function buildTools(userId: string, careProfileId: string | null) {
       }),
       execute: async (params) => {
         const today = new Date().toISOString().split('T')[0];
-        const cleanParams = Object.fromEntries(
-          Object.entries(params).filter(([, v]) => v !== undefined)
-        );
 
-        const { error } = await admin.from('symptom_entries').upsert({
-          user_id: userId,
-          care_profile_id: careProfileId,
-          date: today,
-          ...cleanParams,
-        }, { onConflict: 'user_id,date' });
+        try {
+          await db.insert(symptomEntries).values({
+            userId,
+            careProfileId,
+            date: today,
+            painLevel: params.pain_level,
+            mood: params.mood,
+            sleepQuality: params.sleep_quality,
+            sleepHours: params.sleep_hours?.toString(),
+            appetite: params.appetite,
+            energy: params.energy,
+            symptoms: params.symptoms,
+            notes: params.notes,
+          }).onConflictDoUpdate({
+            target: [symptomEntries.userId, symptomEntries.date],
+            set: {
+              painLevel: params.pain_level,
+              mood: params.mood,
+              sleepQuality: params.sleep_quality,
+              sleepHours: params.sleep_hours?.toString(),
+              appetite: params.appetite,
+              energy: params.energy,
+              symptoms: params.symptoms,
+              notes: params.notes,
+            },
+          });
 
-        if (error) return { success: false, error: error.message };
-
-        const parts = [];
-        if (params.pain_level !== undefined) parts.push(`pain: ${params.pain_level}/10`);
-        if (params.mood) parts.push(`mood: ${params.mood}`);
-        if (params.sleep_quality) parts.push(`sleep: ${params.sleep_quality}`);
-        if (params.symptoms?.length) parts.push(`symptoms: ${params.symptoms.join(', ')}`);
-        return { success: true, message: `Logged today's check-in${parts.length ? ` (${parts.join(', ')})` : ''}.` };
+          const parts = [];
+          if (params.pain_level !== undefined) parts.push(`pain: ${params.pain_level}/10`);
+          if (params.mood) parts.push(`mood: ${params.mood}`);
+          if (params.sleep_quality) parts.push(`sleep: ${params.sleep_quality}`);
+          if (params.symptoms?.length) parts.push(`symptoms: ${params.symptoms.join(', ')}`);
+          return { success: true, message: `Logged today's check-in${parts.length ? ` (${parts.join(', ')})` : ''}.` };
+        } catch (err) {
+          return { success: false, error: String(err) };
+        }
       },
     }),
 
@@ -468,21 +606,27 @@ export function buildTools(userId: string, careProfileId: string | null) {
         const daysBack = params.days || 14;
         const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-        const { data, error } = await admin.from('symptom_entries')
-          .select('*')
-          .eq('user_id', userId)
-          .gte('date', since)
-          .order('date', { ascending: true });
+        try {
+          const data = await db
+            .select()
+            .from(symptomEntries)
+            .where(and(
+              eq(symptomEntries.userId, userId),
+              gte(symptomEntries.date, since)
+            ))
+            .orderBy(asc(symptomEntries.date));
 
-        if (error) return { success: false, error: error.message };
-        if (!data || data.length === 0) return { success: true, entries: [], message: `No symptom entries in the last ${daysBack} days.` };
+          if (data.length === 0) return { success: true, entries: [], message: `No symptom entries in the last ${daysBack} days.` };
 
-        return {
-          success: true,
-          entries: data,
-          message: `Found ${data.length} entries over the last ${daysBack} days.`,
-          instructions: 'Analyze these entries for patterns. Look for: pain trends, sleep correlation with mood, recurring symptoms, and anything the caregiver should discuss with their doctor.',
-        };
+          return {
+            success: true,
+            entries: data,
+            message: `Found ${data.length} entries over the last ${daysBack} days.`,
+            instructions: 'Analyze these entries for patterns. Look for: pain trends, sleep correlation with mood, recurring symptoms, and anything the caregiver should discuss with their doctor.',
+          };
+        } catch (err) {
+          return { success: false, error: String(err) };
+        }
       },
     }),
 
@@ -514,14 +658,13 @@ export function buildTools(userId: string, careProfileId: string | null) {
         estimated_total: z.number().optional().describe('Estimated total cost if known'),
       }),
       execute: async (params) => {
-        // Fetch insurance data
-        const { data: insurance } = await admin.from('insurance')
-          .select('*')
-          .eq('user_id', userId)
-          .limit(1)
-          .single();
+        const [ins] = await db
+          .select()
+          .from(insurance)
+          .where(eq(insurance.userId, userId))
+          .limit(1);
 
-        if (!insurance) {
+        if (!ins) {
           return {
             success: true,
             has_insurance: false,
@@ -531,8 +674,12 @@ export function buildTools(userId: string, careProfileId: string | null) {
           };
         }
 
-        const deductibleRemaining = (insurance.deductible_limit || 0) - (insurance.deductible_used || 0);
-        const oopRemaining = (insurance.oop_limit || 0) - (insurance.oop_used || 0);
+        const deductibleLimit = Number(ins.deductibleLimit) || 0;
+        const deductibleUsed = Number(ins.deductibleUsed) || 0;
+        const oopLimit = Number(ins.oopLimit) || 0;
+        const oopUsed = Number(ins.oopUsed) || 0;
+        const deductibleRemaining = deductibleLimit - deductibleUsed;
+        const oopRemaining = oopLimit - oopUsed;
         const deductibleMet = deductibleRemaining <= 0;
 
         return {
@@ -541,21 +688,21 @@ export function buildTools(userId: string, careProfileId: string | null) {
           procedure: params.procedure,
           estimated_total: params.estimated_total || null,
           insurance_data: {
-            provider: insurance.provider,
-            deductible_limit: insurance.deductible_limit,
-            deductible_used: insurance.deductible_used,
+            provider: ins.provider,
+            deductible_limit: deductibleLimit,
+            deductible_used: deductibleUsed,
             deductible_remaining: Math.max(0, deductibleRemaining),
             deductible_met: deductibleMet,
-            oop_limit: insurance.oop_limit,
-            oop_used: insurance.oop_used,
+            oop_limit: oopLimit,
+            oop_used: oopUsed,
             oop_remaining: Math.max(0, oopRemaining),
           },
           message: `Retrieved insurance details for cost estimate.`,
           instructions: `Estimate the out-of-pocket cost for "${params.procedure}" using this insurance data. Explain:
 1. Typical cost range for this procedure
-2. Whether the deductible has been met ($${insurance.deductible_used}/$${insurance.deductible_limit})
+2. Whether the deductible has been met ($${deductibleUsed}/$${deductibleLimit})
 3. Estimated patient responsibility based on deductible status (if not met, patient pays full cost up to deductible; if met, typically 20% coinsurance)
-4. How close they are to out-of-pocket max ($${insurance.oop_used}/$${insurance.oop_limit})
+4. How close they are to out-of-pocket max ($${oopUsed}/$${oopLimit})
 5. Tips to reduce cost (in-network, prior auth, price shopping)
 Always add: "These are estimates based on typical costs. Your actual cost depends on your specific plan, network status, and provider charges. Contact your insurance for an exact quote."`,
         };

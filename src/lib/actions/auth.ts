@@ -1,9 +1,7 @@
 'use client';
 
-import { createClient } from '@/lib/supabase/client';
+import { signOut as nextAuthSignOut } from 'next-auth/react';
 
 export async function signOut() {
-  const supabase = createClient();
-  await supabase.auth.signOut();
-  window.location.href = '/login';
+  await nextAuthSignOut({ callbackUrl: '/login' });
 }

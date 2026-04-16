@@ -26,11 +26,11 @@ export function LabsView({ labResults }: { labResults: LabResult[] }) {
 
     switch (filter) {
       case 'abnormal':
-        return labResults.filter((r) => r.is_abnormal)
+        return labResults.filter((r) => r.isAbnormal)
       case 'recent':
         return labResults.filter((r) => {
-          if (!r.date_taken) return false
-          return new Date(r.date_taken) >= thirtyDaysAgo
+          if (!r.dateTaken) return false
+          return new Date(r.dateTaken) >= thirtyDaysAgo
         })
       default:
         return labResults
@@ -41,7 +41,7 @@ export function LabsView({ labResults }: { labResults: LabResult[] }) {
   const grouped = useMemo(() => {
     const groups: Record<string, LabResult[]> = {}
     for (const lab of filtered) {
-      const key = lab.date_taken ?? 'Unknown date'
+      const key = lab.dateTaken ?? 'Unknown date'
       if (!groups[key]) groups[key] = []
       groups[key].push(lab)
     }
@@ -54,7 +54,7 @@ export function LabsView({ labResults }: { labResults: LabResult[] }) {
 
   const filters: { key: Filter; label: string; count?: number }[] = [
     { key: 'all', label: 'All', count: labResults.length },
-    { key: 'abnormal', label: 'Abnormal', count: labResults.filter((r) => r.is_abnormal).length },
+    { key: 'abnormal', label: 'Abnormal', count: labResults.filter((r) => r.isAbnormal).length },
     { key: 'recent', label: 'Recent' },
   ]
 

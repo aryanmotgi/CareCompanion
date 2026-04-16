@@ -9,14 +9,14 @@ describe('calculateHealthScore', () => {
   })
 
   it('returns high score with good data', () => {
-    const meds = [{ id: '1', name: 'Test', care_profile_id: 'p1' }] as Medication[]
+    const meds = [{ id: '1', name: 'Test', careProfileId: 'p1' }] as unknown as Medication[]
     const labs = [
-      { id: '1', test_name: 'LDL', value: '90', is_abnormal: false, user_id: 'u1' },
-      { id: '2', test_name: 'A1C', value: '5.2', is_abnormal: false, user_id: 'u1' },
-    ] as LabResult[]
+      { id: '1', testName: 'LDL', value: '90', isAbnormal: false, userId: 'u1' },
+      { id: '2', testName: 'A1C', value: '5.2', isAbnormal: false, userId: 'u1' },
+    ] as unknown as LabResult[]
     const appts = [
-      { id: '1', date_time: new Date(Date.now() + 86400000).toISOString() },
-    ] as Appointment[]
+      { id: '1', dateTime: new Date(Date.now() + 86400000) },
+    ] as unknown as Appointment[]
     const logs = Array.from({ length: 7 }, (_, i) => ({
       medication_id: '1',
       taken_at: new Date(Date.now() - i * 86400000).toISOString(),
@@ -28,18 +28,18 @@ describe('calculateHealthScore', () => {
 
   it('returns lower score with abnormal labs', () => {
     const labs = [
-      { id: '1', test_name: 'LDL', value: '200', is_abnormal: true, user_id: 'u1' },
-      { id: '2', test_name: 'A1C', value: '8.5', is_abnormal: true, user_id: 'u1' },
-    ] as LabResult[]
+      { id: '1', testName: 'LDL', value: '200', isAbnormal: true, userId: 'u1' },
+      { id: '2', testName: 'A1C', value: '8.5', isAbnormal: true, userId: 'u1' },
+    ] as unknown as LabResult[]
 
     const score = calculateHealthScore([], labs, [])
     expect(score).toBeLessThan(50)
   })
 
   it('caps at 100', () => {
-    const meds = [{ id: '1' }] as Medication[]
-    const labs = [{ id: '1', is_abnormal: false }] as LabResult[]
-    const appts = [{ id: '1', date_time: new Date(Date.now() + 86400000).toISOString() }] as Appointment[]
+    const meds = [{ id: '1' }] as unknown as Medication[]
+    const labs = [{ id: '1', isAbnormal: false }] as unknown as LabResult[]
+    const appts = [{ id: '1', dateTime: new Date(Date.now() + 86400000) }] as unknown as Appointment[]
     const logs = Array.from({ length: 50 }, (_, i) => ({
       medication_id: '1',
       taken_at: new Date(Date.now() - i * 86400000).toISOString(),

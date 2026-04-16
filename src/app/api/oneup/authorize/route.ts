@@ -1,37 +1,33 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { db } from '@/lib/db';
+import { userPreferences } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { buildAuthUrl, createOneUpUser } from '@/lib/oneup';
 
 export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error) return new Response('Unauthorized', { status: 401 });
 
-  if (!user) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+  const [prefs] = await db
+    .select({ oneupUserId: userPreferences.oneupUserId })
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, dbUser!.id))
+    .limit(1);
 
-  const admin = createAdminClient();
+  let oneupUserId = prefs?.oneupUserId;
 
-  // Check if we already have a oneup_user_id for this user
-  const { data: prefs } = await admin
-    .from('user_preferences')
-    .select('oneup_user_id')
-    .eq('user_id', user.id)
-    .single();
-
-  let oneupUserId = prefs?.oneup_user_id;
-
-  // Create a 1upHealth user if we don't have one yet
   if (!oneupUserId) {
     try {
-      oneupUserId = await createOneUpUser(user.id);
+      oneupUserId = await createOneUpUser(dbUser!.id);
 
-      // Store it in user_preferences
-      await admin.from('user_preferences').upsert(
-        { user_id: user.id, oneup_user_id: oneupUserId },
-        { onConflict: 'user_id' }
-      );
+      await db.insert(userPreferences).values({
+        userId: dbUser!.id,
+        oneupUserId,
+      }).onConflictDoUpdate({
+        target: userPreferences.userId,
+        set: { oneupUserId },
+      });
     } catch (err) {
       console.error('Failed to create 1upHealth user:', err);
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -39,6 +35,6 @@ export async function GET() {
     }
   }
 
-  const authorizeUrl = buildAuthUrl(user.id, oneupUserId);
+  const authorizeUrl = buildAuthUrl(dbUser!.id, oneupUserId);
   return NextResponse.redirect(authorizeUrl);
 }

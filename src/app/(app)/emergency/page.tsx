@@ -1,54 +1,53 @@
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { users, careProfiles, medications, doctors, insurance } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { EmergencyCard } from '@/components/EmergencyCard';
 
 export default async function EmergencyPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('*')
-    .eq('user_id', user.id)
-    .single();
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
 
+  const [profile] = await db.select().from(careProfiles).where(eq(careProfiles.userId, dbUser.id)).limit(1);
   if (!profile) redirect('/setup');
 
-  const [
-    { data: medications },
-    { data: doctors },
-    { data: insurance },
-  ] = await Promise.all([
-    supabase.from('medications').select('name, dose, frequency').eq('care_profile_id', profile.id),
-    supabase.from('doctors').select('name, specialty, phone').eq('care_profile_id', profile.id),
-    supabase.from('insurance').select('provider, member_id, group_number').eq('user_id', user.id).limit(1).single(),
+  const [meds, docs, [ins]] = await Promise.all([
+    db.select({ name: medications.name, dose: medications.dose, frequency: medications.frequency })
+      .from(medications).where(eq(medications.careProfileId, profile.id)),
+    db.select({ name: doctors.name, specialty: doctors.specialty, phone: doctors.phone })
+      .from(doctors).where(eq(doctors.careProfileId, profile.id)),
+    db.select({ provider: insurance.provider, memberId: insurance.memberId, groupNumber: insurance.groupNumber })
+      .from(insurance).where(eq(insurance.userId, dbUser.id)).limit(1),
   ]);
 
   return (
     <EmergencyCard
       patient={{
-        name: profile.patient_name || 'Unknown',
-        age: profile.patient_age,
+        name: profile.patientName || 'Unknown',
+        age: profile.patientAge,
         conditions: profile.conditions,
         allergies: profile.allergies,
-        emergencyContactName: profile.emergency_contact_name,
-        emergencyContactPhone: profile.emergency_contact_phone,
+        emergencyContactName: profile.emergencyContactName,
+        emergencyContactPhone: profile.emergencyContactPhone,
       }}
-      medications={(medications || []).map((m) => ({
+      medications={meds.map((m) => ({
         name: m.name,
         dose: m.dose || '',
         frequency: m.frequency || '',
       }))}
-      doctors={(doctors || []).map((d) => ({
+      doctors={docs.map((d) => ({
         name: d.name,
         specialty: d.specialty || '',
         phone: d.phone || '',
       }))}
-      insurance={insurance ? {
-        provider: insurance.provider,
-        memberId: insurance.member_id || '',
-        groupNumber: insurance.group_number || '',
+      insurance={ins ? {
+        provider: ins.provider,
+        memberId: ins.memberId || '',
+        groupNumber: ins.groupNumber || '',
       } : null}
     />
   );

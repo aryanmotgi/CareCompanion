@@ -1,82 +1,75 @@
-import { createAdminClient } from '@/lib/supabase/admin';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { db } from '@/lib/db'
+import { careProfiles, careTeamMembers, userPreferences } from '@/lib/db/schema'
+import { eq, inArray, asc } from 'drizzle-orm'
 
 /**
  * Get the active care profile for a user.
  * Falls back to first profile if no preference is set.
  */
-export async function getActiveProfile(supabase: SupabaseClient, userId: string) {
-  const admin = createAdminClient();
-
-  // Check user preferences for active profile
-  const { data: prefs } = await admin
-    .from('user_preferences')
-    .select('active_profile_id')
-    .eq('user_id', userId)
-    .single();
-
-  if (prefs?.active_profile_id) {
-    // Verify the profile exists and belongs to this user (or they're on the care team)
-    const { data: profile } = await supabase
-      .from('care_profiles')
-      .select('*')
-      .eq('id', prefs.active_profile_id)
-      .single();
-
-    if (profile) return profile;
-  }
-
-  // Fallback: get first profile owned by this user
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: true })
+export async function getActiveProfile(userId: string) {
+  const [prefs] = await db
+    .select({ activeProfileId: userPreferences.activeProfileId })
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, userId))
     .limit(1)
-    .single();
 
-  // If found, save as active
-  if (profile) {
-    await admin.from('user_preferences').upsert({
-      user_id: userId,
-      active_profile_id: profile.id,
-    }, { onConflict: 'user_id' });
+  if (prefs?.activeProfileId) {
+    const [profile] = await db
+      .select()
+      .from(careProfiles)
+      .where(eq(careProfiles.id, prefs.activeProfileId))
+      .limit(1)
+    if (profile) return profile
   }
 
-  return profile;
+  // Fallback: first profile owned by user
+  const [profile] = await db
+    .select()
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, userId))
+    .orderBy(asc(careProfiles.createdAt))
+    .limit(1)
+
+  if (profile) {
+    await db
+      .insert(userPreferences)
+      .values({ userId, activeProfileId: profile.id })
+      .onConflictDoUpdate({
+        target: userPreferences.userId,
+        set: { activeProfileId: profile.id },
+      })
+  }
+
+  return profile ?? null
 }
 
 /**
  * Get all care profiles accessible to a user (owned + care team).
  */
-export async function getAllProfiles(supabase: SupabaseClient, userId: string) {
-  // Get profiles the user owns
-  const { data: owned } = await supabase
-    .from('care_profiles')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: true });
+export async function getAllProfiles(userId: string) {
+  const owned = await db
+    .select()
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, userId))
+    .orderBy(asc(careProfiles.createdAt))
 
-  // Get profiles from care team memberships
-  const admin = createAdminClient();
-  const { data: teamMemberships } = await admin
-    .from('care_team_members')
-    .select('care_profile_id')
-    .eq('user_id', userId)
-    .neq('role', 'owner'); // Owned profiles already fetched above
+  const memberships = await db
+    .select({ careProfileId: careTeamMembers.careProfileId })
+    .from(careTeamMembers)
+    .where(eq(careTeamMembers.userId, userId))
 
-  const sharedProfileIds = (teamMemberships || [])
-    .map((m) => m.care_profile_id)
-    .filter((id) => !(owned || []).some((p) => p.id === id));
+  const ownedIds = new Set(owned.map(p => p.id))
+  const sharedIds = memberships
+    .map(m => m.careProfileId)
+    .filter(id => !ownedIds.has(id))
 
-  let shared: typeof owned = [];
-  if (sharedProfileIds.length > 0) {
-    const { data } = await admin
-      .from('care_profiles')
-      .select('*')
-      .in('id', sharedProfileIds);
-    shared = data || [];
+  let shared: typeof owned = []
+  if (sharedIds.length > 0) {
+    shared = await db
+      .select()
+      .from(careProfiles)
+      .where(inArray(careProfiles.id, sharedIds))
   }
 
-  return [...(owned || []), ...shared];
+  return [...owned, ...shared]
 }

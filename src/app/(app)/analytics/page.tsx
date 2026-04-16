@@ -1,42 +1,48 @@
 import dynamic from 'next/dynamic';
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { users, labResults, symptomEntries, reminderLogs, medications, claims } from '@/lib/db/schema';
+import { eq, and, gte, asc, desc } from 'drizzle-orm';
 import { getActiveProfile } from '@/lib/active-profile';
 
 const AnalyticsDashboard = dynamic(() => import('@/components/AnalyticsDashboard').then(m => m.AnalyticsDashboard));
 
 export default async function AnalyticsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  const profile = await getActiveProfile(supabase, user.id);
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
+
+  const profile = await getActiveProfile(dbUser.id);
   if (!profile) redirect('/setup');
 
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgoDate = thirtyDaysAgo.toISOString().split('T')[0];
 
-  const [
-    { data: labResults },
-    { data: symptoms },
-    { data: reminderLogs },
-    { data: medications },
-    { data: claims },
-  ] = await Promise.all([
-    supabase.from('lab_results').select('*').eq('user_id', user.id).order('date_taken', { ascending: true }),
-    supabase.from('symptom_entries').select('*').eq('user_id', user.id).gte('date', thirtyDaysAgo.split('T')[0]).order('date', { ascending: true }),
-    supabase.from('reminder_logs').select('*').eq('user_id', user.id).gte('created_at', thirtyDaysAgo).order('created_at'),
-    supabase.from('medications').select('*').eq('care_profile_id', profile.id),
-    supabase.from('claims').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
+  const [labs, symptoms, logs, meds, claimsData] = await Promise.all([
+    db.select().from(labResults).where(eq(labResults.userId, dbUser.id)).orderBy(asc(labResults.dateTaken)),
+    db.select().from(symptomEntries)
+      .where(and(eq(symptomEntries.userId, dbUser.id)))
+      .orderBy(asc(symptomEntries.date)),
+    db.select().from(reminderLogs)
+      .where(and(eq(reminderLogs.userId, dbUser.id), gte(reminderLogs.createdAt, thirtyDaysAgo)))
+      .orderBy(asc(reminderLogs.createdAt)),
+    db.select().from(medications).where(eq(medications.careProfileId, profile.id)),
+    db.select().from(claims).where(eq(claims.userId, dbUser.id)).orderBy(desc(claims.createdAt)).limit(20),
   ]);
+
+  const filteredSymptoms = symptoms.filter(s => s.date && s.date >= thirtyDaysAgoDate);
 
   return (
     <AnalyticsDashboard
-      patientName={profile.patient_name || 'your loved one'}
-      labResults={labResults || []}
-      symptoms={symptoms || []}
-      reminderLogs={reminderLogs || []}
-      medications={medications || []}
-      claims={claims || []}
+      patientName={profile.patientName || 'your loved one'}
+      labResults={labs}
+      symptoms={filteredSymptoms}
+      reminderLogs={logs}
+      medications={meds}
+      claims={claimsData}
     />
   );
 }

@@ -2,39 +2,35 @@ import { describe, it, expect } from 'vitest'
 import { detectConflicts, getResolutionOptions } from '@/lib/conflicts'
 import type { CareProfile, Appointment, CareTeamMember } from '@/lib/types'
 
-// Helper: create a future date string at a given hour
-function futureDate(daysFromNow: number, hour: number): string {
+// Helper: create a future Date at a given hour
+function futureDate(daysFromNow: number, hour: number): Date {
   const d = new Date()
   d.setDate(d.getDate() + daysFromNow)
   d.setHours(hour, 0, 0, 0)
-  return d.toISOString()
+  return d
 }
 
 function makeProfile(id: string, name: string): CareProfile {
   return {
     id,
-    user_id: 'user-1',
-    patient_name: name,
-    patient_age: 70,
+    userId: 'user-1',
+    patientName: name,
+    patientAge: 70,
     relationship: 'parent',
-    conditions: null,
-    allergies: null,
-    created_at: new Date().toISOString(),
+    createdAt: new Date(),
   }
 }
 
-function makeAppointment(id: string, profileId: string, dateTime: string, doctor?: string): Appointment {
+function makeAppointment(id: string, profileId: string, dateTime: Date, doctor?: string): Appointment {
   return {
     id,
-    care_profile_id: profileId,
-    doctor_name: doctor || 'Dr. Smith',
+    careProfileId: profileId,
+    doctorName: doctor || 'Dr. Smith',
     specialty: null,
-    date_time: dateTime,
+    dateTime,
     location: null,
     purpose: null,
-    prep_notes: null,
-    follow_up_notes: null,
-    created_at: new Date().toISOString(),
+    createdAt: new Date(),
   }
 }
 
@@ -96,7 +92,7 @@ describe('conflicts', () => {
 
     it('ignores past appointments', () => {
       const profiles = [makeProfile('p1', 'Mom'), makeProfile('p2', 'Dad')]
-      const pastDate = new Date(Date.now() - 86400000).toISOString() // yesterday
+      const pastDate = new Date(Date.now() - 86400000) // yesterday
       const appts = new Map([
         ['p1', [makeAppointment('a1', 'p1', pastDate, 'Dr. A')]],
         ['p2', [makeAppointment('a2', 'p2', pastDate, 'Dr. B')]],
@@ -104,10 +100,10 @@ describe('conflicts', () => {
       expect(detectConflicts(profiles, appts)).toEqual([])
     })
 
-    it('skips appointments without date_time', () => {
+    it('skips appointments without dateTime', () => {
       const profiles = [makeProfile('p1', 'Mom'), makeProfile('p2', 'Dad')]
       const appts = new Map([
-        ['p1', [{ ...makeAppointment('a1', 'p1', futureDate(3, 10)), date_time: null }]],
+        ['p1', [{ ...makeAppointment('a1', 'p1', futureDate(3, 10)), dateTime: null }]],
         ['p2', [makeAppointment('a2', 'p2', futureDate(3, 10), 'Dr. B')]],
       ])
       expect(detectConflicts(profiles, appts)).toEqual([])
@@ -130,14 +126,14 @@ describe('conflicts', () => {
     it('includes delegate option when care team exists', () => {
       const team: CareTeamMember[] = [{
         id: 'tm1',
-        user_id: 'u2',
+        userId: 'u2',
         role: 'editor',
-        care_profile_id: 'p1',
-        invited_by: 'u1',
-        joined_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
+        careProfileId: 'p1',
+        invitedBy: 'u1',
+        joinedAt: new Date(),
+        createdAt: new Date(),
         email: 'jane@example.com',
-        display_name: 'Jane',
+        displayName: 'Jane',
       }]
       const options = getResolutionOptions(conflict, team)
       expect(options.some(o => o.type === 'delegate')).toBe(true)

@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
 import { ProgressBar } from '@/components/ui/ProgressBar';
@@ -38,7 +37,6 @@ export function SetupWizard({
   existingAppointments,
 }: SetupWizardProps) {
   const router = useRouter();
-  const supabase = createClient();
 
   const [step, setStep] = useState(initialStep);
   const [loading, setLoading] = useState(false);
@@ -46,13 +44,13 @@ export function SetupWizard({
   const [profileId, setProfileId] = useState<string | null>(existingProfile?.id || null);
 
   // Step 1: Patient info
-  const [patientName, setPatientName] = useState(existingProfile?.patient_name || '');
-  const [patientAge, setPatientAge] = useState(existingProfile?.patient_age?.toString() || '');
+  const [patientName, setPatientName] = useState(existingProfile?.patientName || '');
+  const [patientAge, setPatientAge] = useState(existingProfile?.patientAge?.toString() || '');
   const [relationship, setRelationship] = useState(existingProfile?.relationship || '');
 
   // Step 2: Conditions & allergies
-  const [conditions, setConditions] = useState(existingProfile?.conditions || '');
-  const [allergies, setAllergies] = useState(existingProfile?.allergies || '');
+  const [conditions, setConditions] = useState('');
+  const [allergies, setAllergies] = useState('');
 
   // Step 3: Medications
   const [medications, setMedications] = useState<MedicationForm[]>(
@@ -61,8 +59,8 @@ export function SetupWizard({
           name: m.name,
           dose: m.dose || '',
           frequency: m.frequency || '',
-          prescribing_doctor: m.prescribing_doctor || '',
-          refill_date: m.refill_date || '',
+          prescribing_doctor: m.prescribingDoctor || '',
+          refill_date: m.refillDate || '',
         }))
       : [emptyMedication()]
   );
@@ -82,8 +80,8 @@ export function SetupWizard({
   const [appointments, setAppointments] = useState<AppointmentForm[]>(
     existingAppointments.length > 0
       ? existingAppointments.map((a) => ({
-          doctor_name: a.doctor_name || '',
-          date_time: a.date_time || '',
+          doctor_name: a.doctorName || '',
+          date_time: a.dateTime ? a.dateTime.toISOString() : '',
           purpose: a.purpose || '',
         }))
       : [emptyAppointment()]
@@ -106,89 +104,57 @@ export function SetupWizard({
     setError(null);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
       if (step === 1) {
-        // Upsert care profile
-        if (profileId) {
-          await supabase
-            .from('care_profiles')
-            .update({
-              patient_name: patientName,
-              patient_age: patientAge ? parseInt(patientAge) : null,
-              relationship,
-            })
-            .eq('id', profileId);
-        } else {
-          const { data, error: insertError } = await supabase
-            .from('care_profiles')
-            .insert({
-              user_id: user.id,
-              patient_name: patientName,
-              patient_age: patientAge ? parseInt(patientAge) : null,
-              relationship,
-            })
-            .select('id')
-            .single();
-
-          if (insertError) throw insertError;
+        const res = await fetch('/api/records/profile', {
+          method: profileId ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: profileId,
+            patient_name: patientName,
+            patient_age: patientAge ? parseInt(patientAge) : null,
+            relationship,
+          }),
+        });
+        if (!res.ok) throw new Error('Failed to save profile');
+        if (!profileId) {
+          const data = await res.json();
           setProfileId(data.id);
         }
       } else if (step === 2) {
         if (!profileId) throw new Error('Profile not created yet');
-        await supabase
-          .from('care_profiles')
-          .update({ conditions, allergies })
-          .eq('id', profileId);
+        const res = await fetch('/api/records/profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: profileId, conditions, allergies }),
+        });
+        if (!res.ok) throw new Error('Failed to save conditions');
       } else if (step === 3) {
         if (!profileId) throw new Error('Profile not created yet');
-        // Delete existing and re-insert
-        await supabase.from('medications').delete().eq('care_profile_id', profileId);
         const validMeds = medications.filter((m) => m.name.trim());
-        if (validMeds.length > 0) {
-          const { error: medError } = await supabase.from('medications').insert(
-            validMeds.map((m) => ({
-              care_profile_id: profileId,
-              name: m.name,
-              dose: m.dose || null,
-              frequency: m.frequency || null,
-              prescribing_doctor: m.prescribing_doctor || null,
-              refill_date: m.refill_date || null,
-            }))
-          );
-          if (medError) throw medError;
-        }
+        const res = await fetch('/api/records/medications', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profileId, medications: validMeds }),
+        });
+        if (!res.ok) throw new Error('Failed to save medications');
       } else if (step === 4) {
         if (!profileId) throw new Error('Profile not created yet');
-        await supabase.from('doctors').delete().eq('care_profile_id', profileId);
         const validDocs = doctors.filter((d) => d.name.trim());
-        if (validDocs.length > 0) {
-          const { error: docError } = await supabase.from('doctors').insert(
-            validDocs.map((d) => ({
-              care_profile_id: profileId,
-              name: d.name,
-              specialty: d.specialty || null,
-              phone: d.phone || null,
-            }))
-          );
-          if (docError) throw docError;
-        }
+        const res = await fetch('/api/records/doctors', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profileId, doctors: validDocs }),
+        });
+        if (!res.ok) throw new Error('Failed to save doctors');
       } else if (step === 5) {
         if (!profileId) throw new Error('Profile not created yet');
-        await supabase.from('appointments').delete().eq('care_profile_id', profileId);
         const validAppts = appointments.filter((a) => a.doctor_name.trim() || a.purpose.trim());
-        if (validAppts.length > 0) {
-          const { error: apptError } = await supabase.from('appointments').insert(
-            validAppts.map((a) => ({
-              care_profile_id: profileId,
-              doctor_name: a.doctor_name || null,
-              date_time: a.date_time || null,
-              purpose: a.purpose || null,
-            }))
-          );
-          if (apptError) throw apptError;
-        }
+        const res = await fetch('/api/records/appointments', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profileId, appointments: validAppts }),
+        });
+        if (!res.ok) throw new Error('Failed to save appointments');
       }
 
       if (step < 5) {

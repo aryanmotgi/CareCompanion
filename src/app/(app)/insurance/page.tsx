@@ -1,7 +1,10 @@
 import { Suspense } from 'react'
 import dynamic from 'next/dynamic'
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db';
+import { users, claims, insurance } from '@/lib/db/schema';
+import { eq, desc } from 'drizzle-orm';
 import type { Claim } from '@/lib/types'
 
 const InsuranceView = dynamic(() => import('@/components/InsuranceView').then(m => m.InsuranceView))
@@ -12,35 +15,26 @@ export const metadata = {
 }
 
 async function InsuranceContent() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  if (!user) redirect('/login')
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
 
-  const [{ data: claims }, { data: insurance }] = await Promise.all([
-    supabase
-      .from('claims')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('service_date', { ascending: false }),
-    supabase
-      .from('insurance')
-      .select('*')
-      .eq('user_id', user.id)
-      .single(),
-  ])
+  const [claimsData, [ins]] = await Promise.all([
+    db.select().from(claims).where(eq(claims.userId, dbUser.id)).orderBy(desc(claims.serviceDate)),
+    db.select().from(insurance).where(eq(insurance.userId, dbUser.id)).limit(1),
+  ]);
 
   return (
     <InsuranceView
-      claims={(claims as Claim[]) || []}
-      insuranceProvider={insurance?.provider || null}
-      memberId={insurance?.member_id || null}
-      deductibleLimit={insurance?.deductible_limit || null}
-      deductibleUsed={insurance?.deductible_used || 0}
-      oopLimit={insurance?.oop_limit || null}
-      oopUsed={insurance?.oop_used || 0}
+      claims={claimsData as Claim[]}
+      insuranceProvider={ins?.provider || null}
+      memberId={ins?.memberId || null}
+      deductibleLimit={ins?.deductibleLimit != null ? parseFloat(ins.deductibleLimit) : null}
+      deductibleUsed={ins?.deductibleUsed != null ? parseFloat(ins.deductibleUsed) : 0}
+      oopLimit={ins?.oopLimit != null ? parseFloat(ins.oopLimit) : null}
+      oopUsed={ins?.oopUsed != null ? parseFloat(ins.oopUsed) : 0}
     />
   )
 }

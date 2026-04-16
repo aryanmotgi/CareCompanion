@@ -1,5 +1,7 @@
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { db } from '@/lib/db';
+import { connectedApps, careProfiles, medications as medsTable, labResults as labResultsTable, appointments as apptsTable, claims as claimsTable, insurance as insuranceTable, notifications } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
 import { getProvider } from '@/lib/fhir-providers';
 import { syncOneUpData } from '@/lib/oneup-sync';
 import { safeDecryptToken, encryptToken } from '@/lib/token-encryption';
@@ -39,12 +41,8 @@ async function fetchFhirBundle(
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error) return error;
 
   const { provider_id } = await req.json();
   if (!provider_id) {
@@ -56,33 +54,27 @@ export async function POST(req: Request) {
     return Response.json({ error: `Unknown provider: ${provider_id}` }, { status: 400 });
   }
 
-  const admin = createAdminClient();
-
-  // 1upHealth uses its own source name and dedicated sync engine
   const source = provider_id === '1uphealth' ? '1uphealth' : `fhir_${provider_id}`;
 
-  // Get the stored connection
-  const { data: connection } = await admin
-    .from('connected_apps')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('source', source)
-    .single();
+  const [connection] = await db
+    .select()
+    .from(connectedApps)
+    .where(and(eq(connectedApps.userId, dbUser!.id), eq(connectedApps.source, source)))
+    .limit(1);
 
-  if (!connection?.access_token) {
+  if (!connection?.accessToken) {
     return Response.json({ error: 'Not connected to this provider' }, { status: 400 });
   }
 
-  // Decrypt stored token (handles legacy plaintext gracefully during migration)
-  const decryptedToken = safeDecryptToken(connection.access_token);
+  const decryptedToken = safeDecryptToken(connection.accessToken);
   if (!decryptedToken) {
     return Response.json({ error: 'Token decryption failed — please reconnect' }, { status: 401 });
   }
   let accessToken: string = decryptedToken;
 
   // Check if token is expired and refresh if needed
-  if (connection.expires_at && new Date(connection.expires_at) < new Date()) {
-    const storedRefresh = safeDecryptToken(connection.refresh_token);
+  if (connection.expiresAt && new Date(connection.expiresAt) < new Date()) {
+    const storedRefresh = safeDecryptToken(connection.refreshToken || '');
     if (!storedRefresh || !provider.supportsRefresh) {
       return Response.json({ error: 'Token expired, please reconnect' }, { status: 401 });
     }
@@ -111,27 +103,25 @@ export async function POST(req: Request) {
       const newTokens = await refreshRes.json();
       accessToken = newTokens.access_token;
 
-      // Store refreshed tokens encrypted
       const newRefresh = newTokens.refresh_token
         ? encryptToken(newTokens.refresh_token)
-        : connection.refresh_token; // Keep existing encrypted refresh token
-      await admin.from('connected_apps').update({
-        access_token: encryptToken(newTokens.access_token),
-        refresh_token: newRefresh,
-        expires_at: newTokens.expires_in
-          ? new Date(Date.now() + newTokens.expires_in * 1000).toISOString()
-          : connection.expires_at,
-      }).eq('id', connection.id);
+        : connection.refreshToken;
+      await db.update(connectedApps).set({
+        accessToken: encryptToken(newTokens.access_token),
+        refreshToken: newRefresh,
+        expiresAt: newTokens.expires_in
+          ? new Date(Date.now() + newTokens.expires_in * 1000)
+          : connection.expiresAt,
+      }).where(eq(connectedApps.id, connection.id));
     } catch (err) {
       console.error('Token refresh error:', err);
       return Response.json({ error: 'Token refresh failed' }, { status: 401 });
     }
   }
 
-  // For 1upHealth, use the dedicated sync engine (it handles all resource types)
   if (provider_id === '1uphealth') {
     try {
-      const results = await syncOneUpData(user.id, accessToken);
+      const results = await syncOneUpData(dbUser!.id, accessToken);
       return Response.json({ success: true, provider: provider.name, synced: results });
     } catch (err) {
       console.error('1upHealth sync error:', err);
@@ -140,18 +130,17 @@ export async function POST(req: Request) {
   }
 
   // Get or create care profile
-  let { data: profile } = await admin
-    .from('care_profiles')
-    .select('id, conditions, allergies')
-    .eq('user_id', user.id)
-    .single();
+  let [profile] = await db
+    .select({ id: careProfiles.id, conditions: careProfiles.conditions, allergies: careProfiles.allergies })
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, dbUser!.id))
+    .limit(1);
 
   if (!profile) {
-    const { data: newProfile } = await admin
-      .from('care_profiles')
-      .insert({ user_id: user.id })
-      .select('id, conditions, allergies')
-      .single();
+    const [newProfile] = await db
+      .insert(careProfiles)
+      .values({ userId: dbUser!.id })
+      .returning({ id: careProfiles.id, conditions: careProfiles.conditions, allergies: careProfiles.allergies });
     profile = newProfile;
   }
 
@@ -171,7 +160,6 @@ export async function POST(req: Request) {
     insurance: 0,
   };
 
-  // Fetch all FHIR resources in parallel
   const [medBundle, condBundle, allergyBundle, apptBundle, labBundle, claimBundle, coverageBundle] =
     await Promise.all([
       fetchFhirBundle(fhirBase, 'MedicationRequest', accessToken, 'status=active&_count=100'),
@@ -183,25 +171,20 @@ export async function POST(req: Request) {
       fetchFhirBundle(fhirBase, 'Coverage', accessToken, 'status=active&_count=10').catch(() => ({ resourceType: 'Bundle' as const, entry: [] })),
     ]);
 
-  // Parse using existing FHIR parsers
   const medications = parseMedications(medBundle);
   const conditions = parseConditions(condBundle);
   const allergies = parseAllergies(allergyBundle);
   const appointments = parseAppointments(apptBundle);
-  const labResults = parseLabResults(labBundle);
-  const claims = parseClaims(claimBundle);
+  const labs = parseLabResults(labBundle);
+  const claimsData = parseClaims(claimBundle);
   const coverage = parseCoverage(coverageBundle);
 
-  // Import medications (upsert by name)
   const syncSource = `Synced from ${provider.name}`;
   if (medications.length > 0) {
-    await admin.from('medications').delete()
-      .eq('care_profile_id', profile.id)
-      .eq('notes', syncSource);
-
-    await admin.from('medications').insert(
+    await db.delete(medsTable).where(and(eq(medsTable.careProfileId, profile.id), eq(medsTable.notes, syncSource)));
+    await db.insert(medsTable).values(
       medications.map((m) => ({
-        care_profile_id: profile.id,
+        careProfileId: profile.id,
         name: m.name,
         dose: m.dose,
         frequency: m.frequency,
@@ -211,41 +194,39 @@ export async function POST(req: Request) {
     results.medications = medications.length;
   }
 
-  // Update conditions
   if (conditions.length > 0) {
     const existing = profile.conditions || '';
     const newOnes = conditions.filter((c) => !existing.toLowerCase().includes(c.toLowerCase()));
     if (newOnes.length > 0) {
       const updated = existing ? `${existing}\n${newOnes.join('\n')}` : newOnes.join('\n');
-      await admin.from('care_profiles').update({ conditions: updated }).eq('id', profile.id);
+      await db.update(careProfiles).set({ conditions: updated }).where(eq(careProfiles.id, profile.id));
       results.conditions = newOnes.length;
     }
   }
 
-  // Update allergies
   if (allergies.length > 0) {
     const existing = profile.allergies || '';
     const newOnes = allergies.filter((a) => !existing.toLowerCase().includes(a.toLowerCase()));
     if (newOnes.length > 0) {
       const updated = existing ? `${existing}\n${newOnes.join('\n')}` : newOnes.join('\n');
-      await admin.from('care_profiles').update({ allergies: updated }).eq('id', profile.id);
+      await db.update(careProfiles).set({ allergies: updated }).where(eq(careProfiles.id, profile.id));
       results.allergies = newOnes.length;
     }
   }
 
-  // Import appointments (avoid duplicates)
   for (const appt of appointments) {
     if (appt.date_time) {
-      const { data: existing } = await admin.from('appointments')
-        .select('id')
-        .eq('care_profile_id', profile.id)
-        .eq('date_time', appt.date_time)
-        .maybeSingle();
-      if (!existing) {
-        await admin.from('appointments').insert({
-          care_profile_id: profile.id,
-          doctor_name: appt.doctor_name,
-          date_time: appt.date_time,
+      const apptDateTime = new Date(appt.date_time);
+      const existing = await db
+        .select({ id: apptsTable.id })
+        .from(apptsTable)
+        .where(and(eq(apptsTable.careProfileId, profile.id), eq(apptsTable.dateTime, apptDateTime)))
+        .limit(1);
+      if (existing.length === 0) {
+        await db.insert(apptsTable).values({
+          careProfileId: profile.id,
+          doctorName: appt.doctor_name,
+          dateTime: apptDateTime,
           purpose: appt.purpose,
         });
         results.appointments++;
@@ -253,26 +234,26 @@ export async function POST(req: Request) {
     }
   }
 
-  // Import lab results
-  if (labResults.length > 0) {
-    await admin.from('lab_results').delete()
-      .eq('user_id', user.id)
-      .eq('source', provider_id);
-
-    await admin.from('lab_results').insert(
-      labResults.map((l) => ({
-        user_id: user.id,
-        ...l,
+  if (labs.length > 0) {
+    await db.delete(labResultsTable).where(and(eq(labResultsTable.userId, dbUser!.id), eq(labResultsTable.source, provider_id)));
+    await db.insert(labResultsTable).values(
+      labs.map((l) => ({
+        userId: dbUser!.id,
+        testName: l.test_name,
+        value: l.value,
+        unit: l.unit,
+        referenceRange: l.reference_range,
+        isAbnormal: l.is_abnormal,
+        dateTaken: l.date_taken,
         source: provider_id,
       }))
     );
-    results.lab_results = labResults.length;
+    results.lab_results = labs.length;
 
-    // Notify for abnormal results
-    const abnormal = labResults.filter((l) => l.is_abnormal);
+    const abnormal = labs.filter((l) => l.is_abnormal);
     for (const lab of abnormal) {
-      await admin.from('notifications').insert({
-        user_id: user.id,
+      await db.insert(notifications).values({
+        userId: dbUser!.id,
         type: 'lab_result',
         title: `Abnormal lab result: ${lab.test_name}`,
         message: `${lab.test_name}: ${lab.value} ${lab.unit || ''} (range: ${lab.reference_range || 'N/A'}) — synced from ${provider.name}`,
@@ -280,35 +261,42 @@ export async function POST(req: Request) {
     }
   }
 
-  // Import claims
-  if (claims.length > 0) {
-    for (const claim of claims) {
-      await admin.from('claims').upsert({
-        user_id: user.id,
-        ...claim,
+  if (claimsData.length > 0) {
+    for (const claim of claimsData) {
+      await db.insert(claimsTable).values({
+        userId: dbUser!.id,
+        providerName: claim.provider_name,
+        serviceDate: claim.service_date,
+        billedAmount: String(claim.billed_amount || 0),
+        paidAmount: String(claim.paid_amount || 0),
+        patientResponsibility: String(claim.patient_responsibility || 0),
+        status: claim.status || 'processed',
       });
     }
-    results.claims = claims.length;
+    results.claims = claimsData.length;
   }
 
-  // Import coverage/insurance
   if (coverage.length > 0) {
     for (const cov of coverage) {
-      await admin.from('insurance').upsert({
-        user_id: user.id,
+      await db.insert(insuranceTable).values({
+        userId: dbUser!.id,
         provider: cov.provider,
-        member_id: cov.member_id,
-        group_number: cov.group_number,
-        plan_year: new Date().getFullYear(),
+        memberId: cov.member_id,
+        groupNumber: cov.group_number,
+        planYear: new Date().getFullYear(),
+      }).onConflictDoUpdate({
+        target: insuranceTable.userId,
+        set: {
+          provider: cov.provider,
+          memberId: cov.member_id,
+          groupNumber: cov.group_number,
+        },
       });
     }
     results.insurance = coverage.length;
   }
 
-  // Update last_synced
-  await admin.from('connected_apps')
-    .update({ last_synced: new Date().toISOString() })
-    .eq('id', connection.id);
+  await db.update(connectedApps).set({ lastSynced: new Date() }).where(eq(connectedApps.id, connection.id));
 
   return Response.json({ success: true, provider: provider.name, synced: results });
 }

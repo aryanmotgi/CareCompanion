@@ -4,10 +4,9 @@
  * This module provides typed audit actions for tracking access to
  * Protected Health Information (PHI). It complements the general-purpose
  * audit-log.ts (which logs all API requests) with specific PHI access events.
- *
- * All entries are persisted to the `audit_logs` table in Supabase.
  */
-import { createAdminClient } from '@/lib/supabase/admin'
+import { db } from '@/lib/db'
+import { auditLogs } from '@/lib/db/schema'
 import { logger } from '@/lib/logger'
 
 export type AuditAction =
@@ -44,15 +43,17 @@ interface AuditEntry {
  */
 export async function logAudit(entry: AuditEntry): Promise<void> {
   try {
-    const admin = createAdminClient()
-    await admin.from('audit_logs').insert({
-      user_id: entry.user_id,
+    await db.insert(auditLogs).values({
+      userId: entry.user_id,
       action: entry.action,
-      resource_type: entry.resource_type || null,
-      resource_id: entry.resource_id || null,
-      details: entry.details ? JSON.stringify(entry.details) : null,
-      ip_address: entry.ip_address || null,
-      created_at: new Date().toISOString(),
+      resource: entry.resource_type || entry.action,
+      resourceId: entry.resource_id || null,
+      ipAddress: entry.ip_address || null,
+      method: 'INTERNAL',
+      path: entry.action,
+      statusCode: 200,
+      durationMs: 0,
+      metadata: entry.details || {},
     })
   } catch (error) {
     // Don't fail the request if audit logging fails

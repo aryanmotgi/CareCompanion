@@ -51,9 +51,9 @@ export function ReminderManager({ reminders: initial, medications }: ReminderMan
   }, []);
 
   const startEdit = useCallback((r: MedicationReminder) => {
-    setSelectedMedId(r.medication_id);
-    setTimes(r.reminder_times.length > 0 ? r.reminder_times : ['08:00']);
-    setSelectedDays(r.days_of_week.length > 0 ? r.days_of_week : ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
+    setSelectedMedId(r.medicationId);
+    setTimes(r.reminderTimes.length > 0 ? r.reminderTimes : ['08:00']);
+    setSelectedDays(r.daysOfWeek.length > 0 ? r.daysOfWeek : ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
     setEditingId(r.id);
     setShowForm(true);
   }, []);
@@ -95,11 +95,11 @@ export function ReminderManager({ reminders: initial, medications }: ReminderMan
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...(editingId ? { reminder_id: editingId } : {}),
-          medication_id: med.id,
-          medication_name: med.name,
+          medicationId: med.id,
+          medicationName: med.name,
           dose: med.dose,
-          reminder_times: times,
-          days_of_week: selectedDays,
+          reminderTimes: times,
+          daysOfWeek: selectedDays,
         }),
       });
 
@@ -121,12 +121,12 @@ export function ReminderManager({ reminders: initial, medications }: ReminderMan
   };
 
   const toggleActive = async (reminder: MedicationReminder) => {
-    const newActive = !reminder.is_active;
+    const newActive = !reminder.isActive;
     setTogglingId(reminder.id);
     // Optimistic update
     setReminders((prev) =>
       prev.map((r) =>
-        r.id === reminder.id ? { ...r, is_active: newActive } : r
+        r.id === reminder.id ? { ...r, isActive: newActive } : r
       )
     );
     try {
@@ -135,12 +135,12 @@ export function ReminderManager({ reminders: initial, medications }: ReminderMan
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           reminder_id: reminder.id,
-          medication_id: reminder.medication_id,
-          medication_name: reminder.medication_name,
+          medicationId: reminder.medicationId,
+          medicationName: reminder.medicationName,
           dose: reminder.dose,
-          reminder_times: reminder.reminder_times,
-          days_of_week: reminder.days_of_week,
-          is_active: newActive,
+          reminderTimes: reminder.reminderTimes,
+          daysOfWeek: reminder.daysOfWeek,
+          isActive: newActive,
         }),
       });
       if (!res.ok) throw new Error('Toggle failed');
@@ -149,7 +149,7 @@ export function ReminderManager({ reminders: initial, medications }: ReminderMan
       // Revert on failure
       setReminders((prev) =>
         prev.map((r) =>
-          r.id === reminder.id ? { ...r, is_active: !newActive } : r
+          r.id === reminder.id ? { ...r, isActive: !newActive } : r
         )
       );
       showMessage('Failed to update reminder');
@@ -190,7 +190,7 @@ export function ReminderManager({ reminders: initial, medications }: ReminderMan
 
   // Medications that don't have a reminder yet
   const availableMeds = medications.filter(
-    (m) => editingId || !reminders.some((r) => r.medication_id === m.id)
+    (m) => editingId || !reminders.some((r) => r.medicationId === m.id)
   );
 
   return (
@@ -405,16 +405,16 @@ export function ReminderManager({ reminders: initial, medications }: ReminderMan
                   onClick={() => toggleActive(r)}
                   disabled={togglingId === r.id}
                   className="mt-0.5 shrink-0"
-                  aria-label={r.is_active ? 'Disable reminder' : 'Enable reminder'}
+                  aria-label={r.isActive ? 'Disable reminder' : 'Enable reminder'}
                 >
                   <div
                     className={`w-10 h-[22px] rounded-full transition-colors duration-200 relative ${
-                      r.is_active ? 'bg-[#6366F1]' : 'bg-white/[0.12]'
+                      r.isActive ? 'bg-[#6366F1]' : 'bg-white/[0.12]'
                     }`}
                   >
                     <div
                       className={`absolute top-[3px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                        r.is_active ? 'translate-x-[22px]' : 'translate-x-[3px]'
+                        r.isActive ? 'translate-x-[22px]' : 'translate-x-[3px]'
                       }`}
                     />
                   </div>
@@ -422,8 +422,8 @@ export function ReminderManager({ reminders: initial, medications }: ReminderMan
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium truncate ${r.is_active ? 'text-[var(--text)]' : 'text-[var(--text-muted)]'}`}>
-                    {r.medication_name}
+                  <p className={`text-sm font-medium truncate ${r.isActive ? 'text-[var(--text)]' : 'text-[var(--text-muted)]'}`}>
+                    {r.medicationName}
                     {r.dose && (
                       <span className="text-[var(--text-muted)] font-normal ml-1.5 text-xs">
                         {r.dose}
@@ -436,14 +436,14 @@ export function ReminderManager({ reminders: initial, medications }: ReminderMan
                         <circle cx="12" cy="12" r="10" />
                         <path d="M12 6v6l4 2" />
                       </svg>
-                      {r.reminder_times.map(formatTimeDisplay).join(', ')}
+                      {r.reminderTimes.map(formatTimeDisplay).join(', ')}
                     </div>
                     <div className="flex gap-0.5">
                       {ALL_DAYS.map((day) => (
                         <span
                           key={day.key}
                           className={`w-4 h-4 rounded text-[8px] font-bold flex items-center justify-center ${
-                            r.days_of_week.includes(day.key)
+                            r.daysOfWeek.includes(day.key)
                               ? 'bg-[#6366F1]/20 text-[#A78BFA]'
                               : 'bg-white/[0.04] text-[var(--text-muted)] opacity-40'
                           }`}

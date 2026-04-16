@@ -1,13 +1,9 @@
-import { createClient } from '@/lib/supabase/server';
+import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { redirect } from 'next/navigation';
 
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect('/login');
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error || !dbUser) redirect('/login');
 
   const clientId = process.env.ONEUPH_CLIENT_ID;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -22,7 +18,7 @@ export async function GET() {
     redirect_uri: `${appUrl}/api/auth/health-system/callback`,
     response_type: 'code',
     scope: 'user/*.read',
-    state: user.id,
+    state: dbUser!.id,
   });
 
   redirect(`https://api.1up.health/connect/authorize?${params.toString()}`);

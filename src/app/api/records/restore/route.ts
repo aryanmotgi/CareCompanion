@@ -2,7 +2,10 @@
  * Restore soft-deleted records.
  * POST { table, id } — brings back a deleted record.
  */
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { db } from '@/lib/db'
+import { careProfiles } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { restore } from '@/lib/soft-delete'
 import { apiSuccess, apiError, ApiErrors } from '@/lib/api-response'
 import { rateLimit } from '@/lib/rate-limit'
@@ -21,9 +24,8 @@ export async function POST(req: Request) {
   if (!success) return ApiErrors.rateLimited()
 
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return ApiErrors.unauthorized()
+    const { user: dbUser, error } = await getAuthenticatedUser()
+    if (error) return error
 
     const body = await req.json()
     const parsed = RestoreSchema.safeParse(body)
@@ -31,13 +33,13 @@ export async function POST(req: Request) {
       return ApiErrors.badRequest('Invalid input: table and id (UUID) required')
     }
 
-    const { data: profile } = await supabase
-      .from('care_profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
+    const [profile] = await db
+      .select({ id: careProfiles.id })
+      .from(careProfiles)
+      .where(eq(careProfiles.userId, dbUser!.id))
+      .limit(1)
 
-    const result = await restore(parsed.data.table, parsed.data.id, user.id, profile?.id)
+    const result = await restore(parsed.data.table, parsed.data.id, dbUser!.id, profile?.id)
     return apiSuccess(result)
   } catch (error) {
     console.error('[restore] Error:', error)

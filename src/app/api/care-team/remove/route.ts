@@ -1,6 +1,8 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess, ApiErrors } from '@/lib/api-response';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { db } from '@/lib/db';
+import { careTeamMembers, careTeamActivity } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
 import { rateLimit } from '@/lib/rate-limit';
 import { validateCsrf } from '@/lib/csrf';
 import { z } from 'zod';
@@ -23,7 +25,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { user, error: authError } = await getAuthenticatedUser();
+    const { user: dbUser, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
 
     const body = await req.json();
@@ -31,14 +33,13 @@ export async function POST(req: Request) {
     if (valError) return valError;
 
     const { member_id } = validated;
-    const admin = createAdminClient();
 
     // Get the target member
-    const { data: target } = await admin
-      .from('care_team_members')
-      .select('*')
-      .eq('id', member_id)
-      .single();
+    const [target] = await db
+      .select()
+      .from(careTeamMembers)
+      .where(eq(careTeamMembers.id, member_id))
+      .limit(1);
 
     if (!target) {
       return apiError('Member not found', 404);
@@ -50,33 +51,34 @@ export async function POST(req: Request) {
     }
 
     // Check permission: either removing yourself, or you're the owner
-    const isSelf = target.user_id === user.id;
+    const isSelf = target.userId === dbUser!.id;
     if (!isSelf) {
-      const { data: myRole } = await admin
-        .from('care_team_members')
-        .select('role')
-        .eq('care_profile_id', target.care_profile_id)
-        .eq('user_id', user.id)
-        .single();
+      const [myMembership] = await db
+        .select({ role: careTeamMembers.role })
+        .from(careTeamMembers)
+        .where(
+          and(
+            eq(careTeamMembers.careProfileId, target.careProfileId),
+            eq(careTeamMembers.userId, dbUser!.id)
+          )
+        )
+        .limit(1);
 
-      if (!myRole || myRole.role !== 'owner') {
+      if (!myMembership || myMembership.role !== 'owner') {
         return apiError('Only the owner can remove other team members', 403);
       }
     }
 
     // Remove the member
-    const { error } = await admin.from('care_team_members').delete().eq('id', member_id);
-    if (error) {
-      return apiError(error.message, 500);
-    }
+    await db.delete(careTeamMembers).where(eq(careTeamMembers.id, member_id));
 
     // Log activity
-    const displayName = user.user_metadata?.display_name || user.email?.split('@')[0] || 'Someone';
-    const action = isSelf ? 'left the care team' : `removed a team member`;
-    await admin.from('care_team_activity').insert({
-      care_profile_id: target.care_profile_id,
-      user_id: user.id,
-      user_name: displayName,
+    const displayName = dbUser!.displayName || dbUser!.email?.split('@')[0] || 'Someone';
+    const action = isSelf ? 'left the care team' : 'removed a team member';
+    await db.insert(careTeamActivity).values({
+      careProfileId: target.careProfileId,
+      userId: dbUser!.id,
+      userName: displayName,
       action,
     });
 

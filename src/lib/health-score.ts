@@ -22,7 +22,7 @@ export function calculateHealthScore(
 
   // Lab score (40%): % of labs in normal range
   if (labResults.length > 0) {
-    const normalCount = labResults.filter((l) => !l.is_abnormal).length
+    const normalCount = labResults.filter((l) => !l.isAbnormal).length
     score += (normalCount / labResults.length) * 40
   } else {
     score += 20 // neutral if no labs
@@ -46,7 +46,7 @@ export function calculateHealthScore(
   // Appointment score (20%): has upcoming appointments
   const now = new Date()
   const upcomingAppts = appointments.filter(
-    (a) => a.date_time && new Date(a.date_time) > now
+    (a) => a.dateTime && new Date(a.dateTime) > now
   )
   if (upcomingAppts.length > 0) {
     score += 20

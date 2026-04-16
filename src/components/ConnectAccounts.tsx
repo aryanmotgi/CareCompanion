@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
 import { DataConsentModal } from '@/components/DataConsentModal';
@@ -85,7 +84,6 @@ const DATA_PILLS = [
 export function ConnectAccounts({ connectedApps, patientName, hasProfile }: ConnectAccountsProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
   const { showToast } = useToast();
 
   const [apps, setApps] = useState(connectedApps);
@@ -107,7 +105,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
 
   // Only treat as connected if the token is not expired
   const isOneUpConnected = apps.some(
-    (a) => a.source === '1uphealth' && a.expires_at && new Date(a.expires_at) > new Date()
+    (a) => a.source === '1uphealth' && a.expiresAt && new Date(a.expiresAt) > new Date()
   );
 
   const ERROR_MESSAGES: Record<string, string> = {
@@ -125,7 +123,6 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
       const baseMsg = ERROR_MESSAGES[error] || 'Connection failed. Please try again.';
       const fullMsg = detail ? `${baseMsg} (${decodeURIComponent(detail)})` : baseMsg;
       setConnectError(fullMsg);
-      // Log for debugging — detail contains the actual server-side error
       if (detail) console.warn('[ConnectAccounts] 1upHealth error detail:', decodeURIComponent(detail));
       const url = new URL(window.location.href);
       url.searchParams.delete('error');
@@ -136,41 +133,34 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
     const connected = searchParams.get('connected');
     if (connected) {
       setJustConnected(connected);
-      // Clear the param from URL
       const url = new URL(window.location.href);
       url.searchParams.delete('connected');
       window.history.replaceState({}, '', url.toString());
 
       // Refresh connected apps + trigger sync
       const refreshAndSync = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data } = await supabase.from('connected_apps').select('*').eq('user_id', user.id);
-          if (data) setApps(data);
-
-          // Auto-trigger sync to import health data and auto-detect cancer type
-          fetch('/api/oneup/sync', { method: 'POST' }).catch(() => {});
-        }
+        const res = await fetch('/api/fhir/connections', { method: 'POST' });
+        const json = await res.json();
+        if (res.ok && json.data) setApps(json.data);
+        fetch('/api/oneup/sync', { method: 'POST' }).catch(() => {});
       };
       refreshAndSync();
     }
 
-    // Auto-sync if 1upHealth is connected but profile is incomplete (e.g., user just returned from system search)
+    // Auto-sync if 1upHealth is connected but profile is incomplete
     const autoSync = async () => {
       const oneUp = connectedApps.find(a => a.source === '1uphealth');
       if (!oneUp) return;
-      // If connected recently (within last 5 min) and no last_synced or very recent connection
       const connectedAt = oneUp.metadata && typeof oneUp.metadata === 'object' && 'connected_at' in oneUp.metadata
         ? new Date(oneUp.metadata.connected_at as string).getTime() : 0;
-      const syncedAt = oneUp.last_synced ? new Date(oneUp.last_synced).getTime() : 0;
+      const syncedAt = oneUp.lastSynced ? new Date(oneUp.lastSynced).getTime() : 0;
       if (connectedAt > syncedAt) {
-        // Connection is newer than last sync — trigger sync
         fetch('/api/oneup/sync', { method: 'POST' }).catch(() => {});
       }
     };
     if (!connected && !error) autoSync();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, supabase]);
+  }, [searchParams]);
 
   const handleManagingForChange = (value: 'self' | 'other') => {
     setManagingFor(value);
@@ -182,28 +172,27 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
     setSavingProfile(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Upsert care profile with the patient info
-      const { data: existing } = await supabase
-        .from('care_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (existing) {
-        await supabase.from('care_profiles').update({
+      // Try to update existing profile first, fall back to create
+      const patchRes = await fetch('/api/records/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           patient_name: name.trim(),
           patient_age: age ? parseInt(age) : null,
           relationship: relationship || null,
-        }).eq('id', existing.id);
-      } else {
-        await supabase.from('care_profiles').insert({
-          user_id: user.id,
-          patient_name: name.trim(),
-          patient_age: age ? parseInt(age) : null,
-          relationship: relationship || null,
+        }),
+      });
+
+      if (!patchRes.ok) {
+        // No profile yet — create one
+        await fetch('/api/records/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            patient_name: name.trim(),
+            patient_age: age ? parseInt(age) : null,
+            relationship: relationship || null,
+          }),
         });
       }
 
@@ -223,7 +212,6 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
       const res = await fetch('/api/oneup/sync', { method: 'POST' });
       const data = await res.json().catch(() => ({}));
       if (res.status === 401 && data.error === 'token_expired') {
-        // Token expired at 1upHealth — remove stale connected state so user can reconnect
         setApps((prev) => prev.filter((a) => a.source !== '1uphealth'));
         setConnectError('Your health records connection expired. Please reconnect below.');
         return;
@@ -247,14 +235,15 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
     setDisconnecting(true);
     try {
       if (disconnectSource === '1uphealth') {
-        // Server-side: revokes token at 1upHealth then deletes local record
         const res = await fetch('/api/oneup/revoke', { method: 'POST' });
         if (!res.ok) throw new Error('Revoke failed');
       } else {
-        const app = apps.find((a) => a.source === disconnectSource);
-        if (!app) return;
-        const { error } = await supabase.from('connected_apps').delete().eq('id', app.id);
-        if (error) throw new Error(error.message);
+        const res = await fetch('/api/fhir/connections', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source: disconnectSource }),
+        });
+        if (!res.ok) throw new Error('Disconnect failed');
       }
       setApps((prev) => prev.filter((a) => a.source !== disconnectSource));
       showToast('Account disconnected', 'success');
@@ -278,7 +267,6 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
 
       {/* ━━ 1. HEADER ━━ */}
       <header className="relative text-center animate-fade-in-up">
-        {/* Floating orb behind header */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full bg-gradient-to-br from-blue-500/20 via-violet-500/15 to-cyan-500/20 blur-[60px] animate-orb-drift pointer-events-none" />
         <h1 className="relative font-display text-4xl sm:text-5xl font-bold tracking-tight animate-gradient-text pb-1">
           Connect Your World
@@ -310,7 +298,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
         </div>
       )}
 
-      {/* ━━ 7. SUCCESS BANNER ━━ */}
+      {/* ━━ SUCCESS BANNER ━━ */}
       {justConnected && (
         <div className="glass-card animate-fade-in-up stagger-1 animate-pulse-glow-green rounded-2xl p-5 border border-emerald-500/20" style={{ background: 'rgba(52, 211, 153, 0.06)' }}>
           <div className="flex items-center gap-4">
@@ -332,7 +320,6 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
       <section className="animate-fade-in-up stagger-2">
         <h3 className="text-[11px] font-semibold tracking-[0.2em] text-[var(--text-muted)] uppercase mb-4">Who is this for?</h3>
         <div className="grid grid-cols-2 gap-4">
-          {/* Myself card */}
           <button
             onClick={() => handleManagingForChange('self')}
             className={`glass-card rounded-2xl p-5 text-left transition-all ${
@@ -350,7 +337,6 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
             <p className="text-xs text-[var(--text-muted)] leading-relaxed">Track your own health records and vitals</p>
           </button>
 
-          {/* Someone I care for card */}
           <button
             onClick={() => handleManagingForChange('other')}
             className={`glass-card rounded-2xl p-5 text-left transition-all ${
@@ -369,7 +355,6 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
           </button>
         </div>
 
-        {/* Patient info form — slides down */}
         {showPatientForm && (
           <div className="animate-slide-down mt-4">
             <div className="glass-card-elevated rounded-2xl p-6 space-y-4 border border-white/[0.06]" style={{ background: 'rgba(255,255,255,0.04)' }}>
@@ -415,11 +400,9 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
               : 'border-flow-gradient animate-pulse-glow-blue'
           }`}
         >
-          {/* Glow orb behind icon */}
           <div className="absolute top-6 left-6 w-20 h-20 rounded-full bg-blue-500/15 blur-[40px] pointer-events-none" />
 
           <div className="relative flex items-start gap-5">
-            {/* Large health icon with pulsing glow */}
             <div className="relative flex-shrink-0">
               <div className={`absolute inset-0 rounded-2xl blur-xl ${isOneUpConnected ? 'bg-emerald-500/25' : 'bg-blue-500/25'} animate-orb-pulse`} />
               <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center ${isOneUpConnected ? 'bg-emerald-500/15' : 'bg-blue-500/15'} transition-colors`}>
@@ -430,12 +413,11 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
             </div>
 
             <div className="flex-1 min-w-0">
-              {/* Connected badge */}
               {isOneUpConnected && (
                 <div className="mb-2">
                   <ConnectionStatus
                     source="1uphealth"
-                    lastSynced={apps.find((a) => a.source === '1uphealth')?.last_synced}
+                    lastSynced={apps.find((a) => a.source === '1uphealth')?.lastSynced?.toISOString() ?? null}
                   />
                 </div>
               )}
@@ -447,7 +429,6 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
                 MyChart, Kaiser, Sutter Health, Aetna, UnitedHealthcare, Medicare, and 300+ more health systems and insurers
               </p>
 
-              {/* Data type pills */}
               <div className="flex flex-wrap gap-2 mt-4">
                 {DATA_PILLS.map((pill) => (
                   <span
@@ -461,18 +442,16 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
                 ))}
               </div>
 
-              {/* Last synced time */}
               {isOneUpConnected && (
                 <p className="text-xs text-emerald-400/70 mt-3">
-                  {apps.find((a) => a.source === '1uphealth')?.last_synced
-                    ? `Last synced ${new Date(apps.find((a) => a.source === '1uphealth')!.last_synced!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
+                  {apps.find((a) => a.source === '1uphealth')?.lastSynced
+                    ? `Last synced ${new Date(apps.find((a) => a.source === '1uphealth')!.lastSynced!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
                     : 'Syncing...'}
                 </p>
               )}
             </div>
           </div>
 
-          {/* CTA area */}
           <div className="relative z-10 mt-6 flex items-center gap-3">
             {isOneUpConnected ? (
               <>
@@ -514,10 +493,9 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
             return (
               <div
                 key={svc.id}
-                className={`glass-card rounded-2xl p-5 relative overflow-hidden animate-fade-in-up`}
+                className="glass-card rounded-2xl p-5 relative overflow-hidden animate-fade-in-up"
                 style={{ animationDelay: `${0.3 + i * 0.07}s` }}
               >
-                {/* Subtle colored glow */}
                 <div
                   className="absolute -top-6 -right-6 w-20 h-20 rounded-full blur-[40px] pointer-events-none opacity-40"
                   style={{ background: svc.glowColor }}
@@ -525,7 +503,6 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
 
                 <div className="relative flex items-start justify-between">
                   <div className="flex items-start gap-3">
-                    {/* Icon with glow bg */}
                     <div className="relative">
                       <div className={`absolute inset-0 rounded-xl blur-lg ${svc.accentBg} opacity-50`} />
                       <div className={`relative w-10 h-10 rounded-xl ${svc.accentBg} flex items-center justify-center flex-shrink-0`}>
@@ -537,7 +514,6 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <h4 className="font-medium text-white text-sm">{svc.name}</h4>
-                        {/* Green connected indicator dot */}
                         {isConnected && (
                           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-dot-pulse flex-shrink-0" />
                         )}
@@ -624,19 +600,29 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
               onClick={async () => {
                 setSavingProfile(true);
                 try {
-                  const { data: { user } } = await supabase.auth.getUser();
-                  if (!user) return;
-
                   // Ensure profile exists
-                  const { data: existing } = await supabase.from('care_profiles').select('id').eq('user_id', user.id).single();
-                  if (!existing) {
-                    await supabase.from('care_profiles').insert({
-                      user_id: user.id,
+                  const patchRes = await fetch('/api/records/profile', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
                       patient_name: 'Mom',
                       patient_age: 62,
                       relationship: 'parent',
                       conditions: 'Stage IIIA Breast Cancer (HER2+, ER+)\nHypertension\nAnxiety',
                       allergies: 'Sulfa drugs\nLatex',
+                    }),
+                  });
+                  if (!patchRes.ok) {
+                    await fetch('/api/records/profile', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        patient_name: 'Mom',
+                        patient_age: 62,
+                        relationship: 'parent',
+                        conditions: 'Stage IIIA Breast Cancer (HER2+, ER+)\nHypertension\nAnxiety',
+                        allergies: 'Sulfa drugs\nLatex',
+                      }),
                     });
                   }
 
@@ -728,7 +714,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
         </div>
       )}
 
-      {/* ━━ 7. FOOTER ━━ */}
+      {/* ━━ FOOTER ━━ */}
       <footer className="flex items-center justify-between pb-10 animate-fade-in-up stagger-6">
         {!hasProfile && (
           <a href="/manual-setup" className="text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
@@ -754,7 +740,7 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
         consentHref="/api/fhir/authorize?provider=1uphealth"
         onConsent={() => {
           setShowConsent(false);
-          setConnecting(true); // show spinner while browser navigates away
+          setConnecting(true);
         }}
       />
 

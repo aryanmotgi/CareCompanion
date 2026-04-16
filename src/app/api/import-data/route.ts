@@ -1,5 +1,8 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { db } from '@/lib/db'
+import { careProfiles, medications, appointments, labResults } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 const importSchema = z.object({
@@ -28,7 +31,7 @@ const importSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const { user, supabase, error: authError } = await getAuthenticatedUser()
+    const { user, error: authError } = await getAuthenticatedUser()
     if (authError) return authError
 
     let body: unknown
@@ -41,30 +44,50 @@ export async function POST(req: Request) {
     const { data: parsed, error: valError } = validateBody(importSchema, body)
     if (valError) return valError
 
-    const { data: profile } = await supabase.from('care_profiles').select('id').eq('user_id', user.id).single()
+    const [profile] = await db
+      .select({ id: careProfiles.id })
+      .from(careProfiles)
+      .where(eq(careProfiles.userId, user!.id))
+      .limit(1)
+
     if (!profile) return apiError('No profile found', 404)
 
     const results = { medications: 0, appointments: 0, lab_results: 0 }
 
     if (parsed.medications?.length) {
-      const { data } = await supabase.from('medications').insert(
-        parsed.medications.map(m => ({ ...m, care_profile_id: profile.id }))
-      ).select()
-      results.medications = data?.length || 0
+      const rows = parsed.medications.map(m => ({
+        careProfileId: profile.id,
+        name: m.name,
+        dose: m.dose ?? null,
+        frequency: m.frequency ?? null,
+      }))
+      const inserted = await db.insert(medications).values(rows).returning()
+      results.medications = inserted.length
     }
 
     if (parsed.appointments?.length) {
-      const { data } = await supabase.from('appointments').insert(
-        parsed.appointments.map(a => ({ ...a, care_profile_id: profile.id }))
-      ).select()
-      results.appointments = data?.length || 0
+      const rows = parsed.appointments.map(a => ({
+        careProfileId: profile.id,
+        doctorName: a.doctor_name ?? null,
+        specialty: a.specialty ?? null,
+        location: a.location ?? null,
+      }))
+      const inserted = await db.insert(appointments).values(rows).returning()
+      results.appointments = inserted.length
     }
 
     if (parsed.lab_results?.length) {
-      const { data } = await supabase.from('lab_results').insert(
-        parsed.lab_results.map(l => ({ ...l, user_id: user.id }))
-      ).select()
-      results.lab_results = data?.length || 0
+      const rows = parsed.lab_results.map(l => ({
+        userId: user!.id,
+        testName: l.test_name,
+        value: l.value ?? null,
+        unit: l.unit ?? null,
+        referenceRange: l.reference_range ?? null,
+        isAbnormal: l.is_abnormal ?? false,
+        dateTaken: l.date_taken ?? null,
+      }))
+      const inserted = await db.insert(labResults).values(rows).returning()
+      results.lab_results = inserted.length
     }
 
     return apiSuccess({ imported: results })

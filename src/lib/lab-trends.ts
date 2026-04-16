@@ -76,9 +76,9 @@ function parseLabValue(value: string | null): number | null {
 export function analyzeTrend(results: LabResult[]): TrendAnalysis | null {
   if (results.length === 0) return null
 
-  const testName = results[0].test_name
+  const testName = results[0].testName
   const values = results
-    .map(r => ({ value: parseLabValue(r.value), date: r.date_taken || r.created_at }))
+    .map(r => ({ value: parseLabValue(r.value), date: r.dateTaken || (r.createdAt ? r.createdAt.toISOString() : null) }))
     .filter((v): v is { value: number; date: string } => v.value !== null)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
@@ -194,7 +194,7 @@ export function analyzeAllTrends(labResults: LabResult[]): {
   // Group by test name
   const grouped = new Map<string, LabResult[]>()
   for (const lab of labResults) {
-    const key = lab.test_name.toLowerCase()
+    const key = lab.testName.toLowerCase()
     const existing = grouped.get(key) || []
     existing.push(lab)
     grouped.set(key, existing)

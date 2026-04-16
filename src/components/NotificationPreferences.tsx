@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useToast } from './ToastProvider'
 import type { UserSettings, NotificationCategoryPrefs } from '@/lib/types'
 
@@ -159,22 +158,19 @@ export function NotificationPreferences({ settings, onSettingsChange }: Notifica
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const saveStatusTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Merge stored prefs with defaults
-  const [prefs, setPrefs] = useState<Required<NotificationCategoryPrefs>>(() => {
-    const stored = settings?.notification_preferences
-    return {
-      medications: { ...DEFAULT_PREFS.medications, ...stored?.medications },
-      appointments: { ...DEFAULT_PREFS.appointments, ...stored?.appointments },
-      lab_results: { ...DEFAULT_PREFS.lab_results, ...stored?.lab_results },
-      insurance: { ...DEFAULT_PREFS.insurance, ...stored?.insurance },
-      care_team: { ...DEFAULT_PREFS.care_team, ...stored?.care_team },
-    }
-  })
+  // Merge stored prefs with defaults (notification_preferences no longer stored in UserSettings)
+  const [prefs, setPrefs] = useState<Required<NotificationCategoryPrefs>>(() => ({
+    medications: { ...DEFAULT_PREFS.medications },
+    appointments: { ...DEFAULT_PREFS.appointments },
+    lab_results: { ...DEFAULT_PREFS.lab_results },
+    insurance: { ...DEFAULT_PREFS.insurance },
+    care_team: { ...DEFAULT_PREFS.care_team },
+  }))
 
   const [quietHours, setQuietHours] = useState({
-    enabled: settings?.quiet_hours_enabled ?? false,
-    start: settings?.quiet_hours_start ?? '22:00',
-    end: settings?.quiet_hours_end ?? '07:00',
+    enabled: !!(settings?.quietHoursStart),
+    start: settings?.quietHoursStart ?? '22:00',
+    end: settings?.quietHoursEnd ?? '07:00',
   })
 
   // Cleanup on unmount
@@ -196,31 +192,27 @@ export function NotificationPreferences({ settings, onSettingsChange }: Notifica
 
     debounceRef.current = setTimeout(async () => {
       try {
-        const supabase = createClient()
         const payload = {
-          notification_preferences: updatedPrefs,
-          quiet_hours_enabled: updatedQuietHours.enabled,
-          quiet_hours_start: updatedQuietHours.enabled ? updatedQuietHours.start : undefined,
-          quiet_hours_end: updatedQuietHours.enabled ? updatedQuietHours.end : undefined,
+          quietHoursStart: updatedQuietHours.enabled ? updatedQuietHours.start : null,
+          quietHoursEnd: updatedQuietHours.enabled ? updatedQuietHours.end : null,
           // Keep legacy fields in sync
-          refill_reminders: updatedPrefs.medications.refill_reminders && updatedPrefs.medications.enabled,
-          appointment_reminders: updatedPrefs.appointments.enabled,
-          lab_alerts: updatedPrefs.lab_results.enabled,
-          claim_updates: updatedPrefs.insurance.claim_status && updatedPrefs.insurance.enabled,
-          updated_at: new Date().toISOString(),
+          refillReminders: updatedPrefs.medications.refill_reminders && updatedPrefs.medications.enabled,
+          appointmentReminders: updatedPrefs.appointments.enabled,
+          labAlerts: updatedPrefs.lab_results.enabled,
+          claimUpdates: updatedPrefs.insurance.claim_status && updatedPrefs.insurance.enabled,
         }
 
-        const { error } = await supabase
-          .from('user_settings')
-          .update(payload)
-          .eq('user_id', settings.user_id)
+        const res = await fetch('/api/records/settings', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
 
-        if (error) throw error
+        if (!res.ok) throw new Error('Failed to save')
 
         onSettingsChange({
           ...settings,
           ...payload,
-          notification_preferences: updatedPrefs,
         })
 
         setSaveStatus('saved')

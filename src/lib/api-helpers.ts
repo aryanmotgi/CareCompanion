@@ -3,21 +3,34 @@
  * Uses the standardized response format from api-response.ts.
  */
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { auth } from '@/lib/auth'
+import { db } from '@/lib/db'
+import { users } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { apiError } from '@/lib/api-response'
 import { z } from 'zod'
 
 /**
- * Authenticate the current request and return the user + supabase client.
+ * Authenticate the current request and return the local DB user.
  * Returns an error response if not authenticated.
  */
 export async function getAuthenticatedUser() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { user: null, supabase, error: apiError('Unauthorized', 401) }
+  const session = await auth()
+  if (!session?.user?.id) {
+    return { user: null, error: apiError('Unauthorized', 401) }
   }
-  return { user, supabase, error: null }
+
+  const [dbUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.cognitoSub, session.user.id))
+    .limit(1)
+
+  if (!dbUser) {
+    return { user: null, error: apiError('Unauthorized', 401) }
+  }
+
+  return { user: dbUser, error: null }
 }
 
 /**

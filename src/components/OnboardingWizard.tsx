@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { trackEvent } from '@/lib/analytics';
 
 interface ExistingProfile {
@@ -87,7 +86,6 @@ const TOTAL_STEPS = 6;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function OnboardingWizard({ userName, userEmail, userAvatar, existingProfileId, existingProfile }: OnboardingWizardProps) {
   const router = useRouter();
-  const supabase = createClient();
 
   // Resume from step 5 if user went through FHIR connect flow
   const getInitialStep = () => {
@@ -135,34 +133,19 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
   const ensureProfileId = async (): Promise<string | null> => {
     if (profileId) return profileId;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-
-      const { data: existing } = await supabase
-        .from('care_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (existing) {
-        setProfileId(existing.id);
-        return existing.id;
-      }
-
-      // Create a minimal profile
-      const { data: created } = await supabase
-        .from('care_profiles')
-        .insert({
-          user_id: user.id,
+      const res = await fetch('/api/records/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           patient_name: role === 'patient' ? (firstName || 'Me') : patientName.trim() || 'My loved one',
           relationship: role === 'patient' ? 'self' : relationship || null,
-        })
-        .select('id')
-        .single();
-
-      if (created) {
-        setProfileId(created.id);
-        return created.id;
+        }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data.id) {
+        setProfileId(data.id);
+        return data.id;
       }
     } catch (err) {
       console.error('Failed to ensure profile:', err);
@@ -172,43 +155,33 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
 
   const saveStepProgress = async (currentStep: number) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      let stepData: Record<string, unknown> = { user_id: user.id };
+      let stepData: Record<string, unknown> = {};
 
       if (currentStep === 1) {
         stepData = {
-          ...stepData,
           patient_name: role === 'patient' ? (firstName || 'Me') : patientName.trim(),
           patient_age: patientAge ? parseInt(patientAge) : null,
           relationship: role === 'patient' ? 'self' : relationship || null,
         };
       } else if (currentStep === 2) {
         stepData = {
-          ...stepData,
           cancer_type: cancerType || null,
           cancer_stage: cancerStage || null,
           treatment_phase: treatmentPhase || null,
         };
+      } else {
+        return; // Nothing to save for other steps here
       }
 
-      if (profileId) {
-        await supabase.from('care_profiles').update(stepData).eq('id', profileId);
-      } else {
-        const { data: existing } = await supabase
-          .from('care_profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (existing) {
-          setProfileId(existing.id);
-          await supabase.from('care_profiles').update(stepData).eq('id', existing.id);
-        } else {
-          const { data: created } = await supabase.from('care_profiles').insert(stepData).select('id').single();
-          if (created) setProfileId(created.id);
-        }
+      const method = profileId ? 'PATCH' : 'POST';
+      const res = await fetch('/api/records/profile', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileId ? { id: profileId, ...stepData } : stepData),
+      });
+      if (res.ok && !profileId) {
+        const data = await res.json();
+        if (data.id) setProfileId(data.id);
       }
     } catch (err) {
       console.error('Failed to save step progress:', err);
@@ -262,51 +235,37 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
     );
   };
 
-  // Save manual entry data to Supabase
+  // Save manual entry data via API routes
   const saveManualData = async () => {
     const pid = await ensureProfileId();
     if (!pid) return;
 
     try {
-      // Save medications
       const validMeds = medications.filter((m) => m.name.trim());
       if (validMeds.length > 0) {
-        await supabase.from('medications').insert(
-          validMeds.map((m) => ({
-            care_profile_id: pid,
-            name: m.name.trim(),
-            dose: m.dose.trim() || null,
-            frequency: null,
-            prescribing_doctor: null,
-            refill_date: null,
-          }))
-        );
+        await fetch('/api/records/medications', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profileId: pid, medications: validMeds }),
+        });
       }
 
-      // Save doctors
       const validDocs = doctors.filter((d) => d.name.trim());
       if (validDocs.length > 0) {
-        await supabase.from('doctors').insert(
-          validDocs.map((d) => ({
-            care_profile_id: pid,
-            name: d.name.trim(),
-            specialty: d.specialty.trim() || null,
-            phone: null,
-          }))
-        );
+        await fetch('/api/records/doctors', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profileId: pid, doctors: validDocs }),
+        });
       }
 
-      // Save appointments
       const validAppts = appointments.filter((a) => a.doctor_name.trim());
       if (validAppts.length > 0) {
-        await supabase.from('appointments').insert(
-          validAppts.map((a) => ({
-            care_profile_id: pid,
-            doctor_name: a.doctor_name.trim(),
-            date_time: a.date_time || null,
-            purpose: null,
-          }))
-        );
+        await fetch('/api/records/appointments', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ profileId: pid, appointments: validAppts }),
+        });
       }
     } catch (err) {
       console.error('Failed to save manual data:', err);
@@ -341,37 +300,22 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
     trackEvent({ name: 'onboarding_complete', properties: { dataChoice: dataChoice || 'skip' } });
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const profileData = {
-        user_id: user.id,
+        id: profileId,
         patient_name: role === 'patient' ? (firstName || 'Me') : patientName.trim(),
         patient_age: patientAge ? parseInt(patientAge) : null,
         relationship: role === 'patient' ? 'self' : relationship || null,
         cancer_type: cancerType || null,
         cancer_stage: cancerStage || null,
         treatment_phase: treatmentPhase || null,
-        onboarding_priorities: priorities.length > 0 ? priorities : null,
         onboarding_completed: true,
       };
 
-      if (profileId) {
-        await supabase.from('care_profiles').update(profileData).eq('id', profileId);
-      } else {
-        // Check if profile already exists (from OAuth creating one)
-        const { data: existing } = await supabase
-          .from('care_profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (existing) {
-          await supabase.from('care_profiles').update(profileData).eq('id', existing.id);
-        } else {
-          await supabase.from('care_profiles').insert(profileData);
-        }
-      }
+      await fetch('/api/records/profile', {
+        method: profileId ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      });
 
       // Trigger welcome email (fire and forget)
       fetch('/api/welcome-email', { method: 'POST' }).catch(() => {});
@@ -629,24 +573,16 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
             onClick={async () => {
               setLoading(true);
               try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) return;
-                const minimalProfile = {
-                  user_id: user.id,
-                  patient_name: firstName || 'Me',
-                  relationship: 'self',
-                  onboarding_completed: true,
-                };
-                if (profileId) {
-                  await supabase.from('care_profiles').update(minimalProfile).eq('id', profileId);
-                } else {
-                  const { data: existing } = await supabase.from('care_profiles').select('id').eq('user_id', user.id).single();
-                  if (existing) {
-                    await supabase.from('care_profiles').update(minimalProfile).eq('id', existing.id);
-                  } else {
-                    await supabase.from('care_profiles').insert(minimalProfile);
-                  }
-                }
+                await fetch('/api/records/profile', {
+                  method: profileId ? 'PATCH' : 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    id: profileId,
+                    patient_name: firstName || 'Me',
+                    relationship: 'self',
+                    onboarding_completed: true,
+                  }),
+                });
                 localStorage.setItem('onboarding_just_completed', 'true');
                 router.push('/dashboard');
               } catch (err) {
@@ -876,10 +812,14 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
                   const pid = await ensureProfileId();
                   if (!pid) return;
 
-                  await supabase.from('care_profiles').update({
-                    onboarding_completed: true,
-                    onboarding_priorities: priorities.length > 0 ? priorities : null,
-                  }).eq('id', pid);
+                  await fetch('/api/records/profile', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      id: pid,
+                      onboarding_completed: true,
+                    }),
+                  });
 
                   await fetch('/api/seed-demo', { method: 'POST' });
                   localStorage.setItem('onboarding_just_completed', 'true');

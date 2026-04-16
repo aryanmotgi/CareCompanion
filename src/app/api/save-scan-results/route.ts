@@ -1,6 +1,9 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { rateLimit } from '@/lib/rate-limit';
+import { db } from '@/lib/db';
+import { careProfiles, medications, labResults, insurance, appointments, claims } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 20 });
@@ -63,7 +66,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    const { user, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
 
     const body = await req.json();
@@ -71,11 +74,11 @@ export async function POST(req: Request) {
     if (valError) return valError;
 
     // Get care profile
-    const { data: profile } = await supabase
-      .from('care_profiles')
-      .select('id, conditions, allergies')
-      .eq('user_id', user.id)
-      .single();
+    const [profile] = await db
+      .select({ id: careProfiles.id, conditions: careProfiles.conditions })
+      .from(careProfiles)
+      .where(eq(careProfiles.userId, user!.id))
+      .limit(1);
 
     if (!profile) {
       return apiError('No care profile found', 400);
@@ -86,48 +89,45 @@ export async function POST(req: Request) {
     // Save medications
     if (data.medications?.length) {
       const rows = data.medications.map((med) => ({
-        care_profile_id: profile.id,
+        careProfileId: profile.id,
         name: med.name,
-        dose: med.dose || null,
-        frequency: med.frequency || null,
-        prescribing_doctor: med.prescribing_doctor || null,
-        refill_date: med.refill_date || null,
-        notes: `Imported via photo scan`,
+        dose: med.dose ?? null,
+        frequency: med.frequency ?? null,
+        prescribingDoctor: med.prescribing_doctor ?? null,
+        refillDate: med.refill_date ?? null,
+        notes: 'Imported via photo scan',
       }));
-      const { error } = await supabase.from('medications').insert(rows);
-      if (!error) saved.medications = rows.length;
+      await db.insert(medications).values(rows);
+      saved.medications = rows.length;
     }
 
     // Save lab results
     if (data.lab_results?.length) {
       const rows = data.lab_results.map((lab) => ({
-        user_id: user.id,
-        test_name: lab.test_name,
-        value: lab.value || null,
-        unit: lab.unit || null,
-        reference_range: lab.reference_range || null,
-        is_abnormal: lab.is_abnormal || false,
-        date_taken: data.date_taken || null,
+        userId: user!.id,
+        testName: lab.test_name,
+        value: lab.value ?? null,
+        unit: lab.unit ?? null,
+        referenceRange: lab.reference_range ?? null,
+        isAbnormal: lab.is_abnormal ?? false,
+        dateTaken: data.date_taken ?? null,
         source: 'photo_scan',
       }));
-      const { error } = await supabase.from('lab_results').insert(rows);
-      if (!error) saved.lab_results = rows.length;
+      await db.insert(labResults).values(rows);
+      saved.lab_results = rows.length;
     }
 
     // Save insurance
     if (data.insurance) {
       const ins = data.insurance;
-      const { error } = await supabase.from('insurance').upsert(
-        {
-          user_id: user.id,
-          provider: ins.provider || 'Unknown',
-          member_id: ins.member_id || null,
-          group_number: ins.group_number || null,
-          plan_year: new Date().getFullYear(),
-        },
-        { onConflict: 'id' }
-      );
-      if (!error) saved.insurance = 1;
+      await db.insert(insurance).values({
+        userId: user!.id,
+        provider: ins.provider ?? 'Unknown',
+        memberId: ins.member_id ?? null,
+        groupNumber: ins.group_number ?? null,
+        planYear: new Date().getFullYear(),
+      });
+      saved.insurance = 1;
     }
 
     // Save conditions (append to existing)
@@ -138,7 +138,7 @@ export async function POST(req: Request) {
         const updated = existing
           ? `${existing}\n${newConditions.join('\n')}`
           : newConditions.join('\n');
-        await supabase.from('care_profiles').update({ conditions: updated }).eq('id', profile.id);
+        await db.update(careProfiles).set({ conditions: updated }).where(eq(careProfiles.id, profile.id));
         saved.conditions = newConditions.length;
       }
     }
@@ -146,28 +146,28 @@ export async function POST(req: Request) {
     // Save appointments
     if (data.appointments?.length) {
       const rows = data.appointments.map((appt) => ({
-        care_profile_id: profile.id,
-        doctor_name: appt.doctor_name || null,
-        date_time: appt.date_time || null,
-        purpose: appt.purpose || null,
+        careProfileId: profile.id,
+        doctorName: appt.doctor_name ?? null,
+        dateTime: appt.date_time ? new Date(appt.date_time) : null,
+        purpose: appt.purpose ?? null,
       }));
-      const { error } = await supabase.from('appointments').insert(rows);
-      if (!error) saved.appointments = rows.length;
+      await db.insert(appointments).values(rows);
+      saved.appointments = rows.length;
     }
 
     // Save claims
     if (data.claims?.length) {
       const rows = data.claims.map((claim) => ({
-        user_id: user.id,
-        service_date: claim.service_date || null,
-        provider_name: claim.provider_name || null,
-        billed_amount: claim.billed_amount || null,
-        paid_amount: claim.paid_amount || null,
-        patient_responsibility: claim.patient_responsibility || null,
-        status: claim.status || 'pending',
+        userId: user!.id,
+        serviceDate: claim.service_date ?? null,
+        providerName: claim.provider_name ?? null,
+        billedAmount: claim.billed_amount?.toString() ?? null,
+        paidAmount: claim.paid_amount?.toString() ?? null,
+        patientResponsibility: claim.patient_responsibility?.toString() ?? null,
+        status: claim.status ?? 'pending',
       }));
-      const { error } = await supabase.from('claims').insert(rows);
-      if (!error) saved.claims = rows.length;
+      await db.insert(claims).values(rows);
+      saved.claims = rows.length;
     }
 
     return apiSuccess({ success: true, saved });

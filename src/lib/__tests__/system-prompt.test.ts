@@ -4,13 +4,11 @@ import type { CareProfile, Medication, Doctor, Appointment } from '@/lib/types'
 
 const baseProfile: CareProfile = {
   id: 'p1',
-  user_id: 'u1',
-  patient_name: 'Sarah Johnson',
-  patient_age: 72,
+  userId: 'u1',
+  patientName: 'Sarah Johnson',
+  patientAge: 72,
   relationship: 'mother',
-  conditions: 'Type 2 Diabetes, Hypertension',
-  allergies: 'Penicillin, Sulfa drugs',
-  created_at: '2026-01-01',
+  createdAt: new Date('2026-01-01'),
 }
 
 describe('buildSystemPrompt', () => {
@@ -25,23 +23,19 @@ describe('buildSystemPrompt', () => {
     expect(result).toContain('Sarah Johnson')
     expect(result).toContain('Age: 72')
     expect(result).toContain('mother')
-    expect(result).toContain('Type 2 Diabetes, Hypertension')
-    expect(result).toContain('Penicillin, Sulfa drugs')
   })
 
   it('includes medication details', () => {
     const meds: Medication[] = [{
       id: 'm1',
-      care_profile_id: 'p1',
+      careProfileId: 'p1',
       name: 'Metformin',
       dose: '500mg',
       frequency: 'Twice daily',
-      prescribing_doctor: 'Dr. Lee',
-      refill_date: '2026-04-15',
-      start_date: null,
-      quantity_remaining: null,
+      prescribingDoctor: 'Dr. Lee',
+      refillDate: '2026-04-15',
       notes: null,
-      created_at: '2026-01-01',
+      createdAt: new Date('2026-01-01'),
     }]
     const result = buildSystemPrompt(baseProfile, meds, null, null)
     expect(result).toContain('Metformin')
@@ -59,13 +53,12 @@ describe('buildSystemPrompt', () => {
   it('includes doctor details', () => {
     const docs: Doctor[] = [{
       id: 'd1',
-      care_profile_id: 'p1',
+      careProfileId: 'p1',
       name: 'Dr. Chen',
       specialty: 'Endocrinology',
       phone: '555-0100',
-      address: null,
       notes: null,
-      created_at: '2026-01-01',
+      createdAt: new Date('2026-01-01'),
     }]
     const result = buildSystemPrompt(baseProfile, null, docs, null)
     expect(result).toContain('Dr. Chen')
@@ -76,15 +69,13 @@ describe('buildSystemPrompt', () => {
   it('includes appointment details', () => {
     const appts: Appointment[] = [{
       id: 'a1',
-      care_profile_id: 'p1',
-      doctor_name: 'Dr. Patel',
+      careProfileId: 'p1',
+      doctorName: 'Dr. Patel',
       specialty: null,
-      date_time: '2026-05-01T14:00:00Z',
+      dateTime: new Date('2026-05-01T14:00:00Z'),
       location: null,
       purpose: 'Blood pressure check',
-      prep_notes: null,
-      follow_up_notes: null,
-      created_at: '2026-01-01',
+      createdAt: new Date('2026-01-01'),
     }]
     const result = buildSystemPrompt(baseProfile, null, null, appts)
     expect(result).toContain('Dr. Patel')
@@ -95,15 +86,15 @@ describe('buildSystemPrompt', () => {
     const result = buildSystemPrompt(baseProfile, null, null, null, {
       labResults: [{
         id: 'l1',
-        user_id: 'u1',
-        test_name: 'LDL Cholesterol',
+        userId: 'u1',
+        testName: 'LDL Cholesterol',
         value: '180',
         unit: 'mg/dL',
-        reference_range: '<100',
-        is_abnormal: true,
-        date_taken: '2026-03-15',
+        referenceRange: '<100',
+        isAbnormal: true,
+        dateTaken: '2026-03-15',
         source: 'lab',
-        created_at: '2026-03-15',
+        createdAt: new Date('2026-03-15'),
       }],
     })
     expect(result).toContain('LDL Cholesterol')
@@ -116,16 +107,16 @@ describe('buildSystemPrompt', () => {
     const result = buildSystemPrompt(baseProfile, null, null, null, {
       claims: [{
         id: 'c1',
-        user_id: 'u1',
-        provider_name: 'City Hospital',
-        billed_amount: 1200,
-        paid_amount: 0,
-        patient_responsibility: 1200,
-        denial_reason: 'Out of network',
+        userId: 'u1',
+        providerName: 'City Hospital',
+        billedAmount: '1200',
+        paidAmount: '0',
+        patientResponsibility: '1200',
+        denialReason: 'Out of network',
         status: 'denied',
-        service_date: '2026-02-15',
-        eob_url: null,
-        created_at: '2026-02-15',
+        serviceDate: '2026-02-15',
+        eobUrl: null,
+        createdAt: new Date('2026-02-15'),
       }],
     })
     expect(result).toContain('DENIED CLAIMS')
@@ -137,12 +128,12 @@ describe('buildSystemPrompt', () => {
     const result = buildSystemPrompt(baseProfile, null, null, null, {
       notifications: [{
         id: 'n1',
-        user_id: 'u1',
+        userId: 'u1',
         type: 'medication_reminder',
         title: 'Time to take Metformin',
         message: '500mg — morning dose',
-        is_read: false,
-        created_at: '2026-04-03',
+        isRead: false,
+        createdAt: new Date('2026-04-03'),
       }],
     })
     expect(result).toContain('UNREAD ALERTS')
@@ -154,25 +145,25 @@ describe('buildSystemPrompt', () => {
       memories: [
         {
           id: 'mem1',
-          user_id: 'u1',
-          care_profile_id: 'p1',
+          userId: 'u1',
+          careProfileId: 'p1',
           fact: 'Sarah prefers to take meds with breakfast',
           category: 'preference',
           source: 'conversation',
           confidence: 'high',
-          last_referenced: new Date().toISOString(),
-          created_at: '2026-01-01',
+          lastReferenced: new Date(),
+          createdAt: new Date('2026-01-01'),
         },
         {
           id: 'mem2',
-          user_id: 'u1',
-          care_profile_id: 'p1',
+          userId: 'u1',
+          careProfileId: 'p1',
           fact: 'Diagnosed with Type 2 Diabetes in 2018',
           category: 'condition',
           source: 'conversation',
           confidence: 'high',
-          last_referenced: new Date().toISOString(),
-          created_at: '2026-01-01',
+          lastReferenced: new Date(),
+          createdAt: new Date('2026-01-01'),
         },
       ],
     })

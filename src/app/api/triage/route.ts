@@ -6,7 +6,10 @@
 import { generateText, Output } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
+import { careProfiles, medications } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
+import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { rateLimit } from '@/lib/rate-limit'
 import { apiSuccess, apiError, ApiErrors } from '@/lib/api-response'
 
@@ -43,9 +46,8 @@ export async function POST(req: Request) {
   if (!success) return ApiErrors.rateLimited()
 
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return ApiErrors.unauthorized()
+    const { user: dbUser, error } = await getAuthenticatedUser()
+    if (error) return ApiErrors.unauthorized()
 
     const body = await req.json()
     const parsed = TriageInputSchema.safeParse(body)
@@ -56,19 +58,28 @@ export async function POST(req: Request) {
     const { symptoms, severity, duration, additional_context } = parsed.data
 
     // Fetch patient context for personalized triage
-    const { data: profile } = await supabase
-      .from('care_profiles')
-      .select('id, cancer_type, cancer_stage, treatment_phase, conditions, allergies')
-      .eq('user_id', user.id)
-      .single()
+    const [profile] = await db
+      .select({
+        id: careProfiles.id,
+        cancerType: careProfiles.cancerType,
+        cancerStage: careProfiles.cancerStage,
+        treatmentPhase: careProfiles.treatmentPhase,
+        conditions: careProfiles.conditions,
+        allergies: careProfiles.allergies,
+      })
+      .from(careProfiles)
+      .where(eq(careProfiles.userId, dbUser!.id))
+      .limit(1)
 
-    const { data: medications } = await supabase
-      .from('medications')
-      .select('name, dose')
-      .eq('care_profile_id', profile?.id || '')
+    const meds = profile
+      ? await db
+          .select({ name: medications.name, dose: medications.dose })
+          .from(medications)
+          .where(eq(medications.careProfileId, profile.id))
+      : []
 
     const patientContext = profile
-      ? `Cancer type: ${profile.cancer_type || 'unknown'}. Stage: ${profile.cancer_stage || 'unknown'}. Phase: ${profile.treatment_phase || 'unknown'}. Other conditions: ${profile.conditions || 'none'}. Allergies: ${profile.allergies || 'none'}. Current meds: ${(medications || []).map(m => m.name).join(', ') || 'none'}.`
+      ? `Cancer type: ${profile.cancerType || 'unknown'}. Stage: ${profile.cancerStage || 'unknown'}. Phase: ${profile.treatmentPhase || 'unknown'}. Other conditions: ${profile.conditions || 'none'}. Allergies: ${profile.allergies || 'none'}. Current meds: ${meds.map(m => m.name).join(', ') || 'none'}.`
       : 'No patient profile available.'
 
     const { output: triage } = await generateText({
@@ -95,8 +106,8 @@ Include cancer-specific context (e.g., "nausea is common on day 3-5 of FOLFOX").
     })
 
     return apiSuccess(triage)
-  } catch (error) {
-    console.error('[triage] Error:', error)
+  } catch (err) {
+    console.error('[triage] Error:', err)
     return apiError('Triage assessment failed', 500)
   }
 }

@@ -1,43 +1,44 @@
 import { Suspense } from 'react';
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { users, careProfiles, messages } from '@/lib/db/schema';
+import { eq, asc } from 'drizzle-orm';
 import { ChatInterface } from '@/components/ChatInterface';
-import type { Message } from '@/lib/types';
 
 async function ChatContent() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  if (!user) redirect('/login');
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('id, patient_name')
-    .eq('user_id', user.id)
-    .single();
+  const [profile] = await db
+    .select({ id: careProfiles.id, patientName: careProfiles.patientName })
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, dbUser.id))
+    .limit(1);
 
   if (!profile) redirect('/setup');
 
-  const { data: dbMessages } = await supabase
-    .from('messages')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: true })
+  const dbMessages = await db
+    .select()
+    .from(messages)
+    .where(eq(messages.userId, dbUser.id))
+    .orderBy(asc(messages.createdAt))
     .limit(50);
 
-  const initialMessages = (dbMessages || []).map((msg: Message) => ({
+  const initialMessages = dbMessages.map((msg) => ({
     id: msg.id,
     role: msg.role as 'user' | 'assistant',
     parts: [{ type: 'text' as const, text: msg.content }],
-    createdAt: new Date(msg.created_at),
+    createdAt: msg.createdAt ?? new Date(),
   }));
 
   return (
     <ChatInterface
       initialMessages={initialMessages}
-      patientName={profile.patient_name || 'your loved one'}
+      patientName={profile.patientName || 'your loved one'}
     />
   );
 }

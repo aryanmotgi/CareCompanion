@@ -103,13 +103,13 @@ export function buildSystemPrompt(
   }
 
   let context = `\n\n=== CARE PROFILE ===\n`;
-  context += `Patient: ${profile.patient_name || 'Not provided'}`;
-  if (profile.patient_age) context += `, Age: ${profile.patient_age}`;
+  context += `Patient: ${profile.patientName || 'Not provided'}`;
+  if (profile.patientAge) context += `, Age: ${profile.patientAge}`;
   context += `\n`;
   if (profile.relationship) context += `Relationship: ${profile.relationship}\n`;
-  if (profile.cancer_type) context += `Cancer Type: ${profile.cancer_type}\n`;
-  if (profile.cancer_stage) context += `Cancer Stage: ${profile.cancer_stage}\n`;
-  if (profile.treatment_phase) {
+  if (profile.cancerType) context += `Cancer Type: ${profile.cancerType}\n`;
+  if (profile.cancerStage) context += `Cancer Stage: ${profile.cancerStage}\n`;
+  if (profile.treatmentPhase) {
     const phaseLabels: Record<string, string> = {
       just_diagnosed: 'Just diagnosed — learning about options',
       active_treatment: 'Active treatment (chemo, radiation, or surgery)',
@@ -117,24 +117,22 @@ export function buildSystemPrompt(
       remission: 'In remission — monitoring and follow-ups',
       unsure: 'Treatment phase not yet determined',
     };
-    context += `Treatment Phase: ${phaseLabels[profile.treatment_phase] || profile.treatment_phase}\n`;
+    context += `Treatment Phase: ${phaseLabels[profile.treatmentPhase] || profile.treatmentPhase}\n`;
   }
-  if (profile.conditions) context += `Conditions: ${profile.conditions}\n`;
-  if (profile.allergies) context += `Allergies: ${profile.allergies}\n`;
 
   // Dynamic personalized greeting based on cancer type and treatment phase
   context += `\n=== PERSONALIZED GREETING ===\n`;
   context += `When the user first messages you with no prior history, use this greeting instead of the default:\n`;
-  if (profile.cancer_type && profile.treatment_phase === 'active_treatment') {
-    context += `"I see you're going through active treatment for ${profile.cancer_type}. How are you feeling today? I'm here to help with side effects, medications, appointments, or anything else on your mind."\n`;
-  } else if (profile.cancer_type && profile.treatment_phase === 'just_diagnosed') {
-    context += `"I understand you've been recently diagnosed with ${profile.cancer_type}. That's a lot to process. I'm here to help you navigate your care — from understanding your diagnosis to preparing for appointments."\n`;
-  } else if (profile.cancer_type && profile.treatment_phase === 'between_treatments') {
-    context += `"I see you're between treatment cycles for ${profile.cancer_type}. How are you recovering? I can help you track symptoms, prepare for your next cycle, or answer any questions."\n`;
-  } else if (profile.cancer_type && profile.treatment_phase === 'remission') {
-    context += `"Great to see you're in remission from ${profile.cancer_type}. How are you doing? I'm here to help with follow-up care, monitoring, and anything on your mind."\n`;
-  } else if (profile.cancer_type) {
-    context += `"I see you're managing ${profile.cancer_type}. How are you doing today? I'm here to help with anything related to your care."\n`;
+  if (profile.cancerType && profile.treatmentPhase === 'active_treatment') {
+    context += `"I see you're going through active treatment for ${profile.cancerType}. How are you feeling today? I'm here to help with side effects, medications, appointments, or anything else on your mind."\n`;
+  } else if (profile.cancerType && profile.treatmentPhase === 'just_diagnosed') {
+    context += `"I understand you've been recently diagnosed with ${profile.cancerType}. That's a lot to process. I'm here to help you navigate your care — from understanding your diagnosis to preparing for appointments."\n`;
+  } else if (profile.cancerType && profile.treatmentPhase === 'between_treatments') {
+    context += `"I see you're between treatment cycles for ${profile.cancerType}. How are you recovering? I can help you track symptoms, prepare for your next cycle, or answer any questions."\n`;
+  } else if (profile.cancerType && profile.treatmentPhase === 'remission') {
+    context += `"Great to see you're in remission from ${profile.cancerType}. How are you doing? I'm here to help with follow-up care, monitoring, and anything on your mind."\n`;
+  } else if (profile.cancerType) {
+    context += `"I see you're managing ${profile.cancerType}. How are you doing today? I'm here to help with anything related to your care."\n`;
   } else {
     context += `"How are you doing today? Tell me about yourself or the person you're caring for — what type of cancer, where you are in treatment, and how things have been going."\n`;
   }
@@ -146,8 +144,8 @@ export function buildSystemPrompt(
       context += `- ${med.name}`;
       if (med.dose) context += `, ${med.dose}`;
       if (med.frequency) context += `, ${med.frequency}`;
-      if (med.prescribing_doctor) context += ` (prescribed by ${med.prescribing_doctor})`;
-      if (med.refill_date) context += ` [refill: ${med.refill_date}]`;
+      if (med.prescribingDoctor) context += ` (prescribed by ${med.prescribingDoctor})`;
+      if (med.refillDate) context += ` [refill: ${med.refillDate}]`;
       context += `\n`;
     });
   } else {
@@ -170,8 +168,8 @@ export function buildSystemPrompt(
     context += `\n=== UPCOMING APPOINTMENTS ===\n`;
     appointments.forEach((appt) => {
       context += `- `;
-      if (appt.doctor_name) context += `${appt.doctor_name}`;
-      if (appt.date_time) context += ` on ${new Date(appt.date_time).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
+      if (appt.doctorName) context += `${appt.doctorName}`;
+      if (appt.dateTime) context += ` on ${new Date(appt.dateTime).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
       if (appt.purpose) context += ` — ${appt.purpose}`;
       context += `\n`;
     });
@@ -185,15 +183,15 @@ export function buildSystemPrompt(
 
     if (labResults && labResults.length > 0) {
       context += `\n=== RECENT LAB RESULTS ===\n`;
-      const abnormal = labResults.filter((l) => l.is_abnormal);
+      const abnormal = labResults.filter((l) => l.isAbnormal);
       if (abnormal.length > 0) {
         context += `⚠️ ${abnormal.length} ABNORMAL result(s):\n`;
       }
       labResults.forEach((lab) => {
-        context += `- ${lab.test_name}: ${lab.value} ${lab.unit || ''}`;
-        if (lab.reference_range) context += ` (range: ${lab.reference_range})`;
-        if (lab.is_abnormal) context += ` ⚠️ ABNORMAL`;
-        if (lab.date_taken) context += ` [${lab.date_taken}]`;
+        context += `- ${lab.testName}: ${lab.value} ${lab.unit || ''}`;
+        if (lab.referenceRange) context += ` (range: ${lab.referenceRange})`;
+        if (lab.isAbnormal) context += ` ⚠️ ABNORMAL`;
+        if (lab.dateTaken) context += ` [${lab.dateTaken}]`;
         context += `\n`;
       });
     }
@@ -214,31 +212,31 @@ export function buildSystemPrompt(
         context += `\n=== DENIED CLAIMS ===\n`;
         context += `Explain these denials in plain English and offer to help appeal:\n`;
         denied.forEach((c) => {
-          context += `- ${c.provider_name || 'Unknown'}: ${c.denial_reason || 'Reason not provided'}`;
-          if (c.billed_amount) context += ` ($${c.billed_amount})`;
+          context += `- ${c.providerName || 'Unknown'}: ${c.denialReason || 'Reason not provided'}`;
+          if (c.billedAmount) context += ` ($${c.billedAmount})`;
           context += `\n`;
         });
       }
     }
 
     if (priorAuths && priorAuths.length > 0) {
-      const expiring = priorAuths.filter((a) => a.expiry_date && new Date(a.expiry_date) <= new Date(Date.now() + 14 * 24 * 60 * 60 * 1000));
+      const expiring = priorAuths.filter((a) => a.expiryDate && new Date(a.expiryDate) <= new Date(Date.now() + 14 * 24 * 60 * 60 * 1000));
       if (expiring.length > 0) {
         context += `\n=== EXPIRING PRIOR AUTHORIZATIONS ===\n`;
         expiring.forEach((a) => {
-          context += `- ${a.service}: expires ${a.expiry_date}`;
-          if (a.sessions_approved) context += ` (${a.sessions_used}/${a.sessions_approved} sessions used)`;
+          context += `- ${a.service}: expires ${a.expiryDate}`;
+          if (a.sessionsApproved) context += ` (${a.sessionsUsed}/${a.sessionsApproved} sessions used)`;
           context += `\n`;
         });
       }
     }
 
     if (fsaHsa && fsaHsa.length > 0) {
-      const lowBalance = fsaHsa.filter((a) => a.contribution_limit && a.balance < a.contribution_limit * 0.1);
+      const lowBalance = fsaHsa.filter((a) => a.contributionLimit && a.balance && parseFloat(a.balance) < parseFloat(a.contributionLimit) * 0.1);
       if (lowBalance.length > 0) {
         context += `\n=== LOW FSA/HSA BALANCE ===\n`;
         lowBalance.forEach((a) => {
-          context += `- ${a.provider} (${a.account_type.toUpperCase()}): $${a.balance} remaining\n`;
+          context += `- ${a.provider} (${(a.accountType ?? '').toUpperCase()}): $${a.balance} remaining\n`;
         });
       }
     }
@@ -276,7 +274,7 @@ export function buildSystemPrompt(
       for (const [category, mems] of Array.from(grouped.entries())) {
         context += `[${categoryLabels[category] || category}]\n`;
         for (const mem of mems) {
-          const age = daysSince(mem.last_referenced);
+          const age = mem.lastReferenced ? daysSince(mem.lastReferenced.toISOString()) : 999;
           const recency = age < 7 ? '' : age < 30 ? ' (mentioned weeks ago)' : ' (mentioned a while ago)';
           context += `- ${mem.fact}${recency}\n`;
         }
@@ -289,9 +287,9 @@ export function buildSystemPrompt(
       context += `=== RECENT CONVERSATIONS ===\n`;
       context += `Summary of past sessions (most recent first):\n`;
       for (const summary of conversationSummaries) {
-        const date = new Date(summary.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const date = summary.createdAt ? new Date(summary.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
         context += `- [${date}] ${summary.summary}`;
-        if (summary.topics.length > 0) context += ` (topics: ${summary.topics.join(', ')})`;
+        if (summary.topics && summary.topics.length > 0) context += ` (topics: ${summary.topics.join(', ')})`;
         context += `\n`;
       }
       context += `\n`;

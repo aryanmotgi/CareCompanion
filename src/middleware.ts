@@ -1,60 +1,28 @@
-import { createServerClient } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
+import { auth } from '@/lib/auth'
+import { NextResponse } from 'next/server'
 
-export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
+export default auth((req) => {
+  const { pathname } = req.nextUrl
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
-
-  // Unauthenticated users can only access /login
-  if (!user && pathname !== '/login') {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
+  if (!req.auth && pathname !== '/login') {
+    const url = req.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
   }
 
-  // Authenticated users shouldn't see the login page
-  if (user && pathname === '/login') {
-    const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
+  if (req.auth && pathname === '/login') {
+    const url = req.nextUrl.clone()
+    url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
   }
 
-  // Set CSRF cookie if it doesn't exist (double-submit cookie pattern)
-  if (!request.cookies.get('cc-csrf-token')) {
+  const response = NextResponse.next()
+
+  if (!req.cookies.get('cc-csrf-token')) {
     const array = new Uint8Array(32)
     crypto.getRandomValues(array)
     const token = Array.from(array, b => b.toString(16).padStart(2, '0')).join('')
-    supabaseResponse.cookies.set('cc-csrf-token', token, {
+    response.cookies.set('cc-csrf-token', token, {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
@@ -63,9 +31,9 @@ export async function middleware(request: NextRequest) {
     })
   }
 
-  return supabaseResponse;
-}
+  return response
+})
 
 export const config = {
   matcher: ['/chat', '/profile', '/setup', '/login', '/settings', '/dashboard', '/care', '/medications', '/appointments', '/scans', '/connect', '/manual-setup', '/onboarding', '/api/chat'],
-};
+}

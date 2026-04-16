@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
+import { signOut } from 'next-auth/react'
 
 interface ProfileMenuProps {
   isOpen: boolean
@@ -168,11 +168,7 @@ export function ProfileMenu({ isOpen, onClose, userName, patientName }: ProfileM
 
         <div className="p-3 pt-0 border-t border-[var(--border)]">
           <button
-            onClick={async () => {
-              const supabase = createClient()
-              await supabase.auth.signOut()
-              window.location.href = '/login'
-            }}
+            onClick={() => signOut({ callbackUrl: '/login' })}
             className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-red-500/10 transition-colors w-full animate-press"
           >
             <svg width="18" height="18" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24">

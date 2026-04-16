@@ -1,23 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { signOut } from 'next-auth/react';
 
 export function DemoBanner() {
-  const router = useRouter();
-  const supabase = createClient();
   const [leaving, setLeaving] = useState(false);
 
   const handleLeave = async () => {
     setLeaving(true);
     try {
-      await supabase.auth.signOut();
-      router.push('/');
-      // Force full navigation to clear all state
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 100);
+      await signOut({ callbackUrl: '/' });
     } catch {
       window.location.href = '/';
     }

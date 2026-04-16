@@ -3,7 +3,9 @@
  * When a user corrects a fact, the old memory should be superseded, not duplicated.
  * Also handles confidence decay for old unreferenced memories.
  */
-import { createAdminClient } from '@/lib/supabase/admin'
+import { db } from '@/lib/db'
+import { memories } from '@/lib/db/schema'
+import { eq, and, lt, sql } from 'drizzle-orm'
 import type { Memory } from './types'
 
 /**
@@ -16,7 +18,6 @@ export async function resolveConflicts(
   category: string,
   existingMemories: Memory[],
 ): Promise<string[]> {
-  const admin = createAdminClient()
   const superseded: string[] = []
 
   // Find memories in the same category that might conflict
@@ -27,10 +28,13 @@ export async function resolveConflicts(
       superseded.push(mem.id)
 
       // Mark the old memory as superseded
-      await admin.from('memories').update({
-        confidence: 'low',
-        fact: `[SUPERSEDED by: "${newFact.slice(0, 100)}"] ${mem.fact}`,
-      }).eq('id', mem.id)
+      await db
+        .update(memories)
+        .set({
+          confidence: 'low',
+          fact: `[SUPERSEDED by: "${newFact.slice(0, 100)}"] ${mem.fact}`,
+        })
+        .where(eq(memories.id, mem.id))
     }
   }
 
@@ -108,27 +112,34 @@ function extractEntities(text: string): string[] {
  * Run from a cron job.
  */
 export async function decayOldMemories(): Promise<number> {
-  const admin = createAdminClient()
-  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+  const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000)
 
   // Downgrade high → medium for memories not referenced in 90 days
-  const { data: decayed } = await admin
-    .from('memories')
-    .update({ confidence: 'medium' })
-    .eq('confidence', 'high')
-    .lt('last_referenced', ninetyDaysAgo)
-    .not('fact', 'ilike', '%[SUPERSEDED%')
-    .select('id')
+  const decayed = await db
+    .update(memories)
+    .set({ confidence: 'medium' })
+    .where(
+      and(
+        eq(memories.confidence, 'high'),
+        lt(memories.lastReferenced, ninetyDaysAgo),
+        sql`${memories.fact} not ilike '%[SUPERSEDED%'`
+      )
+    )
+    .returning({ id: memories.id })
 
   // Downgrade medium → low for memories not referenced in 180 days
-  const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString()
-  const { data: furtherDecayed } = await admin
-    .from('memories')
-    .update({ confidence: 'low' })
-    .eq('confidence', 'medium')
-    .lt('last_referenced', sixMonthsAgo)
-    .not('fact', 'ilike', '%[SUPERSEDED%')
-    .select('id')
+  const furtherDecayed = await db
+    .update(memories)
+    .set({ confidence: 'low' })
+    .where(
+      and(
+        eq(memories.confidence, 'medium'),
+        lt(memories.lastReferenced, sixMonthsAgo),
+        sql`${memories.fact} not ilike '%[SUPERSEDED%'`
+      )
+    )
+    .returning({ id: memories.id })
 
-  return (decayed?.length || 0) + (furtherDecayed?.length || 0)
+  return decayed.length + furtherDecayed.length
 }

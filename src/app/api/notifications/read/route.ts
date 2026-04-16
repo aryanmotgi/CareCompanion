@@ -1,6 +1,9 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess, ApiErrors } from '@/lib/api-response';
 import { rateLimit } from '@/lib/rate-limit';
+import { db } from '@/lib/db';
+import { notifications } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 20 });
@@ -20,7 +23,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    const { user, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
 
     const body = await req.json();
@@ -28,19 +31,15 @@ export async function POST(req: Request) {
     if (valError) return valError;
 
     if (validated.all) {
-      // Mark all as read
-      await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
+      await db
+        .update(notifications)
+        .set({ isRead: true })
+        .where(and(eq(notifications.userId, user!.id), eq(notifications.isRead, false)));
     } else if (validated.id) {
-      // Mark single notification as read
-      await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', validated.id)
-        .eq('user_id', user.id);
+      await db
+        .update(notifications)
+        .set({ isRead: true })
+        .where(and(eq(notifications.id, validated.id), eq(notifications.userId, user!.id)));
     }
 
     return apiSuccess({ success: true });

@@ -2,6 +2,9 @@ import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { apiError, ApiErrors } from '@/lib/api-response'
 import { rateLimit } from '@/lib/rate-limit'
 import { logAudit } from '@/lib/audit'
+import { db } from '@/lib/db'
+import { careProfiles, medications, appointments, doctors, labResults, claims, documents, notifications } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 5 })
 
@@ -11,38 +14,43 @@ export async function GET(req: Request) {
   if (!success) return ApiErrors.rateLimited()
 
   try {
-    const { user, supabase, error: authError } = await getAuthenticatedUser()
+    const { user, error: authError } = await getAuthenticatedUser()
     if (authError) return authError
 
     await logAudit({
-      user_id: user.id,
+      user_id: user!.id,
       action: 'export_data',
       ip_address: req.headers.get('x-forwarded-for') || undefined,
     })
 
-    const { data: profile } = await supabase.from('care_profiles').select('*').eq('user_id', user.id).single()
+    const [profile] = await db
+      .select()
+      .from(careProfiles)
+      .where(eq(careProfiles.userId, user!.id))
+      .limit(1)
+
     const profileId = profile?.id
 
-    const [medications, appointments, doctors, labResults, claims, documents, notifications] = await Promise.all([
-      profileId ? supabase.from('medications').select('*').eq('care_profile_id', profileId) : { data: [] },
-      profileId ? supabase.from('appointments').select('*').eq('care_profile_id', profileId) : { data: [] },
-      profileId ? supabase.from('doctors').select('*').eq('care_profile_id', profileId) : { data: [] },
-      supabase.from('lab_results').select('*').eq('user_id', user.id),
-      supabase.from('claims').select('*').eq('user_id', user.id),
-      profileId ? supabase.from('documents').select('*').eq('care_profile_id', profileId) : { data: [] },
-      supabase.from('notifications').select('*').eq('user_id', user.id),
+    const [medsData, apptsData, docsData, doctorsData, labsData, claimsData, notifsData] = await Promise.all([
+      profileId ? db.select().from(medications).where(eq(medications.careProfileId, profileId)) : [],
+      profileId ? db.select().from(appointments).where(eq(appointments.careProfileId, profileId)) : [],
+      profileId ? db.select().from(documents).where(eq(documents.careProfileId, profileId)) : [],
+      profileId ? db.select().from(doctors).where(eq(doctors.careProfileId, profileId)) : [],
+      db.select().from(labResults).where(eq(labResults.userId, user!.id)),
+      db.select().from(claims).where(eq(claims.userId, user!.id)),
+      db.select().from(notifications).where(eq(notifications.userId, user!.id)),
     ])
 
     const exportData = {
       exported_at: new Date().toISOString(),
       profile,
-      medications: medications.data,
-      appointments: appointments.data,
-      doctors: doctors.data,
-      lab_results: labResults.data,
-      claims: claims.data,
-      documents: documents.data,
-      notifications: notifications.data,
+      medications: medsData,
+      appointments: apptsData,
+      doctors: doctorsData,
+      lab_results: labsData,
+      claims: claimsData,
+      documents: docsData,
+      notifications: notifsData,
     }
 
     return new Response(JSON.stringify(exportData, null, 2), {

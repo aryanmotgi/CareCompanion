@@ -1,25 +1,56 @@
-import { createClient } from '@/lib/supabase/server';
+import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { db } from '@/lib/db';
+import { connectedApps } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
 
 export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  if (!user) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const connections = await db
+    .select({
+      source: connectedApps.source,
+      lastSynced: connectedApps.lastSynced,
+      metadata: connectedApps.metadata,
+      expiresAt: connectedApps.expiresAt,
+    })
+    .from(connectedApps)
+    .where(eq(connectedApps.userId, dbUser!.id));
 
-  const { data: connections } = await supabase
-    .from('connected_apps')
-    .select('source, last_synced, metadata, expires_at')
-    .eq('user_id', user.id);
-
-  // Map to a cleaner format
-  const connected = (connections || []).map((c) => ({
+  const connected = connections.map((c) => ({
     source: c.source,
     provider_name: (c.metadata as Record<string, string>)?.provider_name || c.source,
-    last_synced: c.last_synced,
-    is_expired: c.expires_at ? new Date(c.expires_at) < new Date() : false,
+    last_synced: c.lastSynced,
+    is_expired: c.expiresAt ? new Date(c.expiresAt) < new Date() : false,
   }));
 
   return Response.json({ connections: connected });
+}
+
+// DELETE — disconnect a non-1uphealth connected app by source
+export async function DELETE(req: Request) {
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { source } = await req.json();
+  if (!source) return Response.json({ error: 'source is required' }, { status: 400 });
+
+  await db
+    .delete(connectedApps)
+    .where(and(eq(connectedApps.userId, dbUser!.id), eq(connectedApps.source, source)));
+
+  return Response.json({ success: true });
+}
+
+// GET (with full fields) — list all connected apps for the current user
+export async function POST() {
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const apps = await db
+    .select()
+    .from(connectedApps)
+    .where(eq(connectedApps.userId, dbUser!.id));
+
+  return Response.json({ data: apps });
 }

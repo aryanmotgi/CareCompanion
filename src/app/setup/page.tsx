@@ -1,13 +1,10 @@
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 
 export default async function SetupPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) redirect('/login');
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
   // New users go straight to the connect page
-  // The connect page handles profile creation and account linking
   redirect('/connect');
 }

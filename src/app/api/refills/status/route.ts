@@ -2,21 +2,23 @@
  * Medication refill status endpoint.
  * Returns refill status for all medications with urgency levels.
  */
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { db } from '@/lib/db'
+import { careProfiles } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { checkRefillStatus } from '@/lib/refill-tracker'
 import { apiSuccess, ApiErrors } from '@/lib/api-response'
 
 export async function GET() {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return ApiErrors.unauthorized()
+    const { user: dbUser, error } = await getAuthenticatedUser()
+    if (error) return error
 
-    const { data: profile } = await supabase
-      .from('care_profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
+    const [profile] = await db
+      .select({ id: careProfiles.id })
+      .from(careProfiles)
+      .where(eq(careProfiles.userId, dbUser!.id))
+      .limit(1)
 
     if (!profile) return ApiErrors.notFound('Care profile')
 

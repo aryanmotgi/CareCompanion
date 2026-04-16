@@ -1,6 +1,9 @@
 import { Suspense } from 'react'
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db';
+import { users, labResults } from '@/lib/db/schema';
+import { eq, desc } from 'drizzle-orm';
 import type { LabResult } from '@/lib/types'
 import { LabsView } from './LabsView'
 
@@ -9,20 +12,19 @@ export const metadata = {
 }
 
 async function LabsContent() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  if (!user) redirect('/login')
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
 
-  const { data: labResults } = await supabase
-    .from('lab_results')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('date_taken', { ascending: false })
+  const labs = await db
+    .select()
+    .from(labResults)
+    .where(eq(labResults.userId, dbUser.id))
+    .orderBy(desc(labResults.dateTaken));
 
-  return <LabsView labResults={(labResults as LabResult[]) || []} />
+  return <LabsView labResults={labs as LabResult[]} />
 }
 
 function LabsSkeleton() {

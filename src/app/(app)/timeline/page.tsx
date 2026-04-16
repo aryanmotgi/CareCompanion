@@ -1,6 +1,9 @@
 import { Suspense } from 'react';
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { users, careProfiles, medications, appointments, labResults, symptomEntries } from '@/lib/db/schema';
+import { eq, desc } from 'drizzle-orm';
 import { TreatmentTimeline } from '@/components/TreatmentTimeline';
 import type { Medication, Appointment, LabResult, SymptomEntry } from '@/lib/types';
 
@@ -34,55 +37,33 @@ function TimelineLoading() {
 }
 
 async function TimelineData() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  if (!user) redirect('/login');
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
+  const [profile] = await db
+    .select({ id: careProfiles.id })
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, dbUser.id))
+    .limit(1);
 
   if (!profile) redirect('/setup');
 
-  const [
-    { data: medications },
-    { data: appointments },
-    { data: labResults },
-    { data: symptomEntries },
-  ] = await Promise.all([
-    supabase
-      .from('medications')
-      .select('*')
-      .eq('care_profile_id', profile.id)
-      .order('start_date', { ascending: false }),
-    supabase
-      .from('appointments')
-      .select('*')
-      .eq('care_profile_id', profile.id)
-      .order('date_time', { ascending: false }),
-    supabase
-      .from('lab_results')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('date_taken', { ascending: false }),
-    supabase
-      .from('symptom_entries')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('date', { ascending: false }),
+  const [meds, appts, labs, symptoms] = await Promise.all([
+    db.select().from(medications).where(eq(medications.careProfileId, profile.id)).orderBy(desc(medications.createdAt)),
+    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)).orderBy(desc(appointments.dateTime)),
+    db.select().from(labResults).where(eq(labResults.userId, dbUser.id)).orderBy(desc(labResults.dateTaken)),
+    db.select().from(symptomEntries).where(eq(symptomEntries.userId, dbUser.id)).orderBy(desc(symptomEntries.date)),
   ]);
 
   return (
     <TreatmentTimeline
-      medications={(medications as Medication[]) || []}
-      appointments={(appointments as Appointment[]) || []}
-      labResults={(labResults as LabResult[]) || []}
-      symptomEntries={(symptomEntries as SymptomEntry[]) || []}
+      medications={meds as Medication[]}
+      appointments={appts as Appointment[]}
+      labResults={labs as LabResult[]}
+      symptomEntries={symptoms as SymptomEntry[]}
     />
   );
 }

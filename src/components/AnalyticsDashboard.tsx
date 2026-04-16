@@ -32,11 +32,11 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
 
   // ---- Symptom Trends ----
   const recentSymptoms = symptoms.slice(-14);
-  const avgPain = recentSymptoms.filter((s) => s.pain_level !== null).length > 0
-    ? (recentSymptoms.reduce((sum, s) => sum + (s.pain_level || 0), 0) / recentSymptoms.filter((s) => s.pain_level !== null).length).toFixed(1)
+  const avgPain = recentSymptoms.filter((s) => s.painLevel !== null).length > 0
+    ? (recentSymptoms.reduce((sum, s) => sum + (s.painLevel || 0), 0) / recentSymptoms.filter((s) => s.painLevel !== null).length).toFixed(1)
     : null;
-  const avgSleep = recentSymptoms.filter((s) => s.sleep_hours !== null).length > 0
-    ? (recentSymptoms.reduce((sum, s) => sum + (s.sleep_hours || 0), 0) / recentSymptoms.filter((s) => s.sleep_hours !== null).length).toFixed(1)
+  const avgSleep = recentSymptoms.filter((s) => s.sleepHours !== null).length > 0
+    ? (recentSymptoms.reduce((sum, s) => sum + parseFloat(s.sleepHours || '0'), 0) / recentSymptoms.filter((s) => s.sleepHours !== null).length).toFixed(1)
     : null;
 
   // Most common symptoms
@@ -52,18 +52,18 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
   // Group labs by test name
   const labGroups = new Map<string, LabResult[]>();
   for (const lab of labResults) {
-    const existing = labGroups.get(lab.test_name) || [];
+    const existing = labGroups.get(lab.testName) || [];
     existing.push(lab);
-    labGroups.set(lab.test_name, existing);
+    labGroups.set(lab.testName, existing);
   }
   const labTrends = Array.from(labGroups.entries())
     .filter(([, results]) => results.length >= 2)
     .slice(0, 6);
 
   // ---- Spending ----
-  const totalBilled = claims.reduce((sum, c) => sum + (c.billed_amount || 0), 0);
-  const totalPaid = claims.reduce((sum, c) => sum + (c.paid_amount || 0), 0);
-  const totalOOP = claims.reduce((sum, c) => sum + (c.patient_responsibility || 0), 0);
+  const totalBilled = claims.reduce((sum, c) => sum + parseFloat(c.billedAmount || '0'), 0);
+  const totalPaid = claims.reduce((sum, c) => sum + parseFloat(c.paidAmount || '0'), 0);
+  const totalOOP = claims.reduce((sum, c) => sum + parseFloat(c.patientResponsibility || '0'), 0);
   const deniedCount = claims.filter((c) => c.status === 'denied').length;
 
   return (
@@ -78,7 +78,7 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
           <p className="text-[10px] text-[var(--text-muted)] uppercase">Medications</p>
         </div>
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-white">{labResults.filter((l) => l.is_abnormal).length}</p>
+          <p className="text-2xl font-bold text-white">{labResults.filter((l) => l.isAbnormal).length}</p>
           <p className="text-[10px] text-[var(--text-muted)] uppercase">Abnormal Labs</p>
         </div>
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 text-center">
@@ -141,7 +141,7 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
               </div>
               <div className="flex items-end gap-1 h-6">
                 {recentSymptoms.map((s, i) => {
-                  const hours = s.sleep_hours || 0;
+                  const hours = parseFloat(s.sleepHours || '0');
                   return (
                     <div key={i} className="flex-1 rounded-sm bg-indigo-500/60 transition-all"
                       style={{ height: `${Math.min((hours / 10) * 100, 100)}%` }}
@@ -188,7 +188,7 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
                     <p className="text-[10px] text-[var(--text-muted)]">{results.length} results</p>
                   </div>
                   <div className="text-right">
-                    <p className={`text-sm font-mono ${latest.is_abnormal ? 'text-amber-400' : 'text-white'}`}>
+                    <p className={`text-sm font-mono ${latest.isAbnormal ? 'text-amber-400' : 'text-white'}`}>
                       {latest.value} {latest.unit || ''}
                     </p>
                     {!isNaN(change) && change !== 0 && (

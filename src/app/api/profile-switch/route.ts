@@ -1,7 +1,9 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { validateCsrf } from '@/lib/csrf';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { db } from '@/lib/db';
+import { careProfiles, careTeamMembers, userPreferences } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
 import { rateLimit } from '@/lib/rate-limit';
 import { logAudit } from '@/lib/audit';
 import { z } from 'zod';
@@ -28,7 +30,7 @@ export async function POST(req: Request) {
     if (authError) return authError;
 
     await logAudit({
-      user_id: user.id,
+      user_id: user!.id,
       action: 'switch_profile',
       ip_address: req.headers.get('x-forwarded-for') || undefined,
     });
@@ -38,36 +40,42 @@ export async function POST(req: Request) {
     if (valError) return valError;
 
     const { profile_id } = validated;
-    const admin = createAdminClient();
 
-    // Verify user has access to this profile (owns it or is on the care team)
-    const { data: profile } = await admin
-      .from('care_profiles')
-      .select('id, patient_name')
-      .eq('id', profile_id)
-      .single();
+    const [profile] = await db
+      .select({ id: careProfiles.id, patientName: careProfiles.patientName })
+      .from(careProfiles)
+      .where(eq(careProfiles.id, profile_id))
+      .limit(1);
 
     if (!profile) return apiError('Profile not found', 404);
 
     // Check ownership or care team membership
-    const isOwner = await admin.from('care_profiles')
-      .select('id').eq('id', profile_id).eq('user_id', user.id).single();
+    const [ownerRow] = await db
+      .select({ id: careProfiles.id })
+      .from(careProfiles)
+      .where(and(eq(careProfiles.id, profile_id), eq(careProfiles.userId, user!.id)))
+      .limit(1);
 
-    const isTeamMember = await admin.from('care_team_members')
-      .select('id').eq('care_profile_id', profile_id).eq('user_id', user.id).single();
+    const [teamRow] = await db
+      .select({ id: careTeamMembers.id })
+      .from(careTeamMembers)
+      .where(and(eq(careTeamMembers.careProfileId, profile_id), eq(careTeamMembers.userId, user!.id)))
+      .limit(1);
 
-    if (!isOwner.data && !isTeamMember.data) {
+    if (!ownerRow && !teamRow) {
       return apiError('You do not have access to this profile', 403);
     }
 
-    // Update active profile
-    await admin.from('user_preferences').upsert({
-      user_id: user.id,
-      active_profile_id: profile_id,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' });
+    await db.insert(userPreferences).values({
+      userId: user!.id,
+      activeProfileId: profile_id,
+      updatedAt: new Date(),
+    }).onConflictDoUpdate({
+      target: userPreferences.userId,
+      set: { activeProfileId: profile_id, updatedAt: new Date() },
+    });
 
-    return apiSuccess({ success: true, message: `Switched to ${profile.patient_name}'s profile.` });
+    return apiSuccess({ success: true, message: `Switched to ${profile.patientName}'s profile.` });
   } catch (err) {
     console.error('[profile-switch] POST error:', err);
     return apiError('Internal server error', 500);

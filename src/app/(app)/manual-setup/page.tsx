@@ -1,29 +1,29 @@
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { users, careProfiles, medications, doctors, appointments } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { SetupWizard } from '@/components/SetupWizard';
 import type { Medication, Doctor, Appointment } from '@/lib/types';
 
 export default async function ManualSetupPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  if (!user) redirect('/login');
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('*')
-    .eq('user_id', user.id)
-    .single();
+  const [profile] = await db.select().from(careProfiles).where(eq(careProfiles.userId, dbUser.id)).limit(1);
 
   // If onboarding hasn't been completed, redirect to the unified onboarding flow
-  if (!profile || !profile.onboarding_completed) {
+  if (!profile || !profile.onboardingCompleted) {
     redirect('/onboarding');
   }
 
-  const [{ data: meds }, { data: docs }, { data: appts }] = await Promise.all([
-    supabase.from('medications').select('*').eq('care_profile_id', profile.id),
-    supabase.from('doctors').select('*').eq('care_profile_id', profile.id),
-    supabase.from('appointments').select('*').eq('care_profile_id', profile.id),
+  const [meds, docs, appts] = await Promise.all([
+    db.select().from(medications).where(eq(medications.careProfileId, profile.id)),
+    db.select().from(doctors).where(eq(doctors.careProfileId, profile.id)),
+    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)),
   ]);
 
   return (
@@ -31,9 +31,9 @@ export default async function ManualSetupPage() {
       <SetupWizard
         initialStep={1}
         existingProfile={profile}
-        existingMedications={(meds || []) as Medication[]}
-        existingDoctors={(docs || []) as Doctor[]}
-        existingAppointments={(appts || []) as Appointment[]}
+        existingMedications={meds as Medication[]}
+        existingDoctors={docs as Doctor[]}
+        existingAppointments={appts as Appointment[]}
       />
     </div>
   );

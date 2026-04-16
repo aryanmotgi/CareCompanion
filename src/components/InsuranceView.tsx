@@ -31,9 +31,11 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'in_review', label: 'In Review' },
 ]
 
-function formatCurrency(val: number | null | undefined): string {
+function formatCurrency(val: number | string | null | undefined): string {
   if (val == null) return '$0.00'
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val)
+  const num = typeof val === 'string' ? parseFloat(val) : val
+  if (isNaN(num)) return '$0.00'
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num)
 }
 
 function formatDate(dateStr: string | null): string {
@@ -66,7 +68,7 @@ export function InsuranceView({
     const totalClaims = claims.length
     const approvedAmount = claims
       .filter((c) => c.status === 'paid')
-      .reduce((sum, c) => sum + (c.paid_amount || 0), 0)
+      .reduce((sum, c) => sum + parseFloat(c.paidAmount || '0'), 0)
     const pendingCount = claims.filter((c) => c.status === 'pending').length
     const deniedCount = claims.filter((c) => c.status === 'denied').length
     return { totalClaims, approvedAmount, pendingCount, deniedCount }
@@ -222,7 +224,7 @@ export function InsuranceView({
       ) : (
         <div className="space-y-3">
           {filteredClaims.map((claim) => {
-            const status = STATUS_CONFIG[claim.status] || STATUS_CONFIG.pending
+            const status = STATUS_CONFIG[claim.status ?? ''] || STATUS_CONFIG.pending
             const isExpanded = expandedId === claim.id
 
             return (
@@ -246,7 +248,7 @@ export function InsuranceView({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-0.5">
                       <p className="text-sm font-semibold text-[#f1f5f9] truncate">
-                        {claim.provider_name || 'Unknown Provider'}
+                        {claim.providerName || 'Unknown Provider'}
                       </p>
                       <span
                         className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full flex-shrink-0"
@@ -259,10 +261,10 @@ export function InsuranceView({
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-[#94a3b8]">
-                      <span>{formatDate(claim.service_date)}</span>
+                      <span>{formatDate(claim.serviceDate)}</span>
                       <span className="text-[#334155]">|</span>
                       <span className="text-[#f1f5f9] font-medium">
-                        {formatCurrency(claim.billed_amount)}
+                        {formatCurrency(claim.billedAmount)}
                       </span>
                     </div>
                   </div>
@@ -297,7 +299,7 @@ export function InsuranceView({
                           Billed
                         </p>
                         <p className="text-xs font-medium text-[#f1f5f9]">
-                          {formatCurrency(claim.billed_amount)}
+                          {formatCurrency(claim.billedAmount)}
                         </p>
                       </div>
                       <div>
@@ -305,7 +307,7 @@ export function InsuranceView({
                           Insurance Paid
                         </p>
                         <p className="text-xs font-medium text-[#10b981]">
-                          {formatCurrency(claim.paid_amount)}
+                          {formatCurrency(claim.paidAmount)}
                         </p>
                       </div>
                       <div>
@@ -313,7 +315,7 @@ export function InsuranceView({
                           Your Responsibility
                         </p>
                         <p className="text-xs font-medium text-[#eab308]">
-                          {formatCurrency(claim.patient_responsibility)}
+                          {formatCurrency(claim.patientResponsibility)}
                         </p>
                       </div>
                       <div>
@@ -321,25 +323,25 @@ export function InsuranceView({
                           Service Date
                         </p>
                         <p className="text-xs font-medium text-[#f1f5f9]">
-                          {formatDate(claim.service_date)}
+                          {formatDate(claim.serviceDate)}
                         </p>
                       </div>
                     </div>
 
                     {/* Denial reason */}
-                    {claim.status === 'denied' && claim.denial_reason && (
+                    {claim.status === 'denied' && claim.denialReason && (
                       <div className="rounded-xl bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.2)] px-3 py-2.5 mb-3">
                         <p className="text-[10px] uppercase tracking-wider text-[#ef4444] font-semibold mb-0.5">
                           Denial Reason
                         </p>
-                        <p className="text-xs text-[#fca5a5]">{claim.denial_reason}</p>
+                        <p className="text-xs text-[#fca5a5]">{claim.denialReason}</p>
                       </div>
                     )}
 
                     {/* EOB link */}
-                    {claim.eob_url && (
+                    {claim.eobUrl && (
                       <a
-                        href={claim.eob_url}
+                        href={claim.eobUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 text-xs text-[#A78BFA] hover:text-[#c4b5fd] mb-3 transition-colors"
@@ -362,10 +364,10 @@ export function InsuranceView({
                       <AppealGenerator
                         claimId={claim.id}
                         claimInfo={{
-                          provider_name: claim.provider_name || 'Unknown',
-                          denial_reason: claim.denial_reason || 'Not specified',
-                          billed_amount: claim.billed_amount || 0,
-                          patient_responsibility: claim.patient_responsibility || 0,
+                          provider_name: claim.providerName || 'Unknown',
+                          denial_reason: claim.denialReason || 'Not specified',
+                          billed_amount: claim.billedAmount || 0,
+                          patient_responsibility: claim.patientResponsibility || 0,
                         }}
                       />
                     )}

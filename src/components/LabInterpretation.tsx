@@ -417,18 +417,18 @@ function LabGauge({
 export function LabInterpretation({ labResult }: { labResult: LabResult }) {
   const [expanded, setExpanded] = useState(false)
 
-  const parsed = parseLabValue(labResult.value, labResult.reference_range)
-  const testKey = resolveTestKey(labResult.test_name)
+  const parsed = parseLabValue(labResult.value, labResult.referenceRange)
+  const testKey = resolveTestKey(labResult.testName)
   const info = testKey ? LAB_TEST_KNOWLEDGE[testKey] : null
   const status = getResultStatus(
     parsed.numericValue,
     parsed.referenceMin,
     parsed.referenceMax,
-    labResult.is_abnormal
+    labResult.isAbnormal ?? false
   )
 
   const chatPrompt = encodeURIComponent(
-    `I just got my ${labResult.test_name} result: ${labResult.value} ${labResult.unit ?? ''}. The reference range is ${labResult.reference_range ?? 'not specified'}. Can you help me understand what this means for my health and if I should be concerned?`
+    `I just got my ${labResult.testName} result: ${labResult.value} ${labResult.unit ?? ''}. The reference range is ${labResult.referenceRange ?? 'not specified'}. Can you help me understand what this means for my health and if I should be concerned?`
   )
 
   return (
@@ -457,7 +457,7 @@ export function LabInterpretation({ labResult }: { labResult: LabResult }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2 flex-wrap">
             <span className="font-semibold text-[var(--text)] text-sm">
-              {labResult.test_name}
+              {labResult.testName}
             </span>
             <span
               className="text-xs font-medium px-1.5 py-0.5 rounded-full"
@@ -477,9 +477,9 @@ export function LabInterpretation({ labResult }: { labResult: LabResult }) {
             {labResult.unit && (
               <span className="text-xs text-[var(--text-muted)]">{labResult.unit}</span>
             )}
-            {labResult.reference_range && (
+            {labResult.referenceRange && (
               <span className="text-[11px] text-[var(--text-muted)] ml-2">
-                Ref: {labResult.reference_range}
+                Ref: {labResult.referenceRange}
               </span>
             )}
           </div>
@@ -559,7 +559,7 @@ export function LabInterpretation({ labResult }: { labResult: LabResult }) {
             <div className="pt-4">
               <p className="text-sm text-[var(--text-muted)] leading-relaxed">
                 We don&apos;t have detailed interpretation data for this test. Ask your doctor or care team about what your{' '}
-                <strong className="text-[var(--text)]">{labResult.test_name}</strong> result means for your situation.
+                <strong className="text-[var(--text)]">{labResult.testName}</strong> result means for your situation.
               </p>
             </div>
           )}

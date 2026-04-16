@@ -1,4 +1,5 @@
-import { createAdminClient } from '@/lib/supabase/admin'
+import { db } from '@/lib/db'
+import { careProfiles } from '@/lib/db/schema'
 import { logger } from '@/lib/logger'
 
 const startTime = Date.now()
@@ -17,19 +18,15 @@ export async function GET(req: Request) {
   // Check database connectivity with timing
   try {
     const dbStart = Date.now()
-    const admin = createAdminClient()
-    const { error } = await admin.from('care_profiles').select('id').limit(1)
+    await db.select({ id: careProfiles.id }).from(careProfiles).limit(1)
     const dbDuration = Date.now() - dbStart
-    checks.database = error
-      ? { status: 'error', message: error.message }
-      : { status: 'ok', details: { responseTimeMs: dbDuration } }
+    checks.database = { status: 'ok', details: { responseTimeMs: dbDuration } }
   } catch (e) {
     checks.database = { status: 'error', message: e instanceof Error ? e.message : 'Unknown error' }
   }
 
   // Check critical env vars (names only, never values)
-  checks.supabase_url = process.env.NEXT_PUBLIC_SUPABASE_URL ? { status: 'ok' } : { status: 'error' }
-  checks.supabase_key = process.env.SUPABASE_SERVICE_ROLE_KEY ? { status: 'ok' } : { status: 'error' }
+  checks.database_url = process.env.DATABASE_URL ? { status: 'ok' } : { status: 'error' }
   checks.anthropic_key = process.env.ANTHROPIC_API_KEY ? { status: 'ok' } : { status: 'error' }
 
   // Memory usage

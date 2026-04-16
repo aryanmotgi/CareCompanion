@@ -165,10 +165,10 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
           {members.map((m) => (
             <div key={m.id} className="flex items-center gap-3 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl px-4 py-3">
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                {(m.display_name || '?')[0].toUpperCase()}
+                {(m.displayName || '?')[0].toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{m.display_name || 'Unknown'}</p>
+                <p className="text-sm font-medium text-white truncate">{m.displayName || 'Unknown'}</p>
                 <p className="text-xs text-[var(--text-muted)] truncate">{m.email || ''}</p>
               </div>
               <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${ROLE_COLORS[m.role]}`}>
@@ -199,9 +199,9 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
               <div key={inv.id} className="flex items-center gap-3 bg-[var(--bg-card)] border border-amber-500/20 rounded-xl px-4 py-3">
                 <span className="text-base">✉️</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white truncate">{inv.invited_email}</p>
+                  <p className="text-sm text-white truncate">{inv.invitedEmail}</p>
                   <p className="text-xs text-[var(--text-muted)]">
-                    Invited {timeAgo(inv.created_at)} · Expires {new Date(inv.expires_at).toLocaleDateString()}
+                    Invited {inv.createdAt ? timeAgo(inv.createdAt.toISOString()) : ''} · Expires {inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : '—'}
                   </p>
                 </div>
                 <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${ROLE_COLORS[inv.role]}`}>
@@ -261,11 +261,11 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
               <div key={a.id} className="flex items-center gap-2 py-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
                 <p className="text-sm text-[var(--text-secondary)]">
-                  <span className="text-white font-medium">{a.user_name || 'Someone'}</span>{' '}
+                  <span className="text-white font-medium">{a.userName || 'Someone'}</span>{' '}
                   {a.action}
                 </p>
                 <span className="text-[10px] text-[var(--text-muted)] ml-auto flex-shrink-0">
-                  {timeAgo(a.created_at)}
+                  {a.createdAt ? timeAgo(a.createdAt.toISOString()) : ''}
                 </span>
               </div>
             ))}

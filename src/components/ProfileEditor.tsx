@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
 import type { CareProfile, Medication, Doctor, Appointment } from '@/lib/types';
@@ -53,18 +52,16 @@ export function ProfileEditor({
   doctors: initialDoctors,
   appointments: initialAppointments,
 }: ProfileEditorProps) {
-  const supabase = createClient();
-
   // Patient info
-  const [patientName, setPatientName] = useState(profile.patient_name || '');
-  const [patientAge, setPatientAge] = useState(profile.patient_age?.toString() || '');
+  const [patientName, setPatientName] = useState(profile.patientName || '');
+  const [patientAge, setPatientAge] = useState(profile.patientAge?.toString() || '');
   const [relationship, setRelationship] = useState(profile.relationship || '');
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState('');
 
-  // Conditions
-  const [conditions, setConditions] = useState(profile.conditions || '');
-  const [allergies, setAllergies] = useState(profile.allergies || '');
+  // Conditions (stored separately, not in CareProfile)
+  const [conditions, setConditions] = useState('');
+  const [allergies, setAllergies] = useState('');
   const [savingConditions, setSavingConditions] = useState(false);
   const [conditionsMsg, setConditionsMsg] = useState('');
 
@@ -95,57 +92,75 @@ export function ProfileEditor({
   const savePatientInfo = async () => {
     setSavingProfile(true);
     setProfileMsg('');
-    const { error } = await supabase
-      .from('care_profiles')
-      .update({
+    const res = await fetch('/api/records/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: profile.id,
         patient_name: patientName,
         patient_age: patientAge ? parseInt(patientAge) : null,
         relationship,
-      })
-      .eq('id', profile.id);
+      }),
+    });
     setSavingProfile(false);
-    setProfileMsg(error ? error.message : 'Saved');
-    if (!error) setTimeout(() => setProfileMsg(''), 2000);
+    if (res.ok) {
+      setProfileMsg('Saved');
+      setTimeout(() => setProfileMsg(''), 2000);
+    } else {
+      const json = await res.json();
+      setProfileMsg(json.error || 'Failed to save');
+    }
   };
 
   const saveConditions = async () => {
     setSavingConditions(true);
     setConditionsMsg('');
-    const { error } = await supabase
-      .from('care_profiles')
-      .update({ conditions, allergies })
-      .eq('id', profile.id);
+    const res = await fetch('/api/records/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: profile.id, conditions, allergies }),
+    });
     setSavingConditions(false);
-    setConditionsMsg(error ? error.message : 'Saved');
-    if (!error) setTimeout(() => setConditionsMsg(''), 2000);
+    if (res.ok) {
+      setConditionsMsg('Saved');
+      setTimeout(() => setConditionsMsg(''), 2000);
+    } else {
+      const json = await res.json();
+      setConditionsMsg(json.error || 'Failed to save');
+    }
   };
 
   const addMedication = async () => {
     if (!newMedName.trim()) return;
     setSavingMeds(true);
-    const { data, error } = await supabase
-      .from('medications')
-      .insert({
+    const res = await fetch('/api/records/medications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         care_profile_id: profile.id,
         name: newMedName,
         dose: newMedDose || null,
         frequency: newMedFrequency || null,
-      })
-      .select()
-      .single();
+      }),
+    });
+    const json = await res.json();
     setSavingMeds(false);
-    if (!error && data) {
-      setMedications((prev) => [...prev, data]);
+    if (res.ok && json.data) {
+      setMedications((prev) => [...prev, json.data]);
       setNewMedName('');
       setNewMedDose('');
       setNewMedFrequency('');
     }
-    setMedsMsg(error ? error.message : '');
+    setMedsMsg(res.ok ? '' : (json.error || 'Failed to save'));
   };
 
   const removeMedication = async (id: string) => {
-    const { error } = await supabase.from('medications').delete().eq('id', id);
-    if (!error) {
+    const res = await fetch('/api/records/medications', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    if (res.ok) {
       setMedications((prev) => prev.filter((m) => m.id !== id));
     }
   };
@@ -153,29 +168,34 @@ export function ProfileEditor({
   const addDoctor = async () => {
     if (!newDocName.trim()) return;
     setSavingDocs(true);
-    const { data, error } = await supabase
-      .from('doctors')
-      .insert({
+    const res = await fetch('/api/records/doctors', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         care_profile_id: profile.id,
         name: newDocName,
         specialty: newDocSpecialty || null,
         phone: newDocPhone || null,
-      })
-      .select()
-      .single();
+      }),
+    });
+    const json = await res.json();
     setSavingDocs(false);
-    if (!error && data) {
-      setDoctors((prev) => [...prev, data]);
+    if (res.ok && json.data) {
+      setDoctors((prev) => [...prev, json.data]);
       setNewDocName('');
       setNewDocSpecialty('');
       setNewDocPhone('');
     }
-    setDocsMsg(error ? error.message : '');
+    setDocsMsg(res.ok ? '' : (json.error || 'Failed to save'));
   };
 
   const removeDoctor = async (id: string) => {
-    const { error } = await supabase.from('doctors').delete().eq('id', id);
-    if (!error) {
+    const res = await fetch('/api/records/doctors', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    if (res.ok) {
       setDoctors((prev) => prev.filter((d) => d.id !== id));
     }
   };
@@ -183,29 +203,34 @@ export function ProfileEditor({
   const addAppointment = async () => {
     if (!newApptDoctor.trim() && !newApptPurpose.trim()) return;
     setSavingAppts(true);
-    const { data, error } = await supabase
-      .from('appointments')
-      .insert({
+    const res = await fetch('/api/records/appointments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         care_profile_id: profile.id,
         doctor_name: newApptDoctor || null,
         date_time: newApptDate || null,
         purpose: newApptPurpose || null,
-      })
-      .select()
-      .single();
+      }),
+    });
+    const json = await res.json();
     setSavingAppts(false);
-    if (!error && data) {
-      setAppointments((prev) => [...prev, data]);
+    if (res.ok && json.data) {
+      setAppointments((prev) => [...prev, json.data]);
       setNewApptDoctor('');
       setNewApptDate('');
       setNewApptPurpose('');
     }
-    setApptsMsg(error ? error.message : '');
+    setApptsMsg(res.ok ? '' : (json.error || 'Failed to save'));
   };
 
   const removeAppointment = async (id: string) => {
-    const { error } = await supabase.from('appointments').delete().eq('id', id);
-    if (!error) {
+    const res = await fetch('/api/records/appointments', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    if (res.ok) {
       setAppointments((prev) => prev.filter((a) => a.id !== id));
     }
   };
@@ -329,10 +354,10 @@ export function ProfileEditor({
           {appointments.map((appt) => (
             <div key={appt.id} className="flex items-center justify-between p-3 bg-[var(--bg-elevated)] rounded-xl">
               <div>
-                <p className="font-medium text-white">{appt.doctor_name || 'Appointment'}</p>
+                <p className="font-medium text-white">{appt.doctorName || 'Appointment'}</p>
                 <p className="text-sm text-[var(--text-secondary)]">
-                  {appt.date_time
-                    ? new Date(appt.date_time).toLocaleDateString('en-US', {
+                  {appt.dateTime
+                    ? new Date(appt.dateTime).toLocaleDateString('en-US', {
                         weekday: 'short',
                         month: 'short',
                         day: 'numeric',

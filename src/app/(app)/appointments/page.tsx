@@ -1,32 +1,34 @@
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { users, careProfiles, appointments } from '@/lib/db/schema';
+import { eq, asc } from 'drizzle-orm';
 import { AppointmentsView } from '@/components/AppointmentsView';
 
 export default async function AppointmentsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  if (!user) redirect('/login');
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
+  const [profile] = await db
+    .select({ id: careProfiles.id })
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, dbUser.id))
+    .limit(1);
 
   if (!profile) redirect('/setup');
 
-  const { data: appointments } = await supabase
-    .from('appointments')
-    .select('*')
-    .eq('care_profile_id', profile.id)
-    .order('date_time', { ascending: true });
+  const appts = await db
+    .select()
+    .from(appointments)
+    .where(eq(appointments.careProfileId, profile.id))
+    .orderBy(asc(appointments.dateTime));
 
   return (
     <div className="max-w-3xl">
-      <AppointmentsView appointments={appointments || []} profileId={profile.id} />
+      <AppointmentsView appointments={appts} profileId={profile.id} />
     </div>
   );
 }

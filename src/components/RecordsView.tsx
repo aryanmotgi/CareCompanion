@@ -227,8 +227,8 @@ function ConnectedSystemCard({
 }) {
   const providerName =
     (app.metadata as Record<string, string>)?.provider_name || app.source
-  const isExpired = app.expires_at
-    ? new Date(app.expires_at) < new Date()
+  const isExpired = app.expiresAt
+    ? new Date(app.expiresAt) < new Date()
     : false
 
   return (
@@ -244,8 +244,8 @@ function ConnectedSystemCard({
           <p className="text-xs text-[#94a3b8]">
             {isExpired ? (
               <span className="text-[#ef4444]">Connection expired</span>
-            ) : app.last_synced ? (
-              <>Synced {formatRelativeDate(app.last_synced)}</>
+            ) : app.lastSynced ? (
+              <>Synced {formatRelativeDate(app.lastSynced instanceof Date ? app.lastSynced.toISOString() : app.lastSynced)}</>
             ) : (
               'Never synced'
             )}
@@ -334,16 +334,16 @@ function RecordDetails({ record }: { record: UnifiedRecord }) {
               <p className="text-[#f1f5f9] mt-0.5">{med.frequency}</p>
             </div>
           )}
-          {med.prescribing_doctor && (
+          {med.prescribingDoctor && (
             <div>
               <span className="text-[#64748b]">Prescribed by</span>
-              <p className="text-[#f1f5f9] mt-0.5">{med.prescribing_doctor}</p>
+              <p className="text-[#f1f5f9] mt-0.5">{med.prescribingDoctor}</p>
             </div>
           )}
-          {med.refill_date && (
+          {med.refillDate && (
             <div>
               <span className="text-[#64748b]">Next refill</span>
-              <p className="text-[#f1f5f9] mt-0.5">{formatDate(med.refill_date)}</p>
+              <p className="text-[#f1f5f9] mt-0.5">{formatDate(med.refillDate)}</p>
             </div>
           )}
           {med.notes && (
@@ -362,18 +362,18 @@ function RecordDetails({ record }: { record: UnifiedRecord }) {
           {lab.value && (
             <div>
               <span className="text-[#64748b]">Value</span>
-              <p className={`mt-0.5 ${lab.is_abnormal ? 'text-[#ef4444] font-medium' : 'text-[#f1f5f9]'}`}>
+              <p className={`mt-0.5 ${lab.isAbnormal ? 'text-[#ef4444] font-medium' : 'text-[#f1f5f9]'}`}>
                 {lab.value} {lab.unit || ''}
               </p>
             </div>
           )}
-          {lab.reference_range && (
+          {lab.referenceRange && (
             <div>
               <span className="text-[#64748b]">Reference range</span>
-              <p className="text-[#f1f5f9] mt-0.5">{lab.reference_range}</p>
+              <p className="text-[#f1f5f9] mt-0.5">{lab.referenceRange}</p>
             </div>
           )}
-          {lab.is_abnormal && (
+          {lab.isAbnormal && (
             <div className="col-span-2">
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#ef4444]/10 text-[#ef4444] text-[11px] font-medium">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -392,10 +392,10 @@ function RecordDetails({ record }: { record: UnifiedRecord }) {
       const appt = record.raw as Appointment
       return (
         <div className="grid grid-cols-2 gap-3 text-xs">
-          {appt.doctor_name && (
+          {appt.doctorName && (
             <div>
               <span className="text-[#64748b]">Provider</span>
-              <p className="text-[#f1f5f9] mt-0.5">{appt.doctor_name}</p>
+              <p className="text-[#f1f5f9] mt-0.5">{appt.doctorName}</p>
             </div>
           )}
           {appt.specialty && (
@@ -416,18 +416,6 @@ function RecordDetails({ record }: { record: UnifiedRecord }) {
               <p className="text-[#f1f5f9] mt-0.5">{appt.purpose}</p>
             </div>
           )}
-          {appt.prep_notes && (
-            <div className="col-span-2">
-              <span className="text-[#64748b]">Prep notes</span>
-              <p className="text-[#f1f5f9] mt-0.5">{appt.prep_notes}</p>
-            </div>
-          )}
-          {appt.follow_up_notes && (
-            <div className="col-span-2">
-              <span className="text-[#64748b]">Follow-up</span>
-              <p className="text-[#f1f5f9] mt-0.5">{appt.follow_up_notes}</p>
-            </div>
-          )}
         </div>
       )
     }
@@ -446,22 +434,6 @@ function RecordDetails({ record }: { record: UnifiedRecord }) {
               <span className="text-[#64748b]">Description</span>
               <p className="text-[#f1f5f9] mt-0.5">{doc.description}</p>
             </div>
-          )}
-          {doc.file_url && (
-            <a
-              href={doc.file_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#6366F1]/15 text-[#818cf8] text-xs font-medium hover:bg-[#6366F1]/25 transition-colors"
-            >
-              View document
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                <polyline points="15 3 21 3 21 9" />
-                <line x1="10" y1="14" x2="21" y2="3" />
-              </svg>
-            </a>
           )}
         </div>
       )
@@ -547,7 +519,7 @@ export function RecordsView({
         id: `med-${med.id}`,
         type: 'medication',
         title: med.name,
-        date: med.start_date || med.created_at,
+        date: med.createdAt ? med.createdAt.toISOString() : null,
         source: med.notes?.startsWith('Synced from') ? med.notes.replace('Synced from ', '') : null,
         summary: [med.dose, med.frequency].filter(Boolean).join(' — ') || 'No details',
         raw: med,
@@ -559,10 +531,10 @@ export function RecordsView({
       records.push({
         id: `lab-${lab.id}`,
         type: 'lab',
-        title: lab.test_name,
-        date: lab.date_taken || lab.created_at,
+        title: lab.testName,
+        date: lab.dateTaken || (lab.createdAt ? lab.createdAt.toISOString() : null),
         source: lab.source,
-        summary: `${lab.value ?? '—'} ${lab.unit ?? ''} ${lab.is_abnormal ? '(abnormal)' : ''}`.trim(),
+        summary: `${lab.value ?? '—'} ${lab.unit ?? ''} ${lab.isAbnormal ? '(abnormal)' : ''}`.trim(),
         raw: lab,
       })
     }
@@ -572,10 +544,10 @@ export function RecordsView({
       records.push({
         id: `appt-${appt.id}`,
         type: 'appointment',
-        title: appt.purpose || `${appt.specialty || 'Appointment'}${appt.doctor_name ? ` with ${appt.doctor_name}` : ''}`,
-        date: appt.date_time || appt.created_at,
+        title: appt.purpose || `${appt.specialty || 'Appointment'}${appt.doctorName ? ` with ${appt.doctorName}` : ''}`,
+        date: appt.dateTime ? appt.dateTime.toISOString() : (appt.createdAt ? appt.createdAt.toISOString() : null),
         source: null,
-        summary: [appt.doctor_name, appt.specialty, appt.location].filter(Boolean).join(' — ') || 'No details',
+        summary: [appt.doctorName, appt.specialty, appt.location].filter(Boolean).join(' — ') || 'No details',
         raw: appt,
       })
     }
@@ -586,7 +558,7 @@ export function RecordsView({
         id: `doc-${doc.id}`,
         type: 'document',
         title: doc.description || doc.type || 'Document',
-        date: doc.document_date || doc.created_at,
+        date: doc.documentDate || (doc.createdAt ? doc.createdAt.toISOString() : null),
         source: null,
         summary: doc.type || 'Uploaded document',
         raw: doc,

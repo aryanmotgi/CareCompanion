@@ -2,7 +2,10 @@
  * Lab trend analysis endpoint.
  * Returns trend analysis for all recent lab results with alerts and predictions.
  */
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { db } from '@/lib/db'
+import { labResults } from '@/lib/db/schema'
+import { and, eq, isNull, desc } from 'drizzle-orm'
 import { analyzeAllTrends } from '@/lib/lab-trends'
 import { apiSuccess, ApiErrors } from '@/lib/api-response'
 import { rateLimit } from '@/lib/rate-limit'
@@ -15,19 +18,17 @@ export async function GET(req: Request) {
   if (!success) return ApiErrors.rateLimited()
 
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return ApiErrors.unauthorized()
+    const { user: dbUser, error } = await getAuthenticatedUser()
+    if (error) return error
 
-    const { data: labResults } = await supabase
-      .from('lab_results')
-      .select('*')
-      .eq('user_id', user.id)
-      .is('deleted_at', null)
-      .order('date_taken', { ascending: false })
+    const labs = await db
+      .select()
+      .from(labResults)
+      .where(and(eq(labResults.userId, dbUser!.id), isNull(labResults.deletedAt)))
+      .orderBy(desc(labResults.dateTaken))
       .limit(100)
 
-    if (!labResults || labResults.length === 0) {
+    if (labs.length === 0) {
       return apiSuccess({
         trends: [],
         red_flags: [],
@@ -36,11 +37,11 @@ export async function GET(req: Request) {
       })
     }
 
-    const analysis = analyzeAllTrends(labResults)
+    const analysis = analyzeAllTrends(labs)
 
     return apiSuccess({
       ...analysis,
-      total_results_analyzed: labResults.length,
+      total_results_analyzed: labs.length,
       message: analysis.red_flags.length > 0
         ? `Found ${analysis.red_flags.length} red flag combination(s). Review with your oncology team.`
         : `Analyzed ${analysis.trends.length} lab tests. Overall status: ${analysis.overall_status}.`,

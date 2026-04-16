@@ -2,7 +2,9 @@
  * Medication refill automation.
  * Tracks refill cycles, predicts next refill dates, and generates renewal notifications.
  */
-import { createAdminClient } from '@/lib/supabase/admin'
+import { db } from '@/lib/db'
+import { medications, careProfiles, userSettings, notifications } from '@/lib/db/schema'
+import { eq, and, gte } from 'drizzle-orm'
 
 interface RefillStatus {
   medication_id: string
@@ -18,32 +20,30 @@ interface RefillStatus {
  * Check refill status for all medications for a care profile.
  */
 export async function checkRefillStatus(careProfileId: string): Promise<RefillStatus[]> {
-  const admin = createAdminClient()
+  const meds = await db
+    .select({
+      id: medications.id,
+      name: medications.name,
+      dose: medications.dose,
+      refillDate: medications.refillDate,
+      prescribingDoctor: medications.prescribingDoctor,
+    })
+    .from(medications)
+    .where(eq(medications.careProfileId, careProfileId))
 
-  // Note: deleted_at filter removed — backend_improvements.sql migration adds
-  // this column but it may not exist in all deployments. Without the column,
-  // no medications can be soft-deleted anyway, so all rows are effectively active.
-  const { data: medications, error: medsError } = await admin
-    .from('medications')
-    .select('id, name, dose, refill_date, prescribing_doctor')
-    .eq('care_profile_id', careProfileId)
-
-  if (medsError) {
-    console.error('[refill-tracker] medications query failed:', medsError.message)
-    return []
-  }
-
-  if (!medications || medications.length === 0) return []
+  if (meds.length === 0) return []
 
   const now = new Date()
   now.setHours(0, 0, 0, 0)
 
-  return medications.map(med => buildRefillStatus(med, now))
+  return meds.map(med => buildRefillStatus(med, now))
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildRefillStatus(med: any, now: Date): RefillStatus {
-  if (!med.refill_date) {
+function buildRefillStatus(
+  med: { id: string; name: string; dose: string | null; refillDate: string | null; prescribingDoctor: string | null },
+  now: Date,
+): RefillStatus {
+  if (!med.refillDate) {
     return {
       medication_id: med.id,
       medication_name: med.name,
@@ -51,11 +51,11 @@ function buildRefillStatus(med: any, now: Date): RefillStatus {
       refill_date: null,
       days_until_refill: null,
       status: 'unknown' as const,
-      prescribing_doctor: med.prescribing_doctor,
+      prescribing_doctor: med.prescribingDoctor,
     }
   }
 
-  const refillDate = new Date(med.refill_date)
+  const refillDate = new Date(med.refillDate)
   refillDate.setHours(0, 0, 0, 0)
   const diffDays = Math.ceil((refillDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
@@ -66,14 +66,14 @@ function buildRefillStatus(med: any, now: Date): RefillStatus {
   else if (diffDays <= 7) status = 'upcoming'
 
   return {
-      medication_id: med.id,
-      medication_name: med.name,
-      dose: med.dose,
-      refill_date: med.refill_date,
-      days_until_refill: diffDays,
-      status,
-      prescribing_doctor: med.prescribing_doctor,
-    }
+    medication_id: med.id,
+    medication_name: med.name,
+    dose: med.dose,
+    refill_date: med.refillDate,
+    days_until_refill: diffDays,
+    status,
+    prescribing_doctor: med.prescribingDoctor,
+  }
 }
 
 /**
@@ -81,25 +81,24 @@ function buildRefillStatus(med: any, now: Date): RefillStatus {
  * Run from a cron job.
  */
 export async function generateRefillNotifications(): Promise<{ total: number; users: number }> {
-  const admin = createAdminClient()
+  const profiles = await db
+    .select({ id: careProfiles.id, userId: careProfiles.userId })
+    .from(careProfiles)
 
-  const { data: profiles } = await admin
-    .from('care_profiles')
-    .select('id, user_id')
-
-  if (!profiles || profiles.length === 0) return { total: 0, users: 0 }
+  if (profiles.length === 0) return { total: 0, users: 0 }
 
   let total = 0
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
   for (const profile of profiles) {
     // Check user's notification preferences
-    const { data: settings } = await admin
-      .from('user_settings')
-      .select('refill_reminders')
-      .eq('user_id', profile.user_id)
-      .single()
+    const [settings] = await db
+      .select({ refillReminders: userSettings.refillReminders })
+      .from(userSettings)
+      .where(eq(userSettings.userId, profile.userId))
+      .limit(1)
 
-    if (settings?.refill_reminders === false) continue
+    if (settings?.refillReminders === false) continue
 
     const statuses = await checkRefillStatus(profile.id)
     const actionable = statuses.filter(s => s.status === 'overdue' || s.status === 'due_today' || s.status === 'due_soon')
@@ -107,15 +106,14 @@ export async function generateRefillNotifications(): Promise<{ total: number; us
     if (actionable.length === 0) continue
 
     // Check for existing notifications to avoid duplicates
-    const { data: existing } = await admin
-      .from('notifications')
-      .select('title')
-      .eq('user_id', profile.user_id)
-      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    const existing = await db
+      .select({ title: notifications.title })
+      .from(notifications)
+      .where(and(eq(notifications.userId, profile.userId), gte(notifications.createdAt, oneDayAgo)))
 
-    const existingTitles = new Set((existing || []).map(n => n.title))
+    const existingTitles = new Set(existing.map(n => n.title))
 
-    const notifications = actionable
+    const toInsert = actionable
       .map(s => {
         const title = s.status === 'overdue'
           ? `${s.medication_name} refill is overdue`
@@ -126,17 +124,17 @@ export async function generateRefillNotifications(): Promise<{ total: number; us
         if (existingTitles.has(title)) return null
 
         return {
-          user_id: profile.user_id,
+          userId: profile.userId,
           type: s.status === 'overdue' ? 'refill_overdue' : 'refill_soon',
           title,
           message: `${s.medication_name}${s.dose ? ` ${s.dose}` : ''} needs a refill.${s.prescribing_doctor ? ` Prescriber: ${s.prescribing_doctor}` : ''}`,
         }
       })
-      .filter(Boolean)
+      .filter((n): n is NonNullable<typeof n> => n !== null)
 
-    if (notifications.length > 0) {
-      await admin.from('notifications').insert(notifications)
-      total += notifications.length
+    if (toInsert.length > 0) {
+      await db.insert(notifications).values(toInsert)
+      total += toInsert.length
     }
   }
 
@@ -151,15 +149,14 @@ export async function advanceRefillDate(
   medicationId: string,
   cycleLength: 30 | 60 | 90 = 30,
 ): Promise<string> {
-  const admin = createAdminClient()
   const nextRefill = new Date()
   nextRefill.setDate(nextRefill.getDate() + cycleLength)
   const nextRefillStr = nextRefill.toISOString().split('T')[0]
 
-  await admin
-    .from('medications')
-    .update({ refill_date: nextRefillStr })
-    .eq('id', medicationId)
+  await db
+    .update(medications)
+    .set({ refillDate: nextRefillStr })
+    .where(eq(medications.id, medicationId))
 
   return nextRefillStr
 }

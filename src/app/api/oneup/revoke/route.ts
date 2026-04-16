@@ -7,26 +7,21 @@
  * returns an error (network issue, already-expired token, etc.).
  */
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { db } from '@/lib/db';
+import { connectedApps } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
 import { safeDecryptToken } from '@/lib/token-encryption';
 
 export async function POST() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const admin = createAdminClient();
-
-  const { data: conn } = await admin
-    .from('connected_apps')
-    .select('id, access_token, refresh_token')
-    .eq('user_id', user.id)
-    .eq('source', '1uphealth')
-    .single();
+  const [conn] = await db
+    .select({ id: connectedApps.id, accessToken: connectedApps.accessToken, refreshToken: connectedApps.refreshToken })
+    .from(connectedApps)
+    .where(and(eq(connectedApps.userId, dbUser!.id), eq(connectedApps.source, '1uphealth')))
+    .limit(1);
 
   if (!conn) {
     return NextResponse.json({ success: true }); // already disconnected
@@ -35,10 +30,9 @@ export async function POST() {
   const clientId = process.env.ONEUP_CLIENT_ID;
   const clientSecret = process.env.ONEUP_CLIENT_SECRET || '';
 
-  // Best-effort: revoke access token at 1upHealth (RFC 7009)
-  if (clientId && conn.access_token) {
+  if (clientId && conn.accessToken) {
     try {
-      const accessToken = safeDecryptToken(conn.access_token);
+      const accessToken = safeDecryptToken(conn.accessToken);
       if (accessToken) {
         await fetch('https://api.1up.health/oauth2/revoke', {
           method: 'POST',
@@ -52,9 +46,8 @@ export async function POST() {
         });
       }
 
-      // Also revoke refresh token if present
-      if (conn.refresh_token) {
-        const refreshToken = safeDecryptToken(conn.refresh_token);
+      if (conn.refreshToken) {
+        const refreshToken = safeDecryptToken(conn.refreshToken);
         if (refreshToken) {
           await fetch('https://api.1up.health/oauth2/revoke', {
             method: 'POST',
@@ -69,22 +62,12 @@ export async function POST() {
         }
       }
     } catch (err) {
-      // Non-fatal — always delete locally
       console.error('[oneup/revoke] Token revocation failed (continuing with local delete):', err instanceof Error ? err.message : err);
     }
   }
 
-  // Delete local connection record
-  const { error } = await admin
-    .from('connected_apps')
-    .delete()
-    .eq('id', conn.id);
+  await db.delete(connectedApps).where(eq(connectedApps.id, conn.id));
 
-  if (error) {
-    console.error('[oneup/revoke] DB delete failed:', error.message);
-    return NextResponse.json({ error: 'Failed to disconnect' }, { status: 500 });
-  }
-
-  console.log(`[oneup/revoke] User ${user.id} disconnected from 1upHealth`);
+  console.log(`[oneup/revoke] User ${dbUser!.id} disconnected from 1upHealth`);
   return NextResponse.json({ success: true });
 }

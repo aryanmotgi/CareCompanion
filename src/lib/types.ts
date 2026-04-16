@@ -1,192 +1,184 @@
 export interface CareProfile {
   id: string;
-  user_id: string;
-  patient_name: string | null;
-  patient_age: number | null;
+  userId: string;
+  patientName: string | null;
+  patientAge: number | null;
   relationship: string | null;
-  conditions: string | null;
-  allergies: string | null;
-  emergency_contact_name?: string | null;
-  emergency_contact_phone?: string | null;
-  cancer_type?: string | null;
-  cancer_stage?: string | null;
-  treatment_phase?: string | null;
-  onboarding_priorities?: string[] | null;
-  onboarding_completed?: boolean;
-  created_at: string;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  cancerType?: string | null;
+  cancerStage?: string | null;
+  treatmentPhase?: string | null;
+  onboardingCompleted?: boolean | null;
+  createdAt: Date | null;
 }
 
 export interface Medication {
   id: string;
-  care_profile_id: string;
+  careProfileId: string;
   name: string;
   dose: string | null;
   frequency: string | null;
-  prescribing_doctor: string | null;
-  start_date: string | null;
-  refill_date: string | null;
-  quantity_remaining: number | null;
-  pharmacy_phone?: string | null;
+  prescribingDoctor: string | null;
+  refillDate: string | null;
+  pharmacyPhone?: string | null;
   notes: string | null;
-  created_at: string;
+  deletedAt?: Date | null;
+  createdAt: Date | null;
 }
 
 export interface Doctor {
   id: string;
-  care_profile_id: string;
+  careProfileId: string;
   name: string;
   specialty: string | null;
   phone: string | null;
-  address: string | null;
   notes: string | null;
-  created_at: string;
+  deletedAt?: Date | null;
+  createdAt: Date | null;
 }
 
 export interface Appointment {
   id: string;
-  care_profile_id: string;
-  doctor_name: string | null;
+  careProfileId: string;
+  doctorName: string | null;
   specialty: string | null;
-  date_time: string | null;
+  dateTime: Date | null;
   location: string | null;
   purpose: string | null;
-  prep_notes: string | null;
-  follow_up_notes: string | null;
-  created_at: string;
+  deletedAt?: Date | null;
+  createdAt: Date | null;
 }
 
 export interface Document {
   id: string;
-  care_profile_id: string;
+  careProfileId: string;
   type: string | null;
-  file_url: string | null;
+  documentType?: string | null;
   description: string | null;
-  document_date: string | null;
-  created_at: string;
+  summary?: string | null;
+  documentDate: string | null;
+  deletedAt?: Date | null;
+  createdAt: Date | null;
 }
 
 export interface Message {
   id: string;
-  user_id: string;
+  userId: string;
   role: 'user' | 'assistant';
   content: string;
-  created_at: string;
+  createdAt: Date | null;
 }
 
-// Connected Apps
 export interface ConnectedApp {
   id: string;
-  user_id: string;
+  userId: string;
   source: string;
-  access_token: string | null;
-  refresh_token: string | null;
-  expires_at: string | null;
-  last_synced: string | null;
-  metadata: Record<string, unknown>;
-  created_at: string;
+  accessToken: string | null;
+  refreshToken: string | null;
+  expiresAt: Date | null;
+  lastSynced: Date | null;
+  metadata: unknown;
+  createdAt: Date | null;
 }
 
-// Insurance
 export interface Insurance {
   id: string;
-  user_id: string;
+  userId: string;
   provider: string;
-  member_id: string | null;
-  group_number: string | null;
-  deductible_limit: number | null;
-  deductible_used: number;
-  oop_limit: number | null;
-  oop_used: number;
-  plan_year: number | null;
-  created_at: string;
+  memberId: string | null;
+  groupNumber: string | null;
+  deductibleLimit: string | null;
+  deductibleUsed: string | null;
+  oopLimit: string | null;
+  oopUsed: string | null;
+  planYear: number | null;
+  createdAt: Date | null;
 }
 
-// Claims
 export interface Claim {
   id: string;
-  user_id: string;
-  service_date: string | null;
-  provider_name: string | null;
-  billed_amount: number | null;
-  paid_amount: number | null;
-  patient_responsibility: number | null;
-  status: 'paid' | 'denied' | 'pending';
-  denial_reason: string | null;
-  eob_url: string | null;
-  created_at: string;
+  userId: string;
+  serviceDate: string | null;
+  providerName: string | null;
+  billedAmount: string | null;
+  paidAmount: string | null;
+  patientResponsibility: string | null;
+  status: string | null;
+  denialReason: string | null;
+  eobUrl: string | null;
+  deletedAt?: Date | null;
+  createdAt: Date | null;
 }
 
-// Prior Authorizations
 export interface PriorAuth {
   id: string;
-  user_id: string;
+  userId: string;
   service: string;
   status: string | null;
-  start_date: string | null;
-  expiry_date: string | null;
-  sessions_approved: number | null;
-  sessions_used: number;
-  created_at: string;
+  startDate: string | null;
+  expiryDate: string | null;
+  sessionsApproved: number | null;
+  sessionsUsed: number | null;
+  createdAt: Date | null;
 }
 
-// FSA / HSA
 export interface FsaHsa {
   id: string;
-  user_id: string;
+  userId: string;
   provider: string;
-  account_type: 'fsa' | 'hsa';
-  balance: number;
-  contribution_limit: number | null;
-  plan_year: number | null;
-  last_synced: string | null;
-  created_at: string;
+  accountType: string | null;
+  balance: string | null;
+  contributionLimit: string | null;
+  planYear: number | null;
+  lastSynced: Date | null;
+  createdAt: Date | null;
 }
 
-// Lab Results
 export interface LabResult {
   id: string;
-  user_id: string;
-  test_name: string;
+  userId: string;
+  testName: string;
   value: string | null;
   unit: string | null;
-  reference_range: string | null;
-  is_abnormal: boolean;
-  date_taken: string | null;
+  referenceRange: string | null;
+  isAbnormal: boolean | null;
+  dateTaken: string | null;
   source: string | null;
-  created_at: string;
+  deletedAt?: Date | null;
+  createdAt: Date | null;
 }
 
-// Notifications
 export interface Notification {
   id: string;
-  user_id: string;
+  userId: string;
   type: string;
   title: string;
   message: string | null;
-  is_read: boolean;
-  created_at: string;
+  isRead: boolean | null;
+  deletedAt?: Date | null;
+  createdAt: Date | null;
 }
 
-// Long-Term Memory
 export interface Memory {
   id: string;
-  user_id: string;
-  care_profile_id: string | null;
-  category: 'medication' | 'condition' | 'allergy' | 'insurance' | 'financial' | 'appointment' | 'preference' | 'family' | 'provider' | 'lab_result' | 'lifestyle' | 'legal' | 'other';
+  userId: string;
+  careProfileId: string | null;
+  category: string;
   fact: string;
-  source: 'conversation' | 'photo_scan' | 'fhir_sync' | 'manual';
-  confidence: 'high' | 'medium' | 'low';
-  created_at: string;
-  last_referenced: string;
+  source: string;
+  confidence: string;
+  createdAt: Date | null;
+  lastReferenced: Date | null;
 }
 
 export interface ConversationSummary {
   id: string;
-  user_id: string;
+  userId: string;
   summary: string;
-  topics: string[];
-  message_count: number;
-  created_at: string;
+  topics: string[] | null;
+  messageCount: number | null;
+  createdAt: Date | null;
 }
 
 // Form types for setup wizard
@@ -231,102 +223,96 @@ export interface NotificationCategoryPrefs {
 
 export interface UserSettings {
   id: string
-  user_id: string
-  refill_reminders: boolean
-  appointment_reminders: boolean
-  lab_alerts: boolean
-  claim_updates: boolean
-  ai_personality: 'professional' | 'friendly' | 'concise'
-  quiet_hours_start?: string
-  quiet_hours_end?: string
-  quiet_hours_enabled?: boolean
-  email_notifications?: boolean
-  push_notifications?: boolean
-  notification_preferences?: NotificationCategoryPrefs
-  created_at: string
-  updated_at: string
+  userId: string
+  refillReminders: boolean | null
+  appointmentReminders: boolean | null
+  labAlerts: boolean | null
+  claimUpdates: boolean | null
+  aiPersonality: string | null
+  quietHoursStart?: string | null
+  quietHoursEnd?: string | null
+  emailNotifications?: boolean | null
+  pushNotifications?: boolean | null
+  createdAt: Date | null
+  updatedAt: Date | null
 }
 
-// Care Team
 export interface CareTeamMember {
   id: string;
-  care_profile_id: string;
-  user_id: string;
-  role: 'owner' | 'editor' | 'viewer';
-  invited_by: string | null;
-  joined_at: string;
-  created_at: string;
+  careProfileId: string;
+  userId: string;
+  role: string;
+  invitedBy: string | null;
+  joinedAt: Date | null;
+  createdAt: Date | null;
   // Joined fields
   email?: string;
-  display_name?: string;
+  displayName?: string;
 }
 
 export interface CareTeamInvite {
   id: string;
-  care_profile_id: string;
-  invited_email: string;
-  role: 'editor' | 'viewer';
-  invited_by: string;
-  status: 'pending' | 'accepted' | 'declined';
-  created_at: string;
-  expires_at: string;
+  careProfileId: string;
+  invitedEmail: string;
+  role: string;
+  invitedBy: string;
+  status: string;
+  createdAt: Date | null;
+  expiresAt: Date | null;
 }
 
 export interface CareTeamActivity {
   id: string;
-  care_profile_id: string;
-  user_id: string | null;
-  user_name: string | null;
+  careProfileId: string;
+  userId: string | null;
+  userName: string | null;
   action: string;
-  created_at: string;
+  createdAt: Date | null;
 }
 
-// User Preferences (multi-patient)
 export interface UserPreferences {
   id: string;
-  user_id: string;
-  active_profile_id: string | null;
-  created_at: string;
-  updated_at: string;
+  userId: string;
+  activeProfileId: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
 }
 
-// Medication Reminders
 export interface MedicationReminder {
   id: string;
-  user_id: string;
-  medication_id: string;
-  medication_name: string;
+  userId: string;
+  medicationId: string;
+  medicationName: string;
   dose: string | null;
-  reminder_times: string[];
-  days_of_week: string[];
-  is_active: boolean;
-  created_at: string;
+  reminderTimes: string[];
+  daysOfWeek: string[];
+  isActive: boolean | null;
+  createdAt: Date | null;
 }
 
 export interface ReminderLog {
   id: string;
-  user_id: string;
-  reminder_id: string;
-  medication_name: string;
-  scheduled_time: string;
-  status: 'pending' | 'taken' | 'snoozed' | 'missed';
-  responded_at: string | null;
-  created_at: string;
+  userId: string;
+  reminderId: string;
+  medicationName: string;
+  scheduledTime: Date;
+  status: string;
+  respondedAt: Date | null;
+  createdAt: Date | null;
 }
 
-// Symptom Journal
 export interface SymptomEntry {
   id: string;
-  user_id: string;
-  care_profile_id: string | null;
+  userId: string;
+  careProfileId: string | null;
   date: string;
-  pain_level: number | null;
-  mood: 'great' | 'good' | 'okay' | 'bad' | 'terrible' | null;
-  sleep_quality: 'great' | 'good' | 'fair' | 'poor' | 'terrible' | null;
-  sleep_hours: number | null;
-  appetite: 'normal' | 'increased' | 'decreased' | 'none' | null;
-  energy: 'high' | 'normal' | 'low' | 'very_low' | null;
-  symptoms: string[];
+  painLevel: number | null;
+  mood: string | null;
+  sleepQuality: string | null;
+  sleepHours: string | null;
+  appetite: string | null;
+  energy: string | null;
+  symptoms: string[] | null;
   notes: string | null;
-  created_at: string;
+  createdAt: Date | null;
 }

@@ -1,13 +1,3 @@
-function required(key: string): string {
-  const value = process.env[key]
-  if (!value) {
-    throw new Error(
-      `Missing required environment variable: ${key}. Check your .env.local file.`
-    )
-  }
-  return value
-}
-
 function optional(key: string, fallback: string): string {
   return process.env[key] || fallback
 }
@@ -25,12 +15,7 @@ function warnIfMissing(key: string): string | undefined {
 }
 
 export const env = {
-  // Required — app will not start without these
-  NEXT_PUBLIC_SUPABASE_URL: required('NEXT_PUBLIC_SUPABASE_URL'),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: required('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
-
   // Required in production, warned in dev
-  SUPABASE_SERVICE_ROLE_KEY: warnIfMissing('SUPABASE_SERVICE_ROLE_KEY'),
   ANTHROPIC_API_KEY: warnIfMissing('ANTHROPIC_API_KEY'),
 
   // Optional with defaults

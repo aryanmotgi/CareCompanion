@@ -1,33 +1,33 @@
-import { createClient } from '@/lib/supabase/server'
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation'
+import { db } from '@/lib/db';
+import { users, careProfiles, medications, doctors, appointments } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { ProfileEditor } from '@/components/ProfileEditor'
 
 export default async function ProfileEditPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
 
-  if (!profile) redirect('/setup')
+  const [profile] = await db.select().from(careProfiles).where(eq(careProfiles.userId, dbUser.id)).limit(1);
+  if (!profile) redirect('/setup');
 
-  const [{ data: medications }, { data: doctors }, { data: appointments }] = await Promise.all([
-    supabase.from('medications').select('*').eq('care_profile_id', profile.id),
-    supabase.from('doctors').select('*').eq('care_profile_id', profile.id),
-    supabase.from('appointments').select('*').eq('care_profile_id', profile.id),
-  ])
+  const [meds, docs, appts] = await Promise.all([
+    db.select().from(medications).where(eq(medications.careProfileId, profile.id)),
+    db.select().from(doctors).where(eq(doctors.careProfileId, profile.id)),
+    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)),
+  ]);
 
   return (
     <div className="max-w-3xl">
       <ProfileEditor
         profile={profile}
-        medications={medications || []}
-        doctors={doctors || []}
-        appointments={appointments || []}
+        medications={meds}
+        doctors={docs}
+        appointments={appts}
       />
     </div>
   )

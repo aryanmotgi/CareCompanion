@@ -26,12 +26,12 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
   const todayEntry = entries.find((e) => e.date === today);
 
   // Form state
-  const [painLevel, setPainLevel] = useState(todayEntry?.pain_level ?? 0);
+  const [painLevel, setPainLevel] = useState(todayEntry?.painLevel ?? 0);
   const [nauseaLevel, setNauseaLevel] = useState(0);
   const [fatigueLevel, setFatigueLevel] = useState(0);
   const [mood, setMood] = useState(todayEntry?.mood || '');
-  const [sleepQuality, setSleepQuality] = useState(todayEntry?.sleep_quality || '');
-  const [sleepHours, setSleepHours] = useState(todayEntry?.sleep_hours?.toString() || '');
+  const [sleepQuality, setSleepQuality] = useState(todayEntry?.sleepQuality || '');
+  const [sleepHours, setSleepHours] = useState(todayEntry?.sleepHours?.toString() || '');
   const [appetite, setAppetite] = useState(todayEntry?.appetite || '');
   const [energy, setEnergy] = useState(todayEntry?.energy || '');
   const [symptoms, setSymptoms] = useState<string[]>(todayEntry?.symptoms || []);
@@ -44,10 +44,10 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
   async function saveEntry() {
     setSaving(true);
     const body: Record<string, unknown> = {};
-    if (painLevel > 0) body.pain_level = painLevel;
+    if (painLevel > 0) body.painLevel = painLevel;
     if (mood) body.mood = mood;
-    if (sleepQuality) body.sleep_quality = sleepQuality;
-    if (sleepHours) body.sleep_hours = parseFloat(sleepHours);
+    if (sleepQuality) body.sleepQuality = sleepQuality;
+    if (sleepHours) body.sleepHours = parseFloat(sleepHours);
     if (appetite) body.appetite = appetite;
     if (energy) body.energy = energy;
     if (symptoms.length) body.symptoms = symptoms;
@@ -253,15 +253,15 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
                   </span>
                   <div className="flex items-center gap-2">
                     {entry.mood && <span title={`Mood: ${entry.mood}`}>{MOOD_EMOJIS[entry.mood]}</span>}
-                    {entry.pain_level !== null && entry.pain_level > 0 && (
-                      <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${entry.pain_level <= 3 ? 'bg-emerald-500/20 text-emerald-400' : entry.pain_level <= 6 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}`}>
-                        {entry.pain_level}/10
+                    {entry.painLevel !== null && entry.painLevel > 0 && (
+                      <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${entry.painLevel <= 3 ? 'bg-emerald-500/20 text-emerald-400' : entry.painLevel <= 6 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}`}>
+                        {entry.painLevel}/10
                       </span>
                     )}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {entry.sleep_quality && <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.04] text-[var(--text-secondary)]">Sleep: {entry.sleep_quality}</span>}
+                  {entry.sleepQuality && <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.04] text-[var(--text-secondary)]">Sleep: {entry.sleepQuality}</span>}
                   {entry.energy && <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.04] text-[var(--text-secondary)]">Energy: {entry.energy}</span>}
                   {entry.symptoms?.map((s) => (
                     <span key={s} className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400">{s}</span>

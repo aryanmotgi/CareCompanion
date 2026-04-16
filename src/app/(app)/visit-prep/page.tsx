@@ -1,6 +1,9 @@
 import { Suspense } from 'react';
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { users, careProfiles, appointments } from '@/lib/db/schema';
+import { eq, and, gte, lte, asc } from 'drizzle-orm';
 import { VisitPrepView } from '@/components/VisitPrepView';
 import { SkeletonCard } from '@/components/SkeletonCard';
 
@@ -23,33 +26,36 @@ function VisitPrepSkeleton() {
 }
 
 async function VisitPrepData() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  if (!user) redirect('/login');
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
+  const [profile] = await db
+    .select({ id: careProfiles.id })
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, dbUser.id))
+    .limit(1);
 
   if (!profile) redirect('/setup');
 
   const now = new Date();
   const thirtyDaysOut = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-  const { data: appointments } = await supabase
-    .from('appointments')
-    .select('*')
-    .eq('care_profile_id', profile.id)
-    .gte('date_time', now.toISOString())
-    .lte('date_time', thirtyDaysOut.toISOString())
-    .order('date_time', { ascending: true });
+  const appts = await db
+    .select()
+    .from(appointments)
+    .where(
+      and(
+        eq(appointments.careProfileId, profile.id),
+        gte(appointments.dateTime, now),
+        lte(appointments.dateTime, thirtyDaysOut),
+      )
+    )
+    .orderBy(asc(appointments.dateTime));
 
-  return <VisitPrepView appointments={appointments || []} />;
+  return <VisitPrepView appointments={appts} />;
 }
 
 export default function VisitPrepPage() {

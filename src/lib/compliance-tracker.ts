@@ -2,7 +2,9 @@
  * Medication reminder compliance tracking.
  * Records taken/skipped/snoozed responses and generates adherence reports.
  */
-import { createAdminClient } from '@/lib/supabase/admin'
+import { db } from '@/lib/db'
+import { reminderLogs, medicationReminders } from '@/lib/db/schema'
+import { eq, and, gte, asc } from 'drizzle-orm'
 
 export interface ComplianceReport {
   period_days: number
@@ -32,22 +34,21 @@ export async function generateComplianceReport(
   userId: string,
   periodDays: number = 7,
 ): Promise<ComplianceReport> {
-  const admin = createAdminClient()
-  const since = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString()
+  const since = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000)
 
-  const [{ data: logs }, { data: reminders }] = await Promise.all([
-    admin.from('reminder_logs')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('created_at', since)
-      .order('created_at', { ascending: true }),
-    admin.from('medication_reminders')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('is_active', true),
+  const [logs, reminders] = await Promise.all([
+    db
+      .select()
+      .from(reminderLogs)
+      .where(and(eq(reminderLogs.userId, userId), gte(reminderLogs.createdAt, since)))
+      .orderBy(asc(reminderLogs.createdAt)),
+    db
+      .select()
+      .from(medicationReminders)
+      .where(and(eq(medicationReminders.userId, userId), eq(medicationReminders.isActive, true))),
   ])
 
-  if (!reminders || reminders.length === 0) {
+  if (reminders.length === 0) {
     return {
       period_days: periodDays,
       total_expected: 0,
@@ -65,12 +66,12 @@ export async function generateComplianceReport(
   const byMedication = new Map<string, MedicationCompliance>()
 
   for (const reminder of reminders) {
-    const timesPerDay = reminder.reminder_times?.length || 1
-    const daysPerWeek = reminder.days_of_week?.length || 7
+    const timesPerDay = reminder.reminderTimes?.length || 1
+    const daysPerWeek = reminder.daysOfWeek?.length || 7
     const expectedInPeriod = Math.round((timesPerDay * daysPerWeek * periodDays) / 7)
 
-    byMedication.set(reminder.medication_name, {
-      medication_name: reminder.medication_name,
+    byMedication.set(reminder.medicationName, {
+      medication_name: reminder.medicationName,
       expected: expectedInPeriod,
       taken: 0,
       missed: 0,
@@ -82,8 +83,8 @@ export async function generateComplianceReport(
   // Count actual responses
   const missedTimes: string[] = []
 
-  for (const log of (logs || [])) {
-    const entry = byMedication.get(log.medication_name)
+  for (const log of logs) {
+    const entry = byMedication.get(log.medicationName)
     if (!entry) continue
 
     switch (log.status) {
@@ -92,7 +93,7 @@ export async function generateComplianceReport(
         break
       case 'missed':
         entry.missed++
-        missedTimes.push(log.scheduled_time)
+        if (log.scheduledTime) missedTimes.push(log.scheduledTime.toISOString())
         break
       case 'snoozed':
         entry.snoozed++
@@ -134,10 +135,10 @@ export async function generateComplianceReport(
 
   // Calculate streak (consecutive days with 100% adherence)
   let streak = 0
-  if (logs && logs.length > 0) {
+  if (logs.length > 0) {
     const dailyStatus = new Map<string, boolean>()
     for (const log of logs) {
-      const day = log.created_at.split('T')[0]
+      const day = log.createdAt?.toISOString().split('T')[0] ?? ''
       if (log.status === 'missed') {
         dailyStatus.set(day, false)
       } else if (!dailyStatus.has(day)) {

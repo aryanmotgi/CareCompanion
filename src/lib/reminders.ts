@@ -1,4 +1,7 @@
-import { createAdminClient } from '@/lib/supabase/admin';
+import { db } from '@/lib/db';
+import { medicationReminders, userSettings, reminderLogs, notifications } from '@/lib/db/schema';
+import { eq, and, gte, lte, lt } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DAY_MAP: Record<string, number> = {
@@ -10,39 +13,45 @@ const DAY_MAP: Record<string, number> = {
  * for any that are due. Runs on cron every 15 minutes.
  */
 export async function checkMedicationReminders(): Promise<{ generated: number }> {
-  const admin = createAdminClient();
   const now = new Date();
   const currentDay = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][now.getDay()];
   const currentTime = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
   // Window: check reminders within 15 minutes of current time
   const windowMinutes = 15;
 
-  const { data: reminders } = await admin
-    .from('medication_reminders')
-    .select('*')
-    .eq('is_active', true)
-    .contains('days_of_week', [currentDay]);
+  // Fetch active reminders for today's day of week
+  // Drizzle doesn't have array contains, so we filter in JS after fetch
+  const allReminders = await db
+    .select()
+    .from(medicationReminders)
+    .where(eq(medicationReminders.isActive, true));
 
-  if (!reminders || reminders.length === 0) return { generated: 0 };
+  const reminders = allReminders.filter(r => r.daysOfWeek?.includes(currentDay));
+
+  if (reminders.length === 0) return { generated: 0 };
 
   let generated = 0;
 
   // Build a map of user quiet hours to skip notifications during quiet periods
-  const userIds = Array.from(new Set(reminders.map((r) => r.user_id)));
-  const { data: allSettings } = await admin
-    .from('user_settings')
-    .select('user_id, quiet_hours_enabled, quiet_hours_start, quiet_hours_end, timezone')
-    .in('user_id', userIds);
+  const userIds = Array.from(new Set(reminders.map((r) => r.userId)));
+  const allSettings = userIds.length > 0
+    ? await db.select({
+        userId: userSettings.userId,
+        quietHoursEnabled: userSettings.quietHoursEnabled,
+        quietHoursStart: userSettings.quietHoursStart,
+        quietHoursEnd: userSettings.quietHoursEnd,
+      })
+      .from(userSettings)
+      .where(inArray(userSettings.userId, userIds))
+    : [];
 
-  const settingsMap = new Map(
-    (allSettings || []).map((s) => [s.user_id, s])
-  );
+  const settingsMap = new Map(allSettings.map((s) => [s.userId, s]));
 
   for (const reminder of reminders) {
     // Enforce quiet hours per user
-    const userSettings = settingsMap.get(reminder.user_id);
-    if (userSettings?.quiet_hours_enabled && userSettings.quiet_hours_start && userSettings.quiet_hours_end) {
-      const tz = userSettings.timezone || 'UTC';
+    const userSetting = settingsMap.get(reminder.userId);
+    if (userSetting?.quietHoursEnabled && userSetting.quietHoursStart && userSetting.quietHoursEnd) {
+      const tz = 'UTC';
       let nowHour: number;
       let nowMinute: number;
       try {
@@ -58,8 +67,8 @@ export async function checkMedicationReminders(): Promise<{ generated: number }>
         nowHour = now.getUTCHours();
         nowMinute = now.getUTCMinutes();
       }
-      const [sh, sm] = userSettings.quiet_hours_start.split(':').map(Number);
-      const [eh, em] = userSettings.quiet_hours_end.split(':').map(Number);
+      const [sh, sm] = userSetting.quietHoursStart.split(':').map(Number);
+      const [eh, em] = userSetting.quietHoursEnd.split(':').map(Number);
       const nowMins = nowHour * 60 + nowMinute;
       const startMins = sh * 60 + sm;
       const endMins = eh * 60 + em;
@@ -69,7 +78,7 @@ export async function checkMedicationReminders(): Promise<{ generated: number }>
       if (inQuiet) continue;
     }
 
-    for (const timeStr of reminder.reminder_times) {
+    for (const timeStr of (reminder.reminderTimes || [])) {
       // Check if this reminder time is within our 15-minute window
       if (!isWithinWindow(currentTime, timeStr, windowMinutes)) continue;
 
@@ -82,30 +91,34 @@ export async function checkMedicationReminders(): Promise<{ generated: number }>
       const startOfSlot = new Date(scheduledTime.getTime() - windowMinutes * 60000);
       const endOfSlot = new Date(scheduledTime.getTime() + windowMinutes * 60000);
 
-      const { data: existing } = await admin
-        .from('reminder_logs')
-        .select('id')
-        .eq('reminder_id', reminder.id)
-        .gte('scheduled_time', startOfSlot.toISOString())
-        .lte('scheduled_time', endOfSlot.toISOString())
+      const existing = await db
+        .select({ id: reminderLogs.id })
+        .from(reminderLogs)
+        .where(
+          and(
+            eq(reminderLogs.reminderId, reminder.id),
+            gte(reminderLogs.scheduledTime, startOfSlot),
+            lte(reminderLogs.scheduledTime, endOfSlot),
+          )
+        )
         .limit(1);
 
-      if (existing && existing.length > 0) continue;
+      if (existing.length > 0) continue;
 
       // Create the reminder log
-      await admin.from('reminder_logs').insert({
-        user_id: reminder.user_id,
-        reminder_id: reminder.id,
-        medication_name: reminder.medication_name,
-        scheduled_time: scheduledTime.toISOString(),
+      await db.insert(reminderLogs).values({
+        userId: reminder.userId,
+        reminderId: reminder.id,
+        medicationName: reminder.medicationName,
+        scheduledTime,
         status: 'pending',
       });
 
       // Create a notification
-      await admin.from('notifications').insert({
-        user_id: reminder.user_id,
+      await db.insert(notifications).values({
+        userId: reminder.userId,
         type: 'medication_reminder',
-        title: `Time to take ${reminder.medication_name}`,
+        title: `Time to take ${reminder.medicationName}`,
         message: `${reminder.dose || ''} — scheduled for ${formatTime(timeStr)}. Tap to confirm you've taken it.`,
       });
 
@@ -114,12 +127,11 @@ export async function checkMedicationReminders(): Promise<{ generated: number }>
   }
 
   // Mark any reminders from >2 hours ago that are still pending as missed
-  const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
-  await admin
-    .from('reminder_logs')
-    .update({ status: 'missed' })
-    .eq('status', 'pending')
-    .lt('scheduled_time', twoHoursAgo);
+  const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+  await db
+    .update(reminderLogs)
+    .set({ status: 'missed' })
+    .where(and(eq(reminderLogs.status, 'pending'), lt(reminderLogs.scheduledTime, twoHoursAgo)));
 
   return { generated };
 }

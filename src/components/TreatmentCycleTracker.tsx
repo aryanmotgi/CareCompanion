@@ -52,8 +52,8 @@ function parseCycleInfo(med: Medication): CycleInfo | null {
   if (freq.includes('weekly')) cycleLengthDays = 7;
 
   let dayInCycle = 1;
-  if (med.refill_date) {
-    const nextInfusion = new Date(med.refill_date);
+  if (med.refillDate) {
+    const nextInfusion = new Date(med.refillDate);
     const now = new Date();
     const daysUntilNext = Math.ceil((nextInfusion.getTime() - now.getTime()) / 86400000);
     dayInCycle = Math.max(1, cycleLengthDays - daysUntilNext);
@@ -90,7 +90,7 @@ function parseCycleInfo(med: Medication): CycleInfo | null {
     phase,
     phaseLabel,
     phaseColor,
-    nextInfusion: med.refill_date,
+    nextInfusion: med.refillDate,
   };
 }
 
@@ -440,7 +440,7 @@ export function TreatmentCycleTracker({ medications, patientName }: TreatmentCyc
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {recentSymptoms
-                    .flatMap(e => (e.symptoms || []).map(s => ({ symptom: s, pain: e.pain_level })))
+                    .flatMap(e => (e.symptoms || []).map(s => ({ symptom: s, pain: e.painLevel })))
                     .reduce<{ symptom: string; count: number; maxPain: number }[]>((acc, { symptom, pain }) => {
                       const existing = acc.find(a => a.symptom === symptom);
                       if (existing) {

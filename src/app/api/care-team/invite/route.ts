@@ -1,6 +1,8 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess, ApiErrors } from '@/lib/api-response';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { db } from '@/lib/db';
+import { careTeamMembers, careTeamInvites, careTeamActivity, careProfiles, users } from '@/lib/db/schema';
+import { and, eq, inArray } from 'drizzle-orm';
 import { sendEmail, careTeamInviteEmail } from '@/lib/email';
 import { rateLimit } from '@/lib/rate-limit';
 import { validateCsrf } from '@/lib/csrf';
@@ -25,7 +27,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { user, error: authError } = await getAuthenticatedUser();
+    const { user: dbUser, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
 
     const body = await req.json();
@@ -33,52 +35,63 @@ export async function POST(req: Request) {
     if (valError) return valError;
 
     const { email, role } = validated;
-    const admin = createAdminClient();
 
     // Check the user is an owner or editor
-    const { data: membership } = await admin
-      .from('care_team_members')
-      .select('care_profile_id, role')
-      .eq('user_id', user.id)
-      .in('role', ['owner', 'editor'])
-      .limit(1)
-      .single();
+    const [membership] = await db
+      .select({ careProfileId: careTeamMembers.careProfileId, role: careTeamMembers.role })
+      .from(careTeamMembers)
+      .where(
+        and(
+          eq(careTeamMembers.userId, dbUser!.id),
+          inArray(careTeamMembers.role, ['owner', 'editor'])
+        )
+      )
+      .limit(1);
 
     if (!membership) {
       return apiError('You do not have permission to invite team members', 403);
     }
 
     // Can't invite yourself
-    if (email.toLowerCase() === user.email?.toLowerCase()) {
+    if (email.toLowerCase() === dbUser!.email?.toLowerCase()) {
       return apiError('You cannot invite yourself', 400);
     }
 
     // Check for existing pending invite
-    const { data: existing } = await admin
-      .from('care_team_invites')
-      .select('id')
-      .eq('care_profile_id', membership.care_profile_id)
-      .eq('invited_email', email.toLowerCase())
-      .eq('status', 'pending')
-      .limit(1)
-      .single();
+    const [existing] = await db
+      .select({ id: careTeamInvites.id })
+      .from(careTeamInvites)
+      .where(
+        and(
+          eq(careTeamInvites.careProfileId, membership.careProfileId),
+          eq(careTeamInvites.invitedEmail, email.toLowerCase()),
+          eq(careTeamInvites.status, 'pending')
+        )
+      )
+      .limit(1);
 
     if (existing) {
       return apiError('An invitation has already been sent to this email', 400);
     }
 
-    // Check if they're already a team member
-    const { data: invitedUser } = await admin.auth.admin.listUsers();
-    const targetUser = invitedUser?.users?.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+    // Check if they're already a team member (look up by email in users table)
+    const [targetUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, email.toLowerCase()))
+      .limit(1);
 
     if (targetUser) {
-      const { data: alreadyMember } = await admin
-        .from('care_team_members')
-        .select('id')
-        .eq('care_profile_id', membership.care_profile_id)
-        .eq('user_id', targetUser.id)
-        .limit(1)
-        .single();
+      const [alreadyMember] = await db
+        .select({ id: careTeamMembers.id })
+        .from(careTeamMembers)
+        .where(
+          and(
+            eq(careTeamMembers.careProfileId, membership.careProfileId),
+            eq(careTeamMembers.userId, targetUser.id)
+          )
+        )
+        .limit(1);
 
       if (alreadyMember) {
         return apiError('This person is already on the care team', 400);
@@ -86,23 +99,26 @@ export async function POST(req: Request) {
     }
 
     // Create the invite
-    const { data: invite, error } = await admin.from('care_team_invites').insert({
-      care_profile_id: membership.care_profile_id,
-      invited_email: email.toLowerCase(),
-      role,
-      invited_by: user.id,
-    }).select('id').single();
+    const [invite] = await db
+      .insert(careTeamInvites)
+      .values({
+        careProfileId: membership.careProfileId,
+        invitedEmail: email.toLowerCase(),
+        role,
+        invitedBy: dbUser!.id,
+      })
+      .returning({ id: careTeamInvites.id });
 
-    if (error) {
-      return apiError(error.message, 500);
+    if (!invite) {
+      return apiError('Failed to create invitation', 500);
     }
 
     // Log activity
-    const displayName = user.user_metadata?.display_name || user.email?.split('@')[0] || 'Someone';
-    await admin.from('care_team_activity').insert({
-      care_profile_id: membership.care_profile_id,
-      user_id: user.id,
-      user_name: displayName,
+    const displayName = dbUser!.displayName || dbUser!.email?.split('@')[0] || 'Someone';
+    await db.insert(careTeamActivity).values({
+      careProfileId: membership.careProfileId,
+      userId: dbUser!.id,
+      userName: displayName,
       action: `invited ${email} as ${role}`,
     });
 
@@ -112,14 +128,14 @@ export async function POST(req: Request) {
         ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
         : 'http://localhost:3000');
 
-    const { data: profile } = await admin
-      .from('care_profiles')
-      .select('patient_name')
-      .eq('id', membership.care_profile_id)
-      .single();
+    const [profile] = await db
+      .select({ patientName: careProfiles.patientName })
+      .from(careProfiles)
+      .where(eq(careProfiles.id, membership.careProfileId))
+      .limit(1);
 
     const acceptUrl = `${baseUrl}/care-team?accept=${invite.id}`;
-    const patientName = profile?.patient_name || 'a patient';
+    const patientName = profile?.patientName || 'a patient';
 
     const html = careTeamInviteEmail({
       inviterName: displayName,

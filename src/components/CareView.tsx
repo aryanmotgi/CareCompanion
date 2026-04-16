@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { SegmentControl } from './SegmentControl'
 import { ExpandableCard } from './ExpandableCard'
 import { BottomSheet } from './BottomSheet'
@@ -62,29 +61,33 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
     return doc?.phone || null
   }
 
-  const needsRefill = medications.filter((m) => m.refill_date && daysUntil(m.refill_date) <= 3)
-  const activeMeds = medications.filter((m) => !m.refill_date || daysUntil(m.refill_date) > 3)
+  const needsRefill = medications.filter((m) => m.refillDate && daysUntil(m.refillDate) <= 3)
+  const activeMeds = medications.filter((m) => !m.refillDate || daysUntil(m.refillDate) > 3)
 
   const thisWeekAppts = appointments.filter((a) => {
-    if (!a.date_time) return false
-    const days = daysUntil(a.date_time)
+    if (!a.dateTime) return false
+    const days = daysUntil(a.dateTime.toISOString())
     return days >= 0 && days <= 7
   })
-  const upcomingAppts = appointments.filter((a) => a.date_time && daysUntil(a.date_time) > 7)
+  const upcomingAppts = appointments.filter((a) => a.dateTime && daysUntil(a.dateTime.toISOString()) > 7)
 
   const handleAddMed = async () => {
     if (!medName.trim()) return
     setSavingMed(true)
     try {
-      const supabase = createClient()
-      const { data, error } = await supabase.from('medications').insert({
-        care_profile_id: profileId,
-        name: medName.trim(),
-        dose: medDose || null,
-        frequency: medFreq || null,
-      }).select().single()
-      if (error) throw error
-      if (data) setMedications([...medications, data])
+      const res = await fetch('/api/records/medications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          care_profile_id: profileId,
+          name: medName.trim(),
+          dose: medDose || null,
+          frequency: medFreq || null,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      if (json.data) setMedications([...medications, json.data])
       setMedName(''); setMedDose(''); setMedFreq('')
       setShowMedForm(false)
       showToast('Medication added', 'success')
@@ -99,17 +102,21 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
     if (!apptDoctor.trim() || !apptDate) return
     setSavingAppt(true)
     try {
-      const supabase = createClient()
-      const { data, error } = await supabase.from('appointments').insert({
-        care_profile_id: profileId,
-        doctor_name: apptDoctor.trim(),
-        specialty: apptSpecialty || null,
-        date_time: new Date(apptDate).toISOString(),
-        location: apptLocation || null,
-        purpose: apptPurpose || null,
-      }).select().single()
-      if (error) throw error
-      if (data) setAppointments([...appointments, data])
+      const res = await fetch('/api/records/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          care_profile_id: profileId,
+          doctorName: apptDoctor.trim(),
+          specialty: apptSpecialty || null,
+          date_time: new Date(apptDate).toISOString(),
+          location: apptLocation || null,
+          purpose: apptPurpose || null,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      if (json.data) setAppointments([...appointments, json.data])
       setApptDoctor(''); setApptSpecialty(''); setApptDate(''); setApptLocation(''); setApptPurpose('')
       setShowApptForm(false)
       showToast('Appointment added', 'success')
@@ -125,10 +132,13 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
     const { id, type } = confirmDelete
     setDeletingId(id)
     try {
-      const supabase = createClient()
-      const table = type === 'med' ? 'medications' : 'appointments'
-      const { error } = await supabase.from(table).delete().eq('id', id)
-      if (error) throw error
+      const endpoint = type === 'med' ? '/api/records/medications' : '/api/records/appointments'
+      const res = await fetch(endpoint, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      if (!res.ok) throw new Error('Delete failed')
       if (type === 'med') {
         setMedications(medications.filter((m) => m.id !== id))
       } else {
@@ -145,8 +155,7 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
   }
 
   const renderMedCard = (med: Medication, i: number) => {
-    const refillSoon = med.refill_date && daysUntil(med.refill_date) <= 3
-    const lowQty = (med.quantity_remaining ?? 999) <= 5
+    const refillSoon = med.refillDate && daysUntil(med.refillDate) <= 3
     return (
       <ExpandableCard
         key={med.id}
@@ -157,14 +166,14 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
         expandedContent={
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div><span className="text-[#64748b]">Doctor:</span> <span className="text-[#e2e8f0]">{med.prescribing_doctor || '—'}</span></div>
-              <div><span className="text-[#64748b]">Refill:</span> <span className={refillSoon ? 'text-[#ef4444]' : 'text-[#e2e8f0]'}>{med.refill_date ? new Date(med.refill_date).toLocaleDateString() : '—'}</span></div>
-              <div><span className="text-[#64748b]">Remaining:</span> <span className={lowQty ? 'text-[#fbbf24]' : 'text-[#e2e8f0]'}>{med.quantity_remaining ?? '—'}</span></div>
+              <div><span className="text-[#64748b]">Doctor:</span> <span className="text-[#e2e8f0]">{med.prescribingDoctor || '—'}</span></div>
+              <div><span className="text-[#64748b]">Refill:</span> <span className={refillSoon ? 'text-[#ef4444]' : 'text-[#e2e8f0]'}>{med.refillDate ? new Date(med.refillDate).toLocaleDateString() : '—'}</span></div>
               <div><span className="text-[#64748b]">Frequency:</span> <span className="text-[#e2e8f0]">{med.frequency || '—'}</span></div>
+              <div><span className="text-[#64748b]">Notes:</span> <span className="text-[#e2e8f0]">{med.notes || '—'}</span></div>
             </div>
             <div className="flex gap-2">
-              {med.pharmacy_phone && (
-                <a href={`tel:${med.pharmacy_phone}`} className="flex-1 text-center py-2 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-xs font-semibold animate-press">
+              {med.pharmacyPhone && (
+                <a href={`tel:${med.pharmacyPhone}`} className="flex-1 text-center py-2 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-xs font-semibold animate-press">
                   Call Pharmacy
                 </a>
               )}
@@ -198,10 +207,10 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
   }
 
   const renderApptCard = (appt: Appointment, i: number) => {
-    const apptDateTime = new Date(appt.date_time ?? '')
-    const timeStr = apptDateTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-    const dateStr = apptDateTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
-    const doctorPhone = getDoctorPhone(appt.doctor_name)
+    const apptDateTime = appt.dateTime ? new Date(appt.dateTime) : null
+    const timeStr = apptDateTime ? apptDateTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''
+    const dateStr = apptDateTime ? apptDateTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : 'No date'
+    const doctorPhone = getDoctorPhone(appt.doctorName)
 
     return (
       <ExpandableCard
@@ -218,9 +227,9 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
             </div>
             <VisitPrepSheet
               appointmentId={appt.id}
-              doctorName={appt.doctor_name || 'Doctor'}
-              dateTime={appt.date_time}
-              existingPrep={appt.prep_notes || null}
+              doctorName={appt.doctorName || 'Doctor'}
+              dateTime={appt.dateTime ? appt.dateTime.toISOString() : null}
+              existingPrep={null}
             />
             <div className="flex gap-2 mt-2">
               {doctorPhone && (
@@ -234,7 +243,7 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
                 </a>
               )}
               <button
-                onClick={() => setConfirmDelete({ id: appt.id, type: 'appt', name: appt.doctor_name || 'this appointment' })}
+                onClick={() => setConfirmDelete({ id: appt.id, type: 'appt', name: appt.doctorName || 'this appointment' })}
                 disabled={deletingId === appt.id}
                 className="flex-1 py-2 rounded-lg bg-white/[0.06] border border-white/[0.1] text-[#ef4444] text-xs font-semibold animate-press disabled:opacity-40"
               >
@@ -245,7 +254,7 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
         }
       >
         <div>
-          <div className="text-[#f1f5f9] text-[15px] font-semibold">{appt.doctor_name}</div>
+          <div className="text-[#f1f5f9] text-[15px] font-semibold">{appt.doctorName}</div>
           <div className="text-[#94a3b8] text-xs">{appt.specialty} · {dateStr} at {timeStr}</div>
         </div>
       </ExpandableCard>

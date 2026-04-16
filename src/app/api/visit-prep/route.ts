@@ -1,7 +1,9 @@
 import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { db } from '@/lib/db';
+import { appointments, careProfiles, medications, labResults, memories } from '@/lib/db/schema';
+import { desc, eq } from 'drizzle-orm';
+import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { detectVisitType, getVisitTemplate } from '@/lib/visit-prep-templates';
 import { rateLimit } from '@/lib/rate-limit';
 import { ApiErrors } from '@/lib/api-response';
@@ -19,47 +21,48 @@ async function handler(req: Request) {
     return ApiErrors.rateLimited();
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new Response('Unauthorized', { status: 401 });
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error) return new Response('Unauthorized', { status: 401 });
 
   const { appointment_id } = await req.json();
-  const admin = createAdminClient();
 
   // Get the appointment
-  const { data: appt } = await admin.from('appointments')
-    .select('*')
-    .eq('id', appointment_id)
-    .single();
+  const [appt] = await db
+    .select()
+    .from(appointments)
+    .where(eq(appointments.id, appointment_id))
+    .limit(1);
 
   if (!appt) return Response.json({ error: 'Appointment not found' }, { status: 404 });
 
   // Get care profile and verify ownership
-  const { data: profile } = await admin.from('care_profiles')
-    .select('*')
-    .eq('id', appt.care_profile_id)
-    .single();
+  const [profile] = await db
+    .select()
+    .from(careProfiles)
+    .where(eq(careProfiles.id, appt.careProfileId))
+    .limit(1);
 
   if (!profile) return Response.json({ error: 'Care profile not found' }, { status: 404 });
 
-  if (profile.user_id !== user.id) {
+  if (profile.userId !== dbUser!.id) {
     return Response.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   // Gather all data
-  const [
-    { data: meds },
-    { data: labs },
-    ,
-    { data: memories },
-  ] = await Promise.all([
-    admin.from('medications').select('*').eq('care_profile_id', profile.id),
-    admin.from('lab_results').select('*').eq('user_id', user.id).order('date_taken', { ascending: false }).limit(15),
-    admin.from('doctors').select('*').eq('care_profile_id', profile.id),
-    admin.from('memories').select('fact, category').eq('user_id', user.id).order('last_referenced', { ascending: false }).limit(20),
+  const [meds, labs, recentMemories] = await Promise.all([
+    db.select().from(medications).where(eq(medications.careProfileId, profile.id)),
+    db.select().from(labResults)
+      .where(eq(labResults.userId, dbUser!.id))
+      .orderBy(desc(labResults.dateTaken))
+      .limit(15),
+    db.select({ fact: memories.fact, category: memories.category })
+      .from(memories)
+      .where(eq(memories.userId, dbUser!.id))
+      .orderBy(desc(memories.lastReferenced))
+      .limit(20),
   ]);
 
-  const relevantMemories = (memories || []).map((m) => m.fact).join('\n- ');
+  const relevantMemories = recentMemories.map((m) => m.fact).join('\n- ');
 
   // Detect visit type and get targeted template
   const visitType = detectVisitType(appt.purpose, appt.specialty);
@@ -80,27 +83,27 @@ ${template.prep_tasks.map((t) => `- ${t}`).join('\n')}
 Use these as a starting point but customize based on the patient's specific data, conditions, and appointment context. Replace generic questions with ones tailored to this patient's situation.`;
 
   const { text } = await generateText({
-    model: anthropic('claude-sonnet-4-6'),
+    model: anthropic('claude-sonnet-4.6'),
     prompt: `Generate a doctor visit prep sheet. Format it as clean markdown that a caregiver can print or share.
 
 APPOINTMENT:
-- Doctor: ${appt.doctor_name || 'Unknown'}
+- Doctor: ${appt.doctorName || 'Unknown'}
 - Specialty: ${appt.specialty || 'General'}
-- Date: ${appt.date_time ? new Date(appt.date_time).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'TBD'}
+- Date: ${appt.dateTime ? new Date(appt.dateTime).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'TBD'}
 - Purpose: ${appt.purpose || 'General visit'}
 - Location: ${appt.location || 'Not specified'}
 
 PATIENT:
-- Name: ${profile.patient_name || 'Unknown'}
-- Age: ${profile.patient_age || 'Unknown'}
+- Name: ${profile.patientName || 'Unknown'}
+- Age: ${profile.patientAge || 'Unknown'}
 - Conditions: ${profile.conditions || 'None listed'}
 - Allergies: ${profile.allergies || 'None listed'}
 
 CURRENT MEDICATIONS:
-${(meds || []).map((m) => `- ${m.name} ${m.dose || ''} ${m.frequency || ''} (prescribed by ${m.prescribing_doctor || 'unknown'})`).join('\n') || '- None listed'}
+${meds.map((m) => `- ${m.name} ${m.dose || ''} ${m.frequency || ''} (prescribed by ${m.prescribingDoctor || 'unknown'})`).join('\n') || '- None listed'}
 
 RECENT LAB RESULTS:
-${(labs || []).map((l) => `- ${l.test_name}: ${l.value} ${l.unit || ''} (range: ${l.reference_range || 'N/A'})${l.is_abnormal ? ' ⚠️ ABNORMAL' : ''} [${l.date_taken || 'no date'}]`).join('\n') || '- No recent labs'}
+${labs.map((l) => `- ${l.testName}: ${l.value} ${l.unit || ''} (range: ${l.referenceRange || 'N/A'})${l.isAbnormal ? ' ⚠️ ABNORMAL' : ''} [${l.dateTaken || 'no date'}]`).join('\n') || '- No recent labs'}
 
 RELEVANT NOTES FROM PAST CONVERSATIONS:
 - ${relevantMemories || 'None'}
@@ -116,11 +119,6 @@ Generate the prep sheet with these sections:
 
 Keep it warm but professional. This is for a family caregiver, not a clinician.`,
   });
-
-  // Save prep notes to the appointment
-  await admin.from('appointments')
-    .update({ prep_notes: text })
-    .eq('id', appointment_id);
 
   return Response.json({ success: true, prep_sheet: text });
 }

@@ -6,7 +6,7 @@ import type { Appointment, Medication } from '@/lib/types';
 
 interface CalendarViewProps {
   appointments: Appointment[];
-  medications: Pick<Medication, 'name' | 'refill_date'>[];
+  medications: Pick<Medication, 'name' | 'refillDate'>[];
   patientName: string;
 }
 
@@ -33,13 +33,13 @@ export function CalendarView({ appointments, medications, patientName }: Calenda
   const eventMap = new Map<string, DayEvent[]>();
 
   for (const appt of appointments) {
-    if (!appt.date_time) continue;
-    const date = new Date(appt.date_time);
+    if (!appt.dateTime) continue;
+    const date = new Date(appt.dateTime);
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     const events = eventMap.get(key) || [];
     events.push({
       type: 'appointment',
-      label: appt.doctor_name || 'Appointment',
+      label: appt.doctorName || 'Appointment',
       time: date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       color: 'bg-blue-500',
     });
@@ -47,8 +47,8 @@ export function CalendarView({ appointments, medications, patientName }: Calenda
   }
 
   for (const med of medications) {
-    if (!med.refill_date) continue;
-    const date = new Date(med.refill_date + 'T12:00:00');
+    if (!med.refillDate) continue;
+    const date = new Date(med.refillDate + 'T12:00:00');
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     const events = eventMap.get(key) || [];
     events.push({

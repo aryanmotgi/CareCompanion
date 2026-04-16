@@ -72,7 +72,7 @@ export function ProfileSwitcher({ profiles, activeProfileId }: ProfileSwitcherPr
         disabled={switching}
       >
         <span className="text-[#f1f5f9] text-sm font-medium truncate max-w-[120px]">
-          {activeProfile?.patient_name || 'Select patient'}
+          {activeProfile?.patientName || 'Select patient'}
         </span>
         <svg className={`w-3.5 h-3.5 text-[#64748b] transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
@@ -91,11 +91,11 @@ export function ProfileSwitcher({ profiles, activeProfileId }: ProfileSwitcherPr
               className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.04] transition-colors ${p.id === activeProfileId ? 'bg-blue-500/10' : ''}`}
             >
               <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${COLORS[i % COLORS.length]} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
-                {initials(p.patient_name || '??')}
+                {initials(p.patientName || '??')}
               </div>
               <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm text-white font-medium truncate">{p.patient_name || 'Unknown'}</p>
-                <p className="text-[11px] text-[var(--text-muted)]">{p.relationship || ''}{p.patient_age ? ` · Age ${p.patient_age}` : ''}</p>
+                <p className="text-sm text-white font-medium truncate">{p.patientName || 'Unknown'}</p>
+                <p className="text-[11px] text-[var(--text-muted)]">{p.relationship || ''}{p.patientAge ? ` · Age ${p.patientAge}` : ''}</p>
               </div>
               {p.id === activeProfileId && (
                 <svg className="w-4 h-4 text-[#A78BFA] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">

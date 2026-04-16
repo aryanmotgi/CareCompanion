@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { detectConflicts, getResolutionOptions, type Conflict, type ProfileAppointment } from '@/lib/conflicts'
 import type { CareProfile, Appointment, CareTeamMember } from '@/lib/types'
 
@@ -18,18 +17,14 @@ export function ConflictsView({ profiles, careTeamMembers }: ConflictsViewProps)
 
   useEffect(() => {
     async function loadConflicts() {
-      const supabase = createClient()
       const appointmentsByProfile = new Map<string, Appointment[]>()
 
       // Fetch appointments for ALL profiles in parallel
       const results = await Promise.all(
         profiles.map(async (profile) => {
-          const { data } = await supabase
-            .from('appointments')
-            .select('*')
-            .eq('care_profile_id', profile.id)
-            .order('date_time', { ascending: true })
-          return { profileId: profile.id, appointments: data || [] }
+          const res = await fetch(`/api/records/appointments?care_profile_id=${profile.id}`)
+          const json = await res.json()
+          return { profileId: profile.id, appointments: (res.ok && json.data) ? json.data : [] }
         })
       )
 
@@ -187,8 +182,8 @@ export function ConflictsView({ profiles, careTeamMembers }: ConflictsViewProps)
 }
 
 function ConflictApptRow({ appt }: { appt: ProfileAppointment }) {
-  const time = appt.date_time
-    ? new Date(appt.date_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  const time = appt.dateTime
+    ? new Date(appt.dateTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
     : '—'
 
   return (
@@ -198,7 +193,7 @@ function ConflictApptRow({ appt }: { appt: ProfileAppointment }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-[#f1f5f9] text-sm font-medium truncate">
-          {appt.profileName} — {appt.doctor_name}
+          {appt.profileName} — {appt.doctorName}
         </div>
         <div className="text-[#94a3b8] text-xs">
           {appt.specialty} · {time}{appt.location ? ` · ${appt.location}` : ''}

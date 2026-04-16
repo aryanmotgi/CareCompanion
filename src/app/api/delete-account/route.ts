@@ -1,6 +1,8 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { apiSuccess, apiError, ApiErrors } from '@/lib/api-response'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { db } from '@/lib/db'
+import { eq } from 'drizzle-orm'
+import { users } from '@/lib/db/schema'
 import { rateLimit } from '@/lib/rate-limit'
 import { logAudit } from '@/lib/audit'
 import { validateCsrf } from '@/lib/csrf'
@@ -27,64 +29,8 @@ export async function POST(req: Request) {
 
     console.log(`[delete-account] Starting account deletion for user ${user.id}`)
 
-    // Use admin client to bypass RLS policies
-    const admin = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    // Delete in dependency order (children first, then parents)
-    // Tables with foreign keys to care_profiles
-    const { data: profiles } = await admin.from('care_profiles').select('id').eq('user_id', user.id)
-    const profileIds = (profiles || []).map(p => p.id)
-
-    if (profileIds.length > 0) {
-      // Delete care_profile children
-      for (const pid of profileIds) {
-        await admin.from('medications').delete().eq('care_profile_id', pid)
-        await admin.from('appointments').delete().eq('care_profile_id', pid)
-        await admin.from('doctors').delete().eq('care_profile_id', pid)
-        await admin.from('documents').delete().eq('care_profile_id', pid)
-        await admin.from('care_team_members').delete().eq('care_profile_id', pid)
-        await admin.from('shared_links').delete().eq('care_profile_id', pid)
-      }
-    }
-
-    // Delete all user-level tables (order doesn't matter for these)
-    const userTables = [
-      'reminder_logs',
-      'medication_reminders',
-      'symptom_entries',
-      'memories',
-      'conversation_summaries',
-      'health_summaries',
-      'audit_logs',
-      'lab_results',
-      'claims',
-      'prior_authorizations',
-      'fsa_hsa',
-      'insurance',
-      'notifications',
-      'user_settings',
-      'user_preferences',
-      'connected_apps',
-      'messages',
-      'care_profiles',
-    ]
-
-    for (const table of userTables) {
-      const { error } = await admin.from(table).delete().eq('user_id', user.id)
-      if (error) {
-        console.log(`[delete-account] Note: ${table} delete: ${error.message}`)
-      }
-    }
-
-    // Delete auth user
-    const { error: deleteAuthError } = await admin.auth.admin.deleteUser(user.id)
-    if (deleteAuthError) {
-      console.error(`[delete-account] Failed to delete auth user ${user.id}:`, deleteAuthError)
-      return apiError('Failed to delete auth account', 500)
-    }
+    // Delete the user record (cascades to all related records via FK constraints)
+    await db.delete(users).where(eq(users.cognitoSub, user.id))
 
     console.log(`[delete-account] Successfully deleted user ${user.id}`)
     return apiSuccess({ success: true })

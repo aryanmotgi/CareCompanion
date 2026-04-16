@@ -1,15 +1,16 @@
-import { createClient } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { sharedLinks, careProfiles, medications, doctors } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { AmbientBackground } from '@/components/AmbientBackground';
 
-export default async function SharedPage({ params }: { params: { token: string } }) {
-  const supabase = await createClient();
+export default async function SharedPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
 
-  // Look up the share link
-  const { data: link } = await supabase
-    .from('shared_links')
-    .select('*')
-    .eq('token', params.token)
-    .single();
+  const [link] = await db
+    .select()
+    .from(sharedLinks)
+    .where(eq(sharedLinks.token, token))
+    .limit(1);
 
   if (!link) {
     return (
@@ -25,7 +26,7 @@ export default async function SharedPage({ params }: { params: { token: string }
   }
 
   // Check expiration
-  if (new Date(link.expires_at) < new Date()) {
+  if (new Date(link.expiresAt) < new Date()) {
     return (
       <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex items-center justify-center">
         <AmbientBackground />
@@ -38,22 +39,32 @@ export default async function SharedPage({ params }: { params: { token: string }
     );
   }
 
-  // Fetch the shared data based on type
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('patient_name, cancer_type, cancer_stage, treatment_phase, conditions, allergies')
-    .eq('user_id', link.user_id)
-    .single();
+  const [profile] = await db
+    .select({
+      id: careProfiles.id,
+      patientName: careProfiles.patientName,
+      cancerType: careProfiles.cancerType,
+      cancerStage: careProfiles.cancerStage,
+      treatmentPhase: careProfiles.treatmentPhase,
+      conditions: careProfiles.conditions,
+      allergies: careProfiles.allergies,
+    })
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, link.userId))
+    .limit(1);
 
-  const { data: medications } = await supabase
-    .from('medications')
-    .select('name, dose, frequency')
-    .eq('care_profile_id', profile ? (await supabase.from('care_profiles').select('id').eq('user_id', link.user_id).single()).data?.id : '');
-
-  const { data: doctors } = await supabase
-    .from('doctors')
-    .select('name, specialty, phone')
-    .eq('care_profile_id', profile ? (await supabase.from('care_profiles').select('id').eq('user_id', link.user_id).single()).data?.id : '');
+  const [meds, docs] = profile
+    ? await Promise.all([
+        db
+          .select({ name: medications.name, dose: medications.dose, frequency: medications.frequency })
+          .from(medications)
+          .where(eq(medications.careProfileId, profile.id)),
+        db
+          .select({ name: doctors.name, specialty: doctors.specialty, phone: doctors.phone })
+          .from(doctors)
+          .where(eq(doctors.careProfileId, profile.id)),
+      ])
+    : [[], []];
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
@@ -65,17 +76,17 @@ export default async function SharedPage({ params }: { params: { token: string }
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white">{profile?.patient_name || 'Patient'}&apos;s Care Summary</h1>
+          <h1 className="text-2xl font-bold text-white">{profile?.patientName || 'Patient'}&apos;s Care Summary</h1>
           <p className="text-sm text-[var(--text-muted)] mt-1">Shared via CareCompanion</p>
         </div>
 
         {/* Diagnosis */}
-        {(profile?.cancer_type || profile?.conditions) && (
+        {(profile?.cancerType || profile?.conditions) && (
           <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] p-6">
             <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Diagnosis</h2>
-            {profile?.cancer_type && (
+            {profile?.cancerType && (
               <p className="text-white font-medium">
-                {profile.cancer_type}{profile?.cancer_stage && profile.cancer_stage !== 'Unsure' ? ` — Stage ${profile.cancer_stage}` : ''}
+                {profile.cancerType}{profile?.cancerStage && profile.cancerStage !== 'Unsure' ? ` — Stage ${profile.cancerStage}` : ''}
               </p>
             )}
             {profile?.conditions && <p className="text-sm text-[var(--text-secondary)] mt-2">{profile.conditions}</p>}
@@ -84,11 +95,11 @@ export default async function SharedPage({ params }: { params: { token: string }
         )}
 
         {/* Medications */}
-        {medications && medications.length > 0 && (
+        {meds.length > 0 && (
           <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] p-6">
             <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Medications</h2>
             <div className="space-y-3">
-              {medications.map((med, i) => (
+              {meds.map((med, i) => (
                 <div key={i} className="flex items-center justify-between">
                   <div>
                     <p className="text-white text-sm font-medium">{med.name}</p>
@@ -101,11 +112,11 @@ export default async function SharedPage({ params }: { params: { token: string }
         )}
 
         {/* Doctors */}
-        {doctors && doctors.length > 0 && (
+        {docs.length > 0 && (
           <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] p-6">
             <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Care Team</h2>
             <div className="space-y-3">
-              {doctors.map((doc, i) => (
+              {docs.map((doc, i) => (
                 <div key={i}>
                   <p className="text-white text-sm font-medium">{doc.name}</p>
                   <p className="text-xs text-[var(--text-muted)]">{doc.specialty}{doc.phone ? ` — ${doc.phone}` : ''}</p>
@@ -116,7 +127,7 @@ export default async function SharedPage({ params }: { params: { token: string }
         )}
 
         <div className="text-center pt-4">
-          <p className="text-xs text-[var(--text-muted)]">This link expires {new Date(link.expires_at).toLocaleDateString()}</p>
+          <p className="text-xs text-[var(--text-muted)]">This link expires {new Date(link.expiresAt).toLocaleDateString()}</p>
           <a href="/" className="text-xs text-[#A78BFA] hover:text-[#C4B5FD] mt-2 inline-block">Learn more about CareCompanion</a>
         </div>
       </div>

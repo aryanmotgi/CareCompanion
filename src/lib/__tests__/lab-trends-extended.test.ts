@@ -5,15 +5,15 @@ import type { LabResult } from '@/lib/types'
 function makeLab(overrides: Partial<LabResult> = {}): LabResult {
   return {
     id: '1',
-    user_id: 'u1',
-    test_name: 'WBC',
+    userId: 'u1',
+    testName: 'WBC',
     value: '5000',
     unit: 'cells/mcL',
-    reference_range: '4000-11000',
-    is_abnormal: false,
-    date_taken: '2026-04-01',
+    referenceRange: '4000-11000',
+    isAbnormal: false,
+    dateTaken: '2026-04-01',
     source: 'conversation',
-    created_at: '2026-04-01T00:00:00Z',
+    createdAt: new Date('2026-04-01T00:00:00Z'),
     ...overrides,
   }
 }
@@ -36,9 +36,9 @@ describe('lab-trends extended', () => {
 
     it('detects stable trend when all values identical', () => {
       const results = [
-        makeLab({ value: '5000', date_taken: '2026-03-01' }),
-        makeLab({ value: '5000', date_taken: '2026-03-15' }),
-        makeLab({ value: '5000', date_taken: '2026-04-01' }),
+        makeLab({ value: '5000', dateTaken: '2026-03-01' }),
+        makeLab({ value: '5000', dateTaken: '2026-03-15' }),
+        makeLab({ value: '5000', dateTaken: '2026-04-01' }),
       ]
       const trend = analyzeTrend(results)
       expect(trend?.trend).toBe('stable')
@@ -49,8 +49,8 @@ describe('lab-trends extended', () => {
 
     it('detects rapid decline when drop exceeds 20%', () => {
       const results = [
-        makeLab({ value: '10000', date_taken: '2026-03-01' }),
-        makeLab({ value: '7000', date_taken: '2026-04-01' }),
+        makeLab({ value: '10000', dateTaken: '2026-03-01' }),
+        makeLab({ value: '7000', dateTaken: '2026-04-01' }),
       ]
       const trend = analyzeTrend(results)
       expect(trend?.trend).toBe('rapid_decline')
@@ -69,8 +69,8 @@ describe('lab-trends extended', () => {
 
     it('handles mixed numeric and non-numeric values', () => {
       const results = [
-        makeLab({ value: 'negative', date_taken: '2026-03-01' }),
-        makeLab({ value: '5000', date_taken: '2026-04-01' }),
+        makeLab({ value: 'negative', dateTaken: '2026-03-01' }),
+        makeLab({ value: '5000', dateTaken: '2026-04-01' }),
       ]
       // Only the numeric value survives parsing, so it's like a single value
       const trend = analyzeTrend(results)
@@ -81,9 +81,9 @@ describe('lab-trends extended', () => {
     it('generates prediction that continues a downward linear trend', () => {
       // Three equally spaced points declining linearly: 9000, 6000, 3000
       const results = [
-        makeLab({ value: '9000', date_taken: '2026-03-15' }),
-        makeLab({ value: '6000', date_taken: '2026-03-22' }),
-        makeLab({ value: '3000', date_taken: '2026-03-29' }),
+        makeLab({ value: '9000', dateTaken: '2026-03-15' }),
+        makeLab({ value: '6000', dateTaken: '2026-03-22' }),
+        makeLab({ value: '3000', dateTaken: '2026-03-29' }),
       ]
       const trend = analyzeTrend(results)
       expect(trend?.prediction_7d).not.toBeNull()
@@ -94,9 +94,9 @@ describe('lab-trends extended', () => {
     it('clamps prediction to 0 for non-negative lab values', () => {
       // Steep decline that would predict negative
       const results = [
-        makeLab({ value: '9000', date_taken: '2026-03-15' }),
-        makeLab({ value: '6000', date_taken: '2026-03-22' }),
-        makeLab({ value: '3000', date_taken: '2026-03-29' }),
+        makeLab({ value: '9000', dateTaken: '2026-03-15' }),
+        makeLab({ value: '6000', dateTaken: '2026-03-22' }),
+        makeLab({ value: '3000', dateTaken: '2026-03-29' }),
       ]
       const trend = analyzeTrend(results)
       expect(trend!.prediction_7d).toBeGreaterThanOrEqual(0)
@@ -106,8 +106,8 @@ describe('lab-trends extended', () => {
   describe('analyzeAllTrends red flags', () => {
     it('detects neutropenia + low WBC red flag combination', () => {
       const results = [
-        makeLab({ test_name: 'ANC', value: '400', date_taken: '2026-04-01', is_abnormal: true }),
-        makeLab({ test_name: 'WBC', value: '1500', date_taken: '2026-04-01', is_abnormal: true }),
+        makeLab({ testName: 'ANC', value: '400', dateTaken: '2026-04-01', isAbnormal: true }),
+        makeLab({ testName: 'WBC', value: '1500', dateTaken: '2026-04-01', isAbnormal: true }),
       ]
       const analysis = analyzeAllTrends(results)
       expect(analysis.red_flags.length).toBeGreaterThan(0)
@@ -117,8 +117,8 @@ describe('lab-trends extended', () => {
 
     it('detects anemia + thrombocytopenia red flag', () => {
       const results = [
-        makeLab({ test_name: 'Hemoglobin', value: '7', unit: 'g/dL', date_taken: '2026-04-01', is_abnormal: true }),
-        makeLab({ test_name: 'Platelets', value: '40000', unit: '/mcL', date_taken: '2026-04-01', is_abnormal: true }),
+        makeLab({ testName: 'Hemoglobin', value: '7', unit: 'g/dL', dateTaken: '2026-04-01', isAbnormal: true }),
+        makeLab({ testName: 'Platelets', value: '40000', unit: '/mcL', dateTaken: '2026-04-01', isAbnormal: true }),
       ]
       const analysis = analyzeAllTrends(results)
       expect(analysis.red_flags.length).toBeGreaterThan(0)
@@ -128,8 +128,8 @@ describe('lab-trends extended', () => {
 
     it('returns good status when no issues', () => {
       const results = [
-        makeLab({ test_name: 'WBC', value: '7000', date_taken: '2026-04-01' }),
-        makeLab({ test_name: 'Hemoglobin', value: '14', date_taken: '2026-04-01' }),
+        makeLab({ testName: 'WBC', value: '7000', dateTaken: '2026-04-01' }),
+        makeLab({ testName: 'Hemoglobin', value: '14', dateTaken: '2026-04-01' }),
       ]
       const analysis = analyzeAllTrends(results)
       expect(analysis.overall_status).toBe('good')
@@ -145,8 +145,8 @@ describe('lab-trends extended', () => {
 
     it('groups results by test name case-insensitively', () => {
       const results = [
-        makeLab({ test_name: 'WBC', value: '5000', date_taken: '2026-03-01' }),
-        makeLab({ test_name: 'wbc', value: '5100', date_taken: '2026-04-01' }),
+        makeLab({ testName: 'WBC', value: '5000', dateTaken: '2026-03-01' }),
+        makeLab({ testName: 'wbc', value: '5100', dateTaken: '2026-04-01' }),
       ]
       const analysis = analyzeAllTrends(results)
       // Both should be in the same group

@@ -1,26 +1,32 @@
 // Note: This page is also accessible from Settings > Connected Accounts.
 // It works as a standalone page and is linked from the sidebar menu and settings.
 import dynamic from 'next/dynamic';
-import { createClient } from '@/lib/supabase/server';
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import { db } from '@/lib/db';
+import { users, connectedApps, careProfiles } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 const ConnectAccounts = dynamic(() => import('@/components/ConnectAccounts').then(m => m.ConnectAccounts));
 
 export default async function ConnectPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const session = await auth();
+  if (!session?.user?.id) redirect('/login');
 
-  if (!user) redirect('/login');
+  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  if (!dbUser) redirect('/login');
 
-  const [{ data: connectedApps }, { data: profile }] = await Promise.all([
-    supabase.from('connected_apps').select('*').eq('user_id', user.id),
-    supabase.from('care_profiles').select('patient_name').eq('user_id', user.id).single(),
+  const [apps, profiles] = await Promise.all([
+    db.select().from(connectedApps).where(eq(connectedApps.userId, dbUser.id)),
+    db.select({ patientName: careProfiles.patientName }).from(careProfiles).where(eq(careProfiles.userId, dbUser.id)).limit(1),
   ]);
+
+  const profile = profiles[0] ?? null;
 
   return (
     <ConnectAccounts
-      connectedApps={connectedApps || []}
-      patientName={profile?.patient_name}
+      connectedApps={apps}
+      patientName={profile?.patientName}
       hasProfile={!!profile}
     />
   );

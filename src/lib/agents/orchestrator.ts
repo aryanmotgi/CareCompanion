@@ -2,7 +2,6 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
 import { routeMessage } from './router';
 import { SPECIALISTS, type SpecialistType } from './specialists';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { checkRateLimit } from '@/lib/rate-limit';
 
 interface PatientContext {
@@ -73,7 +72,7 @@ export async function orchestrate(
 
     try {
       const { text } = await generateText({
-        model: anthropic('claude-haiku-4-5-20251001'),
+        model: anthropic('claude-haiku-4.5'),
         system: config.systemPrompt,
         prompt: `PATIENT DATA:
 ${relevantData}
@@ -130,9 +129,10 @@ Provide your specialist analysis. Be specific, reference the patient's actual da
   // Log multi-agent activity
   if (specialistsUsed.length > 1) {
     try {
-      const admin = createAdminClient();
-      await admin.from('memories').insert({
-        user_id: userId,
+      const { db } = await import('@/lib/db');
+      const { memories } = await import('@/lib/db/schema');
+      await db.insert(memories).values({
+        userId,
         category: 'other',
         fact: `Multi-agent query handled by: ${specialistsUsed.map((s) => s.name).join(', ')}. Topic: ${userMessage.slice(0, 100)}`,
         source: 'conversation',

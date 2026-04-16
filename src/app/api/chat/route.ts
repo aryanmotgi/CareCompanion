@@ -1,7 +1,9 @@
 import { anthropic } from '@ai-sdk/anthropic';
 import { streamText, stepCountIs, type UIMessage } from 'ai';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { db } from '@/lib/db';
+import { careProfiles, medications, doctors, appointments, labResults, notifications, claims, priorAuths, fsaHsa, symptomEntries, insurance, messages } from '@/lib/db/schema';
+import { eq, desc, and } from 'drizzle-orm';
 import { buildSystemPrompt } from '@/lib/system-prompt';
 import { buildTools } from '@/lib/tools';
 import { extractAndSaveMemories, loadMemories, loadConversationSummaries, touchReferencedMemories, summarizeConversation } from '@/lib/memory';
@@ -21,25 +23,19 @@ async function handler(req: Request) {
     return ApiErrors.rateLimited();
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error) return error;
 
   // Demo mode: skip the full pipeline and return a brief response with signup CTA
-  if (user.user_metadata?.is_demo === true) {
-    const { messages }: { messages: UIMessage[] } = await req.json();
-    const lastMessage = messages[messages.length - 1];
+  if (dbUser!.isDemo === true) {
+    const { messages: msgs }: { messages: UIMessage[] } = await req.json();
+    const lastMessage = msgs[msgs.length - 1];
     const userText = lastMessage?.role === 'user'
       ? (lastMessage.parts?.filter((p): p is { type: 'text'; text: string } => p.type === 'text').map((p) => p.text).join('') || '')
       : '';
 
     const demoResult = streamText({
-      model: anthropic('claude-haiku-4-5-20251001'),
+      model: anthropic('claude-haiku-4.5'),
       system: `You are CareCompanion AI. The user is in demo mode exploring the app.
 Give a short, helpful 1-2 sentence answer about their question as it relates to cancer care.
 Then end with exactly this line on its own: "Sign up for free to save your conversations and get full AI-powered care insights."
@@ -50,46 +46,45 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     return demoResult.toUIMessageStreamResponse();
   }
 
-  const { messages }: { messages: UIMessage[] } = await req.json();
+  const { messages: msgs }: { messages: UIMessage[] } = await req.json();
 
-  // Fetch care context
-  const { data: profile } = await supabase
-    .from('care_profiles')
-    .select('*')
-    .eq('user_id', user.id)
-    .single();
+  const [profile] = await db
+    .select()
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, dbUser!.id))
+    .limit(1);
 
   // Fetch all data in parallel — including memories
   const [
-    { data: medications },
-    { data: doctors },
-    { data: appointments },
-    { data: labResults },
-    { data: notifications },
-    { data: claims },
-    { data: priorAuths },
-    { data: fsaHsa },
-    memories,
-    conversationSummaries,
-    { data: symptoms },
-    { data: insurance },
+    meds,
+    docs,
+    appts,
+    labs,
+    notifs,
+    claimsData,
+    priorAuthsData,
+    fsaHsaData,
+    memoriesData,
+    conversationSummariesData,
+    symptoms,
+    [ins],
   ] = await Promise.all([
-    supabase.from('medications').select('*').eq('care_profile_id', profile?.id || ''),
-    supabase.from('doctors').select('*').eq('care_profile_id', profile?.id || ''),
-    supabase.from('appointments').select('*').eq('care_profile_id', profile?.id || ''),
-    supabase.from('lab_results').select('*').eq('user_id', user.id).order('date_taken', { ascending: false }).limit(20),
-    supabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false).limit(10),
-    supabase.from('claims').select('*').eq('user_id', user.id).eq('status', 'denied').limit(5),
-    supabase.from('prior_auths').select('*').eq('user_id', user.id),
-    supabase.from('fsa_hsa').select('*').eq('user_id', user.id),
-    loadMemories(user.id),
-    loadConversationSummaries(user.id),
-    supabase.from('symptom_entries').select('*').eq('user_id', user.id).order('date', { ascending: false }).limit(14),
-    supabase.from('insurance').select('*').eq('user_id', user.id).limit(1).single(),
+    db.select().from(medications).where(eq(medications.careProfileId, profile?.id || '')),
+    db.select().from(doctors).where(eq(doctors.careProfileId, profile?.id || '')),
+    db.select().from(appointments).where(eq(appointments.careProfileId, profile?.id || '')),
+    db.select().from(labResults).where(eq(labResults.userId, dbUser!.id)).orderBy(desc(labResults.dateTaken)).limit(20),
+    db.select().from(notifications).where(and(eq(notifications.userId, dbUser!.id), eq(notifications.isRead, false))).limit(10),
+    db.select().from(claims).where(and(eq(claims.userId, dbUser!.id), eq(claims.status, 'denied'))).limit(5),
+    db.select().from(priorAuths).where(eq(priorAuths.userId, dbUser!.id)),
+    db.select().from(fsaHsa).where(eq(fsaHsa.userId, dbUser!.id)),
+    loadMemories(dbUser!.id),
+    loadConversationSummaries(dbUser!.id),
+    db.select().from(symptomEntries).where(eq(symptomEntries.userId, dbUser!.id)).orderBy(desc(symptomEntries.date)).limit(14),
+    db.select().from(insurance).where(eq(insurance.userId, dbUser!.id)).limit(1),
   ]);
 
   // Save the user message
-  const lastMessage = messages[messages.length - 1];
+  const lastMessage = msgs[msgs.length - 1];
   let userMessageText = '';
   if (lastMessage?.role === 'user') {
     userMessageText = lastMessage.parts
@@ -98,19 +93,19 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
       .join('') || '';
 
     if (userMessageText) {
-      await supabase.from('messages').insert({
-        user_id: user.id,
+      await db.insert(messages).values({
+        userId: dbUser!.id,
         role: 'user',
         content: userMessageText,
       });
 
       // Touch referenced memories (non-blocking)
-      touchReferencedMemories(user.id, userMessageText, memories).catch(() => {});
+      touchReferencedMemories(dbUser!.id, userMessageText, memoriesData).catch(() => {});
     }
   }
 
   // Build conversation messages for Claude
-  const conversationMessages = messages.map((msg) => ({
+  const conversationMessages = msgs.map((msg) => ({
     role: msg.role as 'user' | 'assistant',
     content:
       msg.parts
@@ -126,24 +121,24 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     userMessageText
       ? orchestrate(userMessageText, conversationHistory, {
           profile,
-          medications: (medications || []) as Record<string, unknown>[],
-          doctors: (doctors || []) as Record<string, unknown>[],
-          appointments: (appointments || []) as Record<string, unknown>[],
-          labResults: (labResults || []) as Record<string, unknown>[],
-          insurance: insurance as Record<string, unknown> | null,
-          claims: (claims || []) as Record<string, unknown>[],
-          priorAuths: (priorAuths || []) as Record<string, unknown>[],
-          fsaHsa: (fsaHsa || []) as Record<string, unknown>[],
-          memories: (memories || []) as unknown as Record<string, unknown>[],
-          symptoms: (symptoms || []) as Record<string, unknown>[],
-        }, user.id)
+          medications: meds as Record<string, unknown>[],
+          doctors: docs as Record<string, unknown>[],
+          appointments: appts as Record<string, unknown>[],
+          labResults: labs as Record<string, unknown>[],
+          insurance: (ins || null) as Record<string, unknown> | null,
+          claims: claimsData as Record<string, unknown>[],
+          priorAuths: priorAuthsData as Record<string, unknown>[],
+          fsaHsa: fsaHsaData as Record<string, unknown>[],
+          memories: memoriesData as unknown as Record<string, unknown>[],
+          symptoms: symptoms as Record<string, unknown>[],
+        }, dbUser!.id)
       : Promise.resolve({ specialistsUsed: [], agentOutputs: {}, synthesizedContext: '', isMultiAgent: false }),
     Promise.resolve(buildSystemPrompt(
       profile,
-      medications,
-      doctors,
-      appointments,
-      { labResults, notifications, claims, priorAuths, fsaHsa, memories, conversationSummaries }
+      meds,
+      docs,
+      appts,
+      { labResults: labs, notifications: notifs, claims: claimsData, priorAuths: priorAuthsData, fsaHsa: fsaHsaData, memories: memoriesData, conversationSummaries: conversationSummariesData }
     )),
   ]);
 
@@ -153,21 +148,19 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     : systemPrompt;
 
   // Build tools for this user session
-  const tools = buildTools(user.id, profile?.id || null);
+  const tools = buildTools(dbUser!.id, profile?.id || null);
 
   const result = streamText({
-    model: anthropic('claude-sonnet-4-6'),
+    model: anthropic('claude-sonnet-4.6'),
     system: fullSystemPrompt,
     messages: conversationMessages,
     tools,
     stopWhen: stepCountIs(5),
     onFinish: async ({ text }) => {
-      const admin = createAdminClient();
-
       // Save assistant message
       if (text) {
-        await admin.from('messages').insert({
-          user_id: user.id,
+        await db.insert(messages).values({
+          userId: dbUser!.id,
           role: 'assistant',
           content: text,
         });
@@ -176,17 +169,17 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
       // Extract and save new memories (non-blocking background job)
       if (userMessageText && text) {
         extractAndSaveMemories(
-          user.id,
+          dbUser!.id,
           profile?.id || null,
           userMessageText,
           text,
-          memories,
+          memoriesData,
         ).catch((err) => console.error('[memory] background extraction error:', err));
       }
 
       // Summarize conversation every 20 messages
-      if (messages.length > 0 && messages.length % 20 === 0) {
-        summarizeConversation(user.id, conversationMessages)
+      if (msgs.length > 0 && msgs.length % 20 === 0) {
+        summarizeConversation(dbUser!.id, conversationMessages)
           .catch((err) => console.error('[memory] background summarization error:', err));
       }
     },

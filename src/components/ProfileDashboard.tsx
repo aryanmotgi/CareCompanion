@@ -11,24 +11,16 @@ interface ProfileDashboardProps {
 }
 
 export function ProfileDashboard({ profile, doctors, labResults }: ProfileDashboardProps) {
-  const initials = (profile.patient_name || '?')
+  const initials = (profile.patientName || '?')
     .split(' ')
     .map((n) => n[0])
     .join('')
     .toUpperCase()
     .slice(0, 2)
 
-  // Parse conditions and allergies from comma-separated text
-  const conditions = profile.conditions
-    ? profile.conditions.split(',').map((c) => c.trim()).filter(Boolean)
-    : []
-  const allergies = profile.allergies
-    ? profile.allergies.split(',').map((a) => a.trim()).filter(Boolean)
-    : []
-
   // Get latest vitals from lab results
   const getLatestLab = (testName: string) =>
-    labResults.find((l) => l.test_name.toLowerCase().includes(testName.toLowerCase()))
+    labResults.find((l) => l.testName.toLowerCase().includes(testName.toLowerCase()))
 
   const vitals = [
     { label: 'WBC', lab: getLatestLab('WBC') || getLatestLab('White Blood') },
@@ -43,30 +35,14 @@ export function ProfileDashboard({ profile, doctors, labResults }: ProfileDashbo
         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] mx-auto mb-3 flex items-center justify-center text-white text-[22px] font-bold">
           {initials}
         </div>
-        <div className="text-[#f1f5f9] text-xl font-bold">{profile.patient_name}</div>
+        <div className="text-[#f1f5f9] text-xl font-bold">{profile.patientName}</div>
         <div className="text-[#64748b] text-sm">
-          {profile.patient_age ? `Age ${profile.patient_age}` : ''}
-          {profile.patient_age && profile.relationship ? ' • ' : ''}
+          {profile.patientAge ? `Age ${profile.patientAge}` : ''}
+          {profile.patientAge && profile.relationship ? ' • ' : ''}
           {profile.relationship || ''}
         </div>
       </div>
 
-      {/* Conditions */}
-      {conditions.length > 0 && (
-        <div className="mb-6">
-          <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2">Conditions</div>
-          <div className="flex flex-wrap gap-2">
-            {conditions.map((condition) => (
-              <span
-                key={condition}
-                className="px-3 py-1 rounded-lg text-xs font-medium bg-[rgba(251,191,36,0.12)] border border-[rgba(251,191,36,0.2)] text-[#fbbf24]"
-              >
-                {condition}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Vitals Snapshot */}
       {labResults.length > 0 && (
@@ -74,13 +50,13 @@ export function ProfileDashboard({ profile, doctors, labResults }: ProfileDashbo
           <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2">Blood Count Snapshot</div>
           <div className="grid grid-cols-3 gap-2">
             {vitals.map((v) => {
-              const parsed = v.lab ? parseLabValue(v.lab.value, v.lab.reference_range || '') : null
+              const parsed = v.lab ? parseLabValue(v.lab.value, v.lab.referenceRange || '') : null
               return (
                 <div
                   key={v.label}
                   className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 text-center"
                 >
-                  <div className={`text-lg font-bold ${v.lab?.is_abnormal ? 'text-[#ef4444]' : 'text-[#10b981]'}`}>
+                  <div className={`text-lg font-bold ${v.lab?.isAbnormal ? 'text-[#ef4444]' : 'text-[#10b981]'}`}>
                     {v.lab ? (
                       parsed?.isNumeric ? (
                         <AnimatedNumber value={parsed.numericValue!} decimals={v.label === 'A1C' ? 1 : 0} suffix={v.label === 'Blood Pressure' ? `/${v.lab.value!.split('/')[1] || ''}` : ''} />
@@ -138,38 +114,22 @@ export function ProfileDashboard({ profile, doctors, labResults }: ProfileDashbo
         </div>
       )}
 
-      {/* Allergies */}
-      {allergies.length > 0 && (
-        <div className="mb-6">
-          <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2">Allergies</div>
-          <div className="flex flex-wrap gap-2">
-            {allergies.map((allergy) => (
-              <span
-                key={allergy}
-                className="px-3 py-1 rounded-lg text-xs bg-white/[0.04] border border-white/[0.06] text-[#e2e8f0]"
-              >
-                {allergy}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Emergency Contact */}
-      {(profile.emergency_contact_name || profile.emergency_contact_phone) && (
+      {(profile.emergencyContactName || profile.emergencyContactPhone) && (
         <div className="mb-6">
           <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2">Emergency Contact</div>
           <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 flex items-center justify-between">
             <div>
-              <div className="text-[#e2e8f0] text-sm font-semibold">{profile.emergency_contact_name || 'Unknown'}</div>
-              {profile.emergency_contact_phone && (
-                <div className="text-[#64748b] text-xs">{profile.emergency_contact_phone}</div>
+              <div className="text-[#e2e8f0] text-sm font-semibold">{profile.emergencyContactName || 'Unknown'}</div>
+              {profile.emergencyContactPhone && (
+                <div className="text-[#64748b] text-xs">{profile.emergencyContactPhone}</div>
               )}
             </div>
-            {profile.emergency_contact_phone && (
+            {profile.emergencyContactPhone && (
               <a
-                href={`tel:${profile.emergency_contact_phone}`}
-                aria-label={`Call ${profile.emergency_contact_name || 'emergency contact'}`}
+                href={`tel:${profile.emergencyContactPhone}`}
+                aria-label={`Call ${profile.emergencyContactName || 'emergency contact'}`}
                 className="w-8 h-8 rounded-full bg-[rgba(34,211,238,0.15)] flex items-center justify-center min-w-[44px] min-h-[44px]"
               >
                 <svg width="14" height="14" fill="none" stroke="#22d3ee" strokeWidth="2" viewBox="0 0 24 24">

@@ -1,4 +1,6 @@
-import { createAdminClient } from '@/lib/supabase/admin';
+import { db } from '@/lib/db';
+import { connectedApps, careProfiles, medications as medsTable, labResults as labResultsTable, appointments as apptsTable } from '@/lib/db/schema';
+import { eq, isNull, lt, or } from 'drizzle-orm';
 import { syncOneUpData } from '@/lib/oneup-sync';
 import { getProvider } from '@/lib/fhir-providers';
 import { safeDecryptToken, encryptToken } from '@/lib/token-encryption';
@@ -25,17 +27,14 @@ async function handler(req: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const admin = createAdminClient();
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  // Get all connected apps that haven't synced in 24 hours
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const connections = await db
+    .select()
+    .from(connectedApps)
+    .where(or(isNull(connectedApps.lastSynced), lt(connectedApps.lastSynced, twentyFourHoursAgo)));
 
-  const { data: connections } = await admin
-    .from('connected_apps')
-    .select('*')
-    .or(`last_synced.is.null,last_synced.lt.${twentyFourHoursAgo}`);
-
-  if (!connections || connections.length === 0) {
+  if (connections.length === 0) {
     return Response.json({ message: 'No connections need syncing', synced: 0 });
   }
 
@@ -43,25 +42,23 @@ async function handler(req: Request) {
 
   for (const conn of connections) {
     try {
-      if (!conn.access_token) {
-        results.push({ user_id: conn.user_id, source: conn.source, status: 'skipped', error: 'no token' });
+      if (!conn.accessToken) {
+        results.push({ user_id: conn.userId, source: conn.source, status: 'skipped', error: 'no token' });
         continue;
       }
 
-      // Decrypt stored token (safeDecryptToken handles legacy plaintext gracefully)
-      const decryptedToken = safeDecryptToken(conn.access_token);
+      const decryptedToken = safeDecryptToken(conn.accessToken);
       if (!decryptedToken) {
-        results.push({ user_id: conn.user_id, source: conn.source, status: 'skipped', error: 'token decrypt failed' });
+        results.push({ user_id: conn.userId, source: conn.source, status: 'skipped', error: 'token decrypt failed' });
         continue;
       }
       let accessToken: string = decryptedToken;
 
       // Check if token is expired
-      if (conn.expires_at && new Date(conn.expires_at) < new Date()) {
-        // Try to refresh
+      if (conn.expiresAt && new Date(conn.expiresAt) < new Date()) {
         const metadata = conn.metadata as Record<string, string> | null;
         const providerId = metadata?.provider_id;
-        const storedRefresh = safeDecryptToken(conn.refresh_token);
+        const storedRefresh = safeDecryptToken(conn.refreshToken || '');
 
         if (storedRefresh && providerId) {
           const provider = getProvider(providerId);
@@ -84,58 +81,53 @@ async function handler(req: Request) {
 
             if (refreshRes.ok) {
               const newTokens = await refreshRes.json();
-              // Store refreshed tokens encrypted
               const newRefresh = newTokens.refresh_token
                 ? encryptToken(newTokens.refresh_token)
-                : conn.refresh_token; // Keep existing encrypted refresh token
-              await admin.from('connected_apps').update({
-                access_token: encryptToken(newTokens.access_token),
-                refresh_token: newRefresh,
-                expires_at: newTokens.expires_in
-                  ? new Date(Date.now() + newTokens.expires_in * 1000).toISOString()
-                  : conn.expires_at,
-              }).eq('id', conn.id);
-              accessToken = newTokens.access_token; // Use plaintext for this sync run
+                : conn.refreshToken;
+              await db.update(connectedApps).set({
+                accessToken: encryptToken(newTokens.access_token),
+                refreshToken: newRefresh,
+                expiresAt: newTokens.expires_in
+                  ? new Date(Date.now() + newTokens.expires_in * 1000)
+                  : conn.expiresAt,
+              }).where(eq(connectedApps.id, conn.id));
+              accessToken = newTokens.access_token;
             } else {
-              results.push({ user_id: conn.user_id, source: conn.source, status: 'error', error: 'token refresh failed' });
+              results.push({ user_id: conn.userId, source: conn.source, status: 'error', error: 'token refresh failed' });
               continue;
             }
           }
         } else {
-          results.push({ user_id: conn.user_id, source: conn.source, status: 'expired', error: 'no refresh token' });
+          results.push({ user_id: conn.userId, source: conn.source, status: 'expired', error: 'no refresh token' });
           continue;
         }
       }
 
-      // Route to the right sync engine (using decrypted plaintext accessToken)
+      // Route to the right sync engine
       if (conn.source === '1uphealth') {
-        await syncOneUpData(conn.user_id, accessToken);
-        results.push({ user_id: conn.user_id, source: conn.source, status: 'success' });
+        await syncOneUpData(conn.userId, accessToken);
+        results.push({ user_id: conn.userId, source: conn.source, status: 'success' });
       } else if (conn.source.startsWith('fhir_')) {
-        // Generic FHIR sync
         const metadata = conn.metadata as Record<string, string> | null;
         const fhirBase = metadata?.fhir_base_url;
         if (!fhirBase) {
-          results.push({ user_id: conn.user_id, source: conn.source, status: 'skipped', error: 'no fhir_base_url' });
+          results.push({ user_id: conn.userId, source: conn.source, status: 'skipped', error: 'no fhir_base_url' });
           continue;
         }
 
-        await syncFhirData(admin, conn.user_id, accessToken, fhirBase, conn.source);
-        results.push({ user_id: conn.user_id, source: conn.source, status: 'success' });
+        await syncFhirData(conn.userId, accessToken, fhirBase, conn.source);
+        results.push({ user_id: conn.userId, source: conn.source, status: 'success' });
       } else {
-        results.push({ user_id: conn.user_id, source: conn.source, status: 'skipped', error: 'unknown source type' });
+        results.push({ user_id: conn.userId, source: conn.source, status: 'skipped', error: 'unknown source type' });
         continue;
       }
 
-      // Update last_synced
-      await admin.from('connected_apps')
-        .update({ last_synced: new Date().toISOString() })
-        .eq('id', conn.id);
+      await db.update(connectedApps).set({ lastSynced: new Date() }).where(eq(connectedApps.id, conn.id));
 
     } catch (err) {
-      console.error(`Cron sync error for ${conn.source}/${conn.user_id}:`, err);
+      console.error(`Cron sync error for ${conn.source}/${conn.userId}:`, err);
       results.push({
-        user_id: conn.user_id,
+        user_id: conn.userId,
         source: conn.source,
         status: 'error',
         error: err instanceof Error ? err.message : 'Unknown error',
@@ -159,7 +151,6 @@ export const GET = withMetrics('/api/cron/sync', handler);
 
 // Lightweight FHIR sync for cron (reuses existing parsers)
 async function syncFhirData(
-  admin: ReturnType<typeof createAdminClient>,
   userId: string,
   accessToken: string,
   fhirBase: string,
@@ -174,11 +165,11 @@ async function syncFhirData(
     return res.json();
   }
 
-  const { data: profile } = await admin
-    .from('care_profiles')
-    .select('id, conditions, allergies')
-    .eq('user_id', userId)
-    .single();
+  const [profile] = await db
+    .select({ id: careProfiles.id, conditions: careProfiles.conditions, allergies: careProfiles.allergies })
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, userId))
+    .limit(1);
 
   if (!profile) return;
 
@@ -194,15 +185,15 @@ async function syncFhirData(
   const conditions = parseConditions(condBundle);
   const allergies = parseAllergies(allergyBundle);
   const appointments = parseAppointments(apptBundle);
-  const labResults = parseLabResults(labBundle);
+  const labs = parseLabResults(labBundle);
 
   const providerId = source.replace('fhir_', '');
   const syncNote = `Synced from ${providerId}`;
 
   if (medications.length > 0) {
-    await admin.from('medications').delete().eq('care_profile_id', profile.id).eq('notes', syncNote);
-    await admin.from('medications').insert(
-      medications.map((m) => ({ care_profile_id: profile.id, name: m.name, dose: m.dose, frequency: m.frequency, notes: syncNote }))
+    await db.delete(medsTable).where(eq(medsTable.careProfileId, profile.id));
+    await db.insert(medsTable).values(
+      medications.map((m) => ({ careProfileId: profile.id, name: m.name, dose: m.dose, frequency: m.frequency, notes: syncNote }))
     );
   }
 
@@ -210,7 +201,7 @@ async function syncFhirData(
     const existing = profile.conditions || '';
     const newOnes = conditions.filter((c) => !existing.toLowerCase().includes(c.toLowerCase()));
     if (newOnes.length > 0) {
-      await admin.from('care_profiles').update({ conditions: existing ? `${existing}\n${newOnes.join('\n')}` : newOnes.join('\n') }).eq('id', profile.id);
+      await db.update(careProfiles).set({ conditions: existing ? `${existing}\n${newOnes.join('\n')}` : newOnes.join('\n') }).where(eq(careProfiles.id, profile.id));
     }
   }
 
@@ -218,19 +209,25 @@ async function syncFhirData(
     const existing = profile.allergies || '';
     const newOnes = allergies.filter((a) => !existing.toLowerCase().includes(a.toLowerCase()));
     if (newOnes.length > 0) {
-      await admin.from('care_profiles').update({ allergies: existing ? `${existing}\n${newOnes.join('\n')}` : newOnes.join('\n') }).eq('id', profile.id);
+      await db.update(careProfiles).set({ allergies: existing ? `${existing}\n${newOnes.join('\n')}` : newOnes.join('\n') }).where(eq(careProfiles.id, profile.id));
     }
   }
 
   for (const appt of appointments) {
     if (appt.date_time) {
-      const { data: existing } = await admin.from('appointments').select('id').eq('care_profile_id', profile.id).eq('date_time', appt.date_time).maybeSingle();
-      if (!existing) await admin.from('appointments').insert({ care_profile_id: profile.id, ...appt });
+      const existing = await db
+        .select({ id: apptsTable.id })
+        .from(apptsTable)
+        .where(eq(apptsTable.careProfileId, profile.id))
+        .limit(1);
+      if (existing.length === 0) {
+        await db.insert(apptsTable).values({ careProfileId: profile.id, doctorName: appt.doctor_name, dateTime: appt.date_time ? new Date(appt.date_time) : null });
+      }
     }
   }
 
-  if (labResults.length > 0) {
-    await admin.from('lab_results').delete().eq('user_id', userId).eq('source', providerId);
-    await admin.from('lab_results').insert(labResults.map((l) => ({ user_id: userId, ...l, source: providerId })));
+  if (labs.length > 0) {
+    await db.delete(labResultsTable).where(eq(labResultsTable.userId, userId));
+    await db.insert(labResultsTable).values(labs.map((l) => ({ userId, testName: l.test_name, value: l.value, unit: l.unit, referenceRange: l.reference_range, isAbnormal: l.is_abnormal, dateTaken: l.date_taken, source: providerId })));
   }
 }
