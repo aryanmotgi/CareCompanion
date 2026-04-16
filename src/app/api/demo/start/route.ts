@@ -40,6 +40,10 @@ const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxReq
 
 const cognito = new CognitoIdentityProviderClient({
   region: process.env.COGNITO_REGION || 'us-east-1',
+  credentials: process.env.AWS_ACCESS_KEY_ID ? {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  } : undefined,
 });
 const USER_POOL_ID = process.env.COGNITO_USER_POOL_ID!;
 

@@ -6,41 +6,50 @@ import Link from 'next/link';
 /* ── Interactive demo button — starts a pre-loaded demo session ── */
 function DemoButton() {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   async function handleClick() {
     setLoading(true);
+    setError('');
     try {
       const res = await fetch('/api/demo/start', { method: 'POST' });
       const data = await res.json();
       if (!res.ok || data.error) {
         setLoading(false);
+        setError(data.error || 'Demo unavailable right now. Try signing up instead.');
         return;
       }
       window.location.href = data.redirect || '/dashboard';
     } catch {
       setLoading(false);
+      setError('Demo unavailable right now. Try signing up instead.');
     }
   }
 
   return (
-    <button
-      onClick={handleClick}
-      disabled={loading}
-      className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl border font-semibold text-sm transition-all disabled:opacity-60"
-      style={{ borderColor: 'rgba(167,139,250,0.4)', background: 'rgba(167,139,250,0.08)', color: '#A78BFA' }}
-    >
-      {loading ? (
-        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-        </svg>
-      ) : (
-        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M8 5v14l11-7z" />
-        </svg>
+    <div className="inline-flex flex-col items-center gap-2">
+      <button
+        onClick={handleClick}
+        disabled={loading}
+        className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl border font-semibold text-sm transition-all disabled:opacity-60"
+        style={{ borderColor: 'rgba(167,139,250,0.4)', background: 'rgba(167,139,250,0.08)', color: '#A78BFA' }}
+      >
+        {loading ? (
+          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+          </svg>
+        ) : (
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        )}
+        {loading ? 'Loading demo...' : 'Try interactive demo'}
+      </button>
+      {error && (
+        <p className="text-xs text-red-400 text-center max-w-xs">{error}</p>
       )}
-      {loading ? 'Loading demo...' : 'Try interactive demo'}
-    </button>
+    </div>
   );
 }
 
