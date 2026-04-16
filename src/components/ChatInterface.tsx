@@ -138,7 +138,7 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-140px)] lg:h-[calc(100dvh-100px)] -mx-4 sm:-mx-8 -mb-6">
+    <div className="flex flex-col h-[calc(100dvh-56px-72px)] -mx-4 sm:-mx-8 -mb-6">
       {/* Header bar — New Chat + Search buttons */}
       {messages.length > 0 && (
         <div className="flex justify-end gap-2 px-4 sm:px-8 pt-3 pb-1">
@@ -175,28 +175,55 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
       <div className="flex-1 overflow-y-auto chat-scroll px-4 sm:px-8 py-6">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-[#6366F1]/20 to-[#A78BFA]/20 rounded-2xl flex items-center justify-center mb-5 border border-[var(--border)]">
-              <svg className="w-8 h-8 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            {/* Hero icon with glow */}
+            <div style={{
+              width: 80,
+              height: 80,
+              borderRadius: 24,
+              background: 'linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(167,139,250,0.15) 100%)',
+              border: '1px solid rgba(167,139,250,0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 20,
+              boxShadow: '0 0 40px rgba(139,92,246,0.2), inset 0 1px 0 rgba(255,255,255,0.08)',
+              position: 'relative',
+            }}>
+              <div style={{ position: 'absolute', inset: -12, borderRadius: 36, background: 'radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)', filter: 'blur(8px)' }} />
+              <svg style={{ width: 40, height: 40, color: '#A78BFA', position: 'relative' }} fill="none" viewBox="0 0 24 24" strokeWidth={1.25} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z" />
               </svg>
             </div>
-            <h2 className="font-display text-2xl font-semibold text-[var(--text)] mb-2">
+            <h2 className="font-display text-3xl font-bold text-[var(--text)] mb-2.5" style={{ letterSpacing: '-0.02em' }}>
               Hi, how can I help?
             </h2>
-            <p className="text-[var(--text-secondary)] mb-8 max-w-sm text-sm">
-              Ask me anything about {patientName === 'your loved one' ? 'your' : `${patientName}\u2019s`} care, medications, appointments, or health records.
+            <p className="text-[var(--text-secondary)] mb-8 max-w-xs text-[15px] leading-relaxed">
+              Ask me anything about {patientName === 'your loved one' ? 'your' : `${patientName}\u2019s`} care, medications, or records.
             </p>
             <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
               {starterPrompts.map((prompt) => (
                 <button
                   key={prompt.text}
                   onClick={() => handleSend(prompt.text)}
-                  className="flex flex-col items-start gap-1.5 p-3.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] text-left hover:bg-[var(--bg-elevated)] hover:border-[#A78BFA]/20 transition-all active:scale-[0.97] group"
+                  className="flex flex-col items-start gap-2 p-4 rounded-2xl text-left active:scale-[0.97] group"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(167,139,250,0.1) 0%, rgba(99,102,241,0.06) 100%)'
+                    ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(167,139,250,0.25)'
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)'
+                    ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.07)'
+                  }}
                 >
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: prompt.color + '20' }}>
-                    <svg className="w-4 h-4" fill="none" stroke={prompt.color} strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={prompt.svgPath} /></svg>
+                  <div style={{ width: 36, height: 36, borderRadius: 12, background: prompt.color + '20', border: `1px solid ${prompt.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg style={{ width: 18, height: 18 }} fill="none" stroke={prompt.color} strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={prompt.svgPath} /></svg>
                   </div>
-                  <span className="text-[13px] font-medium text-[var(--text)] group-hover:text-[#A78BFA] transition-colors leading-tight">{prompt.text}</span>
+                  <span className="text-[13px] font-semibold text-[var(--text)] leading-snug group-hover:text-[#A78BFA] transition-colors">{prompt.text}</span>
                   <span className="text-[11px] text-[var(--text-muted)] leading-tight">{prompt.desc}</span>
                 </button>
               ))}
@@ -240,24 +267,10 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
       )}
 
       {/* Input area */}
-      <div className="border-t border-[var(--border)] bg-[var(--bg-card)] px-4 sm:px-8 py-4">
+      <div className="border-t px-4 sm:px-8 py-4" style={{ borderColor: 'rgba(139,92,246,0.1)', background: 'linear-gradient(to top, rgba(10,8,20,0.95), rgba(10,8,20,0.8))', backdropFilter: 'blur(20px)' }}>
         <div className="max-w-3xl mx-auto">
-          {/* Starter prompts — shown above input when conversation is empty */}
-          {messages.length === 0 && (
-            <div className="flex flex-wrap gap-2 mb-3">
-              {starterPrompts.map((prompt) => (
-                <button
-                  key={prompt.text}
-                  onClick={() => handleSend(prompt.text)}
-                  className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[var(--text-secondary)] text-xs hover:bg-[var(--bg-elevated)] hover:border-[#A78BFA]/20 transition-colors animate-press"
-                >
-                  {prompt.text}
-                </button>
-              ))}
-            </div>
-          )}
           {/* Glass input bar */}
-          <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2">
+          <div className="flex items-center gap-2 rounded-2xl px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(139,92,246,0.2)', boxShadow: '0 0 20px rgba(139,92,246,0.08), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
             {/* Scan button */}
             <button
               onClick={() => setShowScanner(true)}

@@ -231,93 +231,157 @@ export function AppShell({
             }}
           >
             {/* Header */}
-            <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>Account</span>
+            <div style={{ padding: '20px 20px 20px', borderBottom: '1px solid rgba(139,92,246,0.12)', background: 'linear-gradient(180deg, rgba(124,58,237,0.08) 0%, transparent 100%)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'linear-gradient(135deg, #A78BFA, #6366F1)', boxShadow: '0 0 8px rgba(139,92,246,0.8)' }} />
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(167,139,250,0.7)' }}>Account</span>
+                </div>
                 <button
                   onClick={closeMenu}
-                  style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ width: 30, height: 30, borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease' }}
                   aria-label="Close menu"
+                  className="hover:bg-white/[0.1]"
                 >
-                  <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" viewBox="0 0 24 24">
+                  <svg width="13" height="13" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{
-                  width: 46,
-                  height: 46,
+                  width: 52,
+                  height: 52,
                   borderRadius: '50%',
                   background: 'linear-gradient(135deg, #7C3AED, #6366F1)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: 'white',
-                  fontSize: 16,
-                  fontWeight: 700,
-                  boxShadow: '0 4px 16px rgba(124,58,237,0.4)',
+                  fontSize: 17,
+                  fontWeight: 800,
+                  boxShadow: '0 0 0 2px rgba(139,92,246,0.3), 0 4px 20px rgba(124,58,237,0.5)',
                   flexShrink: 0,
+                  letterSpacing: '0.03em',
                 }}>
                   {initials}
                 </div>
                 <div>
-                  <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: 15, fontWeight: 600 }}>{userName || 'User'}</div>
-                  <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 1 }}>Caring for {patientName}</div>
+                  <div style={{ color: 'rgba(255,255,255,0.95)', fontSize: 16, fontWeight: 700, letterSpacing: '0.01em' }}>{userName || 'User'}</div>
+                  <div style={{ color: 'rgba(167,139,250,0.6)', fontSize: 12, marginTop: 3, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <svg width="11" height="11" fill="rgba(167,139,250,0.6)" viewBox="0 0 24 24">
+                      <path d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+                    </svg>
+                    Caring for {patientName}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Nav items */}
-            <nav role="navigation" aria-label="Main menu" style={{ flex: 1, padding: '10px 12px', overflowY: 'auto' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', padding: '8px 8px 6px' }}>Navigation</div>
+            <nav role="navigation" aria-label="Main menu" style={{ flex: 1, padding: '14px 14px', overflowY: 'auto' }}>
+              <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(139,92,246,0.5)', padding: '4px 10px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, rgba(139,92,246,0.3), transparent)' }} />
+                Navigation
+                <div style={{ flex: 1, height: 1, background: 'linear-gradient(to left, rgba(139,92,246,0.3), transparent)' }} />
+              </div>
               {MENU_ITEMS.map((item) => (
                 <Link
                   key={item.label}
                   href={item.href}
                   onClick={closeMenu}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 10px', borderRadius: 12, marginBottom: 2, textDecoration: 'none', transition: 'background 0.15s ease' }}
-                  className="hover:bg-white/[0.06] group"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 14,
+                    padding: '13px 12px',
+                    borderRadius: 14,
+                    marginBottom: 4,
+                    textDecoration: 'none',
+                    transition: 'all 0.2s ease',
+                    background: 'rgba(255,255,255,0.02)',
+                    border: '1px solid rgba(255,255,255,0.04)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                  className="hover:bg-white/[0.07] hover:border-white/[0.08] group"
                 >
                   <div style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 10,
-                    background: `${item.color}18`,
+                    width: 40,
+                    height: 40,
+                    borderRadius: 12,
+                    background: `linear-gradient(135deg, ${item.color}22, ${item.color}0d)`,
+                    border: `1px solid ${item.color}30`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: item.color,
                     flexShrink: 0,
-                    transition: 'background 0.15s',
+                    boxShadow: `0 4px 12px ${item.color}18`,
+                    transition: 'all 0.2s ease',
                   }}>
                     {item.icon}
                   </div>
-                  <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: 14, fontWeight: 500, flex: 1 }}>{item.label}</span>
-                  <svg width="14" height="14" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" viewBox="0 0 24 24">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: 'rgba(255,255,255,0.88)', fontSize: 14, fontWeight: 600, letterSpacing: '0.01em' }}>{item.label}</div>
+                  </div>
+                  <div style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 8,
+                    background: 'rgba(255,255,255,0.04)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <svg width="12" height="12" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </div>
                 </Link>
               ))}
             </nav>
 
             {/* Sign out */}
-            <div style={{ padding: '10px 12px 24px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ padding: '10px 14px 28px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
               <button
                 onClick={async () => {
                   const supabase = createClient()
                   await supabase.auth.signOut()
                   window.location.href = '/login'
                 }}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 10px', borderRadius: 12, background: 'none', border: 'none', cursor: 'pointer', width: '100%', transition: 'background 0.15s' }}
-                className="hover:bg-red-500/10 group"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 14,
+                  padding: '13px 12px',
+                  borderRadius: 14,
+                  background: 'rgba(239,68,68,0.05)',
+                  border: '1px solid rgba(239,68,68,0.12)',
+                  cursor: 'pointer',
+                  width: '100%',
+                  transition: 'all 0.2s ease',
+                }}
+                className="hover:bg-red-500/10 hover:border-red-500/20 group"
               >
-                <div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <svg width="16" height="16" fill="none" stroke="#ef4444" strokeWidth="1.5" viewBox="0 0 24 24">
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  background: 'linear-gradient(135deg, rgba(239,68,68,0.18), rgba(239,68,68,0.08))',
+                  border: '1px solid rgba(239,68,68,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '0 4px 12px rgba(239,68,68,0.15)',
+                }}>
+                  <svg width="18" height="18" fill="none" stroke="#ef4444" strokeWidth="1.75" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
                   </svg>
                 </div>
-                <span style={{ color: '#f87171', fontSize: 14, fontWeight: 500 }}>Sign Out</span>
+                <span style={{ color: '#f87171', fontSize: 14, fontWeight: 600 }}>Sign Out</span>
               </button>
             </div>
           </div>
