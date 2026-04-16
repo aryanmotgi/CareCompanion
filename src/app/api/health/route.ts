@@ -26,7 +26,7 @@ export async function GET(req: Request) {
   }
 
   // Check critical env vars (names only, never values)
-  checks.database_url = process.env.DATABASE_URL ? { status: 'ok' } : { status: 'error' }
+  checks.database_url = (process.env.AWS_RESOURCE_ARN && process.env.AWS_SECRET_ARN) ? { status: 'ok' } : { status: 'error' }
   checks.anthropic_key = process.env.ANTHROPIC_API_KEY ? { status: 'ok' } : { status: 'error' }
 
   // Memory usage
