@@ -85,15 +85,16 @@ function CyclingWord() {
 /* ── Scroll reveal hook (enhanced — handles all reveal classes) ── */
 function useScrollReveal() {
   useEffect(() => {
+    const selector = '.scroll-reveal, .scroll-reveal-left, .scroll-reveal-right, .scroll-reveal-scale, .blur-reveal, .section-divider, .word-reveal-container, .glow-on-scroll, .stagger-list-container';
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) entry.target.classList.add('revealed');
         });
       },
-      { threshold: 0.15, rootMargin: '0px 0px -40px 0px' }
+      { threshold: 0.05, rootMargin: '0px 0px 100px 0px' }
     );
-    document.querySelectorAll('.scroll-reveal, .scroll-reveal-left, .scroll-reveal-right, .scroll-reveal-scale, .blur-reveal, .section-divider, .word-reveal-container, .glow-on-scroll, .stagger-list-container').forEach((el) => observer.observe(el));
+    document.querySelectorAll(selector).forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, []);
 }
