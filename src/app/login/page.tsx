@@ -6,7 +6,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const errorMsg = error === 'db'
     ? 'Database is temporarily unavailable. Please try again in a moment.'
     : error
-    ? 'Sign in failed. Please try again.'
+    ? `Sign in failed (${error}). Please try again.`
     : undefined
 
   return (
