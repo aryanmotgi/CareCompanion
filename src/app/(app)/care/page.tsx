@@ -10,6 +10,7 @@ import { CareSkeleton } from '@/components/skeletons/CareSkeleton'
 import { ComplianceReport } from '@/components/ComplianceReport'
 import { AdherenceCalendar } from '@/components/AdherenceCalendar'
 import { TreatmentCycleTracker } from '@/components/TreatmentCycleTracker'
+import { CaregiverBurnoutCard } from '@/components/CaregiverBurnoutCard'
 
 async function CareContent() {
   const session = await auth();
@@ -61,6 +62,7 @@ async function CareContent() {
       <div className="px-4 sm:px-5 pb-6 space-y-5">
         <AdherenceCalendar />
         <ComplianceReport />
+        <CaregiverBurnoutCard />
       </div>
     </>
   )
