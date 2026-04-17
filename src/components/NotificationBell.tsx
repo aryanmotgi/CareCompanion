@@ -9,17 +9,17 @@ interface NotificationBellProps {
   initialCount: number;
 }
 
-const TYPE_ICONS: Record<string, string> = {
-  refill_overdue: '🔴',
-  refill_soon: '💊',
-  appointment_prep: '📋',
-  appointment_today: '📅',
-  prior_auth_expiring: '⏰',
-  abnormal_lab: '⚠️',
-  low_balance: '💰',
-  lab_result: '🔬',
-  claim_denied: '❌',
-  prescription_ready: '💊',
+const TYPE_DOT_COLORS: Record<string, string> = {
+  refill_overdue: '#f87171',
+  refill_soon: '#fbbf24',
+  appointment_prep: '#60a5fa',
+  appointment_today: '#60a5fa',
+  prior_auth_expiring: '#fb923c',
+  abnormal_lab: '#fbbf24',
+  low_balance: '#34d399',
+  lab_result: '#a78bfa',
+  claim_denied: '#f87171',
+  prescription_ready: '#34d399',
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -151,7 +151,7 @@ export function NotificationBell({ initialNotifications, initialCount }: Notific
                   className={`px-4 py-3 border-b border-[var(--border)] ${TYPE_COLORS[n.type] || (!n.isRead ? 'bg-blue-500/10' : '')}`}
                 >
                   <div className="flex items-start gap-2.5">
-                    <span className="text-base mt-0.5 flex-shrink-0" aria-hidden="true">{TYPE_ICONS[n.type] || '🔔'}</span>
+                    <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: TYPE_DOT_COLORS[n.type] || '#a78bfa' }} aria-hidden="true" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-white leading-snug">{n.title}</p>
                       {n.message && (

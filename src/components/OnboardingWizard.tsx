@@ -64,20 +64,20 @@ const CANCER_TIPS: Record<string, string> = {
 };
 
 const TREATMENT_PHASES = [
-  { value: 'just_diagnosed', label: 'Just diagnosed', icon: '🔍', desc: 'Learning about options' },
-  { value: 'active_treatment', label: 'Active treatment', icon: '💉', desc: 'Chemo, radiation, or surgery' },
-  { value: 'between_treatments', label: 'Between treatments', icon: '⏸️', desc: 'Resting between cycles' },
-  { value: 'remission', label: 'In remission', icon: '🌟', desc: 'Monitoring and follow-ups' },
-  { value: 'unsure', label: 'Not sure yet', icon: '❓', desc: 'Still figuring things out' },
+  { value: 'just_diagnosed', label: 'Just diagnosed', color: '#60A5FA', svgPath: 'M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z', desc: 'Learning about options' },
+  { value: 'active_treatment', label: 'Active treatment', color: '#A78BFA', svgPath: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z', desc: 'Chemo, radiation, or surgery' },
+  { value: 'between_treatments', label: 'Between treatments', color: '#FB923C', svgPath: 'M15.75 5.25v13.5m-7.5-13.5v13.5', desc: 'Resting between cycles' },
+  { value: 'remission', label: 'In remission', color: '#34D399', svgPath: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z', desc: 'Monitoring and follow-ups' },
+  { value: 'unsure', label: 'Not sure yet', color: '#94A3B8', svgPath: 'M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z', desc: 'Still figuring things out' },
 ];
 
 const PRIORITIES = [
-  { value: 'side_effects', label: 'Tracking side effects', icon: '📋', desc: 'Log symptoms and side effects daily' },
-  { value: 'medications', label: 'Managing medications', icon: '💊', desc: 'Track meds, refills, and schedules' },
-  { value: 'appointments', label: 'Preparing for appointments', icon: '📅', desc: 'Questions, notes, and reminders' },
-  { value: 'lab_results', label: 'Understanding lab results', icon: '🔬', desc: 'CBC, tumor markers, and more' },
-  { value: 'insurance', label: 'Insurance & billing help', icon: '💰', desc: 'Claims, prior auths, and costs' },
-  { value: 'emotional', label: 'Emotional support', icon: '💜', desc: 'Resources and coping strategies' },
+  { value: 'side_effects', label: 'Tracking side effects', color: '#F472B6', svgPath: 'M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z', desc: 'Log symptoms and side effects daily' },
+  { value: 'medications', label: 'Managing medications', color: '#A78BFA', svgPath: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z', desc: 'Track meds, refills, and schedules' },
+  { value: 'appointments', label: 'Preparing for appointments', color: '#60A5FA', svgPath: 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5', desc: 'Questions, notes, and reminders' },
+  { value: 'lab_results', label: 'Understanding lab results', color: '#34D399', svgPath: 'M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5', desc: 'CBC, tumor markers, and more' },
+  { value: 'insurance', label: 'Insurance & billing help', color: '#FB923C', svgPath: 'M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z', desc: 'Claims, prior auths, and costs' },
+  { value: 'emotional', label: 'Emotional support', color: '#F472B6', svgPath: 'M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z', desc: 'Resources and coping strategies' },
 ];
 
 const STEP_LABELS = ['About you', 'Diagnosis', 'Your data', 'Details', 'Priorities', 'All set'];
@@ -427,16 +427,18 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
 
           <div className="space-y-4 max-w-xs mx-auto text-left">
             {[
-              { icon: '💊', text: 'Track medications and side effects' },
-              { icon: '🤖', text: 'AI that understands your treatment' },
-              { icon: '📊', text: 'Monitor labs and appointments' },
+              { color: '#A78BFA', svgPath: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z', text: 'Track medications and side effects' },
+              { color: '#60A5FA', svgPath: 'M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z', text: 'AI that understands your treatment' },
+              { color: '#34D399', svgPath: 'M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5', text: 'Monitor labs and appointments' },
             ].map((item, i) => (
               <div
                 key={i}
                 className="flex items-center gap-3 text-white/80"
                 style={{ animation: `confettiFade 0.4s ease-out ${0.3 + i * 0.15}s both` }}
               >
-                <span className="text-xl">{item.icon}</span>
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: item.color + '20' }}>
+                  <svg className="w-4 h-4" fill="none" stroke={item.color} strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={item.svgPath} /></svg>
+                </div>
                 <span className="text-sm">{item.text}</span>
               </div>
             ))}
@@ -501,10 +503,10 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
               }`}
             >
               <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl ${
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                   role === 'patient' ? 'bg-[#A78BFA]/20' : 'bg-white/5'
-                }`} aria-hidden="true">
-                  👤
+                }`}>
+                  <svg className="w-6 h-6 text-[#A78BFA]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
                 </div>
                 <div>
                   <p className="font-semibold text-white">I&apos;m a patient</p>
@@ -528,10 +530,10 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
               }`}
             >
               <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl ${
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                   role === 'caregiver' ? 'bg-pink-500/20' : 'bg-white/5'
-                }`} aria-hidden="true">
-                  💜
+                }`}>
+                  <svg className="w-6 h-6 text-pink-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
                 </div>
                 <div>
                   <p className="font-semibold text-white">I&apos;m a caregiver</p>
@@ -755,7 +757,9 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-lg">{phase.icon}</span>
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: phase.color + '20' }}>
+                        <svg className="w-4 h-4" fill="none" stroke={phase.color} strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={phase.svgPath} /></svg>
+                      </div>
                       <div>
                         <p className="text-sm font-medium text-white">{phase.label}</p>
                         <p className="text-xs text-[var(--text-muted)]">{phase.desc}</p>
@@ -815,8 +819,8 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
               className="w-full text-left rounded-2xl p-5 border border-[var(--border)] bg-[var(--bg-card)] hover:border-[#A78BFA]/30 hover:bg-[#A78BFA]/5 transition-all group"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-blue-500/15 flex items-center justify-center text-xl group-hover:bg-blue-500/25 transition-colors">
-                  🏥
+                <div className="w-12 h-12 rounded-xl bg-blue-500/15 flex items-center justify-center group-hover:bg-blue-500/25 transition-colors">
+                  <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
                 </div>
                 <div className="flex-1">
                   <p className="font-semibold text-white">Connect Health Records</p>
@@ -835,8 +839,8 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
               className="w-full text-left rounded-2xl p-5 border border-[var(--border)] bg-[var(--bg-card)] hover:border-emerald-400/30 hover:bg-emerald-500/5 transition-all group"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/15 flex items-center justify-center text-xl group-hover:bg-emerald-500/25 transition-colors">
-                  ✏️
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/15 flex items-center justify-center group-hover:bg-emerald-500/25 transition-colors">
+                  <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
                 </div>
                 <div className="flex-1">
                   <p className="font-semibold text-white">Enter Manually</p>
@@ -880,8 +884,8 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
               className="w-full text-left rounded-2xl p-5 border border-dashed border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/10 transition-all group"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-cyan-500/15 flex items-center justify-center text-xl group-hover:bg-cyan-500/25 transition-colors">
-                  ⚡
+                <div className="w-12 h-12 rounded-xl bg-cyan-500/15 flex items-center justify-center group-hover:bg-cyan-500/25 transition-colors">
+                  <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
                 </div>
                 <div className="flex-1">
                   <p className="font-semibold text-white">Try with Demo Data</p>
@@ -1261,7 +1265,9 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">{p.icon}</span>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: p.color + '20' }}>
+                      <svg className="w-4 h-4" fill="none" stroke={p.color} strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={p.svgPath} /></svg>
+                    </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-white">{p.label}</p>
                       <p className="text-xs text-[var(--text-muted)]">{p.desc}</p>
@@ -1309,7 +1315,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
           {/* Invite caregiver/family member */}
           <div className="rounded-xl border border-dashed border-[var(--border)] p-4 mt-2">
             <div className="flex items-center gap-3">
-              <span className="text-xl">👥</span>
+              <svg className="w-5 h-5 text-[#A78BFA]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white">Invite a family member</p>
                 <p className="text-xs text-[var(--text-muted)]">Share care access with your support team</p>
@@ -1348,7 +1354,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
             {/* Profile */}
             <div className="rounded-xl bg-[var(--bg-card)] border border-[var(--border)] p-4">
               <div className="flex items-center gap-3">
-                <span className="text-lg">{role === 'patient' ? '👤' : '💜'}</span>
+                <svg className="w-4 h-4 text-[#A78BFA]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={role === 'patient' ? 'M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z' : 'M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z'} /></svg>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-white">
                     {role === 'patient' ? 'Managing your own care' : `Caring for ${patientName || 'a loved one'}`}
@@ -1364,7 +1370,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
             {(cancerType || treatmentPhase) && (
               <div className="rounded-xl bg-[var(--bg-card)] border border-[var(--border)] p-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-lg">🎗️</span>
+                  <svg className="w-4 h-4 text-[#F472B6]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-white">
                       {cancerType ? `${cancerType} cancer` : 'Diagnosis info'}
@@ -1387,7 +1393,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
             {dataChoice && dataChoice !== 'skip' && (
               <div className="rounded-xl bg-[var(--bg-card)] border border-[var(--border)] p-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-lg">{dataChoice === 'connect' ? '🏥' : '✏️'}</span>
+                  <svg className="w-4 h-4 text-[#60A5FA]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={dataChoice === 'connect' ? 'M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25' : 'M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10'} /></svg>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-white">
                       {dataChoice === 'connect' ? 'Health records connected' : 'Manual data entered'}
@@ -1413,7 +1419,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
             {priorities.length > 0 && (
               <div className="rounded-xl bg-[var(--bg-card)] border border-[var(--border)] p-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-lg">🎯</span>
+                  <svg className="w-4 h-4 text-[#A78BFA]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-white">Priorities set</p>
                     <p className="text-xs text-[var(--text-muted)]">

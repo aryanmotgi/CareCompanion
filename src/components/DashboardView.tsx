@@ -418,8 +418,8 @@ export function DashboardView({
           className="block mb-4 sm:mb-5 rounded-2xl border border-[#A78BFA]/30 bg-[#A78BFA]/5 p-4 hover:bg-[#A78BFA]/10 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#A78BFA]/20 flex items-center justify-center text-lg flex-shrink-0">
-              ✨
+            <div className="w-10 h-10 rounded-xl bg-[#A78BFA]/20 flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-[#A78BFA]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white">Complete your profile</p>
@@ -503,7 +503,7 @@ export function DashboardView({
               <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2 text-center">Get Started</div>
               {medications.length === 0 && (
                 <a
-                  href="/medications"
+                  href="/care?tab=meds"
                   className="flex items-center gap-3 p-4 rounded-2xl bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] transition-colors"
                 >
                   <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center flex-shrink-0">
@@ -524,7 +524,7 @@ export function DashboardView({
               )}
               {appointments.length === 0 && (
                 <a
-                  href="/appointments"
+                  href="/care?tab=appts"
                   className="flex items-center gap-3 p-4 rounded-2xl bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] transition-colors"
                 >
                   <div className="w-10 h-10 rounded-xl bg-[#22d3ee]/10 flex items-center justify-center flex-shrink-0">

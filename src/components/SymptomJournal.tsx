@@ -9,9 +9,10 @@ interface SymptomJournalProps {
   initialEntries: SymptomEntry[];
 }
 
-const MOOD_EMOJIS: Record<string, string> = { great: '😄', good: '🙂', okay: '😐', bad: '😞', terrible: '😢' };
-const SLEEP_EMOJIS: Record<string, string> = { great: '😴', good: '🛏️', fair: '😑', poor: '😫', terrible: '🥱' };
-const ENERGY_LABELS: Record<string, string> = { high: '⚡ High', normal: '✅ Normal', low: '🔋 Low', very_low: '🪫 Very Low' };
+const MOOD_LABELS: Record<string, string> = { great: 'Great', good: 'Good', okay: 'Okay', bad: 'Bad', terrible: 'Terrible' };
+const MOOD_COLORS: Record<string, string> = { great: '#34D399', good: '#60A5FA', okay: '#FCD34D', bad: '#FB923C', terrible: '#F87171' };
+const SLEEP_LABELS: Record<string, string> = { great: 'Great', good: 'Good', fair: 'Fair', poor: 'Poor', terrible: 'Bad' };
+const ENERGY_LABELS: Record<string, string> = { high: 'High', normal: 'Normal', low: 'Low', very_low: 'Very Low' };
 
 const COMMON_SYMPTOMS = ['Nausea', 'Vomiting', 'Fatigue', 'Mouth sores', 'Neuropathy', 'Chemo brain', 'Hair loss', 'Loss of appetite', 'Constipation', 'Diarrhea', 'Bone pain', 'Skin changes', 'Hand-foot syndrome', 'Shortness of breath', 'Anxiety', 'Fever/chills'];
 
@@ -154,10 +155,11 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
           <div>
             <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Mood</label>
             <div className="flex gap-2 mt-2">
-              {Object.entries(MOOD_EMOJIS).map(([key, emoji]) => (
+              {Object.entries(MOOD_LABELS).map(([key, label]) => (
                 <button key={key} onClick={() => setMood(key)}
-                  className={`flex-1 py-2 rounded-lg text-center text-lg transition-colors ${mood === key ? 'bg-blue-500/20 border border-blue-500/40' : 'bg-white/[0.04] border border-white/[0.06]'}`}
-                  title={key}>{emoji}</button>
+                  className={`flex-1 py-2 rounded-lg text-center text-xs font-medium transition-colors ${mood === key ? 'border' : 'bg-white/[0.04] border border-white/[0.06] text-[var(--text-muted)]'}`}
+                  style={mood === key ? { background: MOOD_COLORS[key] + '20', borderColor: MOOD_COLORS[key] + '60', color: MOOD_COLORS[key] } : {}}
+                  title={key}>{label}</button>
               ))}
             </div>
           </div>
@@ -167,10 +169,10 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
             <div>
               <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Sleep Quality</label>
               <div className="flex gap-1 mt-2">
-                {Object.entries(SLEEP_EMOJIS).map(([key, emoji]) => (
+                {Object.entries(SLEEP_LABELS).map(([key, label]) => (
                   <button key={key} onClick={() => setSleepQuality(key)}
-                    className={`flex-1 py-1.5 rounded text-center text-sm transition-colors ${sleepQuality === key ? 'bg-blue-500/20 border border-blue-500/40' : 'bg-white/[0.04] border border-white/[0.06]'}`}
-                    title={key}>{emoji}</button>
+                    className={`flex-1 py-1.5 rounded text-center text-xs transition-colors ${sleepQuality === key ? 'bg-blue-500/20 border border-blue-500/40 text-blue-300' : 'bg-white/[0.04] border border-white/[0.06] text-[var(--text-muted)]'}`}
+                    title={key}>{label}</button>
                 ))}
               </div>
             </div>
@@ -252,7 +254,7 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
                     {new Date(entry.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                   </span>
                   <div className="flex items-center gap-2">
-                    {entry.mood && <span title={`Mood: ${entry.mood}`}>{MOOD_EMOJIS[entry.mood]}</span>}
+                    {entry.mood && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: (MOOD_COLORS[entry.mood] || '#A78BFA') + '20', color: MOOD_COLORS[entry.mood] || '#A78BFA' }} title={`Mood: ${entry.mood}`}>{MOOD_LABELS[entry.mood] || entry.mood}</span>}
                     {entry.painLevel !== null && entry.painLevel > 0 && (
                       <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${entry.painLevel <= 3 ? 'bg-emerald-500/20 text-emerald-400' : entry.painLevel <= 6 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}`}>
                         {entry.painLevel}/10

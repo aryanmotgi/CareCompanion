@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { PublicNav } from '@/components/PublicNav';
 import { LoginForm } from '@/components/LoginForm';
 
 export default function LoginPage({ searchParams }: { searchParams: { error?: string } }) {
@@ -9,16 +9,8 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
     : undefined
 
   return (
-    <div className="min-h-screen min-h-dvh flex flex-col items-center justify-center px-4 sm:px-6 bg-[var(--bg)]">
-      {/* Back to home */}
-      <div className="w-full max-w-sm mb-6">
-        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-          Back to home
-        </Link>
-      </div>
+    <div className="min-h-screen min-h-dvh flex flex-col items-center justify-center px-4 sm:px-6 bg-[#080A14] page-grid">
+      <PublicNav />
 
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">

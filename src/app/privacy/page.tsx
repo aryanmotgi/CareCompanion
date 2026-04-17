@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { PublicNav } from '@/components/PublicNav';
 import { useEffect, useRef } from 'react';
 
 function useScrollReveal() {
@@ -23,28 +24,19 @@ function useScrollReveal() {
   return ref;
 }
 
-const SECTION_ICONS: Record<number, string> = {
-  1: '👋', 2: '📦', 3: '⚙️', 4: '🔒', 5: '🏥', 6: '👨‍👩‍👦',
-  7: '🗄️', 8: '✅', 9: '👶', 10: '📝', 11: '📧', 12: '🛡️',
-};
 
 export default function PrivacyPolicy() {
   const containerRef = useScrollReveal();
 
   return (
-    <div className="min-h-dvh bg-[var(--bg)] text-[var(--text)] relative overflow-hidden">
+    <div className="min-h-dvh bg-[#080A14] text-[var(--text)] relative overflow-hidden page-grid">
       <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
         <div className="absolute -top-40 right-1/4 w-[500px] h-[500px] rounded-full bg-[#6366F1]/[0.05] blur-[120px]" />
         <div className="absolute top-[50%] -left-40 w-[400px] h-[400px] rounded-full bg-[#A78BFA]/[0.04] blur-[100px]" />
       </div>
 
-      <div ref={containerRef} className="max-w-2xl mx-auto px-5 py-12 sm:py-16">
-        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors mb-8 group">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-          Back to home
-        </Link>
+      <PublicNav />
+      <div ref={containerRef} className="max-w-2xl mx-auto px-5 pt-24 pb-12 sm:pb-16">
 
         <div className="reveal-item mb-10" style={{ '--delay': '0s' } as React.CSSProperties}>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#A78BFA]/10 border border-[#A78BFA]/20 mb-4">
@@ -90,15 +82,15 @@ export default function PrivacyPolicy() {
             {
               num: 4, title: 'HOW WE STORE AND PROTECT YOUR DATA',
               content: <div className="grid gap-2">{[
-                { icon: '🗄️', text: 'All data stored in Supabase (PostgreSQL), a SOC 2 Type II certified cloud database' },
-                { icon: '🔐', text: 'Row-level security ensures no user can access another user\'s data' },
-                { icon: '🔒', text: 'All data encrypted in transit (HTTPS/TLS) and at rest' },
-                { icon: '🚫', text: 'API keys and credentials are never stored in code' },
-                { icon: '👤', text: 'Care team access is permission-controlled — you decide who sees what' },
-              ].map((item, i) => (
+                'All data stored in Supabase (PostgreSQL), a SOC 2 Type II certified cloud database',
+                'Row-level security ensures no user can access another user\'s data',
+                'All data encrypted in transit (HTTPS/TLS) and at rest',
+                'API keys and credentials are never stored in code',
+                'Care team access is permission-controlled — you decide who sees what',
+              ].map((text, i) => (
                 <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] hover:border-[#6366F1]/15 transition-colors">
-                  <span className="text-base flex-shrink-0">{item.icon}</span>
-                  <span>{item.text}</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#A78BFA] mt-1.5 flex-shrink-0" />
+                  <span>{text}</span>
                 </div>
               ))}</div>
             },
@@ -167,11 +159,10 @@ export default function PrivacyPolicy() {
             <section key={section.num} className="reveal-item" style={{ '--delay': `${section.num * 0.05}s` } as React.CSSProperties}>
               <div className="group p-5 rounded-2xl bg-white/[0.01] border border-white/[0.04] hover:bg-white/[0.03] hover:border-white/[0.08] transition-all duration-300">
                 <h2 className="text-base font-semibold text-[var(--text)] mb-3 flex items-center gap-3">
-                  <span className="text-lg">{SECTION_ICONS[section.num]}</span>
-                  <span className="text-[#A78BFA]/60 text-xs font-mono">{String(section.num).padStart(2, '0')}</span>
+                  <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{String(section.num).padStart(2, '0')}</span>
                   {section.title}
                 </h2>
-                <div className="pl-9">{section.content}</div>
+                <div className="pl-10">{section.content}</div>
               </div>
             </section>
           ))}

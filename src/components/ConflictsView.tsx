@@ -155,7 +155,7 @@ export function ConflictsView({ profiles, careTeamMembers }: ConflictsViewProps)
       <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
-            <span className="text-lg">🏥</span>
+            <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
           </div>
           <div>
             <div className="text-[#f1f5f9] text-sm font-semibold">Find Care Services</div>

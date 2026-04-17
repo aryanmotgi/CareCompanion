@@ -170,7 +170,7 @@ export function HealthSummaryView({ patientName }: HealthSummaryViewProps) {
         return (
           <div key={i} className="grid gap-2 text-xs py-1 border-b border-white/[0.04]" style={{ gridTemplateColumns: `repeat(${cells.length}, 1fr)` }}>
             {cells.map((cell, j) => (
-              <span key={j} className={`${j === 0 ? 'text-white font-medium' : 'text-[var(--text-secondary)]'} ${cell.includes('⚠️') ? 'text-amber-400' : ''}`}>{cell}</span>
+              <span key={j} className={`${j === 0 ? 'text-white font-medium' : 'text-[var(--text-secondary)]'} ${cell.includes('⚠') ? 'text-amber-400' : ''}`}>{cell}</span>
             ))}
           </div>
         );

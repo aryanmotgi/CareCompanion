@@ -9,7 +9,13 @@ import { ConfirmDialog } from './ui/ConfirmDialog'
 import { ConflictsView } from './ConflictsView'
 import { VisitPrepSheet } from './VisitPrepSheet'
 import { MedicationReminders } from './MedicationReminders'
-import type { Medication, Appointment, Doctor, CareProfile, CareTeamMember, ReminderLog } from '@/lib/types'
+import type { Medication, Appointment, Doctor, CareProfile, CareTeamMember, ReminderLog, LabResult, SymptomEntry } from '@/lib/types'
+
+const LabsView = dynamic(() => import('@/app/(app)/labs/LabsView').then((m) => m.LabsView))
+const SymptomJournal = dynamic(() => import('./SymptomJournal').then((m) => m.SymptomJournal))
+const CareTeamView = dynamic(() => import('./CareTeamView').then((m) => m.CareTeamView))
+
+const TAB_MAP: Record<string, number> = { meds: 0, appts: 1, labs: 2, journal: 3, team: 4 }
 
 interface CareViewProps {
   profileId: string
@@ -19,13 +25,17 @@ interface CareViewProps {
   allProfiles?: CareProfile[]
   careTeamMembers?: CareTeamMember[]
   todayReminders?: ReminderLog[]
+  labResults?: LabResult[]
+  symptoms?: SymptomEntry[]
+  patientName?: string
 }
 
 const inputClass = 'w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-[var(--text)] text-sm outline-none placeholder:text-[var(--text-muted)] focus:border-[#A78BFA]/40 transition-colors'
 
-export function CareView({ profileId, medications: initialMeds, appointments: initialAppts, doctors, allProfiles = [], careTeamMembers = [], todayReminders = [] }: CareViewProps) {
+export function CareView({ profileId, medications: initialMeds, appointments: initialAppts, doctors, allProfiles = [], careTeamMembers = [], todayReminders = [], labResults = [], symptoms = [], patientName = 'Patient' }: CareViewProps) {
   const { showToast } = useToast()
-  const [activeSegment, setActiveSegment] = useState(0)
+  const searchParams = useSearchParams()
+  const [activeSegment, setActiveSegment] = useState(() => TAB_MAP[searchParams.get('tab') ?? ''] ?? 0)
   const [medications, setMedications] = useState(initialMeds)
   const [appointments, setAppointments] = useState(initialAppts)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -264,7 +274,7 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
   return (
     <div className="px-4 sm:px-5 py-5 sm:py-6">
       <SegmentControl
-        segments={['Medications', 'Appointments', 'Conflicts']}
+        segments={['Meds', 'Appts', 'Labs', 'Journal', 'Team']}
         activeIndex={activeSegment}
         onChange={(idx) => { setActiveSegment(idx); setExpandedId(null) }}
       />
@@ -321,11 +331,28 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
       )}
 
       {activeSegment === 2 && (
-        <ConflictsView
-          profiles={allProfiles}
-          currentProfileId={profileId}
-          careTeamMembers={careTeamMembers}
-        />
+        <div className="mt-5">
+          <LabsView labResults={labResults} />
+        </div>
+      )}
+
+      {activeSegment === 3 && (
+        <div className="mt-5">
+          <SymptomJournal patientName={patientName} initialEntries={symptoms} />
+        </div>
+      )}
+
+      {activeSegment === 4 && (
+        <div className="mt-5">
+          <CareTeamView />
+          <div className="mt-6">
+            <ConflictsView
+              profiles={allProfiles}
+              currentProfileId={profileId}
+              careTeamMembers={careTeamMembers}
+            />
+          </div>
+        </div>
       )}
 
       {/* Add Medication Form */}

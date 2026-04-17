@@ -51,12 +51,12 @@ function formatTime(dateStr?: string): string {
   return `${diffDays}d ago`
 }
 
-function providerIcon(provider: string): string {
+function providerColor(provider: string): string {
   const p = provider.toLowerCase()
-  if (p.includes('google') || p.includes('calendar')) return '📅'
-  if (p.includes('fhir') || p.includes('1up') || p.includes('health')) return '🏥'
-  if (p.includes('insurance')) return '🛡️'
-  return '🔗'
+  if (p.includes('google') || p.includes('calendar')) return '#60A5FA'
+  if (p.includes('fhir') || p.includes('1up') || p.includes('health')) return '#A78BFA'
+  if (p.includes('insurance')) return '#34D399'
+  return '#94A3B8'
 }
 
 export function SyncStatusView() {
@@ -150,7 +150,9 @@ export function SyncStatusView() {
         </h2>
         {apps.length === 0 ? (
           <div className="glass-card p-6 text-center">
-            <p className="text-3xl mb-2">🔌</p>
+            <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center mx-auto mb-3">
+              <svg className="w-5 h-5 text-[var(--text-muted)]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
+            </div>
             <p className="text-[var(--text)] font-medium mb-1">No connected accounts</p>
             <p className="text-[var(--text-muted)] text-sm mb-3">
               Connect your health systems, calendar, or insurance to start syncing data.
@@ -172,9 +174,9 @@ export function SyncStatusView() {
                 <div key={app.id} className="glass-card p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <span className="text-xl" aria-hidden="true">
-                        {providerIcon(app.provider)}
-                      </span>
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: providerColor(app.provider) + '20' }}>
+                        <div className="w-2 h-2 rounded-full" style={{ background: providerColor(app.provider) }} />
+                      </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="text-[var(--text)] font-medium text-sm truncate">

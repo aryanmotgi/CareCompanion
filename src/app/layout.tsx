@@ -1,16 +1,17 @@
 import type { Metadata, Viewport } from 'next';
-import { Outfit, Source_Sans_3 } from 'next/font/google';
+import { Figtree, Noto_Sans } from 'next/font/google';
 import { SupabaseProvider } from '@/components/providers/SupabaseProvider';
 import './globals.css';
 
-const outfit = Outfit({
+const figtree = Figtree({
   subsets: ['latin'],
   variable: '--font-outfit',
   display: 'swap',
 });
 
-const sourceSans = Source_Sans_3({
+const notoSans = Noto_Sans({
   subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
   variable: '--font-source-sans',
   display: 'swap',
 });
@@ -90,7 +91,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${outfit.variable} ${sourceSans.variable}`}>
+    <html lang="en" className={`${figtree.variable} ${notoSans.variable}`}>
       <head>
         <meta name="theme-color" content="#6366F1" />
       </head>
