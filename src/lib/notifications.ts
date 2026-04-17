@@ -1,9 +1,10 @@
 import { db } from '@/lib/db';
 import {
   careProfiles, userSettings, medications, appointments,
-  priorAuths, labResults, fsaHsa, notifications,
+  priorAuths, labResults, fsaHsa, notifications, pushSubscriptions,
 } from '@/lib/db/schema';
 import { eq, and, gte, desc } from 'drizzle-orm';
+import { sendPushNotification } from '@/lib/push';
 
 /**
  * Proactive notification engine for CareCompanion.
@@ -235,6 +236,33 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
   if (toInsert.length > 0) {
     await db.insert(notifications).values(toInsert);
     generated = toInsert.length;
+
+    // Fire push notifications for each inserted notification (fire-and-forget)
+    const subs = await db
+      .select()
+      .from(pushSubscriptions)
+      .where(eq(pushSubscriptions.userId, userId))
+      .catch(() => []);
+
+    if (subs.length > 0) {
+      for (const notification of toInsert) {
+        for (const sub of subs) {
+          sendPushNotification(
+            { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+            { title: notification.title, body: notification.message ?? '', url: '/dashboard' },
+          ).catch(async (err: unknown) => {
+            // Remove invalid/expired subscriptions (HTTP 410 Gone)
+            const status = (err as { statusCode?: number })?.statusCode;
+            if (status === 410 || status === 404) {
+              await db
+                .delete(pushSubscriptions)
+                .where(eq(pushSubscriptions.endpoint, sub.endpoint))
+                .catch(() => {});
+            }
+          });
+        }
+      }
+    }
   }
 
   return generated;

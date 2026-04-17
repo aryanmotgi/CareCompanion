@@ -352,6 +352,9 @@ export const sharedLinks = pgTable('shared_links', {
   userId: uuid('user_id').notNull(),
   careProfileId: uuid('care_profile_id'),
   token: text('token').notNull().unique(),
+  type: text('type').notNull().default('health_summary'),
+  title: text('title'),
+  data: jsonb('data').notNull().default({}),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   viewCount: integer('view_count').default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
@@ -368,6 +371,16 @@ export const scannedDocuments = pgTable('scanned_documents', {
   fileUrl: text('file_url'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
+
+// ── Push Subscriptions ────────────────────────────────────────────────────────
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  endpoint: text('endpoint').notNull().unique(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
 
 // ── Health Summaries ──────────────────────────────────────────────────────────
 export const healthSummaries = pgTable('health_summaries', {

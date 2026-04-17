@@ -8,6 +8,7 @@ import { ToastProvider } from '@/components/ToastProvider'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
+import { PushNotificationSetup } from '@/components/PushNotificationSetup'
 import { CsrfProvider } from '@/components/CsrfProvider'
 import { getActiveProfile, getAllProfiles } from '@/lib/active-profile'
 
@@ -79,6 +80,7 @@ export default async function AppLayout({
     <ToastProvider>
       <OfflineIndicator />
       <ServiceWorkerRegistration />
+      <PushNotificationSetup />
       <AppShell
         patientName={profile?.patientName || 'your loved one'}
         patientAge={profile?.patientAge ?? undefined}

@@ -138,7 +138,7 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
       meds,
       docs,
       appts,
-      { labResults: labs, notifications: notifs, claims: claimsData, priorAuths: priorAuthsData, fsaHsa: fsaHsaData, memories: memoriesData, conversationSummaries: conversationSummariesData }
+      { labResults: labs, notifications: notifs, claims: claimsData, priorAuths: priorAuthsData, fsaHsa: fsaHsaData, memories: memoriesData, conversationSummaries: conversationSummariesData, symptoms }
     )),
   ]);
 

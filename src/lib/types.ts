@@ -9,6 +9,9 @@ export interface CareProfile {
   cancerType?: string | null;
   cancerStage?: string | null;
   treatmentPhase?: string | null;
+  conditions?: string | null;
+  allergies?: string | null;
+  onboardingPriorities?: string[] | null;
   onboardingCompleted?: boolean | null;
   createdAt: Date | null;
 }

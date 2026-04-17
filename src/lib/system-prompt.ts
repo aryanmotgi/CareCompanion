@@ -1,4 +1,4 @@
-import type { CareProfile, Medication, Doctor, Appointment, LabResult, Claim, Notification, PriorAuth, FsaHsa, Memory, ConversationSummary } from './types';
+import type { CareProfile, Medication, Doctor, Appointment, LabResult, Claim, Notification, PriorAuth, FsaHsa, Memory, ConversationSummary, SymptomEntry } from './types';
 
 const BASE_PROMPT = `You are CareCompanion, a warm and caring AI assistant built specifically for cancer patients and their family caregivers navigating the cancer journey.
 
@@ -96,6 +96,7 @@ export function buildSystemPrompt(
     fsaHsa?: FsaHsa[] | null;
     memories?: Memory[] | null;
     conversationSummaries?: ConversationSummary[] | null;
+    symptoms?: SymptomEntry[] | null;
   }
 ): string {
   if (!profile) {
@@ -118,6 +119,20 @@ export function buildSystemPrompt(
       unsure: 'Treatment phase not yet determined',
     };
     context += `Treatment Phase: ${phaseLabels[profile.treatmentPhase] || profile.treatmentPhase}\n`;
+  }
+  if (profile.conditions) context += `Conditions: ${profile.conditions}\n`;
+  if (profile.allergies) context += `Allergies: ${profile.allergies}\n`;
+  if (profile.onboardingPriorities && profile.onboardingPriorities.length > 0) {
+    const priorityLabels: Record<string, string> = {
+      side_effects: 'tracking side effects',
+      medications: 'managing medications',
+      appointments: 'preparing for appointments',
+      lab_results: 'understanding lab results',
+      insurance: 'insurance & billing',
+      emotional: 'emotional support',
+    };
+    context += `User priorities: ${profile.onboardingPriorities.map(p => priorityLabels[p] || p).join(', ')}\n`;
+    context += `Focus extra attention on these areas in your responses.\n`;
   }
 
   // Dynamic personalized greeting based on cancer type and treatment phase
@@ -179,7 +194,7 @@ export function buildSystemPrompt(
 
   // Synced data context
   if (extras) {
-    const { labResults, notifications, claims, priorAuths, fsaHsa, memories, conversationSummaries } = extras;
+    const { labResults, notifications, claims, priorAuths, fsaHsa, memories, conversationSummaries, symptoms } = extras;
 
     if (labResults && labResults.length > 0) {
       context += `\n=== RECENT LAB RESULTS ===\n`;
@@ -193,6 +208,22 @@ export function buildSystemPrompt(
         if (lab.isAbnormal) context += ` ⚠️ ABNORMAL`;
         if (lab.dateTaken) context += ` [${lab.dateTaken}]`;
         context += `\n`;
+      });
+    }
+
+    if (symptoms && symptoms.length > 0) {
+      context += `\n=== RECENT SYMPTOMS (last 14 days) ===\n`;
+      context += `Use these to understand how the patient has been feeling. Look for patterns and trends.\n`;
+      symptoms.forEach((s) => {
+        const parts: string[] = [];
+        if (s.painLevel !== null && s.painLevel !== undefined) parts.push(`pain ${s.painLevel}/10`);
+        if (s.mood !== null && s.mood !== undefined) parts.push(`mood ${s.mood}/10`);
+        if (s.energy !== null && s.energy !== undefined) parts.push(`energy ${s.energy}/10`);
+        if (s.sleepQuality !== null && s.sleepQuality !== undefined) parts.push(`sleep quality ${s.sleepQuality}/10`);
+        if (s.sleepHours !== null && s.sleepHours !== undefined) parts.push(`${s.sleepHours}h sleep`);
+        if (s.appetite !== null && s.appetite !== undefined) parts.push(`appetite ${s.appetite}/10`);
+        if (s.symptoms && s.symptoms.length > 0) parts.push(`symptoms: ${s.symptoms.join(', ')}`);
+        context += `- [${s.date}] ${parts.join(', ')}\n`;
       });
     }
 
