@@ -290,37 +290,18 @@ export default function DemoWalkthroughPage() {
             <span className="flex-shrink-0 w-8 h-8 rounded-full bg-violet-500/25 text-violet-300 text-sm font-bold flex items-center justify-center">
               6
             </span>
-            <h2 className="text-lg font-semibold text-white">Try It — No Sign Up Required</h2>
+            <h2 className="text-lg font-semibold text-white">Try It Free — No Account Required</h2>
             <span className="ml-auto flex-shrink-0 text-[11px] font-semibold text-violet-300 bg-violet-500/15 border border-violet-500/25 px-2 py-0.5 rounded-full">
               Start here
             </span>
           </div>
           <p className="text-sm text-white/60 mb-4">
-            Click the button below to instantly experience the full app as a demo patient with{' '}
-            <span className="text-white font-medium">HER2+ Breast Cancer (Stage IIIA)</span>. You&apos;ll see a realistic
-            care profile with chemotherapy medications, recent lab results, upcoming oncology appointments, a full care team, and more.
+            Chat instantly with CareCompanion&apos;s AI — ask about chemo side effects, tumor markers, medications, or how to support a family member. No account needed, no email required.
           </p>
-
-          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-4 mb-4">
-            <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-2">What you&apos;ll see</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[
-                { label: '8', sub: 'Medications' },
-                { label: '10', sub: 'Lab results' },
-                { label: '5', sub: 'Appointments' },
-                { label: '5', sub: 'Care team' },
-              ].map((item) => (
-                <div key={item.sub} className="rounded-lg bg-white/[0.03] border border-white/[0.04] px-3 py-2 text-center">
-                  <p className="text-lg font-bold text-white">{item.label}</p>
-                  <p className="text-[11px] text-white/40">{item.sub}</p>
-                </div>
-              ))}
-            </div>
-          </div>
 
           <div className="space-y-3">
             <Link
-              href="/login"
+              href="/chat/guest"
               className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-blue-500 to-violet-500 text-white text-sm font-semibold hover:from-blue-400 hover:to-violet-400 shadow-lg shadow-violet-500/25 transition-all"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -329,7 +310,7 @@ export default function DemoWalkthroughPage() {
               Launch interactive demo
             </Link>
             <p className="text-[11px] text-center text-white/30">
-              Sign in to explore the full app
+              No account needed — 15 free messages
             </p>
           </div>
         </div>

@@ -3,11 +3,11 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 
-/* ── Interactive demo button — redirects to login ── */
+/* ── Interactive demo button — opens guest chat ── */
 function DemoButton() {
   return (
     <Link
-      href="/login"
+      href="/chat/guest"
       className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl border font-semibold text-sm transition-all hover:opacity-90"
       style={{ borderColor: 'rgba(167,139,250,0.4)', background: 'rgba(167,139,250,0.08)', color: '#A78BFA' }}
     >
