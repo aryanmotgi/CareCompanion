@@ -246,6 +246,21 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
     );
   };
 
+  // Enter key to advance on non-typing steps (placed after all state is declared)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter') return;
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (step === 1 && role !== null && (role === 'patient' || patientName.trim().length > 0)) goForward(2);
+      if (step === 2) goForward(3);
+      if (step === 5 && !loading) goForward(6);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, role, patientName, loading]);
+
   // Save manual entry data via API routes
   const saveManualData = async () => {
     const pid = await ensureProfileId();
@@ -571,10 +586,21 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
           <button
             onClick={() => goForward(2)}
             disabled={!canProceed()}
+            aria-disabled={!canProceed()}
             className="w-full rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] py-3.5 px-6 text-base text-white font-semibold hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             Continue
           </button>
+          {!role && (
+            <p className="text-center text-xs text-[var(--text-muted)] mt-1" aria-live="polite">
+              Select who this is for to continue
+            </p>
+          )}
+          {role === 'caregiver' && !patientName.trim() && (
+            <p className="text-center text-xs text-[var(--text-muted)] mt-1" aria-live="polite">
+              Enter the patient&apos;s name to continue
+            </p>
+          )}
           <a href="/login" className="block text-center text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors mt-3">
             Back to login
           </a>
@@ -971,9 +997,9 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
           {/* Section tabs */}
           <div className="flex gap-2">
             {([
-              { key: 'meds' as const, label: 'Medications', icon: '💊' },
-              { key: 'doctors' as const, label: 'Doctors', icon: '👨‍⚕️' },
-              { key: 'appointments' as const, label: 'Appointments', icon: '📅' },
+              { key: 'meds' as const, label: 'Meds', icon: '💊', count: manualSummary.meds },
+              { key: 'doctors' as const, label: 'Doctors', icon: '👨‍⚕️', count: manualSummary.docs },
+              { key: 'appointments' as const, label: 'Appts', icon: '📅', count: manualSummary.appts },
             ]).map((tab) => (
               <button
                 key={tab.key}
@@ -984,7 +1010,13 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
                     : 'border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:border-white/20'
                 }`}
               >
-                <span className="mr-1">{tab.icon}</span> {tab.label}
+                <span className="mr-1" aria-hidden="true">{tab.icon}</span>
+                {tab.label}
+                {tab.count > 0 && (
+                  <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#A78BFA]/30 text-[#C4B5FD] text-[10px] font-bold">
+                    {tab.count}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -1230,6 +1262,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
             <button
               onClick={() => goBack(dataChoice === 'manual' ? 4 : 3)}
               className="flex-shrink-0 rounded-xl border border-[var(--border)] py-3.5 px-5 text-sm text-[var(--text-muted)] hover:text-white hover:border-white/20 transition-all"
+              aria-label="Go back"
             >
               Back
             </button>
@@ -1370,8 +1403,34 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
             )}
           </div>
 
+          {/* What's next — shown when user skipped most steps */}
+          {!cancerType && !dataChoice && priorities.length === 0 && (
+            <div className="rounded-xl border border-dashed border-white/10 p-4 space-y-3">
+              <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Suggested next steps</p>
+              <div className="space-y-2">
+                {[
+                  { icon: '💊', label: 'Add your medications', href: '/medications' },
+                  { icon: '🏥', label: 'Connect health records', href: '/connect' },
+                  { icon: '📅', label: 'Log an upcoming appointment', href: '/appointments' },
+                ].map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-white/5 transition-colors group"
+                  >
+                    <span className="text-base" aria-hidden="true">{item.icon}</span>
+                    <span className="text-sm text-[var(--text-secondary)] group-hover:text-white transition-colors">{item.label}</span>
+                    <svg className="w-4 h-4 text-[var(--text-muted)] ml-auto group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Confetti emojis */}
-          <div className="flex justify-center gap-1.5">
+          <div className="flex justify-center gap-1.5" aria-hidden="true">
             {['💜', '🩺', '💪', '🌟', '❤️'].map((e, i) => (
               <span key={i} className="text-2xl" style={{ animation: `confettiFade 0.4s ease-out ${0.3 + i * 0.1}s both` }}>{e}</span>
             ))}

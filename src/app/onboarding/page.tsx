@@ -33,7 +33,7 @@ export default async function OnboardingPage() {
 
   const userName = dbUser.displayName || dbUser.email.split('@')[0] || '';
   const userEmail = dbUser.email || '';
-  const userAvatar = '';
+  const userAvatar = session.user.image || '';
 
   return (
     <div className="min-h-screen min-h-dvh bg-[var(--bg)] text-[var(--text)]">
