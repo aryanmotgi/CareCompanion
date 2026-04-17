@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/analytics';
 
@@ -80,7 +80,7 @@ const PRIORITIES = [
   { value: 'emotional', label: 'Emotional support', icon: '💜', desc: 'Resources and coping strategies' },
 ];
 
-const STEP_LABELS = ['Who', 'Diagnosis', 'Data', 'Details', 'Priorities', 'Done'];
+const STEP_LABELS = ['About you', 'Diagnosis', 'Your data', 'Details', 'Priorities', 'All set'];
 const TOTAL_STEPS = 6;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -110,8 +110,17 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
     return initial === 1 && !existingProfile?.cancer_type ? 0 : initial;
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [slideDir, setSlideDir] = useState<'left' | 'right'>('left');
   const [animKey, setAnimKey] = useState(0);
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  // Focus the step heading on step change for keyboard/screen reader users
+  useEffect(() => {
+    if (step > 0) {
+      stepHeadingRef.current?.focus();
+    }
+  }, [step]);
 
   const firstName = userName.split(' ')[0];
 
@@ -191,12 +200,14 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
   const goForward = (nextStep: number) => {
     trackEvent({ name: 'onboarding_step', properties: { from: step, to: nextStep } });
     saveStepProgress(step);
+    setError(null);
     setSlideDir('left');
     setAnimKey((k) => k + 1);
     setStep(nextStep);
   };
 
   const goBack = (prevStep: number) => {
+    setError(null);
     setSlideDir('right');
     setAnimKey((k) => k + 1);
     setStep(prevStep);
@@ -299,6 +310,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
   const saveAndFinish = async () => {
     trackEvent({ name: 'onboarding_complete', properties: { dataChoice: dataChoice || 'skip' } });
     setLoading(true);
+    setError(null);
     try {
       const profileData = {
         id: profileId,
@@ -308,14 +320,19 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
         cancer_type: cancerType || null,
         cancer_stage: cancerStage || null,
         treatment_phase: treatmentPhase || null,
+        onboarding_priorities: priorities.length > 0 ? priorities : null,
         onboarding_completed: true,
       };
 
-      await fetch('/api/records/profile', {
+      const res = await fetch('/api/records/profile', {
         method: profileId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(profileData),
       });
+
+      if (!res.ok) {
+        throw new Error('Failed to save profile');
+      }
 
       // Trigger welcome email (fire and forget)
       fetch('/api/welcome-email', { method: 'POST' }).catch(() => {});
@@ -326,6 +343,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
       router.push('/dashboard');
     } catch (err) {
       console.error('Onboarding error:', err);
+      setError('Something went wrong saving your profile. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -411,25 +429,16 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
 
       {/* Progress indicator — hidden on intro and done screens */}
       {step > 0 && step < 7 && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-center gap-2">
-            {[1, 2, 3, 4, 5, 6].map((s) => (
-              <div
-                key={s}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  s === step
-                    ? 'w-8 bg-gradient-to-r from-[#6366F1] to-[#A78BFA]'
-                    : s < step
-                      ? 'w-2 bg-[#A78BFA]'
-                      : 'w-2 bg-white/10'
-                }`}
-              />
-            ))}
+        <div className="space-y-2" role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={TOTAL_STEPS} aria-label={`Step ${step} of ${TOTAL_STEPS}: ${STEP_LABELS[step - 1]}`}>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-medium text-[var(--text-secondary)]">{STEP_LABELS[step - 1]}</span>
+            <span className="text-[11px] text-[var(--text-muted)]">{step}/{TOTAL_STEPS}</span>
           </div>
-          <div className="flex items-center justify-center gap-1">
-            <span className="text-[10px] text-[var(--text-muted)]">
-              Step {step} of {TOTAL_STEPS}: {STEP_LABELS[step - 1]}
-            </span>
+          <div className="h-1.5 w-full rounded-full bg-white/[0.08] overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-[#6366F1] to-[#A78BFA] transition-all duration-500 ease-out"
+              style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
+            />
           </div>
         </div>
       )}
@@ -447,7 +456,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
                 referrerPolicy="no-referrer"
               />
             )}
-            <h1 className="font-display text-3xl font-bold text-white">
+            <h1 ref={stepHeadingRef} tabIndex={-1} className="font-display text-3xl font-bold text-white outline-none">
               {firstName ? `Welcome, ${firstName}` : 'Welcome'}
             </h1>
             <p className="mt-2 text-[var(--text-secondary)]">
@@ -470,7 +479,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
               <div className="flex items-center gap-4">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl ${
                   role === 'patient' ? 'bg-[#A78BFA]/20' : 'bg-white/5'
-                }`}>
+                }`} aria-hidden="true">
                   👤
                 </div>
                 <div>
@@ -497,7 +506,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
               <div className="flex items-center gap-4">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl ${
                   role === 'caregiver' ? 'bg-pink-500/20' : 'bg-white/5'
-                }`}>
+                }`} aria-hidden="true">
                   💜
                 </div>
                 <div>
@@ -603,7 +612,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
       {step === 2 && (
         <div key={animKey} className="space-y-6" style={{ animation: `${slideDir === 'left' ? 'slideInLeft' : 'slideInRight'} 0.35s ease-out` }}>
           <div className="text-center">
-            <h1 className="font-display text-3xl font-bold text-white">
+            <h1 ref={stepHeadingRef} tabIndex={-1} className="font-display text-3xl font-bold text-white outline-none">
               About the diagnosis
             </h1>
             <p className="mt-2 text-[var(--text-secondary)]">
@@ -753,7 +762,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
       {step === 3 && !connectStarted && (
         <div key={animKey} className="space-y-6" style={{ animation: `${slideDir === 'left' ? 'slideInLeft' : 'slideInRight'} 0.35s ease-out` }}>
           <div className="text-center">
-            <h1 className="font-display text-3xl font-bold text-white">
+            <h1 ref={stepHeadingRef} tabIndex={-1} className="font-display text-3xl font-bold text-white outline-none">
               Bring in your data
             </h1>
             <p className="mt-2 text-[var(--text-secondary)]">
@@ -869,7 +878,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
       {step === 3 && connectStarted && (
         <div key={`connect-${animKey}`} className="space-y-6" style={{ animation: 'slideInLeft 0.35s ease-out' }}>
           <div className="text-center">
-            <h1 className="font-display text-3xl font-bold text-white">
+            <h1 ref={stepHeadingRef} tabIndex={-1} className="font-display text-3xl font-bold text-white outline-none">
               Connect Health Records
             </h1>
             <p className="mt-2 text-[var(--text-secondary)]">
@@ -951,7 +960,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
       {step === 4 && (
         <div key={animKey} className="space-y-6" style={{ animation: `${slideDir === 'left' ? 'slideInLeft' : 'slideInRight'} 0.35s ease-out` }}>
           <div className="text-center">
-            <h1 className="font-display text-3xl font-bold text-white">
+            <h1 ref={stepHeadingRef} tabIndex={-1} className="font-display text-3xl font-bold text-white outline-none">
               Quick setup
             </h1>
             <p className="mt-2 text-[var(--text-secondary)]">
@@ -1168,7 +1177,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
       {step === 5 && (
         <div key={animKey} className="space-y-6" style={{ animation: `${slideDir === 'left' ? 'slideInLeft' : 'slideInRight'} 0.35s ease-out` }}>
           <div className="text-center">
-            <h1 className="font-display text-3xl font-bold text-white">
+            <h1 ref={stepHeadingRef} tabIndex={-1} className="font-display text-3xl font-bold text-white outline-none">
               What matters most?
             </h1>
             <p className="mt-2 text-[var(--text-secondary)]">
@@ -1368,6 +1377,12 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
             ))}
           </div>
 
+          {error && (
+            <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              {error}
+            </div>
+          )}
+
           <button
             onClick={saveAndFinish}
             disabled={loading}
@@ -1375,7 +1390,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
           >
             {loading ? (
               <span className="inline-flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin h-4 w-4" aria-hidden="true" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
