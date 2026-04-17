@@ -16,7 +16,6 @@ const STARTER_PROMPTS = [
 
 export default function GuestChatPage() {
   const [input, setInput] = useState('');
-  const [promptSent, setPromptSent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { messages, sendMessage, status, error, stop } = useChat({
@@ -31,15 +30,6 @@ export default function GuestChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isStreaming]);
-
-  // Auto-send the first message from the AI to greet the user
-  useEffect(() => {
-    if (!promptSent && messages.length === 0) {
-      setPromptSent(true);
-      sendMessage({ text: 'Hello' });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleSend = (text?: string) => {
     const msg = text || input.trim();
@@ -82,7 +72,7 @@ export default function GuestChatPage() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
-        {messages.length <= 1 && !isLoading ? (
+        {messages.length === 0 && !isLoading ? (
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
             <div className="w-16 h-16 bg-gradient-to-br from-[#6366F1]/20 to-[#A78BFA]/20 rounded-2xl flex items-center justify-center mb-5 border border-white/[0.08]">
               <svg className="w-8 h-8 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
