@@ -4,7 +4,10 @@ import { NextResponse } from 'next/server'
 export default auth((req) => {
   const { pathname } = req.nextUrl
 
-  if (!req.auth && pathname !== '/login') {
+  const publicPaths = ['/login', '/chat/guest', '/api/chat/guest', '/demo-walkthrough', '/about', '/privacy', '/terms']
+  const isPublic = publicPaths.some((p) => pathname === p || pathname.startsWith(p + '/'))
+
+  if (!req.auth && !isPublic) {
     const url = req.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
@@ -39,5 +42,5 @@ export default auth((req) => {
 })
 
 export const config = {
-  matcher: ['/chat', '/profile', '/setup', '/login', '/settings', '/dashboard', '/care', '/medications', '/appointments', '/scans', '/connect', '/manual-setup', '/onboarding', '/api/chat'],
+  matcher: ['/chat', '/profile', '/setup', '/login', '/settings', '/dashboard', '/care', '/medications', '/appointments', '/scans', '/connect', '/manual-setup', '/onboarding', '/api/chat', '/api/chat/guest', '/chat/guest'],
 }

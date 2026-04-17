@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 export const metadata = {
   title: 'Offline',
 }
@@ -13,7 +15,7 @@ export default function OfflinePage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#0C0E1A] px-6 text-center">
       {/* Logo */}
-      <img
+      <Image
         src="/logo.svg"
         alt="CareCompanion"
         width={64}
