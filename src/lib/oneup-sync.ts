@@ -1,4 +1,15 @@
-import { createAdminClient } from './supabase/admin';
+import { db } from './db';
+import {
+  careProfiles,
+  medications,
+  labResults,
+  appointments,
+  doctors,
+  claims,
+  insurance,
+  connectedApps,
+} from './db/schema';
+import { eq, and } from 'drizzle-orm';
 import { fhirSearchAll } from './oneup';
 
 import { anthropic } from '@ai-sdk/anthropic';
@@ -19,7 +30,7 @@ interface SyncResults {
 }
 
 /**
- * Sync all FHIR data from 1upHealth into our Supabase tables.
+ * Sync all FHIR data from 1upHealth into our database tables.
  * This is the core engine that auto-populates the user's care profile.
  */
 export class TokenExpiredError extends Error {
@@ -30,7 +41,6 @@ export class TokenExpiredError extends Error {
 }
 
 export async function syncOneUpData(userId: string, accessToken: string): Promise<SyncResults> {
-  const admin = createAdminClient();
   let saw401 = false;
   const results: SyncResults = {
     medications: 0,
@@ -44,18 +54,29 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
   };
 
   // Ensure care profile exists
-  let { data: profile } = await admin
-    .from('care_profiles')
-    .select('id, patient_name, patient_age, conditions, allergies')
-    .eq('user_id', userId)
-    .single();
+  let [profile] = await db
+    .select({
+      id: careProfiles.id,
+      patientName: careProfiles.patientName,
+      patientAge: careProfiles.patientAge,
+      conditions: careProfiles.conditions,
+      allergies: careProfiles.allergies,
+    })
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, userId))
+    .limit(1);
 
   if (!profile) {
-    const { data: newProfile } = await admin
-      .from('care_profiles')
-      .insert({ user_id: userId })
-      .select('id, patient_name, patient_age, conditions, allergies')
-      .single();
+    const [newProfile] = await db
+      .insert(careProfiles)
+      .values({ userId })
+      .returning({
+        id: careProfiles.id,
+        patientName: careProfiles.patientName,
+        patientAge: careProfiles.patientAge,
+        conditions: careProfiles.conditions,
+        allergies: careProfiles.allergies,
+      });
     profile = newProfile;
   }
 
@@ -81,12 +102,11 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
         age = Math.floor((Date.now() - birth.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
       }
 
-      // Only update if we got actual data and profile doesn't already have a name
-      if (name && !profile.patient_name) {
-        await admin.from('care_profiles').update({
-          patient_name: name,
-          patient_age: age,
-        }).eq('id', profile.id);
+      if (name && !profile.patientName) {
+        await db
+          .update(careProfiles)
+          .set({ patientName: name, patientAge: age })
+          .where(eq(careProfiles.id, profile.id));
         results.patient_name = name;
         results.patient_age = age;
       }
@@ -121,21 +141,20 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
         : null;
 
       return {
-        care_profile_id: profile.id,
+        careProfileId: profile.id,
         name,
         dose,
         frequency,
-        prescribing_doctor: med.requester?.display || null,
+        prescribingDoctor: med.requester?.display || null,
         notes: 'Synced from health records',
       };
     });
 
     if (rows.length > 0) {
-      // Remove previously synced meds, insert fresh
-      await admin.from('medications').delete()
-        .eq('care_profile_id', profile.id)
-        .eq('notes', 'Synced from health records');
-      await admin.from('medications').insert(rows);
+      await db
+        .delete(medications)
+        .where(and(eq(medications.careProfileId, profile.id), eq(medications.notes, 'Synced from health records')));
+      await db.insert(medications).values(rows);
       results.medications = rows.length;
     }
   } catch (e) { if (e instanceof Error && e.message.includes("FHIR fetch failed: 401")) saw401 = true; console.error(e); }
@@ -155,7 +174,7 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
       const newOnes = names.filter((n) => !existing.toLowerCase().includes(n.toLowerCase()));
       if (newOnes.length > 0) {
         const updated = existing ? `${existing}\n${newOnes.join('\n')}` : newOnes.join('\n');
-        await admin.from('care_profiles').update({ conditions: updated }).eq('id', profile.id);
+        await db.update(careProfiles).set({ conditions: updated }).where(eq(careProfiles.id, profile.id));
         results.conditions = newOnes.length;
       }
     }
@@ -176,7 +195,7 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
       const newOnes = names.filter((n) => !existing.toLowerCase().includes(n.toLowerCase()));
       if (newOnes.length > 0) {
         const updated = existing ? `${existing}\n${newOnes.join('\n')}` : newOnes.join('\n');
-        await admin.from('care_profiles').update({ allergies: updated }).eq('id', profile.id);
+        await db.update(careProfiles).set({ allergies: updated }).where(eq(careProfiles.id, profile.id));
         results.allergies = newOnes.length;
       }
     }
@@ -203,20 +222,20 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
         || (refRange?.low && refRange?.high ? `${refRange.low.value}-${refRange.high.value} ${refRange.high.unit || ''}` : null);
 
       return {
-        user_id: userId,
-        test_name: obs.code?.text || obs.code?.coding?.[0]?.display || 'Unknown test',
+        userId,
+        testName: obs.code?.text || obs.code?.coding?.[0]?.display || 'Unknown test',
         value: obs.valueQuantity?.value?.toString() || obs.valueString || null,
         unit: obs.valueQuantity?.unit || null,
-        reference_range: rangeText || null,
-        is_abnormal: isAbnormal,
-        date_taken: obs.effectiveDateTime || null,
+        referenceRange: rangeText || null,
+        isAbnormal,
+        dateTaken: obs.effectiveDateTime?.split('T')[0] || null,
         source: '1uphealth',
       };
     });
 
     if (rows.length > 0) {
-      await admin.from('lab_results').delete().eq('user_id', userId).eq('source', '1uphealth');
-      await admin.from('lab_results').insert(rows);
+      await db.delete(labResults).where(and(eq(labResults.userId, userId), eq(labResults.source, '1uphealth')));
+      await db.insert(labResults).values(rows);
       results.lab_results = rows.length;
     }
   } catch (e) { if (e instanceof Error && e.message.includes("FHIR fetch failed: 401")) saw401 = true; console.error(e); }
@@ -238,23 +257,23 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
       );
 
       return {
-        care_profile_id: profile.id,
-        doctor_name: practitioner?.actor?.display || null,
-        date_time: appt.start || null,
+        careProfileId: profile.id,
+        doctorName: practitioner?.actor?.display || null,
+        dateTime: appt.start ? new Date(appt.start) : null,
         purpose: appt.description || appt.serviceType?.[0]?.text || appt.serviceType?.[0]?.coding?.[0]?.display || null,
       };
     });
 
     if (rows.length > 0) {
       for (const row of rows) {
-        if (row.date_time) {
-          const { data: existing } = await admin.from('appointments')
-            .select('id')
-            .eq('care_profile_id', profile.id)
-            .eq('date_time', row.date_time)
-            .maybeSingle();
+        if (row.dateTime) {
+          const [existing] = await db
+            .select({ id: appointments.id })
+            .from(appointments)
+            .where(and(eq(appointments.careProfileId, profile.id), eq(appointments.dateTime, row.dateTime)))
+            .limit(1);
           if (!existing) {
-            await admin.from('appointments').insert(row);
+            await db.insert(appointments).values(row);
             results.appointments++;
           }
         }
@@ -282,7 +301,7 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
         || null;
 
       return {
-        care_profile_id: profile.id,
+        careProfileId: profile.id,
         name,
         specialty,
         phone,
@@ -291,10 +310,10 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
     });
 
     if (rows.length > 0) {
-      await admin.from('doctors').delete()
-        .eq('care_profile_id', profile.id)
-        .eq('notes', 'Synced from health records');
-      await admin.from('doctors').insert(rows);
+      await db
+        .delete(doctors)
+        .where(and(eq(doctors.careProfileId, profile.id), eq(doctors.notes, 'Synced from health records')));
+      await db.insert(doctors).values(rows);
       results.doctors = rows.length;
     }
   } catch (e) { if (e instanceof Error && e.message.includes("FHIR fetch failed: 401")) saw401 = true; console.error(e); }
@@ -318,19 +337,19 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
       const patientCost = eob.total?.find((t) => t.category?.coding?.[0]?.code === 'deductible');
 
       return {
-        user_id: userId,
-        service_date: eob.billablePeriod?.start || null,
-        provider_name: eob.provider?.display || null,
-        billed_amount: billed?.amount?.value || null,
-        paid_amount: paid?.amount?.value || null,
-        patient_responsibility: patientCost?.amount?.value || null,
-        status: eob.outcome === 'complete' ? 'paid' as const : eob.outcome === 'error' ? 'denied' as const : 'pending' as const,
+        userId,
+        serviceDate: eob.billablePeriod?.start || null,
+        providerName: eob.provider?.display || null,
+        billedAmount: billed?.amount?.value?.toString() || null,
+        paidAmount: paid?.amount?.value?.toString() || null,
+        patientResponsibility: patientCost?.amount?.value?.toString() || null,
+        status: eob.outcome === 'complete' ? 'paid' : eob.outcome === 'error' ? 'denied' : 'pending',
       };
     });
 
     if (rows.length > 0) {
-      await admin.from('claims').delete().eq('user_id', userId);
-      await admin.from('claims').insert(rows);
+      await db.delete(claims).where(eq(claims.userId, userId));
+      await db.insert(claims).values(rows);
       results.claims = rows.length;
     }
   } catch (e) { if (e instanceof Error && e.message.includes("FHIR fetch failed: 401")) saw401 = true; console.error(e); }
@@ -347,55 +366,56 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
 
       const groupClass = coverage.class?.find((cl) => cl.type?.coding?.[0]?.code === 'group');
       return {
-        user_id: userId,
+        userId,
         provider: coverage.payor?.[0]?.display || 'Unknown insurer',
-        member_id: coverage.subscriberId || null,
-        group_number: groupClass?.value || null,
-        plan_year: new Date().getFullYear(),
+        memberId: coverage.subscriberId || null,
+        groupNumber: groupClass?.value || null,
+        planYear: new Date().getFullYear(),
       };
     });
 
     if (coverageRows.length > 0) {
-      // Delete+reinsert avoids the duplicate-row bug that onConflict:'id' caused
-      // (id is auto-generated, so every upsert without an id was actually an insert)
-      await admin.from('insurance').delete().eq('user_id', userId);
-      await admin.from('insurance').insert(coverageRows);
+      await db.delete(insurance).where(eq(insurance.userId, userId));
+      await db.insert(insurance).values(coverageRows);
       results.insurance = coverageRows.length;
     }
   } catch (e) { if (e instanceof Error && e.message.includes("FHIR fetch failed: 401")) saw401 = true; console.error(e); }
 
-  // If all FHIR calls returned 401, the stored token is invalid.
-  // Throw so the caller can invalidate the token and prompt reconnect.
   if (saw401) throw new TokenExpiredError();
 
-  // Update last_synced — only reached if at least some syncs succeeded
-  await admin.from('connected_apps')
-    .update({ last_synced: new Date().toISOString() })
-    .eq('user_id', userId)
-    .eq('source', '1uphealth');
+  // Update last_synced
+  await db
+    .update(connectedApps)
+    .set({ lastSynced: new Date() })
+    .where(and(eq(connectedApps.userId, userId), eq(connectedApps.source, '1uphealth')));
 
   // === AUTO-POPULATE PROFILE FROM SYNCED DATA ===
-  // Use AI to detect cancer type, stage, and treatment phase from conditions + medications
   try {
-    // Re-fetch the profile to get updated conditions
-    const { data: updatedProfile } = await admin
-      .from('care_profiles')
-      .select('id, conditions, allergies, cancer_type, cancer_stage, treatment_phase, patient_name, patient_age')
-      .eq('user_id', userId)
-      .single();
+    const [updatedProfile] = await db
+      .select({
+        id: careProfiles.id,
+        conditions: careProfiles.conditions,
+        allergies: careProfiles.allergies,
+        cancerType: careProfiles.cancerType,
+        cancerStage: careProfiles.cancerStage,
+        treatmentPhase: careProfiles.treatmentPhase,
+        patientName: careProfiles.patientName,
+        patientAge: careProfiles.patientAge,
+      })
+      .from(careProfiles)
+      .where(eq(careProfiles.userId, userId))
+      .limit(1);
 
     if (updatedProfile) {
-      // Get medications for treatment phase detection
-      const { data: meds } = await admin
-        .from('medications')
-        .select('name, dose, frequency')
-        .eq('care_profile_id', updatedProfile.id);
+      const meds = await db
+        .select({ name: medications.name, dose: medications.dose, frequency: medications.frequency })
+        .from(medications)
+        .where(eq(medications.careProfileId, updatedProfile.id));
 
       const hasConditions = !!updatedProfile.conditions;
-      const hasMeds = (meds || []).length > 0;
-      const missingFields = !updatedProfile.cancer_type || !updatedProfile.cancer_stage || !updatedProfile.treatment_phase;
+      const hasMeds = meds.length > 0;
+      const missingFields = !updatedProfile.cancerType || !updatedProfile.cancerStage || !updatedProfile.treatmentPhase;
 
-      // Only run AI detection if we have data to analyze AND fields are missing
       if ((hasConditions || hasMeds) && missingFields) {
         const { output: detected } = await generateText({
           model: anthropic('claude-haiku-4.5'),
@@ -409,7 +429,7 @@ export async function syncOneUpData(userId: string, accessToken: string): Promis
           prompt: `Analyze this patient's medical data and detect their cancer type, stage, and treatment phase.
 
 CONDITIONS: ${updatedProfile.conditions || 'None listed'}
-MEDICATIONS: ${(meds || []).map((m) => `${m.name} ${m.dose || ''} ${m.frequency || ''}`).join(', ') || 'None'}
+MEDICATIONS: ${meds.map((m) => `${m.name} ${m.dose || ''} ${m.frequency || ''}`).join(', ') || 'None'}
 ALLERGIES: ${updatedProfile.allergies || 'None'}
 
 Rules:
@@ -420,19 +440,18 @@ Rules:
 - Be specific: "HER2+ Breast Cancer" is better than "Breast Cancer"`,
         });
 
-        const updates: Record<string, string> = {};
-        if (detected.cancer_type && !updatedProfile.cancer_type) updates.cancer_type = detected.cancer_type;
-        if (detected.cancer_stage && !updatedProfile.cancer_stage) updates.cancer_stage = detected.cancer_stage;
-        if (detected.treatment_phase && !updatedProfile.treatment_phase) updates.treatment_phase = detected.treatment_phase;
+        const updates: Partial<typeof careProfiles.$inferInsert> = {};
+        if (detected.cancer_type && !updatedProfile.cancerType) updates.cancerType = detected.cancer_type;
+        if (detected.cancer_stage && !updatedProfile.cancerStage) updates.cancerStage = detected.cancer_stage;
+        if (detected.treatment_phase && !updatedProfile.treatmentPhase) updates.treatmentPhase = detected.treatment_phase;
 
         if (Object.keys(updates).length > 0) {
-          await admin.from('care_profiles').update(updates).eq('id', updatedProfile.id);
+          await db.update(careProfiles).set(updates).where(eq(careProfiles.id, updatedProfile.id));
           console.log('[sync] Auto-populated profile:', updates);
         }
       }
     }
   } catch (e) {
-    // Non-critical — profile auto-population is a convenience, not a requirement
     console.error('[sync] Profile auto-populate error:', e);
   }
 

@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next';
 import { Figtree, Noto_Sans } from 'next/font/google';
-import { SupabaseProvider } from '@/components/providers/SupabaseProvider';
 import './globals.css';
 
 const figtree = Figtree({
@@ -126,7 +125,7 @@ export default function RootLayout({
             }),
           }}
         />
-        <SupabaseProvider>{children}</SupabaseProvider>
+        {children}
       </body>
     </html>
   );
