@@ -1,55 +1,98 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ---------------------------------------------------------------------------
-// Mock Supabase server client (used by most routes for auth)
+// Mock api-response to avoid next/server resolution issues via NextResponse
 // ---------------------------------------------------------------------------
-const mockUser = { id: 'user-123', email: 'test@example.com' }
+vi.mock('@/lib/api-response', () => ({
+  apiSuccess: (data: unknown) => Response.json({ ok: true, data }),
+  apiError: (message: string, status = 400, extra?: Record<string, unknown>) =>
+    Response.json({ ok: false, error: message, ...(extra ?? {}) }, { status }),
+  ApiErrors: {
+    rateLimited: () => Response.json({ ok: false, error: 'Too many requests' }, { status: 429 }),
+    internal: () => Response.json({ ok: false, error: 'Internal server error' }, { status: 500 }),
+    unauthorized: () => Response.json({ ok: false, error: 'Unauthorized' }, { status: 401 }),
+  },
+}))
 
-const makeChainable = (data: unknown = [], error: unknown = null) => {
+// ---------------------------------------------------------------------------
+// Mock api-helpers to avoid the next-auth → next/server import chain
+// ---------------------------------------------------------------------------
+vi.mock('@/lib/api-helpers', () => ({
+  getAuthenticatedUser: vi.fn().mockResolvedValue({
+    user: { id: 'user-123', cognitoSub: 'cognito-123', email: 'test@example.com' },
+    error: null,
+  }),
+  validateBody: (
+    schema: { safeParse: (b: unknown) => { success: boolean; data?: unknown; error?: { issues: { path: unknown[]; message: string }[] } } },
+    body: unknown,
+  ) => {
+    const r = schema.safeParse(body)
+    if (!r.success) {
+      const msg = r.error!.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join(', ')
+      return { data: null, error: Response.json({ ok: false, error: 'Validation error', details: msg }, { status: 400 }) }
+    }
+    return { data: r.data, error: null }
+  },
+}))
+
+// ---------------------------------------------------------------------------
+// Mock @/lib/db — Drizzle-compatible chainable query builder
+// ---------------------------------------------------------------------------
+const makeSelectChain = (rows: unknown[] = []) => {
+  const promise = Promise.resolve(rows)
   const chain: Record<string, unknown> = {
-    select: () => chain,
-    eq: () => chain,
-    is: () => chain,
-    order: () => chain,
+    where: () => chain,
+    orderBy: () => chain,
     limit: () => chain,
-    single: () => Promise.resolve({ data, error }),
-    delete: () => chain,
-    update: () => chain,
-    upsert: () => chain,
-    insert: () => ({ select: () => Promise.resolve({ data, error }) }),
-    then: (resolve: (v: unknown) => void) => Promise.resolve({ data, error }).then(resolve),
+    catch: (fn: (e: unknown) => unknown) => promise.catch(fn),
+    then: (resolve: (v: unknown[]) => void, reject?: (e: unknown) => void) =>
+      promise.then(resolve, reject),
   }
   return chain
 }
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn().mockResolvedValue({
-    auth: {
-      getUser: () => Promise.resolve({ data: { user: mockUser } }),
-    },
-    from: (table: string) => {
-      if (table === 'lab_results') {
-        return makeChainable([
-          { id: '1', user_id: 'user-123', test_name: 'WBC', value: '5000', unit: 'cells/mcL', reference_range: '4000-11000', is_abnormal: false, date_taken: '2026-04-01', source: 'conversation', created_at: '2026-04-01T00:00:00Z' },
-        ])
-      }
-      return makeChainable()
-    },
-  }),
-}))
+vi.mock('@/lib/db', () => {
+  const TABLE_NAME = Symbol.for('drizzle:Name')
 
-vi.mock('@/lib/supabase/admin', () => ({
-  createAdminClient: () => ({
-    from: (table: string) => {
-      if (table === 'care_profiles') {
-        return makeChainable({ id: 'profile-1', patient_name: 'Sarah' })
-      }
-      // For seed-demo inserts, return arrays with IDs
-      return makeChainable([{ id: 'mock-id-1' }, { id: 'mock-id-2' }])
+  return {
+    db: {
+      select: () => ({
+        from: (table: Record<symbol, string>) => {
+          const name = table[TABLE_NAME] ?? 'unknown'
+          // Return a profile for care_profiles so seed-demo can proceed past the guard
+          const rows = name === 'care_profiles'
+            ? [{ id: 'profile-1', patientName: 'Sarah' }]
+            : []
+          return makeSelectChain(rows)
+        },
+      }),
+      insert: () => ({
+        values: () => {
+          const p = Promise.resolve([])
+          return {
+            returning: () => p,
+            onConflictDoUpdate: () => ({
+              then: (resolve: (v: unknown[]) => void, reject?: (e: unknown) => void) => p.then(resolve, reject),
+            }),
+            then: (resolve: (v: unknown[]) => void, reject?: (e: unknown) => void) => p.then(resolve, reject),
+          }
+        },
+      }),
+      update: () => ({
+        set: () => ({
+          where: () => Promise.resolve([]),
+        }),
+      }),
+      delete: () => ({
+        where: () => Promise.resolve([]),
+      }),
     },
-  }),
-}))
+  }
+})
 
+// ---------------------------------------------------------------------------
+// Mock rate-limit — always allow
+// ---------------------------------------------------------------------------
 vi.mock('@/lib/rate-limit', () => ({
   rateLimit: () => ({
     check: () => ({ success: true, remaining: 5 }),
@@ -58,9 +101,16 @@ vi.mock('@/lib/rate-limit', () => ({
   resetRateLimits: vi.fn(),
 }))
 
-// Mock next/headers for createClient
-vi.mock('next/headers', () => ({
-  cookies: () => Promise.resolve({ getAll: () => [] }),
+// ---------------------------------------------------------------------------
+// Mock logger (used by health route)
+// ---------------------------------------------------------------------------
+vi.mock('@/lib/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  },
 }))
 
 describe('API routes', () => {
@@ -91,9 +141,6 @@ describe('API routes', () => {
 
   describe('GET /api/health', () => {
     it('returns 200 with status field', async () => {
-      // Set env vars for health check
-      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
-      process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key'
       process.env.ANTHROPIC_API_KEY = 'test-key'
 
       const { GET } = await import('@/app/api/health/route')
