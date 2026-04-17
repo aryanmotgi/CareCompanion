@@ -6,6 +6,11 @@ export async function GET() {
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error || !dbUser) redirect('/login');
 
+  if (!dbUser.hipaaConsent) {
+    console.warn(`[insurance/authorize] user=${dbUser.id} blocked — no HIPAA consent`)
+    redirect('/consent')
+  }
+
   const clientId = process.env.ONEUPH_CLIENT_ID;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 

@@ -346,7 +346,7 @@ export function AppShell({
             {/* Sign out */}
             <div style={{ padding: '10px 14px 28px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
               <button
-                onClick={() => signOut({ callbackUrl: '/login' })}
+                onClick={() => signOut({ callbackUrl: '/api/auth/cognito-logout' })}
                 className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-red-500/10 transition-colors w-full"
               >
                 <div style={{

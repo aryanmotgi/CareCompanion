@@ -23,12 +23,21 @@ export default async function AppLayout({
   // Resolve local DB user from Cognito sub
   let dbUser: typeof users.$inferSelect | undefined
   try {
+    // Explicitly select only stable columns so a pending db:push (new columns not yet deployed)
+    // doesn't break the entire app with "column does not exist" errors.
     const [found] = await db
-      .select()
+      .select({
+        id: users.id,
+        cognitoSub: users.cognitoSub,
+        email: users.email,
+        displayName: users.displayName,
+        isDemo: users.isDemo,
+        createdAt: users.createdAt,
+      })
       .from(users)
       .where(eq(users.cognitoSub, session.user.id))
       .limit(1)
-    dbUser = found
+    dbUser = found as typeof users.$inferSelect
   } catch (e) {
     console.error('[app/layout] DB lookup failed:', e)
     redirect('/login?error=db')
@@ -58,6 +67,24 @@ export default async function AppLayout({
   }
 
   if (!dbUser) redirect('/login')
+
+  // HIPAA consent gate — separate query so a pending db:push (hipaaConsent column not yet deployed)
+  // doesn't break login. Defaults to allowing through if column doesn't exist yet.
+  let hipaaConsented = true
+  try {
+    const [row] = await db
+      .select({ hipaaConsent: users.hipaaConsent })
+      .from(users)
+      .where(eq(users.id, dbUser.id))
+      .limit(1)
+    hipaaConsented = row?.hipaaConsent ?? false
+  } catch {
+    // Column not yet deployed (db:push pending) — allow through rather than breaking login
+    hipaaConsented = true
+  }
+  if (!hipaaConsented) {
+    redirect('/consent')
+  }
 
   const userId = dbUser.id
 

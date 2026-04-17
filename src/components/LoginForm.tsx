@@ -1,48 +1,131 @@
 'use client'
 
-export function LoginForm({ initialError }: { initialError?: string }) {
+import { useState } from 'react'
+
+export function LoginForm({ initialError, mode }: { initialError?: string; mode?: string }) {
+  const [consentChecked, setConsentChecked] = useState(false)
+  const [showConsentError, setShowConsentError] = useState(false)
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (!consentChecked) {
+      e.preventDefault()
+      setShowConsentError(true)
+    }
+  }
+
+  const isSignIn = mode === 'signin'
+
   return (
-    <div className="space-y-6">
-      <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] p-8 space-y-5">
-        <form method="GET" action="/api/auth/start">
+    <div className="space-y-4" style={{ animation: 'loginFadeUp 0.6s ease 0.15s both' }}>
+
+      {/* Glass card */}
+      <div className="relative rounded-2xl p-6 overflow-hidden" style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        backdropFilter: 'blur(20px)',
+        boxShadow: '0 0 0 1px rgba(99,102,241,0.08), 0 20px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
+      }}>
+
+        {/* Inner top glow line */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.6), transparent)' }} />
+
+        {isSignIn && (
+          <p className="text-center text-xs text-white/30 mb-5 uppercase tracking-widest">Welcome back</p>
+        )}
+
+        <form method="GET" action="/api/auth/start" onSubmit={handleSubmit} className="space-y-5">
+
+          {/* Consent checkbox */}
+          <label className="flex items-start gap-3 cursor-pointer group">
+            <div className="relative mt-0.5 flex-shrink-0">
+              <input
+                type="checkbox"
+                checked={consentChecked}
+                onChange={(e) => {
+                  setConsentChecked(e.target.checked)
+                  if (e.target.checked) setShowConsentError(false)
+                }}
+                className="sr-only"
+                aria-describedby="consent-error"
+              />
+              <div className="w-4 h-4 rounded flex items-center justify-center transition-all duration-200" style={{
+                background: consentChecked ? 'linear-gradient(135deg, #6366F1, #A78BFA)' : 'rgba(255,255,255,0.05)',
+                border: consentChecked ? 'none' : '1px solid rgba(255,255,255,0.15)',
+                boxShadow: consentChecked ? '0 0 10px rgba(99,102,241,0.5)' : 'none',
+              }}>
+                {consentChecked && (
+                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12" strokeWidth={2.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+                  </svg>
+                )}
+              </div>
+            </div>
+            <span className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              I agree to the{' '}
+              <a href="/terms" className="underline underline-offset-2 transition-colors hover:text-white/60" style={{ color: 'rgba(167,139,250,0.7)' }} target="_blank" rel="noopener noreferrer">Terms</a>
+              {' '}and{' '}
+              <a href="/privacy" className="underline underline-offset-2 transition-colors hover:text-white/60" style={{ color: 'rgba(167,139,250,0.7)' }} target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+              , and I understand CareCompanion will access and process my health information to provide the service.
+            </span>
+          </label>
+
+          {showConsentError && (
+            <p id="consent-error" role="alert" className="text-xs text-red-400/80 pl-7 -mt-2">
+              Please agree to continue.
+            </p>
+          )}
+
+          {/* CTA button */}
           <button
             type="submit"
-            className="w-full flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] py-3.5 px-6 text-base text-white font-semibold hover:opacity-90 active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-[#A78BFA]/20 transition-all"
+            className="w-full relative rounded-xl py-3.5 text-sm font-semibold text-white transition-all duration-200 active:scale-[0.98] focus:outline-none overflow-hidden group"
+            style={{
+              background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+              boxShadow: '0 0 20px rgba(99,102,241,0.35), 0 4px 16px rgba(0,0,0,0.3)',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 0 30px rgba(99,102,241,0.55), 0 4px 20px rgba(0,0,0,0.3)')}
+            onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 0 20px rgba(99,102,241,0.35), 0 4px 16px rgba(0,0,0,0.3)')}
           >
-            Sign in with CareCompanion
+            <span className="relative z-10 flex items-center justify-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+              </svg>
+              Continue with CareCompanion
+            </span>
           </button>
         </form>
 
         {initialError && (
-          <p role="alert" className="text-center text-sm text-red-400">{initialError}</p>
+          <p role="alert" className="mt-4 text-center text-xs text-red-400/80">{initialError}</p>
         )}
 
-        <p className="text-center text-xs text-[var(--text-muted)]">
-          Sign in with email or Google — secured by AWS Cognito.
+        {/* Subtext */}
+        <p className="mt-4 text-center text-[11px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
+          Sign in with email or Google — secured by AWS Cognito
         </p>
 
-        {/* Trust signals */}
-        <div className="flex items-center justify-center gap-4 pt-1">
+        {/* Trust badges */}
+        <div className="mt-4 flex items-center justify-center gap-5">
           {[
             { icon: '🔒', label: 'HIPAA-compliant' },
             { icon: '🚫', label: 'No ads, ever' },
             { icon: '🗑️', label: 'Delete anytime' },
           ].map((badge) => (
-            <div key={badge.label} className="flex items-center gap-1">
-              <span className="text-sm" aria-hidden="true">{badge.icon}</span>
-              <span className="text-[11px] text-[var(--text-muted)]">{badge.label}</span>
+            <div key={badge.label} className="flex items-center gap-1.5">
+              <span className="text-xs" aria-hidden="true">{badge.icon}</span>
+              <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.2)' }}>{badge.label}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Demo shortcut */}
-      <p className="text-center text-xs text-[var(--text-muted)]">
+      {/* Demo link */}
+      <p className="text-center text-xs" style={{ color: 'rgba(255,255,255,0.2)', animation: 'loginFadeUp 0.6s ease 0.25s both' }}>
         Just exploring?{' '}
-        <a href="/onboarding" className="text-[#A78BFA] hover:text-[#C4B5FD] underline underline-offset-2 transition-colors">
+        <a href="/chat/guest" className="transition-colors hover:text-white/40 underline underline-offset-2" style={{ color: 'rgba(167,139,250,0.5)' }}>
           Try with demo data
-        </a>{' '}
-        — no account needed.
+        </a>
+        {' '}— no account needed.
       </p>
     </div>
   )

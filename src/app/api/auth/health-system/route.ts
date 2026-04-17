@@ -5,6 +5,11 @@ export async function GET() {
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error || !dbUser) redirect('/login');
 
+  if (!dbUser.hipaaConsent) {
+    console.warn(`[health-system/authorize] user=${dbUser.id} blocked — no HIPAA consent`)
+    redirect('/consent')
+  }
+
   const clientId = process.env.ONEUPH_CLIENT_ID;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
@@ -21,5 +26,6 @@ export async function GET() {
     state: dbUser!.id,
   });
 
+  console.log(`[health-system/authorize] user=${dbUser!.id} redirecting to 1upHealth`)
   redirect(`https://api.1up.health/connect/authorize?${params.toString()}`);
 }

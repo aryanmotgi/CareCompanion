@@ -42,5 +42,5 @@ export default auth((req) => {
 })
 
 export const config = {
-  matcher: ['/chat', '/profile', '/setup', '/login', '/settings', '/dashboard', '/care', '/medications', '/appointments', '/scans', '/connect', '/manual-setup', '/onboarding', '/api/chat', '/api/chat/guest', '/chat/guest'],
+  matcher: ['/chat', '/profile', '/setup', '/login', '/settings', '/dashboard', '/care', '/medications', '/appointments', '/scans', '/connect', '/manual-setup', '/onboarding', '/consent', '/api/chat', '/api/chat/guest', '/api/consent', '/chat/guest'],
 }

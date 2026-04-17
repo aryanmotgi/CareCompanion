@@ -18,6 +18,9 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   displayName: text('display_name'),
   isDemo: boolean('is_demo').default(false),
+  hipaaConsent: boolean('hipaa_consent').default(false),
+  hipaaConsentAt: timestamp('hipaa_consent_at', { withTimezone: true }),
+  hipaaConsentVersion: text('hipaa_consent_version'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 

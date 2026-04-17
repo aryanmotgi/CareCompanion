@@ -13,7 +13,7 @@ export default async function ConnectPage() {
   const session = await auth();
   if (!session?.user?.id) redirect('/login');
 
-  const [dbUser] = await db.select().from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  const [dbUser] = await db.select({ id: users.id, cognitoSub: users.cognitoSub, email: users.email, displayName: users.displayName, isDemo: users.isDemo, createdAt: users.createdAt }).from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
   if (!dbUser) redirect('/login');
 
   const [apps, profiles] = await Promise.all([

@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { careProfiles } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 
@@ -55,7 +55,7 @@ export async function PATCH(req: Request) {
     const [profile] = await db
       .select({ id: careProfiles.id })
       .from(careProfiles)
-      .where(eq(careProfiles.id, profileId))
+      .where(and(eq(careProfiles.id, profileId), eq(careProfiles.userId, dbUser!.id)))
       .limit(1);
     if (!profile || profile.id !== profileId) return apiError('Forbidden', 403);
   }

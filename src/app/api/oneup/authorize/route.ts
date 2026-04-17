@@ -9,6 +9,11 @@ export async function GET() {
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return new Response('Unauthorized', { status: 401 });
 
+  if (!dbUser!.hipaaConsent) {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    return NextResponse.redirect(`${baseUrl}/consent`);
+  }
+
   const [prefs] = await db
     .select({ oneupUserId: userPreferences.oneupUserId })
     .from(userPreferences)
