@@ -9,8 +9,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientId: process.env.COGNITO_CLIENT_ID!,
       clientSecret: process.env.COGNITO_CLIENT_SECRET ?? '',
       issuer: `https://cognito-idp.${process.env.COGNITO_REGION}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}`,
-      authorization: { params: { scope: 'openid email' } },
-      checks: ['pkce'],
+      authorization: { params: { scope: 'openid email profile' } },
+      checks: ['pkce', 'state'],
+      // @ts-expect-error idToken is a valid runtime option in Auth.js v5 but missing from OAuthUserConfig types
+      idToken: false,
     }),
   ],
   callbacks: {
