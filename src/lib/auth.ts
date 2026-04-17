@@ -23,7 +23,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       token: `${COGNITO_DOMAIN}/oauth2/token`,
       userinfo: `${COGNITO_DOMAIN}/oauth2/userInfo`,
-      checks: ['pkce', 'state'],
+      checks: ['state'],
       profile(profile: Record<string, string>) {
         return {
           id: profile.sub,
@@ -85,7 +85,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   debug: true,
   logger: {
     error(error) {
-      console.error('[auth][error]', error.name, (error as Error).message, (error as Error).cause)
+      const e = error as Error & { cause?: unknown }
+      console.error('[auth][error]', error.name, e.message)
+      if (e.cause) {
+        try {
+          console.error('[auth][error][cause]', JSON.stringify(e.cause, null, 2))
+        } catch {
+          console.error('[auth][error][cause]', String(e.cause))
+        }
+      }
     },
   },
 })
