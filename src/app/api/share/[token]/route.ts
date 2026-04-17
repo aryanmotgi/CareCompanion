@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { sharedLinks } from '@/lib/db/schema';
-import { eq, gt } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { apiError, apiSuccess } from '@/lib/api-response';
 
 // Public — no auth required
