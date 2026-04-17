@@ -1,48 +1,47 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const mockInsert = vi.fn().mockReturnValue({ error: null })
 const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
-
-// Track which tables get queried to verify preference-gating
 const queriedTables: string[] = []
+let mockInsertValues: ReturnType<typeof vi.fn>
 
-vi.mock('@/lib/supabase/admin', () => ({
-  createAdminClient: () => ({
-    from: (table: string) => {
-      queriedTables.push(table)
+vi.mock('@/lib/db', () => {
+  mockInsertValues = vi.fn().mockResolvedValue([])
 
-      const mockData: Record<string, { data: unknown; error: null }> = {
-        care_profiles: { data: { id: 'profile-1' }, error: null },
-        user_settings: { data: { refill_reminders: true, appointment_reminders: false, lab_alerts: false, claim_updates: true }, error: null },
-        medications: { data: [{ name: 'Lisinopril', dose: '10mg', refill_date: tomorrow }], error: null },
-        appointments: { data: [{ doctor_name: 'Dr. Chen', date_time: new Date(Date.now() + 86400000).toISOString() }], error: null },
-        prior_auths: { data: [], error: null },
-        lab_results: { data: [{ test_name: 'LDL', value: '200', is_abnormal: true, created_at: new Date().toISOString() }], error: null },
-        fsa_hsa: { data: [], error: null },
-        notifications: { data: [], error: null },
-      }
+  const makeSelect = (table: string) => {
+    queriedTables.push(table)
+    const mockRows: Record<string, unknown[]> = {
+      care_profiles: [{ id: 'profile-1', userId: 'user-1' }],
+      user_settings: [{ userId: 'user-1', refillReminders: true, appointmentReminders: false, labAlerts: false, claimUpdates: true }],
+      medications: [{ id: 'med-1', careProfileId: 'profile-1', name: 'Lisinopril', dose: '10mg', refillDate: tomorrow }],
+      appointments: [{ id: 'appt-1', careProfileId: 'profile-1', doctorName: 'Dr. Chen', dateTime: new Date(Date.now() + 86400000) }],
+      lab_results: [{ id: 'lab-1', userId: 'user-1', testName: 'LDL', value: '200', isAbnormal: true, createdAt: new Date() }],
+      notifications: [],
+    }
+    const rows = mockRows[table] ?? []
+    const chain: Record<string, unknown> = {
+      from: (t: string) => makeSelect(t),
+      where: () => chain,
+      limit: () => chain,
+      orderBy: () => chain,
+      then: (resolve: (v: unknown) => unknown) => Promise.resolve(rows).then(resolve),
+    }
+    return chain
+  }
 
-      const result = mockData[table] || { data: [], error: null }
-
-      const chainable: Record<string, unknown> = {
-        select: () => chainable,
-        eq: () => chainable,
-        gte: () => chainable,
-        order: () => chainable,
-        limit: () => chainable,
-        single: () => Promise.resolve(result),
-        insert: mockInsert,
-        then: (resolve: (v: unknown) => void) => Promise.resolve(result).then(resolve),
-      }
-      return chainable
+  return {
+    db: {
+      select: () => ({ from: (t: string) => makeSelect(t) }),
+      insert: () => ({ values: mockInsertValues }),
+      update: () => ({ set: () => ({ where: () => Promise.resolve([]) }) }),
+      delete: () => ({ where: () => Promise.resolve([]) }),
     },
-  }),
-}))
+  }
+})
 
 describe('notification settings integration', () => {
   beforeEach(() => {
     queriedTables.length = 0
-    mockInsert.mockClear()
+    mockInsertValues?.mockClear()
   })
 
   it('skips disabled notification categories based on user_settings', async () => {
@@ -68,8 +67,8 @@ describe('notification settings integration', () => {
 
     // refill_reminders is true, and Lisinopril refill is due tomorrow
     // appointment_reminders is false, so no appointment notifications
-    expect(count).toBeGreaterThanOrEqual(0) // insert mock returns no error
-    expect(mockInsert).toHaveBeenCalled()
+    expect(count).toBeGreaterThanOrEqual(0)
+    expect(mockInsertValues).toHaveBeenCalled()
   })
 
   it('respects appointment_reminders=false by not querying appointments', async () => {

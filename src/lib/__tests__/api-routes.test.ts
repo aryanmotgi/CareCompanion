@@ -1,53 +1,40 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// ---------------------------------------------------------------------------
-// Mock Supabase server client (used by most routes for auth)
-// ---------------------------------------------------------------------------
-const mockUser = { id: 'user-123', email: 'test@example.com' }
+const mockDbUser = { id: 'user-123', email: 'test@example.com', cognitoSub: 'cognito-sub-123', displayName: 'Test User', isDemo: false, createdAt: new Date() }
 
-const makeChainable = (data: unknown = [], error: unknown = null) => {
-  const chain: Record<string, unknown> = {
-    select: () => chain,
-    eq: () => chain,
-    is: () => chain,
-    order: () => chain,
-    limit: () => chain,
-    single: () => Promise.resolve({ data, error }),
-    delete: () => chain,
-    update: () => chain,
-    upsert: () => chain,
-    insert: () => ({ select: () => Promise.resolve({ data, error }) }),
-    then: (resolve: (v: unknown) => void) => Promise.resolve({ data, error }).then(resolve),
-  }
-  return chain
-}
-
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn().mockResolvedValue({
-    auth: {
-      getUser: () => Promise.resolve({ data: { user: mockUser } }),
-    },
-    from: (table: string) => {
-      if (table === 'lab_results') {
-        return makeChainable([
-          { id: '1', user_id: 'user-123', test_name: 'WBC', value: '5000', unit: 'cells/mcL', reference_range: '4000-11000', is_abnormal: false, date_taken: '2026-04-01', source: 'conversation', created_at: '2026-04-01T00:00:00Z' },
-        ])
-      }
-      return makeChainable()
-    },
-  }),
+vi.mock('@/lib/api-helpers', () => ({
+  getAuthenticatedUser: vi.fn().mockResolvedValue({ user: mockDbUser, error: null }),
 }))
 
-vi.mock('@/lib/supabase/admin', () => ({
-  createAdminClient: () => ({
-    from: (table: string) => {
-      if (table === 'care_profiles') {
-        return makeChainable({ id: 'profile-1', patient_name: 'Sarah' })
-      }
-      // For seed-demo inserts, return arrays with IDs
-      return makeChainable([{ id: 'mock-id-1' }, { id: 'mock-id-2' }])
-    },
-  }),
+vi.mock('@/lib/db', () => ({
+  db: {
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([{ id: 'profile-1', patientName: 'Sarah', patientAge: 45 }]),
+          orderBy: vi.fn().mockResolvedValue([]),
+          then: (resolve: (v: unknown) => void) => Promise.resolve([]).then(resolve),
+        }),
+        orderBy: vi.fn().mockResolvedValue([]),
+        then: (resolve: (v: unknown) => void) => Promise.resolve([]).then(resolve),
+      }),
+    }),
+    insert: vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: 'mock-id-1' }]),
+        onConflictDoUpdate: vi.fn().mockResolvedValue([]),
+        then: (resolve: (v: unknown) => void) => Promise.resolve([]).then(resolve),
+      }),
+    }),
+    update: vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([]),
+      }),
+    }),
+    delete: vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue([]),
+    }),
+  },
 }))
 
 vi.mock('@/lib/rate-limit', () => ({
@@ -58,10 +45,6 @@ vi.mock('@/lib/rate-limit', () => ({
   resetRateLimits: vi.fn(),
 }))
 
-// Mock next/headers for createClient
-vi.mock('next/headers', () => ({
-  cookies: () => Promise.resolve({ getAll: () => [] }),
-}))
 
 describe('API routes', () => {
   beforeEach(() => {
@@ -92,8 +75,6 @@ describe('API routes', () => {
   describe('GET /api/health', () => {
     it('returns 200 with status field', async () => {
       // Set env vars for health check
-      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
-      process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key'
       process.env.ANTHROPIC_API_KEY = 'test-key'
 
       const { GET } = await import('@/app/api/health/route')

@@ -37,8 +37,6 @@ jobs:
         env:
           # Point the Playwright test directly at the live Production URL
           PLAYWRIGHT_BASE_URL: https://carecompanionai.org
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           E2E_MONITOR_EMAIL: ${{ secrets.E2E_MONITOR_EMAIL }}
           E2E_MONITOR_PASSWORD: ${{ secrets.E2E_MONITOR_PASSWORD }}
 
