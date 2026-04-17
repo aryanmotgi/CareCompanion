@@ -8,6 +8,7 @@ import { DashboardView } from '@/components/DashboardView';
 import { DashboardSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { MedicationReminders } from '@/components/MedicationReminders';
 import { DashboardInsights } from '@/components/DashboardInsights';
+import { OnboardingWelcomeBanner } from '@/components/OnboardingWelcomeBanner';
 import { syncOneUpData } from '@/lib/oneup-sync';
 import { safeDecryptToken } from '@/lib/token-encryption';
 
@@ -80,6 +81,7 @@ async function DashboardContent() {
 
   return (
     <>
+      <OnboardingWelcomeBanner />
       {reminderLogsData.length > 0 && (
         <div className="px-4 sm:px-5 pt-5 sm:pt-6">
           <MedicationReminders reminders={reminderLogsData} />
