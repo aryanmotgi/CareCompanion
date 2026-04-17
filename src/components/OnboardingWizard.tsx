@@ -354,6 +354,9 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
 
       // Flag for guided tour on first dashboard visit
       localStorage.setItem('onboarding_just_completed', 'true');
+      if (priorities.length > 0) {
+        localStorage.setItem('onboarding_priorities', JSON.stringify(priorities));
+      }
 
       router.push('/dashboard');
     } catch (err) {
@@ -414,6 +417,12 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
           <div>
             <h1 className="font-display text-3xl font-bold text-white mb-3">CareCompanion</h1>
             <p className="text-[var(--text-secondary)] text-lg">Your AI-powered cancer care assistant</p>
+            <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full bg-white/[0.06] border border-white/10">
+              <svg className="w-3.5 h-3.5 text-[#A78BFA]" aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+              <span className="text-xs text-[var(--text-muted)]">Takes about 2 minutes</span>
+            </div>
           </div>
 
           <div className="space-y-4 max-w-xs mx-auto text-left">
@@ -639,10 +648,12 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
         <div key={animKey} className="space-y-6" style={{ animation: `${slideDir === 'left' ? 'slideInLeft' : 'slideInRight'} 0.35s ease-out` }}>
           <div className="text-center">
             <h1 ref={stepHeadingRef} tabIndex={-1} className="font-display text-3xl font-bold text-white outline-none">
-              About the diagnosis
+              {role === 'caregiver' ? 'About their diagnosis' : 'About the diagnosis'}
             </h1>
             <p className="mt-2 text-[var(--text-secondary)]">
-              This helps us personalize your experience. Skip anything you&apos;re not sure about.
+              {role === 'caregiver'
+                ? `This helps us personalize ${patientName.trim() ? `${patientName.trim()}'s` : 'their'} experience. Skip anything you're not sure about.`
+                : "This helps us personalize your experience. Skip anything you're not sure about."}
             </p>
           </div>
 
@@ -663,8 +674,8 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white">Skip this — connect your health records</p>
-                <p className="text-xs text-[#94a3b8] mt-0.5">Import diagnosis, meds, labs, and more from 300+ health systems via 1upHealth. Saves time and avoids errors.</p>
+                <p className="text-sm font-semibold text-white">Import from your health system instead</p>
+                <p className="text-xs text-[#94a3b8] mt-0.5">Pull diagnosis, meds, labs, and more automatically from MyChart, Epic, Kaiser, and 300+ providers.</p>
               </div>
               <svg className="w-5 h-5 text-[#A78BFA] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
@@ -957,8 +968,22 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
               Connect Health Records
             </button>
 
+            {/* Trust badges */}
+            <div className="flex items-center justify-center gap-4 flex-wrap">
+              {[
+                { icon: '🔒', label: 'HIPAA-compliant' },
+                { icon: '👁️', label: 'Read-only access' },
+                { icon: '✕', label: 'Revoke anytime' },
+              ].map((badge) => (
+                <div key={badge.label} className="flex items-center gap-1.5">
+                  <span className="text-sm" aria-hidden="true">{badge.icon}</span>
+                  <span className="text-xs text-[var(--text-muted)]">{badge.label}</span>
+                </div>
+              ))}
+            </div>
+
             <p className="text-xs text-[var(--text-muted)] text-center">
-              You&apos;ll be redirected to securely sign in with your provider. Your data stays private.
+              You&apos;ll be redirected to sign in with your provider. We never store your credentials.
             </p>
           </div>
 

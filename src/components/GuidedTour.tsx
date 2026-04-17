@@ -9,7 +9,7 @@ interface TourStep {
   position: 'top' | 'bottom' | 'left' | 'right'
 }
 
-const TOUR_STEPS: TourStep[] = [
+const BASE_TOUR_STEPS: TourStep[] = [
   {
     target: 'dashboard-cards',
     title: 'Your Action Items',
@@ -47,8 +47,72 @@ const TOUR_STEPS: TourStep[] = [
   },
 ]
 
+// Priority-specific steps inserted after step 1 (dashboard intro)
+const PRIORITY_STEPS: Record<string, TourStep> = {
+  medications: {
+    target: 'tab-care',
+    title: 'Track Your Medications',
+    description:
+      'You said managing medications is a priority. The Care tab shows your full med list, refill dates, and lets you log doses.',
+    position: 'top',
+  },
+  appointments: {
+    target: 'tab-care',
+    title: 'Prepare for Appointments',
+    description:
+      'You said appointment prep is a priority. The Care tab lists upcoming visits and lets you generate AI-powered question lists.',
+    position: 'top',
+  },
+  lab_results: {
+    target: 'dashboard-cards',
+    title: 'Monitor Your Lab Results',
+    description:
+      'Lab results with abnormal values will surface right here on your dashboard so you never miss a flagged number.',
+    position: 'bottom',
+  },
+  side_effects: {
+    target: 'quick-ask',
+    title: 'Log Side Effects',
+    description:
+      'Tracking side effects is a priority for you. Ask the AI to help you log and interpret symptoms anytime.',
+    position: 'top',
+  },
+  insurance: {
+    target: 'tab-scan',
+    title: 'Handle Insurance & Claims',
+    description:
+      'Scan EOBs, prior auth letters, or bills. Our AI extracts key details and can help you appeal denied claims.',
+    position: 'top',
+  },
+  emotional: {
+    target: 'quick-ask',
+    title: 'Emotional Support',
+    description:
+      'Your AI companion is here whenever you need to talk — whether it\'s managing anxiety, finding resources, or just processing a hard day.',
+    position: 'top',
+  },
+}
+
+function buildTourSteps(priorities: string[]): TourStep[] {
+  if (!priorities.length) return BASE_TOUR_STEPS
+
+  // Insert priority-specific steps right after the dashboard intro
+  const prioritySteps = priorities
+    .map((p) => PRIORITY_STEPS[p])
+    .filter(Boolean)
+    // De-duplicate by target (e.g. meds + appointments both point to tab-care)
+    .filter((step, i, arr) => arr.findIndex((s) => s.target === step.target && s.title === step.title) === i)
+
+  return [
+    BASE_TOUR_STEPS[0],
+    ...prioritySteps,
+    ...BASE_TOUR_STEPS.slice(1),
+  ]
+}
+
 export function GuidedTour() {
   const [active, setActive] = useState(false)
+  const [tourSteps, setTourSteps] = useState(BASE_TOUR_STEPS)
   const [currentStep, setCurrentStep] = useState(0)
   const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null)
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({})
@@ -57,12 +121,19 @@ export function GuidedTour() {
   const [transitioning, setTransitioning] = useState(false)
   const tooltipRef = useRef<HTMLDivElement>(null)
 
-  // Check if tour should show
+  // Check if tour should show and build personalized steps from stored priorities
   useEffect(() => {
     if (typeof window === 'undefined') return
     const justCompleted = localStorage.getItem('onboarding_just_completed')
     const tourDone = localStorage.getItem('guided_tour_completed')
     if (justCompleted && !tourDone) {
+      try {
+        const raw = localStorage.getItem('onboarding_priorities')
+        const priorities: string[] = raw ? JSON.parse(raw) : []
+        setTourSteps(buildTourSteps(priorities))
+      } catch {
+        // malformed JSON — use default steps
+      }
       // Small delay so dashboard elements render first
       const timer = setTimeout(() => setActive(true), 600)
       return () => clearTimeout(timer)
@@ -72,7 +143,7 @@ export function GuidedTour() {
   // Position the spotlight and tooltip for the current step
   const positionStep = useCallback(() => {
     if (!active) return
-    const step = TOUR_STEPS[currentStep]
+    const step = tourSteps[currentStep]
     const el = document.querySelector(`[data-tour="${step.target}"]`)
     if (!el) return
 
@@ -139,7 +210,7 @@ export function GuidedTour() {
       setArrowStyle({ left: `${arrowLeft}px` })
       setArrowDirection(direction)
     })
-  }, [active, currentStep])
+  }, [active, currentStep, tourSteps])
 
   useEffect(() => {
     positionStep()
@@ -158,7 +229,7 @@ export function GuidedTour() {
   }, [])
 
   const goNext = useCallback(() => {
-    if (currentStep >= TOUR_STEPS.length - 1) {
+    if (currentStep >= tourSteps.length - 1) {
       completeTour()
       return
     }
@@ -167,12 +238,12 @@ export function GuidedTour() {
       setCurrentStep((s) => s + 1)
       setTransitioning(false)
     }, 200)
-  }, [currentStep, completeTour])
+  }, [currentStep, tourSteps, completeTour])
 
   if (!active || !spotlightRect) return null
 
-  const step = TOUR_STEPS[currentStep]
-  const isLast = currentStep === TOUR_STEPS.length - 1
+  const step = tourSteps[currentStep]
+  const isLast = currentStep === tourSteps.length - 1
 
   return (
     <div className="guided-tour-overlay" aria-live="polite" role="dialog" aria-label="Guided tour">
@@ -211,7 +282,7 @@ export function GuidedTour() {
 
         {/* Step counter */}
         <div className="guided-tour-counter">
-          {currentStep + 1} / {TOUR_STEPS.length}
+          {currentStep + 1} / {tourSteps.length}
         </div>
 
         <h3 className="guided-tour-title">{step.title}</h3>
@@ -236,7 +307,7 @@ export function GuidedTour() {
 
         {/* Progress dots */}
         <div className="guided-tour-dots">
-          {TOUR_STEPS.map((_, i) => (
+          {tourSteps.map((_, i) => (
             <div
               key={i}
               className={`guided-tour-dot ${i === currentStep ? 'guided-tour-dot-active' : ''} ${i < currentStep ? 'guided-tour-dot-done' : ''}`}
