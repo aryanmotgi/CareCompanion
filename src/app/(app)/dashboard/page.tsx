@@ -9,6 +9,7 @@ import { DashboardSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { MedicationReminders } from '@/components/MedicationReminders';
 import { DashboardInsights } from '@/components/DashboardInsights';
 import { OnboardingWelcomeBanner } from '@/components/OnboardingWelcomeBanner';
+import { ShareHealthCard } from '@/components/ShareHealthCard';
 import { syncOneUpData } from '@/lib/oneup-sync';
 import { safeDecryptToken } from '@/lib/token-encryption';
 
@@ -109,7 +110,8 @@ async function DashboardContent() {
         doctorCount={doctorCount?.value ?? 0}
         connectedAppCount={connectedAppsData.filter((a) => a.expiresAt && new Date(a.expiresAt) > new Date()).length}
       />
-      <div className="px-4 sm:px-5 pb-6">
+      <div className="px-4 sm:px-5 pb-6 space-y-4">
+        <ShareHealthCard />
         <DashboardInsights />
       </div>
     </>
