@@ -1,31 +1,46 @@
 import NextAuth from 'next-auth'
-import Cognito from 'next-auth/providers/cognito'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 
+// Use Cognito as plain OAuth 2.0 (not OIDC) to avoid nonce validation errors.
+// When Cognito federates with Google it embeds its own nonce in the ID token,
+// which doesn't match what Auth.js sent — causing `n5: unexpected nonce` errors.
+// Switching to `type: 'oauth'` skips ID token / OIDC nonce validation entirely
+// and uses the Cognito userinfo endpoint instead.
+const COGNITO_DOMAIN = (process.env.COGNITO_DOMAIN ?? '').replace(/\/$/, '')
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
-    Cognito({
+    {
+      id: 'cognito',
+      name: 'CareCompanion',
+      type: 'oauth',
       clientId: process.env.COGNITO_CLIENT_ID!,
       clientSecret: process.env.COGNITO_CLIENT_SECRET ?? '',
-      issuer: `https://cognito-idp.${process.env.COGNITO_REGION}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}`,
-      authorization: { params: { scope: 'openid email profile' } },
+      authorization: {
+        url: `${COGNITO_DOMAIN}/oauth2/authorize`,
+        params: { scope: 'openid email profile', response_type: 'code' },
+      },
+      token: `${COGNITO_DOMAIN}/oauth2/token`,
+      userinfo: `${COGNITO_DOMAIN}/oauth2/userInfo`,
       checks: ['pkce', 'state'],
-      // @ts-expect-error idToken is a valid runtime option in Auth.js v5 but missing from OAuthUserConfig types
-      idToken: false,
-    }),
+      profile(profile: Record<string, string>) {
+        return {
+          id: profile.sub,
+          email: profile.email,
+          name: profile['custom:display_name'] || profile.name || profile.email,
+          image: profile.picture ?? null,
+        }
+      },
+    },
   ],
   callbacks: {
     async jwt({ token, account, profile }) {
       if (account && profile) {
-        token.cognitoSub = (profile as Record<string, string>).sub
-        token.displayName =
-          (profile as Record<string, string>)['custom:display_name'] ||
-          token.name ||
-          token.email ||
-          ''
-        token.isDemo =
-          (profile as Record<string, string>)['custom:is_demo'] === 'true'
+        const p = profile as Record<string, string>
+        token.cognitoSub = p.sub
+        token.displayName = p['custom:display_name'] || token.name || token.email || ''
+        token.isDemo = p['custom:is_demo'] === 'true'
       }
       return token
     },
