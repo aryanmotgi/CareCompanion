@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
+import { useSearchParams } from 'next/navigation'
 import { SegmentControl } from './SegmentControl'
 import { ExpandableCard } from './ExpandableCard'
 import { BottomSheet } from './BottomSheet'

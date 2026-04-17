@@ -2,6 +2,7 @@ import { generateNotificationsForAllUsers } from '@/lib/notifications';
 import { verifyCronRequest } from '@/lib/cron-auth';
 
 export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
 
 // Called by Vercel Cron daily at 9am UTC
 export async function GET(req: Request) {
