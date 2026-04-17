@@ -25,6 +25,9 @@ export function MedicationsView({ medications: initial, profileId }: Medications
   const [removing, setRemoving] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [interactionWarning, setInteractionWarning] = useState<{ interactions: any[]; medName: string } | null>(null);
+  const [editingRefill, setEditingRefill] = useState<string | null>(null); // medication id
+  const [refillDate, setRefillDate] = useState('');
+  const [savingRefill, setSavingRefill] = useState(false);
 
   const addMedication = async () => {
     if (!name.trim()) return;
@@ -80,6 +83,30 @@ export function MedicationsView({ medications: initial, profileId }: Medications
     }
     setRemoving(false);
     setConfirmRemove(null);
+  };
+
+  const updateRefillDate = async (id: string, date: string) => {
+    setSavingRefill(true);
+    const res = await fetch('/api/records/medications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, refill_date: date || null }),
+    });
+    const json = await res.json();
+    if (res.ok && json.data) {
+      setMedications((prev) => prev.map((m) => m.id === id ? { ...m, refillDate: json.data.refillDate } : m));
+    }
+    setSavingRefill(false);
+    setEditingRefill(null);
+    setRefillDate('');
+  };
+
+  const markRefilled = async (id: string) => {
+    // Set refill date 30 days from today
+    const next = new Date();
+    next.setDate(next.getDate() + 30);
+    const dateStr = next.toISOString().slice(0, 10);
+    await updateRefillDate(id, dateStr);
   };
 
   const handleScanSaved = async () => {
@@ -144,30 +171,97 @@ export function MedicationsView({ medications: initial, profileId }: Medications
         </div>
       ) : (
         <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] divide-y divide-[var(--border)] overflow-hidden">
-          {medications.map((med) => (
-            <div key={med.id} className="flex items-center justify-between px-5 py-4">
-              <div className="min-w-0">
-                <p className="font-medium text-white">{med.name}</p>
-                <p className="text-sm text-[var(--text-secondary)]">
-                  {[med.dose, med.frequency].filter(Boolean).join(' · ')}
-                </p>
-                {med.refillDate && (
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                    Refill: {new Date(med.refillDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </p>
-                )}
-                {med.notes && (
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5 italic">{med.notes}</p>
-                )}
+          {medications.map((med) => {
+            const refillDaysLeft = med.refillDate
+              ? Math.ceil((new Date(med.refillDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+              : null;
+            const refillUrgent = refillDaysLeft !== null && refillDaysLeft <= 7;
+            const refillOverdue = refillDaysLeft !== null && refillDaysLeft < 0;
+            const isEditingThisRefill = editingRefill === med.id;
+
+            return (
+              <div key={med.id} className="px-5 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-white">{med.name}</p>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      {[med.dose, med.frequency].filter(Boolean).join(' · ')}
+                    </p>
+                    {med.refillDate && !isEditingThisRefill && (
+                      <p className={`text-xs mt-0.5 ${refillOverdue ? 'text-red-400' : refillUrgent ? 'text-amber-400' : 'text-[var(--text-muted)]'}`}>
+                        {refillOverdue
+                          ? `Refill overdue by ${Math.abs(refillDaysLeft!)} day${Math.abs(refillDaysLeft!) !== 1 ? 's' : ''}`
+                          : refillDaysLeft === 0
+                            ? 'Refill due today'
+                            : `Refill in ${refillDaysLeft} day${refillDaysLeft !== 1 ? 's' : ''} · ${new Date(med.refillDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                        }
+                      </p>
+                    )}
+                    {med.notes && (
+                      <p className="text-xs text-[var(--text-muted)] mt-0.5 italic">{med.notes}</p>
+                    )}
+
+                    {/* Refill date editor */}
+                    {isEditingThisRefill && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <input
+                          type="date"
+                          value={refillDate}
+                          onChange={(e) => setRefillDate(e.target.value)}
+                          className="text-xs bg-white/[0.06] border border-white/[0.12] rounded-lg px-2 py-1 text-[var(--text)] outline-none focus:border-[#6366F1]/50"
+                        />
+                        <button
+                          onClick={() => updateRefillDate(med.id, refillDate)}
+                          disabled={savingRefill}
+                          className="text-xs px-2.5 py-1 rounded-lg bg-[#6366F1]/20 text-[#A78BFA] hover:bg-[#6366F1]/30 transition-colors disabled:opacity-50"
+                        >
+                          {savingRefill ? '...' : 'Save'}
+                        </button>
+                        <button
+                          onClick={() => { setEditingRefill(null); setRefillDate(''); }}
+                          className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {/* Mark as refilled */}
+                    {(refillUrgent || refillOverdue) && !isEditingThisRefill && (
+                      <button
+                        onClick={() => markRefilled(med.id)}
+                        disabled={savingRefill}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors disabled:opacity-50"
+                      >
+                        Refilled
+                      </button>
+                    )}
+                    {/* Set/edit refill date */}
+                    {!isEditingThisRefill && (
+                      <button
+                        onClick={() => {
+                          setEditingRefill(med.id);
+                          setRefillDate(med.refillDate ? med.refillDate.slice(0, 10) : '');
+                        }}
+                        className="text-xs px-2 py-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-white/[0.06] transition-colors"
+                        title={med.refillDate ? 'Edit refill date' : 'Set refill date'}
+                      >
+                        {med.refillDate ? '✎' : '+ Refill'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setConfirmRemove({ id: med.id, name: med.name })}
+                      className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
               </div>
-              <button
-                onClick={() => setConfirmRemove({ id: med.id, name: med.name })}
-                className="text-sm text-red-400 hover:text-red-300 flex-shrink-0 ml-4 transition-colors"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

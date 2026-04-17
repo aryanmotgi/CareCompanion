@@ -68,6 +68,40 @@ export async function DELETE(req: Request) {
   return apiSuccess({ success: true });
 }
 
+// PATCH — update a medication's refill date
+export async function PATCH(req: Request) {
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error) return error;
+
+  const { id, refill_date } = await req.json();
+  if (!id) return apiError('id is required', 400);
+
+  // Verify ownership via care profile
+  const [med] = await db
+    .select({ careProfileId: medications.careProfileId })
+    .from(medications)
+    .where(eq(medications.id, id))
+    .limit(1);
+
+  if (!med) return apiError('Not found', 404);
+
+  const [profile] = await db
+    .select({ id: careProfiles.id })
+    .from(careProfiles)
+    .where(and(eq(careProfiles.id, med.careProfileId), eq(careProfiles.userId, dbUser!.id)))
+    .limit(1);
+
+  if (!profile) return apiError('Forbidden', 403);
+
+  const [updated] = await db
+    .update(medications)
+    .set({ refillDate: refill_date || null })
+    .where(eq(medications.id, id))
+    .returning();
+
+  return apiSuccess(updated);
+}
+
 // GET — list medications for a care profile
 export async function GET(req: Request) {
   const { user: dbUser, error } = await getAuthenticatedUser();
