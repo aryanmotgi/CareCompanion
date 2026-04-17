@@ -10,7 +10,6 @@ import { MedicationReminders } from '@/components/MedicationReminders';
 import { DashboardInsights } from '@/components/DashboardInsights';
 import { OnboardingWelcomeBanner } from '@/components/OnboardingWelcomeBanner';
 import { ShareHealthCard } from '@/components/ShareHealthCard';
-import { syncOneUpData } from '@/lib/oneup-sync';
 import { safeDecryptToken } from '@/lib/token-encryption';
 
 async function DashboardContent() {
@@ -56,20 +55,6 @@ async function DashboardContent() {
     db.select({ value: count() }).from(scannedDocuments).where(eq(scannedDocuments.userId, dbUser.id)),
     db.select({ value: count() }).from(doctors).where(eq(doctors.careProfileId, profile.id)),
   ]);
-
-  // Auto-sync: if 1upHealth is connected but profile is missing cancer info, trigger a background sync
-  const oneupApp = connectedAppsData.find((a) => a.source === '1uphealth');
-  const oneupTokenValid = oneupApp?.expiresAt && new Date(oneupApp.expiresAt) > new Date();
-  if (oneupApp?.accessToken && oneupTokenValid && (!profile.cancerType || !profile.cancerStage)) {
-    const lastSynced = oneupApp.lastSynced ? new Date(oneupApp.lastSynced).getTime() : 0;
-    const fiveMinAgo = Date.now() - 5 * 60 * 1000;
-    const accessToken = safeDecryptToken(oneupApp.accessToken);
-    if (lastSynced < fiveMinAgo && accessToken && accessToken !== 'demo-token') {
-      syncOneUpData(dbUser.id, accessToken).catch((err) => {
-        console.error('[dashboard] Auto-sync error:', err);
-      });
-    }
-  }
 
   // Only count connections with a non-expired token
   const hasHealthRecords = connectedAppsData.some(

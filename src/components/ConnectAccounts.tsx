@@ -1,11 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
-import { DataConsentModal } from '@/components/DataConsentModal';
-import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ToastProvider';
 import type { ConnectedApp } from '@/lib/types';
@@ -70,20 +68,9 @@ const OTHER_SERVICES = [
   },
 ];
 
-const DATA_PILLS = [
-  { label: 'medications', color: 'bg-blue-500/20 text-blue-300' },
-  { label: 'lab results', color: 'bg-cyan-500/20 text-cyan-300' },
-  { label: 'conditions', color: 'bg-violet-500/20 text-violet-300' },
-  { label: 'allergies', color: 'bg-amber-500/20 text-amber-300' },
-  { label: 'appointments', color: 'bg-emerald-500/20 text-emerald-300' },
-  { label: 'doctors', color: 'bg-pink-500/20 text-pink-300' },
-  { label: 'claims', color: 'bg-indigo-500/20 text-indigo-300' },
-  { label: 'insurance', color: 'bg-teal-500/20 text-teal-300' },
-];
 
 export function ConnectAccounts({ connectedApps, patientName, hasProfile }: ConnectAccountsProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { showToast } = useToast();
 
   const [apps, setApps] = useState(connectedApps);
@@ -93,74 +80,10 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
   const [age, setAge] = useState('');
   const [relationship, setRelationship] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [justConnected, setJustConnected] = useState<string | null>(null);
-  const [connectError, setConnectError] = useState<string | null>(null);
-  const [showConsent, setShowConsent] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [disconnectSource, setDisconnectSource] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
-  const [connecting, setConnecting] = useState(false);
-
-  // Only treat as connected if the token is not expired
-  const isOneUpConnected = apps.some(
-    (a) => a.source === '1uphealth' && a.expiresAt && new Date(a.expiresAt) > new Date()
-  );
-
-  const ERROR_MESSAGES: Record<string, string> = {
-    provider_not_configured: '1upHealth is not configured yet. Please contact support.',
-    oneup_user_failed: 'Could not create 1upHealth account. Please try again.',
-    oneup_token_failed: 'Authentication with 1upHealth failed. Please try again.',
-    oneup_error: 'Something went wrong connecting to 1upHealth. Please try again.',
-  };
-
-  // Check if we just came back from a successful connection or error
-  useEffect(() => {
-    const error = searchParams.get('error');
-    if (error) {
-      const detail = searchParams.get('detail');
-      const baseMsg = ERROR_MESSAGES[error] || 'Connection failed. Please try again.';
-      const fullMsg = detail ? `${baseMsg} (${decodeURIComponent(detail)})` : baseMsg;
-      setConnectError(fullMsg);
-      if (detail) console.warn('[ConnectAccounts] 1upHealth error detail:', decodeURIComponent(detail));
-      const url = new URL(window.location.href);
-      url.searchParams.delete('error');
-      url.searchParams.delete('detail');
-      window.history.replaceState({}, '', url.toString());
-    }
-
-    const connected = searchParams.get('connected');
-    if (connected) {
-      setJustConnected(connected);
-      const url = new URL(window.location.href);
-      url.searchParams.delete('connected');
-      window.history.replaceState({}, '', url.toString());
-
-      // Refresh connected apps + trigger sync
-      const refreshAndSync = async () => {
-        const res = await fetch('/api/fhir/connections', { method: 'POST' });
-        const json = await res.json();
-        if (res.ok && json.data) setApps(json.data);
-        fetch('/api/oneup/sync', { method: 'POST' }).catch(() => {});
-      };
-      refreshAndSync();
-    }
-
-    // Auto-sync if 1upHealth is connected but profile is incomplete
-    const autoSync = async () => {
-      const oneUp = connectedApps.find(a => a.source === '1uphealth');
-      if (!oneUp) return;
-      const connectedAt = oneUp.metadata && typeof oneUp.metadata === 'object' && 'connected_at' in oneUp.metadata
-        ? new Date(oneUp.metadata.connected_at as string).getTime() : 0;
-      const syncedAt = oneUp.lastSynced ? new Date(oneUp.lastSynced).getTime() : 0;
-      if (connectedAt > syncedAt) {
-        fetch('/api/oneup/sync', { method: 'POST' }).catch(() => {});
-      }
-    };
-    if (!connected && !error) autoSync();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
 
   const handleManagingForChange = (value: 'self' | 'other') => {
     setManagingFor(value);
@@ -203,26 +126,6 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
       showToast('Failed to save profile', 'error');
     } finally {
       setSavingProfile(false);
-    }
-  };
-
-  const handleSync = async () => {
-    setSyncing(true);
-    try {
-      const res = await fetch('/api/oneup/sync', { method: 'POST' });
-      const data = await res.json().catch(() => ({}));
-      if (res.status === 401 && data.error === 'token_expired') {
-        setApps((prev) => prev.filter((a) => a.source !== '1uphealth'));
-        setConnectError('Your health records connection expired. Please reconnect below.');
-        return;
-      }
-      if (!res.ok) throw new Error(data.error || 'Sync failed');
-      showToast('Health records synced', 'success');
-      router.refresh();
-    } catch {
-      showToast('Failed to sync health records', 'error');
-    } finally {
-      setSyncing(false);
     }
   };
 
@@ -275,46 +178,6 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
           Link your health services for a unified, intelligent care experience
         </p>
       </header>
-
-      {/* ━━ ERROR BANNER ━━ */}
-      {connectError && (
-        <div className="glass-card animate-fade-in-up rounded-2xl p-5 border border-red-500/20" style={{ background: 'rgba(239, 68, 68, 0.06)' }}>
-          <div className="flex items-center gap-4">
-            <div className="relative w-11 h-11 rounded-full bg-red-500/15 flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-red-300">Connection failed</p>
-              <p className="text-xs text-red-400/70 mt-0.5">{connectError}</p>
-            </div>
-            <button onClick={() => setConnectError(null)} className="text-red-400/60 hover:text-red-400 transition-colors p-1">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ━━ SUCCESS BANNER ━━ */}
-      {justConnected && (
-        <div className="glass-card animate-fade-in-up stagger-1 animate-pulse-glow-green rounded-2xl p-5 border border-emerald-500/20" style={{ background: 'rgba(52, 211, 153, 0.06)' }}>
-          <div className="flex items-center gap-4">
-            <div className="relative w-11 h-11 rounded-full bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
-              <div className="absolute inset-0 rounded-full bg-emerald-400/20 blur-md" />
-              <svg className="relative w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                <path className="animate-draw-check" strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-emerald-300">Connected successfully!</p>
-              <p className="text-xs text-emerald-400/70 mt-0.5">Your health data is syncing in the background...</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ━━ 2. WHO IS THIS FOR? ━━ */}
       <section className="animate-fade-in-up stagger-2">
@@ -388,100 +251,6 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
             </div>
           </div>
         )}
-      </section>
-
-      {/* ━━ 3. 1upHEALTH PRIMARY CARD ━━ */}
-      <section className="animate-fade-in-up stagger-3">
-        <h3 className="text-[11px] font-semibold tracking-[0.2em] text-[var(--text-muted)] uppercase mb-4">Health Records</h3>
-        <div
-          className={`glass-card rounded-2xl p-6 sm:p-8 relative overflow-hidden ${
-            isOneUpConnected
-              ? 'border-flow-gradient border-flow-gradient-green animate-pulse-glow-green'
-              : 'border-flow-gradient animate-pulse-glow-blue'
-          }`}
-        >
-          <div className="absolute top-6 left-6 w-20 h-20 rounded-full bg-blue-500/15 blur-[40px] pointer-events-none" />
-
-          <div className="relative flex items-start gap-5">
-            <div className="relative flex-shrink-0">
-              <div className={`absolute inset-0 rounded-2xl blur-xl ${isOneUpConnected ? 'bg-emerald-500/25' : 'bg-blue-500/25'} animate-orb-pulse`} />
-              <div className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center ${isOneUpConnected ? 'bg-emerald-500/15' : 'bg-blue-500/15'} transition-colors`}>
-                <svg className={`w-7 h-7 sm:w-8 sm:h-8 ${isOneUpConnected ? 'text-emerald-400' : 'text-[#A78BFA]'} transition-colors`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
-                </svg>
-              </div>
-            </div>
-
-            <div className="flex-1 min-w-0">
-              {isOneUpConnected && (
-                <div className="mb-2">
-                  <ConnectionStatus
-                    source="1uphealth"
-                    lastSynced={apps.find((a) => a.source === '1uphealth')?.lastSynced?.toISOString() ?? null}
-                  />
-                </div>
-              )}
-
-              <h3 className="font-display text-xl sm:text-2xl font-bold animate-gradient-text inline-block">
-                Connect Health Records
-              </h3>
-              <p className="text-sm text-[var(--text-secondary)] mt-2 leading-relaxed">
-                MyChart, Kaiser, Sutter Health, Aetna, UnitedHealthcare, Medicare, and 300+ more health systems and insurers
-              </p>
-
-              <div className="flex flex-wrap gap-2 mt-4">
-                {DATA_PILLS.map((pill) => (
-                  <span
-                    key={pill.label}
-                    className={`text-[11px] font-medium px-2.5 py-1 rounded-full ${
-                      isOneUpConnected ? 'bg-emerald-500/10 text-emerald-400' : pill.color
-                    } transition-colors`}
-                  >
-                    {pill.label}
-                  </span>
-                ))}
-              </div>
-
-              {isOneUpConnected && (
-                <p className="text-xs text-emerald-400/70 mt-3">
-                  {apps.find((a) => a.source === '1uphealth')?.lastSynced
-                    ? `Last synced ${new Date(apps.find((a) => a.source === '1uphealth')!.lastSynced!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
-                    : 'Syncing...'}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="relative z-10 mt-6 flex items-center gap-3">
-            {isOneUpConnected ? (
-              <>
-                <Button onClick={handleSync} loading={syncing} variant="secondary" className="!py-2.5 !px-5 !min-h-0 text-sm !bg-emerald-500/10 !border-emerald-500/20 !text-emerald-400 hover:!bg-emerald-500/20">
-                  <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
-                  </svg>
-                  Sync Now
-                </Button>
-                <button onClick={() => handleDisconnect('1uphealth')} className="text-xs text-[var(--text-muted)] hover:text-red-400 transition-colors px-3 py-2">
-                  Disconnect
-                </button>
-              </>
-            ) : (
-              <button onClick={() => setShowConsent(true)} disabled={connecting} className="relative z-10 gradient-btn inline-flex items-center gap-2.5 text-white font-semibold text-sm py-3 px-7 rounded-xl cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed">
-                {connecting ? (
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
-                  </svg>
-                )}
-                {connecting ? 'Connecting...' : 'Connect Health Records'}
-              </button>
-            )}
-          </div>
-        </div>
       </section>
 
       {/* ━━ 4. OTHER SERVICES GRID ━━ */}
@@ -726,23 +495,13 @@ export function ConnectAccounts({ connectedApps, patientName, hasProfile }: Conn
             onClick={() => router.push('/dashboard')}
             className="gradient-btn inline-flex items-center gap-2 text-white font-semibold text-sm py-3 px-7 rounded-xl"
           >
-            {isOneUpConnected ? 'Continue to Dashboard' : 'Skip for now'}
+            Continue to Dashboard
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
             </svg>
           </button>
         </div>
       </footer>
-
-      <DataConsentModal
-        isOpen={showConsent}
-        onClose={() => setShowConsent(false)}
-        consentHref="/api/fhir/authorize?provider=1uphealth"
-        onConsent={() => {
-          setShowConsent(false);
-          setConnecting(true);
-        }}
-      />
 
       <ConfirmDialog
         open={!!disconnectSource}
