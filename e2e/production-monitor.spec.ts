@@ -9,14 +9,13 @@ test.describe('Production 24/7 Monitor', () => {
 
   test.beforeEach(async ({ page, request }) => {
     const email = process.env.E2E_MONITOR_EMAIL!
-    const password = process.env.E2E_MONITOR_PASSWORD!
     const baseUrl = process.env.PLAYWRIGHT_BASE_URL!
 
     // Authenticate via the dedicated E2E endpoint, which calls Cognito's
     // USER_PASSWORD_AUTH and sets a NextAuth session cookie directly.
     // This bypasses the OAuth redirect UI flow that cannot be automated.
     const res = await request.post(`${baseUrl}/api/e2e/signin`, {
-      data: { email, password },
+      data: { email },
     })
     if (!res.ok()) {
       throw new Error(`E2E signin failed: ${res.status()} ${await res.text()}`)
