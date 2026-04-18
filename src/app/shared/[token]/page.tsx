@@ -14,6 +14,22 @@ interface SharedData {
   care_team?: { name: string; specialty?: string | null; phone?: string | null }[];
 }
 
+interface WeeklyData {
+  narrative: string;
+  patientName?: string;
+  cancerType?: string;
+  treatmentPhase?: string;
+  weekOf?: string;
+  stats?: {
+    symptomDays: number;
+    adherenceRate: number | null;
+    commonSymptoms: string[];
+    avgPain: string | null;
+    newLabs: number;
+    upcomingAppointments: { doctorName?: string | null; specialty?: string | null; dateTime?: string | null; purpose?: string | null }[];
+  };
+}
+
 function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] overflow-hidden">
@@ -60,6 +76,164 @@ const PersonIcon = () => (
   </svg>
 );
 
+function WeeklySummaryPage({
+  link,
+  weekly,
+  stats,
+}: {
+  link: { title?: string | null; createdAt?: Date | null; expiresAt: Date };
+  weekly: WeeklyData;
+  stats: WeeklyData['stats'];
+}) {
+  const expiresDate = new Date(link.expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  return (
+    <div className="min-h-screen" style={{ background: '#0c0c1a' }}>
+      {/* Header */}
+      <div className="border-b border-white/[0.06] px-4 sm:px-6 py-4">
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+              </svg>
+            </div>
+            <span className="text-sm font-semibold text-white">CareCompanion</span>
+          </Link>
+          <span className="text-xs text-white/30">Weekly Update · {weekly.weekOf}</span>
+        </div>
+      </div>
+
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        {/* Title */}
+        <div>
+          <p className="text-xs font-medium text-[#A78BFA] uppercase tracking-wider mb-2">Weekly Care Update</p>
+          <h1 className="text-2xl font-bold text-white">
+            {weekly.patientName ? `How ${weekly.patientName} is doing` : 'This week in care'}
+          </h1>
+          {weekly.cancerType && (
+            <p className="text-sm text-white/40 mt-1">{weekly.cancerType}{weekly.treatmentPhase ? ` · ${weekly.treatmentPhase}` : ''}</p>
+          )}
+        </div>
+
+        {/* AI Narrative */}
+        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+              </svg>
+            </div>
+            <span className="text-xs font-medium text-white/60">CareCompanion AI</span>
+          </div>
+          <div className="space-y-3">
+            {weekly.narrative.split('\n\n').filter(Boolean).map((para, i) => (
+              <p key={i} className="text-sm text-white/80 leading-relaxed">{para}</p>
+            ))}
+          </div>
+        </div>
+
+        {/* Stats grid */}
+        {stats && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {stats.symptomDays > 0 && (
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 text-center">
+                <p className="text-2xl font-bold text-white">{stats.symptomDays}</p>
+                <p className="text-xs text-white/40 mt-1">Days tracked</p>
+              </div>
+            )}
+            {stats.adherenceRate !== null && (
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 text-center">
+                <p className={`text-2xl font-bold ${stats.adherenceRate >= 80 ? 'text-emerald-400' : stats.adherenceRate >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
+                  {stats.adherenceRate}%
+                </p>
+                <p className="text-xs text-white/40 mt-1">Meds taken</p>
+              </div>
+            )}
+            {stats.avgPain && (
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 text-center">
+                <p className="text-2xl font-bold text-white">{stats.avgPain}<span className="text-sm text-white/40">/10</span></p>
+                <p className="text-xs text-white/40 mt-1">Avg pain</p>
+              </div>
+            )}
+            {stats.newLabs > 0 && (
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 text-center">
+                <p className="text-2xl font-bold text-white">{stats.newLabs}</p>
+                <p className="text-xs text-white/40 mt-1">New labs</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Common symptoms */}
+        {stats && stats.commonSymptoms.length > 0 && (
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+            <h2 className="text-sm font-semibold text-white mb-3">Symptoms this week</h2>
+            <div className="flex flex-wrap gap-2">
+              {stats.commonSymptoms.map((s, i) => (
+                <span key={i} className="px-2.5 py-1 rounded-full bg-white/[0.06] text-xs text-white/60 capitalize">{s}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Upcoming appointments */}
+        {stats && stats.upcomingAppointments.length > 0 && (
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+            <h2 className="text-sm font-semibold text-white mb-3">Coming up this week</h2>
+            <div className="space-y-2">
+              {stats.upcomingAppointments.map((a, i) => (
+                <div key={i} className="flex items-center justify-between py-1.5 border-b border-white/[0.04] last:border-0">
+                  <div>
+                    <p className="text-sm text-white">{a.purpose || a.specialty || 'Appointment'}</p>
+                    {a.doctorName && <p className="text-xs text-white/40">with {a.doctorName}</p>}
+                  </div>
+                  {a.dateTime && (
+                    <span className="text-xs text-white/50">
+                      {new Date(a.dateTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Viral CTA — the growth engine */}
+        <div className="rounded-2xl border border-[#6366F1]/40 bg-gradient-to-br from-[#6366F1]/10 to-[#A78BFA]/10 p-6 text-center space-y-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center mx-auto">
+            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-white">Supporting someone through cancer?</h3>
+            <p className="text-sm text-white/60 mt-1">
+              CareCompanion helps caregivers track medications, labs, appointments, and symptoms — and get AI answers at 2am when you need them most. Free.
+            </p>
+          </div>
+          <Link
+            href="/chat/guest"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+          >
+            Try it free — no signup needed
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+            </svg>
+          </Link>
+          <p className="text-xs text-white/30">Just start talking. No credit card, no account needed to start.</p>
+        </div>
+
+        {/* Footer */}
+        <div className="pb-8 text-center space-y-1">
+          <p className="text-xs text-white/20">Shared privately via CareCompanion. Expires {expiresDate}.</p>
+          <p className="text-xs text-white/20">Not a medical record. Always consult your care team for medical decisions.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default async function SharedPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const [link] = await db.select().from(sharedLinks).where(eq(sharedLinks.token, token)).limit(1);
@@ -84,6 +258,13 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
 
   // Increment view count (fire-and-forget)
   db.update(sharedLinks).set({ viewCount: (link.viewCount ?? 0) + 1 }).where(eq(sharedLinks.token, token)).catch(() => {});
+
+  // Weekly summary gets its own layout
+  if (link.type === 'weekly_summary') {
+    const weekly = link.data as WeeklyData;
+    const stats = weekly.stats;
+    return <WeeklySummaryPage link={link} weekly={weekly} stats={stats} />;
+  }
 
   const data = link.data as SharedData;
   const expiresDate = new Date(link.expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });

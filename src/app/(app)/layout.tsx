@@ -9,6 +9,7 @@ import { ThemeProvider } from '@/components/ThemeProvider'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
 import { PushNotificationSetup } from '@/components/PushNotificationSetup'
+import { InstallPrompt } from '@/components/InstallPrompt'
 import { CsrfProvider } from '@/components/CsrfProvider'
 import { getActiveProfile, getAllProfiles } from '@/lib/active-profile'
 
@@ -108,6 +109,7 @@ export default async function AppLayout({
       <OfflineIndicator />
       <ServiceWorkerRegistration />
       <PushNotificationSetup />
+      <InstallPrompt />
       <AppShell
         patientName={profile?.patientName || 'your loved one'}
         patientAge={profile?.patientAge ?? undefined}

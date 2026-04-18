@@ -398,3 +398,41 @@ export const healthSummaries = pgTable('health_summaries', {
   ),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
+
+// ── Community (anonymous caregiver forum) ─────────────────────────────────────
+export const communityPosts = pgTable('community_posts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  // userId stored internally for moderation only — never exposed publicly
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  // Cancer type tag (e.g. "colorectal cancer", "breast cancer")
+  cancerType: text('cancer_type').notNull(),
+  // Role of the poster: 'caregiver' | 'patient'
+  authorRole: text('author_role').notNull().default('caregiver'),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  upvotes: integer('upvotes').notNull().default(0),
+  replyCount: integer('reply_count').notNull().default(0),
+  isPinned: boolean('is_pinned').notNull().default(false),
+  isModerated: boolean('is_moderated').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+export const communityReplies = pgTable('community_replies', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  postId: uuid('post_id').notNull().references(() => communityPosts.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  cancerType: text('cancer_type').notNull(),
+  authorRole: text('author_role').notNull().default('caregiver'),
+  body: text('body').notNull(),
+  upvotes: integer('upvotes').notNull().default(0),
+  isModerated: boolean('is_moderated').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+export const communityUpvotes = pgTable('community_upvotes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  targetId: uuid('target_id').notNull(), // postId or replyId
+  targetType: text('target_type').notNull(), // 'post' | 'reply'
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
