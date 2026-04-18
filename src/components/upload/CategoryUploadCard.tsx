@@ -167,7 +167,7 @@ export function CategoryUploadCard({
   const [state, setState] = useState<CardState>('idle');
   const [preview, setPreview] = useState<string | null>(null);
   const [items, setItems] = useState<Record<string, string>[]>([]);
-  const [editing, setEditing] = useState(false);
+  const [_editing, setEditing] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
