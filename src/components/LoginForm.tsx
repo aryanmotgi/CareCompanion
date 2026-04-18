@@ -6,19 +6,37 @@ import Link from 'next/link'
 export function LoginForm({ initialError, mode }: { initialError?: string; mode?: string }) {
   const [consentChecked, setConsentChecked] = useState(false)
   const [showConsentError, setShowConsentError] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState<'google' | 'email' | null>(null)
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    if (!consentChecked) {
+  // Sign-up requires explicit mode=signup; everything else (including default) is sign-in
+  const isSignIn = mode !== 'signup'
+  // Consent is only required when creating a new account
+  const requiresConsent = !isSignIn
+
+  function handleGoogleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (requiresConsent && !consentChecked) {
       e.preventDefault()
       setShowConsentError(true)
       return
     }
-    setLoading(true)
-    // Form POSTs and redirects to Cognito — loading state persists until navigation (intentional)
+    setLoading('google')
   }
 
-  const isSignIn = mode === 'signin'
+  function handleEmailSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (!email.trim()) {
+      e.preventDefault()
+      return
+    }
+    if (requiresConsent && !consentChecked) {
+      e.preventDefault()
+      setShowConsentError(true)
+      return
+    }
+    setLoading('email')
+  }
+
+  const buttonBase = "w-full relative rounded-xl py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.98] focus:outline-none overflow-hidden disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100"
 
   return (
     <div className="space-y-4" style={{ animation: 'loginFadeUp 0.6s ease 0.15s both' }}>
@@ -34,154 +52,211 @@ export function LoginForm({ initialError, mode }: { initialError?: string; mode?
         {/* Inner top glow line */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.6), transparent)' }} />
 
-        {isSignIn && (
-          <p className="text-center text-xs text-white/30 mb-5 uppercase tracking-widest">Welcome back</p>
-        )}
+        <div className="space-y-5">
 
-        <form method="POST" action="/api/auth/start" onSubmit={handleSubmit} className="space-y-5">
+          {/* Section label */}
+          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>
+            {isSignIn ? 'Sign in with other accounts' : 'Create account with'}
+          </p>
 
-          {/* Hidden consent field — server validates this before initiating OAuth */}
-          <input type="hidden" name="consent" value={consentChecked ? 'true' : ''} />
-
-          {/* Consent checkbox */}
-          <label className="flex items-start gap-3 cursor-pointer group">
-            <div className="relative mt-0.5 flex-shrink-0">
-              <input
-                type="checkbox"
-                checked={consentChecked}
-                onChange={(e) => {
-                  setConsentChecked(e.target.checked)
-                  if (e.target.checked) setShowConsentError(false)
-                }}
-                className="sr-only"
-                aria-describedby="consent-error"
-              />
-              <div className="w-4 h-4 rounded flex items-center justify-center transition-all duration-200" style={{
-                background: consentChecked ? 'linear-gradient(135deg, #6366F1, #A78BFA)' : 'rgba(255,255,255,0.05)',
-                border: consentChecked ? 'none' : '1px solid rgba(255,255,255,0.15)',
-                boxShadow: consentChecked ? '0 0 10px rgba(99,102,241,0.5)' : 'none',
-              }}>
-                {consentChecked && (
-                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12" strokeWidth={2.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
-                  </svg>
-                )}
-              </div>
-            </div>
-            <span className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              I agree to the{' '}
-              <a href="/terms" className="underline underline-offset-2 transition-colors hover:text-white/60" style={{ color: 'rgba(167,139,250,0.7)' }} target="_blank" rel="noopener noreferrer">Terms</a>
-              {' '}and{' '}
-              <a href="/privacy" className="underline underline-offset-2 transition-colors hover:text-white/60" style={{ color: 'rgba(167,139,250,0.7)' }} target="_blank" rel="noopener noreferrer">Privacy Policy</a>
-              , and I understand CareCompanion will access and process my health information to provide the service.
-            </span>
-          </label>
-
-          {showConsentError && (
-            <p id="consent-error" role="alert" className="text-xs text-red-400/80 pl-7 -mt-2">
-              Please agree to continue.
-            </p>
-          )}
-
-          {/* CTA button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full relative rounded-xl py-3.5 text-sm font-semibold text-white transition-all duration-200 active:scale-[0.98] focus:outline-none overflow-hidden group disabled:opacity-80 disabled:cursor-not-allowed disabled:active:scale-100"
-            style={{
-              background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
-              boxShadow: '0 0 20px rgba(99,102,241,0.35), 0 4px 16px rgba(0,0,0,0.3)',
-            }}
-            onMouseEnter={e => { if (!loading) e.currentTarget.style.boxShadow = '0 0 30px rgba(99,102,241,0.55), 0 4px 20px rgba(0,0,0,0.3)' }}
-            onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 0 20px rgba(99,102,241,0.35), 0 4px 16px rgba(0,0,0,0.3)')}
-          >
-            <span className="relative z-10 flex items-center justify-center gap-2">
-              {loading ? (
+          {/* Google button */}
+          <form method="POST" action="/api/auth/start" onSubmit={handleGoogleSubmit}>
+            <input type="hidden" name="provider" value="google" />
+            <input type="hidden" name="consent" value={!requiresConsent || consentChecked ? 'true' : ''} />
+            <button
+              type="submit"
+              disabled={loading !== null}
+              className={`${buttonBase} flex items-center justify-center gap-3`}
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                color: 'rgba(255,255,255,0.85)',
+              }}
+            >
+              {loading === 'google' ? (
                 <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
               ) : (
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                 </svg>
               )}
-              {loading
-                ? (isSignIn ? 'Signing in...' : 'Creating account...')
-                : (isSignIn ? 'Sign In' : 'Get Started Free')}
-            </span>
-          </button>
-        </form>
+              <span>Sign in with Google</span>
+            </button>
+          </form>
 
-        {initialError && (
-          <div role="alert" className="mt-4 flex items-start gap-2 rounded-lg px-3 py-2.5"
-            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
-            <svg className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-            </svg>
-            <div>
-              <p className="text-xs text-red-400/90">{initialError}</p>
-              <p className="text-[10px] text-red-400/50 mt-1">
-                Having trouble?{' '}
-                <a href="mailto:support@carecompanionai.org" className="underline">Contact support</a>
-              </p>
-            </div>
+          {/* Divider */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.07)' }} />
+            <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.2)' }}>Or</span>
+            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.07)' }} />
           </div>
-        )}
 
-        {/* Trust badges */}
-        <div className="mt-4 flex items-center justify-center gap-5">
-          {[
-            {
-              icon: (
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                </svg>
-              ),
-              label: 'HIPAA-compliant',
-            },
-            {
-              icon: (
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                </svg>
-              ),
-              label: 'No ads, ever',
-            },
-            {
-              icon: (
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                </svg>
-              ),
-              label: 'Your data, always',
-            },
-          ].map((badge) => (
-            <div key={badge.label} className="flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
-              {badge.icon}
-              <span className="text-[10px]">{badge.label}</span>
+          {/* Email form */}
+          <div>
+            <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: 'rgba(255,255,255,0.3)' }}>
+              With existing account
+            </p>
+            <form method="POST" action="/api/auth/start" onSubmit={handleEmailSubmit} className="space-y-3">
+              <input type="hidden" name="provider" value="email" />
+              <input type="hidden" name="consent" value={!requiresConsent || consentChecked ? 'true' : ''} />
+              <div>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email address"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none transition-all"
+                  style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                  }}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'rgba(99,102,241,0.5)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading !== null}
+                className={`${buttonBase} text-white`}
+                style={{
+                  background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                  boxShadow: '0 0 20px rgba(99,102,241,0.35), 0 4px 16px rgba(0,0,0,0.3)',
+                }}
+              >
+                {loading === 'email' ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    {isSignIn ? 'Signing in...' : 'Creating account...'}
+                  </span>
+                ) : 'Next'}
+              </button>
+            </form>
+          </div>
+
+          {/* Consent checkbox — sign-up only */}
+          {requiresConsent && (
+            <div>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <div className="relative mt-0.5 flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={consentChecked}
+                    onChange={(e) => {
+                      setConsentChecked(e.target.checked)
+                      if (e.target.checked) setShowConsentError(false)
+                    }}
+                    className="sr-only"
+                    aria-describedby="consent-error"
+                  />
+                  <div className="w-4 h-4 rounded flex items-center justify-center transition-all duration-200" style={{
+                    background: consentChecked ? 'linear-gradient(135deg, #6366F1, #A78BFA)' : 'rgba(255,255,255,0.05)',
+                    border: consentChecked ? 'none' : '1px solid rgba(255,255,255,0.15)',
+                    boxShadow: consentChecked ? '0 0 10px rgba(99,102,241,0.5)' : 'none',
+                  }}>
+                    {consentChecked && (
+                      <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12" strokeWidth={2.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <span className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  I agree to the{' '}
+                  <a href="/terms" className="underline underline-offset-2 transition-colors hover:text-white/60" style={{ color: 'rgba(167,139,250,0.7)' }} target="_blank" rel="noopener noreferrer">Terms</a>
+                  {' '}and{' '}
+                  <a href="/privacy" className="underline underline-offset-2 transition-colors hover:text-white/60" style={{ color: 'rgba(167,139,250,0.7)' }} target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+                  , and I understand CareCompanion will access and process my health information to provide the service.
+                </span>
+              </label>
+              {showConsentError && (
+                <p id="consent-error" role="alert" className="text-xs text-red-400/80 pl-7 mt-1.5">
+                  Please agree to continue.
+                </p>
+              )}
             </div>
-          ))}
-        </div>
-
-        {/* Mode toggle */}
-        <p className="mt-4 text-center text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
-          {isSignIn ? (
-            <>
-              New to CareCompanion?{' '}
-              <Link href="/login" className="underline underline-offset-2 transition-colors hover:text-white/50" style={{ color: 'rgba(167,139,250,0.6)' }}>
-                Create an account
-              </Link>
-            </>
-          ) : (
-            <>
-              Already have an account?{' '}
-              <Link href="/login?mode=signin" className="underline underline-offset-2 transition-colors hover:text-white/50" style={{ color: 'rgba(167,139,250,0.6)' }}>
-                Sign in
-              </Link>
-            </>
           )}
-        </p>
+
+          {initialError && (
+            <div role="alert" className="flex items-start gap-2 rounded-lg px-3 py-2.5"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
+              <svg className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+              </svg>
+              <div>
+                <p className="text-xs text-red-400/90">{initialError}</p>
+                <p className="text-[10px] text-red-400/50 mt-1">
+                  Having trouble?{' '}
+                  <a href="mailto:support@carecompanionai.org" className="underline">Contact support</a>
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Trust badges */}
+          <div className="flex items-center justify-center gap-5 pt-1">
+            {[
+              {
+                icon: (
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                  </svg>
+                ),
+                label: 'HIPAA-compliant',
+              },
+              {
+                icon: (
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  </svg>
+                ),
+                label: 'No ads, ever',
+              },
+              {
+                icon: (
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                  </svg>
+                ),
+                label: 'Your data, always',
+              },
+            ].map((badge) => (
+              <div key={badge.label} className="flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                {badge.icon}
+                <span className="text-[10px]">{badge.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Mode toggle */}
+          <p className="text-center text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
+            {isSignIn ? (
+              <>
+                New user?{' '}
+                <Link href="/login?mode=signup" className="underline underline-offset-2 transition-colors hover:text-white/50" style={{ color: 'rgba(167,139,250,0.6)' }}>
+                  Create an account
+                </Link>
+              </>
+            ) : (
+              <>
+                Already have an account?{' '}
+                <Link href="/login?mode=signin" className="underline underline-offset-2 transition-colors hover:text-white/50" style={{ color: 'rgba(167,139,250,0.6)' }}>
+                  Sign in
+                </Link>
+              </>
+            )}
+          </p>
+        </div>
       </div>
 
       {/* Demo link */}

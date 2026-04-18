@@ -2,7 +2,7 @@ import { PublicNav } from '@/components/PublicNav';
 import { LoginForm } from '@/components/LoginForm';
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; mode?: string }> }) {
-  const { error, mode } = await searchParams
+  const { error, mode = 'signin' } = await searchParams
   const errorMsg = error === 'db'
     ? 'Database is temporarily unavailable. Please try again in a moment.'
     : error === 'consent_required'
