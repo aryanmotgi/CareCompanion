@@ -63,11 +63,22 @@ export function DashboardView({
 }: DashboardViewProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showTourTooltip, setShowTourTooltip] = useState(false)
+  const [weeklyUpdate, setWeeklyUpdate] = useState<{
+    token: string; title: string | null; createdAt: Date | null; viewCount: number; shareUrl: string
+  } | null>(null)
+  const [copiedLink, setCopiedLink] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !localStorage.getItem('dashboard_tour_seen')) {
       setShowTourTooltip(true)
     }
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/share/weekly')
+      .then(r => r.json())
+      .then(d => { if (d.data?.token) setWeeklyUpdate(d.data) })
+      .catch(() => {})
   }, [])
 
   const dismissTooltip = () => {
@@ -454,6 +465,50 @@ export function DashboardView({
 
       {/* Treatment Cycle Tracker */}
       <TreatmentCycleTracker medications={medications} patientName={patientName} />
+
+      {/* Weekly family update — share card */}
+      {weeklyUpdate && (
+        <div className="mx-4 sm:mx-5 mb-4 rounded-2xl border border-[#6366F1]/30 bg-gradient-to-r from-[#6366F1]/5 to-[#A78BFA]/5 p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white">This week&apos;s update is ready</p>
+              <p className="text-xs text-white/50 mt-0.5">Share with family to keep everyone in the loop</p>
+              {weeklyUpdate.viewCount > 0 && (
+                <p className="text-xs text-white/30 mt-1">Viewed {weeklyUpdate.viewCount} time{weeklyUpdate.viewCount !== 1 ? 's' : ''}</p>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.origin + weeklyUpdate.shareUrl)
+                  .then(() => { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000) })
+                  .catch(() => {})
+              }}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-xs font-semibold text-white hover:opacity-90 transition-opacity"
+            >
+              {copiedLink ? (
+                <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>Copied!</>
+              ) : (
+                <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.375" /></svg>Copy link</>
+              )}
+            </button>
+            <a
+              href={weeklyUpdate.shareUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2 rounded-xl border border-white/[0.08] bg-white/[0.04] text-xs font-medium text-white/70 hover:text-white hover:bg-white/[0.08] transition-colors"
+            >
+              Preview
+            </a>
+          </div>
+        </div>
+      )}
 
       {actionCount === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center" data-tour="dashboard-cards">

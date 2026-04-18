@@ -5,6 +5,7 @@ import {
 } from '@/lib/db/schema';
 import { eq, and, gte, desc } from 'drizzle-orm';
 import { sendPushNotification } from '@/lib/push';
+import { generateAppointmentPrepForUser } from '@/lib/appointment-prep';
 
 /**
  * Proactive notification engine for CareCompanion.
@@ -148,11 +149,15 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
       const title = `Appointment tomorrow with ${appt.doctorName || 'your doctor'}`;
       if (!existingTitles.has(title)) {
         const time = apptDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+        // Auto-generate visit prep in the background (fire-and-forget, non-blocking)
+        generateAppointmentPrepForUser(userId, appt.id).catch(() => {});
+
         toInsert.push({
           userId,
           type: 'appointment_prep',
           title,
-          message: `${appt.doctorName || 'Appointment'} at ${time}${appt.location ? ` — ${appt.location}` : ''}. ${appt.purpose ? `Purpose: ${appt.purpose}. ` : ''}Tap to ask CareCompanion to help you prepare questions.`,
+          message: `${appt.doctorName || 'Appointment'} at ${time}${appt.location ? ` — ${appt.location}` : ''}. Your AI prep sheet is ready — open Visit Prep to see your personalized questions and what to bring.`,
         });
       }
     } else if (diff === 0) {
@@ -227,6 +232,90 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
           type: 'low_balance',
           title,
           message: `Your ${(account.accountType || 'account').toUpperCase()} with ${account.provider} has $${balance} remaining out of $${limit}.${account.accountType === 'fsa' ? ' FSA funds typically expire at year-end — plan your spending.' : ''}`,
+        });
+      }
+    }
+  }
+
+  // ----------------------------------------------------------
+  // 6. Proactive treatment cycle awareness
+  //    Infers cycle phase from medication notes/frequency and
+  //    sends day-ahead warnings for critical treatment windows.
+  // ----------------------------------------------------------
+  for (const med of meds) {
+    const notes = (med.notes || '').toLowerCase();
+    const freq = (med.frequency || '').toLowerCase();
+
+    // Only process chemo/treatment medications with cycle info
+    const cycleMatch = notes.match(/cycle\s*(\d+)\s*(?:of|\/)\s*(\d+)/i);
+    if (!cycleMatch) continue;
+
+    // Infer cycle length
+    let cycleLengthDays = 21;
+    if (freq.includes('every 2 weeks') || freq.includes('every 14')) cycleLengthDays = 14;
+    if (freq.includes('every 3 weeks') || freq.includes('every 21')) cycleLengthDays = 21;
+    if (freq.includes('every 4 weeks') || freq.includes('every 28')) cycleLengthDays = 28;
+    if (freq.includes('weekly')) cycleLengthDays = 7;
+
+    // Infer day in cycle from refill date (next infusion)
+    if (!med.refillDate) continue;
+    const nextInfusion = new Date(med.refillDate);
+    const daysUntilNext = Math.ceil((nextInfusion.getTime() - now.getTime()) / 86400000);
+    const dayInCycle = Math.max(1, cycleLengthDays - daysUntilNext);
+    const tomorrowDay = dayInCycle + 1;
+
+    const drugName = med.name || 'treatment';
+    const cycleNum = parseInt(cycleMatch[1]);
+
+    // Nadir warning: ANC typically drops on days 7-14
+    // Warn on the day before nadir starts (day 7)
+    if (tomorrowDay === 8) {
+      const title = `${drugName} — nadir period starts tomorrow`;
+      if (!existingTitles.has(title)) {
+        toInsert.push({
+          userId,
+          type: 'cycle_nadir_warning',
+          title,
+          message: `Cycle ${cycleNum}: tomorrow begins the nadir window (days 8-14) when blood counts are typically at their lowest. Watch for: fever over 100.4°F, chills, unusual fatigue. Keep a thermometer nearby and have the oncology after-hours number on hand.`,
+        });
+      }
+    }
+
+    // Nadir active: remind during the window (day 10 check-in)
+    if (dayInCycle === 10) {
+      const title = `${drugName} — you're in the nadir window (day ${dayInCycle})`;
+      if (!existingTitles.has(title)) {
+        toInsert.push({
+          userId,
+          type: 'cycle_nadir_active',
+          title,
+          message: `Cycle ${cycleNum}, day ${dayInCycle}: blood counts are likely at their lowest. Any fever over 100.4°F warrants a call to the oncology team — don't wait. Recovery phase begins around day 14-15.`,
+        });
+      }
+    }
+
+    // Recovery: positive check-in when emerging from nadir
+    if (tomorrowDay === 15) {
+      const title = `${drugName} — recovery phase begins tomorrow`;
+      if (!existingTitles.has(title)) {
+        toInsert.push({
+          userId,
+          type: 'cycle_recovery',
+          title,
+          message: `Cycle ${cycleNum}: tomorrow marks the start of the recovery phase. Blood counts should begin rising. Energy levels often improve over the next week. Next infusion in approximately ${daysUntilNext} days.`,
+        });
+      }
+    }
+
+    // Pre-infusion: remind 2 days before next cycle
+    if (daysUntilNext === 2) {
+      const title = `${drugName} — next infusion in 2 days`;
+      if (!existingTitles.has(title)) {
+        toInsert.push({
+          userId,
+          type: 'cycle_pre_infusion',
+          title,
+          message: `Cycle ${cycleNum + 1} infusion is scheduled in 2 days (${nextInfusion.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}). Make sure labs are scheduled and any pre-medications are on hand.`,
         });
       }
     }
