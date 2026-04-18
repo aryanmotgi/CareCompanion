@@ -13,10 +13,10 @@ function StepCard({ step, title, children }: { step: number; title: string; chil
   return (
     <div className="relative rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl overflow-hidden">
       {/* Step number accent */}
-      <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-violet-500 rounded-l-2xl" />
+      <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#6366F1] to-[#A78BFA] rounded-l-2xl" />
       <div className="p-5 sm:p-6">
         <div className="flex items-center gap-3 mb-4">
-          <span className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 text-sm font-bold flex items-center justify-center">
+          <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[#6366F1]/20 text-[#A78BFA] text-sm font-bold flex items-center justify-center">
             {step}
           </span>
           <h2 className="text-lg font-semibold text-white">{title}</h2>
@@ -58,7 +58,7 @@ export default function DemoWalkthroughPage() {
             <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 space-y-2 font-mono text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-white/40">URL:</span>
-                <Link href="/login" className="text-blue-400 hover:text-blue-300 transition-colors">carecompanionai.org/login</Link>
+                <Link href="/login" className="text-[#A78BFA] hover:text-[#c4b5fd] transition-colors">carecompanionai.org/login</Link>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-white/40">Email:</span>
@@ -75,30 +75,30 @@ export default function DemoWalkthroughPage() {
             <p className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider mb-2">What to verify</p>
             <ul className="space-y-1.5 text-xs text-white/70">
               <li className="flex items-start gap-2">
-                <span className="text-emerald-400 mt-0.5">✓</span>
+                <svg className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M20 6 9 17l-5-5"/></svg>
                 <span>Privacy policy and terms are accessible and thorough</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-emerald-400 mt-0.5">✓</span>
+                <svg className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M20 6 9 17l-5-5"/></svg>
                 <span>No credentials exposed in client-side code</span>
               </li>
             </ul>
           </div>
-          <div className="rounded-lg bg-blue-500/[0.08] border border-blue-500/15 p-3 text-xs text-blue-200/80">
-            <p><strong className="text-blue-300">Contact:</strong> <a href="mailto:privacy@carecompanionai.org" className="underline hover:text-blue-300">privacy@carecompanionai.org</a> for questions about this review.</p>
+          <div className="rounded-lg bg-[#6366F1]/[0.08] border border-[#6366F1]/15 p-3 text-xs text-white/60">
+            <p><strong className="text-[#A78BFA]">Contact:</strong> <a href="mailto:privacy@carecompanionai.org" className="underline hover:text-[#c4b5fd]">privacy@carecompanionai.org</a> for questions about this review.</p>
           </div>
         </div>
       </details>
 
       {/* Header */}
       <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/15 border border-violet-500/25">
-          <svg className="w-4 h-4 text-violet-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#6366F1]/15 border border-[#6366F1]/25">
+          <svg className="w-4 h-4 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
           </svg>
-          <span className="text-xs font-medium text-violet-300">How CareCompanion Works</span>
+          <span className="text-xs font-medium text-[#A78BFA]">How CareCompanion Works</span>
         </div>
-        <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white via-violet-200 to-white bg-clip-text text-transparent">See it in action</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white via-[#A78BFA] to-white bg-clip-text text-transparent">See it in action</h1>
         <p className="text-sm sm:text-base text-white/50 max-w-lg mx-auto">
           A guided walkthrough of how CareCompanion helps cancer patients and caregivers manage treatment, medications, lab results, and more.
         </p>
@@ -111,19 +111,19 @@ export default function DemoWalkthroughPage() {
         </p>
         <div className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-4 space-y-3 mb-4">
           <div className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#6366F1]/20 text-[#A78BFA] text-xs font-bold flex items-center justify-center mt-0.5">1</span>
             <p className="text-sm text-white/70">Click &quot;Connect Health Records&quot; and pick your hospital from 700+ supported systems</p>
           </div>
           <div className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center mt-0.5">2</span>
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#6366F1]/20 text-[#A78BFA] text-xs font-bold flex items-center justify-center mt-0.5">2</span>
             <p className="text-sm text-white/70">Log in with your existing MyChart, Kaiser, or Sutter credentials</p>
           </div>
           <div className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center mt-0.5">3</span>
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#6366F1]/20 text-[#A78BFA] text-xs font-bold flex items-center justify-center mt-0.5">3</span>
             <p className="text-sm text-white/70">Grant read-only access — we never see or store your password</p>
           </div>
           <div className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold flex items-center justify-center mt-0.5">4</span>
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#6366F1]/20 text-[#A78BFA] text-xs font-bold flex items-center justify-center mt-0.5">4</span>
             <p className="text-sm text-white/70">Your medications, labs, conditions, and appointments appear automatically</p>
           </div>
         </div>
@@ -143,7 +143,7 @@ export default function DemoWalkthroughPage() {
               key={item}
               className="rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 py-2 text-center"
             >
-              <span className="text-xs font-medium text-cyan-300">{item}</span>
+              <span className="text-xs font-medium text-[#A78BFA]">{item}</span>
             </div>
           ))}
         </div>
@@ -179,11 +179,11 @@ export default function DemoWalkthroughPage() {
         <p className="text-sm text-white/60 mb-4">
           CareCompanion&apos;s AI doesn&apos;t just answer generic health questions. It knows your specific medications, lab results, and treatment plan — and it answers questions in that context.
         </p>
-        <div className="rounded-xl bg-gradient-to-br from-violet-500/10 to-blue-500/10 border border-violet-500/20 p-4 space-y-3">
+        <div className="rounded-xl bg-gradient-to-br from-[#6366F1]/10 to-[#A78BFA]/[0.07] border border-[#6366F1]/20 p-4 space-y-3">
           <p className="text-xs font-medium text-white/40 uppercase tracking-wider">Example conversation</p>
           <div className="space-y-2">
             <div className="flex items-start gap-3">
-              <span className="text-sm text-violet-400 font-medium">You</span>
+              <span className="text-sm text-[#A78BFA] font-medium">You</span>
               <div className="text-sm text-white/70">
                 <p>What side effects should I watch for with my chemo?</p>
               </div>
@@ -216,8 +216,8 @@ export default function DemoWalkthroughPage() {
               key={link.href}
               className="flex items-center gap-3 rounded-xl bg-white/[0.04] border border-white/[0.06] p-3 opacity-70"
             >
-              <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-blue-500/15 flex items-center justify-center">
-                <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-[#6366F1]/15 flex items-center justify-center">
+                <svg className="w-5 h-5 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d={link.icon} />
                 </svg>
               </div>
@@ -256,22 +256,22 @@ export default function DemoWalkthroughPage() {
           ))}
         </div>
         <div className="flex gap-3">
-          <Link href="/privacy" className="text-xs text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors">Privacy Policy</Link>
-          <Link href="/terms" className="text-xs text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors">Terms of Service</Link>
+          <Link href="/privacy" className="text-xs text-[#A78BFA] hover:text-[#c4b5fd] underline underline-offset-2 transition-colors">Privacy Policy</Link>
+          <Link href="/terms" className="text-xs text-[#A78BFA] hover:text-[#c4b5fd] underline underline-offset-2 transition-colors">Terms of Service</Link>
         </div>
       </StepCard>
 
       {/* Step 6: Try It With Demo Data */}
-      <div className="relative rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/[0.08] to-blue-500/[0.06] backdrop-blur-xl overflow-hidden ring-1 ring-violet-500/10">
+      <div className="relative rounded-2xl border border-[#6366F1]/30 bg-gradient-to-br from-[#6366F1]/[0.08] to-[#A78BFA]/[0.06] backdrop-blur-xl overflow-hidden ring-1 ring-[#6366F1]/10">
         {/* Step number accent */}
-        <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-violet-400 to-blue-500 rounded-l-2xl" />
+        <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#6366F1] to-[#A78BFA] rounded-l-2xl" />
         <div className="p-5 sm:p-6">
           <div className="flex items-center gap-3 mb-4">
-            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-violet-500/25 text-violet-300 text-sm font-bold flex items-center justify-center">
+            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[#6366F1]/25 text-[#A78BFA] text-sm font-bold flex items-center justify-center">
               6
             </span>
             <h2 className="text-lg font-semibold text-white">Try It Free — No Account Required</h2>
-            <span className="ml-auto flex-shrink-0 text-[11px] font-semibold text-violet-300 bg-violet-500/15 border border-violet-500/25 px-2 py-0.5 rounded-full">
+            <span className="ml-auto flex-shrink-0 text-[11px] font-semibold text-[#A78BFA] bg-[#6366F1]/15 border border-[#6366F1]/25 px-2 py-0.5 rounded-full">
               Start here
             </span>
           </div>
@@ -282,7 +282,7 @@ export default function DemoWalkthroughPage() {
           <div className="space-y-3">
             <Link
               href="/chat/guest"
-              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-blue-500 to-violet-500 text-white text-sm font-semibold hover:from-blue-400 hover:to-violet-400 shadow-lg shadow-violet-500/25 transition-all"
+              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold hover:from-[#4f52d9] hover:to-[#9068f5] shadow-lg shadow-[#6366F1]/25 transition-all"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
@@ -297,14 +297,14 @@ export default function DemoWalkthroughPage() {
       </div>
 
       {/* Final CTA */}
-      <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/10 to-blue-500/10 p-6 text-center space-y-4">
+      <div className="rounded-2xl border border-[#6366F1]/20 bg-gradient-to-br from-[#6366F1]/10 to-[#A78BFA]/[0.07] p-6 text-center space-y-4">
         <h3 className="text-xl font-bold text-white">Ready to get started?</h3>
         <p className="text-sm text-white/60 max-w-md mx-auto">
           Join cancer patients and caregivers using CareCompanion to simplify their treatment journey. Free forever.
         </p>
         <Link
           href="/login"
-          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-violet-500 text-white text-sm font-semibold hover:from-blue-400 hover:to-violet-400 transition-all"
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold hover:from-[#4f52d9] hover:to-[#9068f5] transition-all"
         >
           Start for free
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">

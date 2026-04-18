@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 export function LoginForm({ initialError, mode }: { initialError?: string; mode?: string }) {
@@ -8,6 +8,12 @@ export function LoginForm({ initialError, mode }: { initialError?: string; mode?
   const [showConsentError, setShowConsentError] = useState(false)
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState<'google' | 'email' | null>(null)
+
+  useEffect(() => {
+    const handlePageShow = () => setLoading(null)
+    window.addEventListener('pageshow', handlePageShow)
+    return () => window.removeEventListener('pageshow', handlePageShow)
+  }, [])
 
   // Sign-up requires explicit mode=signup; everything else (including default) is sign-in
   const isSignIn = mode !== 'signup'

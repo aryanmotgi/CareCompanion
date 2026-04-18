@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/analytics';
+import { useCsrfToken } from '@/components/CsrfProvider';
 
 interface ExistingProfile {
   id: string;
@@ -86,6 +87,7 @@ const TOTAL_STEPS = 6;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function OnboardingWizard({ userName, userEmail, userAvatar, existingProfileId, existingProfile }: OnboardingWizardProps) {
   const router = useRouter();
+  const csrfToken = useCsrfToken();
 
   const getInitialStep = () => {
     if (typeof window !== 'undefined') {
@@ -140,7 +142,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
     try {
       const res = await fetch('/api/records/profile', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
         body: JSON.stringify({
           patient_name: role === 'patient' ? (firstName || 'Me') : patientName.trim() || 'My loved one',
           relationship: role === 'patient' ? 'self' : relationship || null,
@@ -181,7 +183,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
       const method = profileId ? 'PATCH' : 'POST';
       const res = await fetch('/api/records/profile', {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
         body: JSON.stringify(profileId ? { id: profileId, ...stepData } : stepData),
       });
       if (res.ok && !profileId) {
@@ -326,7 +328,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
 
       const res = await fetch('/api/records/profile', {
         method: profileId ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
         body: JSON.stringify(profileData),
       });
 
@@ -606,7 +608,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
               try {
                 await fetch('/api/records/profile', {
                   method: profileId ? 'PATCH' : 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
                   body: JSON.stringify({
                     id: profileId,
                     patient_name: firstName || 'Me',
@@ -798,7 +800,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
 
                   await fetch('/api/records/profile', {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
                     body: JSON.stringify({
                       id: pid,
                       onboarding_completed: true,

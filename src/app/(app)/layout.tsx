@@ -40,8 +40,10 @@ export default async function AppLayout({
       .limit(1)
     dbUser = found as typeof users.$inferSelect
   } catch (e) {
-    console.error('[app/layout] DB lookup failed:', e)
-    redirect('/login?error=db')
+    const msg = e instanceof Error ? e.message : String(e)
+    console.error('[app/layout] DB lookup failed:', msg, e)
+    const encoded = encodeURIComponent(msg.slice(0, 200))
+    redirect(`/login?error=db&detail=${encoded}`)
   }
 
   if (!dbUser) {
@@ -62,8 +64,10 @@ export default async function AppLayout({
         .returning()
       dbUser = inserted
     } catch (e) {
-      console.error('[app/layout] DB insert failed:', e)
-      redirect('/login?error=db')
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('[app/layout] DB insert failed:', msg, e)
+      const encoded = encodeURIComponent(msg.slice(0, 200))
+      redirect(`/login?error=db&detail=${encoded}`)
     }
   }
 

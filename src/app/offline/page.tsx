@@ -13,7 +13,7 @@ const cachedPages = [
 
 export default function OfflinePage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#0C0E1A] px-6 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#080A14] px-6 text-center">
       {/* Logo */}
       <Image
         src="/logo.svg"
@@ -23,7 +23,7 @@ export default function OfflinePage() {
         className="mb-6"
       />
 
-      <h1 className="font-outfit text-2xl font-bold text-white">
+      <h1 className="text-2xl font-bold text-white">
         You&apos;re offline
       </h1>
 

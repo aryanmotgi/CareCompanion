@@ -135,8 +135,14 @@ export default function TermsOfService() {
                   { status: 'warn', text: 'May make mistakes — always verify important medical information with your care team' },
                 ].map((item, i) => (
                   <div key={i} className={`flex items-start gap-2 p-2.5 rounded-lg border ${item.status === 'never' ? 'bg-red-500/[0.04] border-red-500/10' : item.status === 'always' ? 'bg-emerald-500/[0.04] border-emerald-500/10' : 'bg-amber-500/[0.04] border-amber-500/10'}`}>
-                    <span className={`font-bold text-xs mt-0.5 ${item.status === 'never' ? 'text-red-400' : item.status === 'always' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                      {item.status === 'never' ? '✗' : item.status === 'always' ? '✓' : '⚠'}
+                    <span className={`flex-shrink-0 mt-0.5 ${item.status === 'never' ? 'text-red-400' : item.status === 'always' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {item.status === 'never' ? (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                      ) : item.status === 'always' ? (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                      ) : (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                      )}
                     </span>
                     <span>{item.status === 'never' ? <><strong className="text-red-400">Never</strong> {item.text.toLowerCase()}</> : item.status === 'always' ? <><strong className="text-emerald-400">Always</strong> {item.text.toLowerCase()}</> : item.text}</span>
                   </div>

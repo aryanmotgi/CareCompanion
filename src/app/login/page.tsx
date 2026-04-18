@@ -1,10 +1,10 @@
 import { PublicNav } from '@/components/PublicNav';
 import { LoginForm } from '@/components/LoginForm';
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; mode?: string }> }) {
-  const { error, mode = 'signin' } = await searchParams
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; mode?: string; detail?: string }> }) {
+  const { error, mode = 'signin', detail } = await searchParams
   const errorMsg = error === 'db'
-    ? 'Database is temporarily unavailable. Please try again in a moment.'
+    ? `Database is temporarily unavailable. Please try again in a moment.${detail ? ` (${detail})` : ''}`
     : error === 'consent_required'
     ? 'You must agree to the Terms and Privacy Policy to continue.'
     : error
@@ -22,7 +22,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       </div>
 
       {/* Subtle dot grid */}
-      <div className="pointer-events-none absolute inset-0 opacity-[0.15]" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.4) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.35]" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
 
       {/* Fade-in vignette edges */}
       <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 40%, #05060F 100%)' }} />
