@@ -7,6 +7,7 @@ export default function ConsentPage() {
   const router = useRouter()
   const [checked, setChecked] = useState(false)
   const [showError, setShowError] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function handleAccept() {
@@ -16,6 +17,7 @@ export default function ConsentPage() {
     }
 
     setLoading(true)
+    setSubmitError(null)
     try {
       // Part 5 analytics: track structural event only — no health data fields
       try {
@@ -23,12 +25,19 @@ export default function ConsentPage() {
         track('consent_accepted')
       } catch {}
 
-      const res = await fetch('/api/consent/accept', { method: 'POST' })
+      const csrfMatch = document.cookie.match(/(^| )cc-csrf-token=([^;]+)/)
+      const csrfToken = csrfMatch ? csrfMatch[2] : ''
+
+      const res = await fetch('/api/consent/accept', {
+        method: 'POST',
+        headers: { 'x-csrf-token': csrfToken },
+      })
       if (!res.ok) throw new Error('Failed to record consent')
 
       router.replace('/dashboard')
     } catch (e) {
       console.error('[consent] accept failed:', e)
+      setSubmitError('Something went wrong. Please try again.')
       setLoading(false)
     }
   }
@@ -129,6 +138,9 @@ export default function ConsentPage() {
 
           {/* Actions */}
           <div className="flex flex-col gap-3 pt-1">
+            {submitError && (
+              <p role="alert" className="text-xs text-red-400 text-center">{submitError}</p>
+            )}
             <button
               onClick={handleAccept}
               disabled={loading}
