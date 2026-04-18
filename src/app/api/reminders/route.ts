@@ -1,5 +1,6 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess, ApiErrors } from '@/lib/api-response';
+import { validateCsrf } from '@/lib/csrf';
 import { db } from '@/lib/db';
 import { medicationReminders, reminderLogs } from '@/lib/db/schema';
 import { and, eq, gte, asc } from 'drizzle-orm';
@@ -45,6 +46,9 @@ export async function GET() {
 
 // POST — create or update a medication reminder
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   const { success } = limiter.check(ip);
   if (!success) {

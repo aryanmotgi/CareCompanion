@@ -1,5 +1,6 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
+import { validateCsrf } from '@/lib/csrf';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { db } from '@/lib/db';
 import { careProfiles, medications } from '@/lib/db/schema';
@@ -22,6 +23,9 @@ const ImportSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   try {
     const { user, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;

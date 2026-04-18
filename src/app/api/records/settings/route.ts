@@ -3,9 +3,13 @@ import { userSettings } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
+import { validateCsrf } from '@/lib/csrf';
 
 // PATCH — update user settings fields
 export async function PATCH(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return error;
 

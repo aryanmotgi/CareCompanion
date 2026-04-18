@@ -14,6 +14,7 @@
  * Add ?reseed_reminders=true to re-run medication reminder seeding for an
  * existing reviewer account (e.g. provisioned before reminders were added).
  */
+import { randomBytes } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   CognitoIdentityProviderClient,
@@ -39,7 +40,6 @@ import {
 import { eq, inArray } from 'drizzle-orm';
 
 const REVIEWER_EMAIL = 'reviewer@carecompanionai.org';
-const REVIEWER_PASSWORD = 'OneUpReview2026!';
 
 const cognito = new CognitoIdentityProviderClient({
   region: process.env.COGNITO_REGION || 'us-east-1',
@@ -112,6 +112,10 @@ export async function POST(req: NextRequest) {
   }
 
   // Create Cognito user if not exists
+  // Password is generated at provision time and returned once in the response.
+  // Store it securely — it cannot be recovered after this call.
+  const generatedPassword = randomBytes(16).toString('base64url') + 'Aa1!';
+
   if (!cognitoSub) {
     try {
       const createRes = await cognito.send(new AdminCreateUserCommand({
@@ -123,7 +127,7 @@ export async function POST(req: NextRequest) {
           { Name: 'email_verified', Value: 'true' },
           { Name: 'custom:display_name', Value: 'Reviewer' },
         ],
-        TemporaryPassword: REVIEWER_PASSWORD,
+        TemporaryPassword: generatedPassword,
       }));
 
       cognitoSub = createRes.User?.Attributes?.find((a) => a.Name === 'sub')?.Value;
@@ -132,7 +136,7 @@ export async function POST(req: NextRequest) {
       await cognito.send(new AdminSetUserPasswordCommand({
         UserPoolId: USER_POOL_ID,
         Username: REVIEWER_EMAIL,
-        Password: REVIEWER_PASSWORD,
+        Password: generatedPassword,
         Permanent: true,
       }));
     } catch (err) {
@@ -179,6 +183,7 @@ export async function POST(req: NextRequest) {
     status: 'created',
     email: REVIEWER_EMAIL,
     userId: newUser.id,
+    temporaryPassword: generatedPassword, // Only returned once at creation — store securely
   });
 }
 

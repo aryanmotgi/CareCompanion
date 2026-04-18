@@ -1,5 +1,6 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { validateCsrf } from '@/lib/csrf'
 import { db } from '@/lib/db'
 import { careProfiles, medications, appointments, labResults } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -30,6 +31,9 @@ const importSchema = z.object({
 })
 
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req)
+  if (!valid) return csrfError!
+
   try {
     const { user, error: authError } = await getAuthenticatedUser()
     if (authError) return authError

@@ -10,6 +10,7 @@ import { db } from '@/lib/db'
 import { userSettings } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { validateCsrf } from '@/lib/csrf'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 20 })
 
@@ -57,6 +58,9 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req)
+  if (!valid) return csrfError!
+
   const ip = req.headers.get('x-forwarded-for') || 'unknown'
   const { success } = limiter.check(ip)
   if (!success) return apiError('Too many requests', 429)

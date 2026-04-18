@@ -1,5 +1,6 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess, ApiErrors } from '@/lib/api-response';
+import { validateCsrf } from '@/lib/csrf';
 import { rateLimit } from '@/lib/rate-limit';
 import { db } from '@/lib/db';
 import { careProfiles, symptomEntries } from '@/lib/db/schema';
@@ -23,6 +24,9 @@ const DeleteSchema = z.object({
 
 // POST — save or update today's symptom entry
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   const { success } = limiter.check(ip);
   if (!success) return ApiErrors.rateLimited();

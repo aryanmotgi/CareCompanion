@@ -1,9 +1,13 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { validateCsrf } from '@/lib/csrf';
 import { db } from '@/lib/db';
 import { connectedApps, careProfiles, appointments } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
 
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   const body = await req.json();
   const { user_id } = body;
 

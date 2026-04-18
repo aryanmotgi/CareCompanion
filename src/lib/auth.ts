@@ -41,7 +41,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         },
       },
       userinfo: `${COGNITO_DOMAIN}/oauth2/userInfo`,
-      checks: [],
+      checks: ['state'],
       profile(profile: Record<string, string>) {
         return {
           id: profile.sub,

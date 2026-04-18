@@ -3,6 +3,7 @@
  * POST { table, id } — brings back a deleted record.
  */
 import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { validateCsrf } from '@/lib/csrf'
 import { db } from '@/lib/db'
 import { careProfiles } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -19,6 +20,9 @@ const RestoreSchema = z.object({
 })
 
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req)
+  if (!valid) return csrfError!
+
   const ip = req.headers.get('x-forwarded-for') || 'unknown'
   const { success } = limiter.check(ip)
   if (!success) return ApiErrors.rateLimited()

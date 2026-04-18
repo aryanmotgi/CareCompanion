@@ -3,6 +3,7 @@ import { careProfiles } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
+import { validateCsrf } from '@/lib/csrf';
 
 // GET — fetch the current user's care profile
 export async function GET() {
@@ -21,6 +22,9 @@ export async function GET() {
 
 // PATCH — update care profile fields
 export async function PATCH(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return error;
 
@@ -71,6 +75,9 @@ export async function PATCH(req: Request) {
 
 // POST — create a care profile
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return error;
 

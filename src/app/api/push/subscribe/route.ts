@@ -4,8 +4,12 @@ import { pushSubscriptions } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { apiSuccess, apiError } from '@/lib/api-response';
+import { validateCsrf } from '@/lib/csrf';
 
 export async function POST(req: NextRequest) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   const { user, error } = await getAuthenticatedUser();
   if (error) return error;
 

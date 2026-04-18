@@ -1,5 +1,6 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
+import { validateCsrf } from '@/lib/csrf';
 import { rateLimit } from '@/lib/rate-limit';
 import { db } from '@/lib/db';
 import { careProfiles, medications, labResults, insurance, appointments, claims } from '@/lib/db/schema';
@@ -59,6 +60,9 @@ const ScanResultsSchema = z.object({
 );
 
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   const { success } = limiter.check(ip);
   if (!success) {
