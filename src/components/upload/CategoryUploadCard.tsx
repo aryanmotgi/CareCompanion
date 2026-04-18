@@ -167,7 +167,6 @@ export function CategoryUploadCard({
   const [state, setState] = useState<CardState>('idle');
   const [preview, setPreview] = useState<string | null>(null);
   const [items, setItems] = useState<Record<string, string>[]>([]);
-  const [_editing, setEditing] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -179,7 +178,6 @@ export function CategoryUploadCard({
     e.target.value = '';
 
     setScanError(null);
-    setEditing(false);
 
     const reader = new FileReader();
     reader.onload = () => setPreview(reader.result as string);
@@ -236,7 +234,6 @@ export function CategoryUploadCard({
     setState('idle');
     setPreview(null);
     setItems([]);
-    setEditing(false);
     setScanError(null);
     setShowManual(false);
   };
