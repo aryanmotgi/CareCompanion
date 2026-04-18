@@ -7,14 +7,25 @@ test.describe('Production 24/7 Monitor', () => {
     test.skip(!process.env.PLAYWRIGHT_BASE_URL, 'This test suite only runs against a deployed environment.')
   })
 
-  test.beforeEach(async ({ page }) => {
-    const email = process.env.E2E_MONITOR_EMAIL || 'test_automation@example.com'
-    const password = process.env.E2E_MONITOR_PASSWORD || 'password123'
-    await page.goto('/login')
-    await page.locator('input[type="email"]').fill(email)
-    await page.locator('input[type="password"]').fill(password)
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    // Allow any onboarding redirects to settle
+  test.beforeEach(async ({ page, request }) => {
+    const email = process.env.E2E_MONITOR_EMAIL!
+    const password = process.env.E2E_MONITOR_PASSWORD!
+    const e2eSecret = process.env.E2E_AUTH_SECRET!
+    const baseUrl = process.env.PLAYWRIGHT_BASE_URL!
+
+    // Authenticate via the dedicated E2E endpoint, which calls Cognito's
+    // USER_PASSWORD_AUTH and sets a NextAuth session cookie directly.
+    // This bypasses the OAuth redirect UI flow that cannot be automated.
+    const res = await request.post(`${baseUrl}/api/e2e/signin`, {
+      data: { email, password, secret: e2eSecret },
+    })
+    if (!res.ok()) {
+      throw new Error(`E2E signin failed: ${res.status()} ${await res.text()}`)
+    }
+
+    // Navigate to trigger middleware/session validation and confirm we are
+    // not redirected back to the login page.
+    await page.goto('/dashboard')
     await expect(page).not.toHaveURL(/.*\/login/, { timeout: 15000 })
   })
 
