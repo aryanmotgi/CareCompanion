@@ -37,7 +37,7 @@ export function PublicNav() {
 
         {/* Auth */}
         <div className="flex items-center gap-3">
-          <Link href="/login" className="px-4 py-2 rounded-lg text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-all">Log In</Link>
+          <Link href="/login?mode=signin" className="px-4 py-2 rounded-lg text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-all">Log In</Link>
           <Link href="/login" className="px-5 py-2 rounded-lg bg-violet-600 text-white text-sm font-semibold hover:bg-violet-500 transition-colors shadow-lg shadow-violet-600/20">Get Started</Link>
         </div>
       </div>

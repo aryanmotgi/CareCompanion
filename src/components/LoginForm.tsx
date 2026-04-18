@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 
 export function LoginForm({ initialError, mode }: { initialError?: string; mode?: string }) {
   const [consentChecked, setConsentChecked] = useState(false)
@@ -105,7 +106,9 @@ export function LoginForm({ initialError, mode }: { initialError?: string; mode?
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
                 </svg>
               )}
-              {loading ? 'Signing in...' : 'Continue with CareCompanion'}
+              {loading
+                ? (isSignIn ? 'Signing in...' : 'Creating account...')
+                : (isSignIn ? 'Sign In' : 'Get Started Free')}
             </span>
           </button>
         </form>
@@ -126,24 +129,59 @@ export function LoginForm({ initialError, mode }: { initialError?: string; mode?
           </div>
         )}
 
-        {/* Subtext */}
-        <p className="mt-4 text-center text-[11px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
-          Sign in securely — protected by AWS Cognito
-        </p>
-
         {/* Trust badges */}
         <div className="mt-4 flex items-center justify-center gap-5">
           {[
-            { icon: '🔒', label: 'HIPAA-compliant' },
-            { icon: '🚫', label: 'No ads, ever' },
-            { icon: '🗑️', label: 'Delete anytime' },
+            {
+              icon: (
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                </svg>
+              ),
+              label: 'HIPAA-compliant',
+            },
+            {
+              icon: (
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+              ),
+              label: 'No ads, ever',
+            },
+            {
+              icon: (
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+              ),
+              label: 'Your data, always',
+            },
           ].map((badge) => (
-            <div key={badge.label} className="flex items-center gap-1.5">
-              <span className="text-xs" aria-hidden="true">{badge.icon}</span>
-              <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.2)' }}>{badge.label}</span>
+            <div key={badge.label} className="flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
+              {badge.icon}
+              <span className="text-[10px]">{badge.label}</span>
             </div>
           ))}
         </div>
+
+        {/* Mode toggle */}
+        <p className="mt-4 text-center text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
+          {isSignIn ? (
+            <>
+              New to CareCompanion?{' '}
+              <Link href="/login" className="underline underline-offset-2 transition-colors hover:text-white/50" style={{ color: 'rgba(167,139,250,0.6)' }}>
+                Create an account
+              </Link>
+            </>
+          ) : (
+            <>
+              Already have an account?{' '}
+              <Link href="/login?mode=signin" className="underline underline-offset-2 transition-colors hover:text-white/50" style={{ color: 'rgba(167,139,250,0.6)' }}>
+                Sign in
+              </Link>
+            </>
+          )}
+        </p>
       </div>
 
       {/* Demo link */}
