@@ -69,6 +69,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'AUTH_SECRET not set' }, { status: 500 })
     }
 
+    // NextAuth v5 derives the encryption key from (secret + salt) where
+    // salt === the cookie name.  The cookie name depends on whether the site
+    // is served over HTTPS:
+    //   HTTPS (production): __Secure-authjs.session-token
+    //   HTTP  (local/test): authjs.session-token
+    // The salt used in encode() MUST match the cookie name so that NextAuth
+    // can decrypt the token when it reads the cookie on subsequent requests.
+    const isProd = process.env.NODE_ENV === 'production'
+    const cookieName = isProd
+      ? '__Secure-authjs.session-token'
+      : 'authjs.session-token'
+
     // Build a NextAuth v5-compatible session JWT
     const token = await encode({
       token: {
@@ -80,17 +92,11 @@ export async function POST(req: Request) {
         isDemo: false,
       },
       secret: authSecret,
-      // encode() expects salt when NextAuth v5 uses the default "cookie" strategy.
-      // The salt NextAuth uses is the cookie name.
-      salt: 'authjs.session-token',
+      salt: cookieName,
       maxAge: 60 * 60, // 1 hour
     })
 
     const res = NextResponse.json({ ok: true })
-    // NextAuth v5 uses "authjs.session-token" on HTTP and
-    // "__Secure-authjs.session-token" on HTTPS (production).
-    const isProd = process.env.NODE_ENV === 'production'
-    const cookieName = isProd ? '__Secure-authjs.session-token' : 'authjs.session-token'
     res.cookies.set(cookieName, token, {
       httpOnly: true,
       secure: isProd,
