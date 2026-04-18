@@ -9,6 +9,7 @@ const PUBLIC_PATHS = [
   '/chat/guest',
   '/api/auth',       // Auth.js callback routes — prefix covers /api/auth/callback/cognito etc.
   '/api/chat/guest', // Guest chat API
+  '/api/e2e',        // E2E production monitor auth (gated by E2E_AUTH_SECRET, not session)
   '/demo-walkthrough',
   '/about',
   '/privacy',
