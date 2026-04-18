@@ -35,6 +35,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Removing id_token forces Auth.js to use the userinfo endpoint for the profile instead.
         async conform(response: Response) {
           const json = await response.json() as Record<string, unknown>
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { id_token: _removed, ...tokens } = json
           return Response.json(tokens)
         },
