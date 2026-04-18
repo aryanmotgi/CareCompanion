@@ -2,7 +2,7 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
 import { routeMessage } from './router';
 import { SPECIALISTS, type SpecialistType } from './specialists';
-import { checkRateLimit } from '@/lib/rate-limit';
+import { rateLimit } from '@/lib/rate-limit';
 
 interface PatientContext {
   profile: Record<string, unknown> | null;
@@ -51,8 +51,9 @@ export async function orchestrate(
 
   // Step 2.5: Rate limit specialist calls (max 10 per user per minute)
   const agentRateKey = `agent:${userId}`
-  const agentRateResult = checkRateLimit(agentRateKey, { maxRequests: 10, windowMs: 60000 })
-  if (!agentRateResult.allowed) {
+  const agentLimiter = rateLimit({ interval: 60000, maxRequests: 10 })
+  const agentRateResult = await agentLimiter.check(agentRateKey)
+  if (!agentRateResult.success) {
     console.warn(`[orchestrator] Agent rate limit hit for user ${userId}`)
     return {
       specialistsUsed: [],

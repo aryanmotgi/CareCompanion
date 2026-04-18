@@ -16,7 +16,7 @@ const limiter = rateLimit({ interval: 60000, maxRequests: 10 })
 
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown'
-  const { success } = limiter.check(ip)
+  const { success } = await limiter.check(ip)
   if (!success) return ApiErrors.rateLimited()
 
   try {

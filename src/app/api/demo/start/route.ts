@@ -49,7 +49,7 @@ const USER_POOL_ID = process.env.COGNITO_USER_POOL_ID!;
 
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
-  const { success: rateOk } = limiter.check(ip);
+  const { success: rateOk } = await limiter.check(ip);
   if (!rateOk) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
   }

@@ -50,7 +50,7 @@ export async function POST(req: Request) {
   if (!valid) return csrfError!;
 
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
-  const { success } = limiter.check(ip);
+  const { success } = await limiter.check(ip);
   if (!success) {
     return ApiErrors.rateLimited();
   }
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
 // DELETE — remove a medication reminder
 export async function DELETE(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
-  const { success: rlSuccess } = limiter.check(ip);
+  const { success: rlSuccess } = await limiter.check(ip);
   if (!rlSuccess) {
     return ApiErrors.rateLimited();
   }

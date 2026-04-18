@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   const { user: dbUser, error: authError } = await getAuthenticatedUser();
   if (authError) return authError;
 
-  const { success } = limiter.check(`change-password:${dbUser!.id}`);
+  const { success } = await limiter.check(`change-password:${dbUser!.id}`);
   if (!success) {
     return NextResponse.json({ error: 'Too many password change attempts. Please try again later.' }, { status: 429 });
   }

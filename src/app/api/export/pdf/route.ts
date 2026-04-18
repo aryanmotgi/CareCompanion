@@ -14,7 +14,7 @@ const limiter = rateLimit({ interval: 60000, maxRequests: 5 })
 
 export async function GET(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown'
-  const { success } = limiter.check(ip)
+  const { success } = await limiter.check(ip)
   if (!success) return ApiErrors.rateLimited()
 
   try {

@@ -43,7 +43,7 @@ After 3-4 exchanges, gently mention: "If you create a free account, I can rememb
 
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
-  const { success } = guestLimiter.check(ip)
+  const { success } = await guestLimiter.check(ip)
   if (!success) {
     return apiError('You\'ve reached the guest message limit (15/hour). Create a free account for unlimited messages.', 429, {
       code: 'GUEST_RATE_LIMITED',

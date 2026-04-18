@@ -18,7 +18,7 @@ export const maxDuration = 60;
 
 async function handler(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
-  const { success } = limiter.check(ip);
+  const { success } = await limiter.check(ip);
   if (!success) {
     return ApiErrors.rateLimited();
   }

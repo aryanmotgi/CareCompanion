@@ -1,11 +1,16 @@
 /**
- * Simple in-memory rate limiter for API routes.
- * Uses a sliding window approach with per-key token buckets.
+ * Distributed rate limiter using Upstash Redis (sliding window).
+ * Falls back to in-memory for local dev when KV env vars are absent.
  *
- * Note: This is per-instance. In a multi-instance deployment (e.g., Vercel),
- * each serverless function instance has its own bucket. For stricter limits,
- * use Redis or Upstash.
+ * All API routes call `await limiter.check(key)` — async by design so the
+ * same interface works with both Redis and the in-memory fallback.
  */
+import { Ratelimit } from '@upstash/ratelimit'
+import { Redis } from '@upstash/redis'
+
+// ---------------------------------------------------------------------------
+// In-memory fallback (local dev / CI without Redis)
+// ---------------------------------------------------------------------------
 
 interface RateLimitEntry {
   tokens: number
@@ -13,15 +18,11 @@ interface RateLimitEntry {
 }
 
 interface RateLimitConfig {
-  /** Max requests allowed in the window */
   maxRequests: number
-  /** Window duration in milliseconds */
   windowMs: number
 }
 
 const buckets = new Map<string, RateLimitEntry>()
-
-// Clean up stale entries every 5 minutes to prevent memory leaks
 const CLEANUP_INTERVAL = 5 * 60 * 1000
 let lastCleanup = Date.now()
 
@@ -29,82 +30,81 @@ function cleanup(windowMs: number) {
   const now = Date.now()
   if (now - lastCleanup < CLEANUP_INTERVAL) return
   lastCleanup = now
-
   buckets.forEach((entry, key) => {
-    if (now - entry.lastRefill > windowMs * 2) {
-      buckets.delete(key)
-    }
+    if (now - entry.lastRefill > windowMs * 2) buckets.delete(key)
   })
 }
 
-/**
- * Check if a request is within rate limits.
- * Returns { allowed: true } or { allowed: false, retryAfterMs }.
- */
 export function checkRateLimit(
   key: string,
   config: RateLimitConfig
-): { allowed: true } | { allowed: false; retryAfterMs: number } {
+): { allowed: true; remaining: number } | { allowed: false; remaining: 0; retryAfterMs: number } {
   const now = Date.now()
   cleanup(config.windowMs)
 
   let entry = buckets.get(key)
-
   if (!entry) {
     entry = { tokens: config.maxRequests - 1, lastRefill: now }
     buckets.set(key, entry)
-    return { allowed: true }
+    return { allowed: true, remaining: config.maxRequests - 1 }
   }
 
-  // Refill tokens based on elapsed time
   const elapsed = now - entry.lastRefill
   const refillRate = config.maxRequests / config.windowMs
-  const tokensToAdd = elapsed * refillRate
-  entry.tokens = Math.min(config.maxRequests, entry.tokens + tokensToAdd)
+  entry.tokens = Math.min(config.maxRequests, entry.tokens + elapsed * refillRate)
   entry.lastRefill = now
 
   if (entry.tokens >= 1) {
     entry.tokens -= 1
-    return { allowed: true }
+    return { allowed: true, remaining: Math.floor(entry.tokens) }
   }
-
-  // Calculate when 1 token will be available
   const retryAfterMs = Math.ceil((1 - entry.tokens) / refillRate)
-  return { allowed: false, retryAfterMs }
+  return { allowed: false, remaining: 0, retryAfterMs }
 }
 
-/**
- * Reset rate limit state (useful for testing).
- */
-export function resetRateLimits() {
-  buckets.clear()
-}
+// ---------------------------------------------------------------------------
+// Factory — returns an object with an async `check` method
+// ---------------------------------------------------------------------------
 
-/**
- * Factory that returns a limiter with a `check` method.
- * Compatible with the pattern:
- *   const limiter = rateLimit({ interval, maxRequests });
- *   const { success, remaining } = limiter.check(token);
- */
 export function rateLimit({
   interval,
   maxRequests,
+  uniqueTokenPerInterval: _unusedToken = undefined, // eslint-disable-line @typescript-eslint/no-unused-vars
 }: {
   interval: number
   uniqueTokenPerInterval?: number
   maxRequests: number
 }) {
-  return {
-    check(token: string): { success: boolean; remaining: number } {
-      const result = checkRateLimit(token, {
-        maxRequests,
-        windowMs: interval,
+  const hasRedis =
+    typeof process !== 'undefined' &&
+    !!process.env.KV_REST_API_URL &&
+    !!process.env.KV_REST_API_TOKEN
+
+  const windowSecs = Math.max(1, Math.ceil(interval / 1000))
+
+  const redisLimiter = hasRedis
+    ? new Ratelimit({
+        redis: Redis.fromEnv(),
+        limiter: Ratelimit.slidingWindow(maxRequests, `${windowSecs} s`),
+        prefix: 'cc:rl',
       })
-      if (result.allowed) {
-        const entry = buckets.get(token)
-        return { success: true, remaining: entry ? Math.floor(entry.tokens) : maxRequests - 1 }
+    : null
+
+  return {
+    async check(token: string): Promise<{ success: boolean; remaining: number }> {
+      if (redisLimiter) {
+        const { success, remaining } = await redisLimiter.limit(token)
+        return { success, remaining }
       }
-      return { success: false, remaining: 0 }
+
+      // In-memory fallback
+      const result = checkRateLimit(token, { maxRequests, windowMs: interval })
+      return { success: result.allowed, remaining: result.remaining }
     },
   }
+}
+
+/** Reset in-memory state (test helper — no-op against Redis). */
+export function resetRateLimits() {
+  buckets.clear()
 }

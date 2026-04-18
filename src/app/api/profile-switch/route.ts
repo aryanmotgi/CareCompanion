@@ -17,7 +17,7 @@ const SwitchSchema = z.object({
 // POST — switch active care profile
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
-  const { success } = limiter.check(ip);
+  const { success } = await limiter.check(ip);
   if (!success) {
     return apiError('Too many requests', 429);
   }
