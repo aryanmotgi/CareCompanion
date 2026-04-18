@@ -32,7 +32,6 @@ export async function GET() {
 
   const cronSchedule = [
     { name: 'Data Sync', schedule: 'Daily at 6:00 AM', path: '/api/cron/sync' },
-    { name: 'Full Sync', schedule: 'Daily at 8:00 AM', path: '/api/sync/all' },
     { name: 'Notifications', schedule: 'Daily at 9:00 AM', path: '/api/notifications/generate' },
     { name: 'Reminders', schedule: 'Daily at 10:00 AM', path: '/api/reminders/check' },
     { name: 'Data Cleanup', schedule: 'Weekly (Sunday 3 AM)', path: '/api/cron/purge' },

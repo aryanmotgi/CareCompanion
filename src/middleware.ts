@@ -1,11 +1,30 @@
 import { auth } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 
+// Everything NOT in this list requires authentication.
+// Add new public routes here — never forget to protect something new.
+const PUBLIC_PATHS = [
+  '/',               // Landing page (signOut returns here after Cognito logout)
+  '/login',
+  '/chat/guest',
+  '/api/auth',       // Auth.js callback routes — prefix covers /api/auth/callback/cognito etc.
+  '/api/chat/guest', // Guest chat API
+  '/demo-walkthrough',
+  '/about',
+  '/privacy',
+  '/terms',
+  '/contact',
+  '/robots.txt',
+  '/sitemap.xml',
+  '/favicon.ico',
+]
+
 export default auth((req) => {
   const { pathname } = req.nextUrl
 
-  const publicPaths = ['/login', '/chat/guest', '/api/chat/guest', '/demo-walkthrough', '/about', '/privacy', '/terms']
-  const isPublic = publicPaths.some((p) => pathname === p || pathname.startsWith(p + '/'))
+  const isPublic = PUBLIC_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + '/')
+  )
 
   if (!req.auth && !isPublic) {
     const url = req.nextUrl.clone()
@@ -42,5 +61,7 @@ export default auth((req) => {
 })
 
 export const config = {
-  matcher: ['/chat', '/profile', '/setup', '/login', '/settings', '/dashboard', '/care', '/medications', '/appointments', '/scans', '/connect', '/manual-setup', '/onboarding', '/consent', '/api/chat', '/api/chat/guest', '/api/consent', '/chat/guest'],
+  // Catch everything except Next.js internals and static assets.
+  // PUBLIC_PATHS list above handles allow/deny — not this matcher.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.svg$|.*\\.ico$|.*\\.webp$).*)'],
 }

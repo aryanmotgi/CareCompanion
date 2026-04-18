@@ -19,8 +19,8 @@ const PRIORITY_CARDS: Record<string, ActionCard> = {
 };
 
 const DEFAULT_CARDS: ActionCard[] = [
-  { icon: '🔗', label: 'Connect health records', href: '/connect' },
   { icon: '🤖', label: 'Ask the AI',              href: '/chat' },
+  { icon: '📋', label: 'Add medications',          href: '/medications' },
 ];
 
 export function OnboardingWelcomeBanner() {

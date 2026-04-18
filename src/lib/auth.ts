@@ -100,7 +100,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     error: '/login',
   },
   trustHost: true,
-  debug: true,
+  debug: process.env.NODE_ENV !== 'production',
   logger: {
     error(error) {
       const e = error as Error & { cause?: unknown }

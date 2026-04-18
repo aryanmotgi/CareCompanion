@@ -14,7 +14,6 @@ interface ProfileCompletenessProps {
   medicationCount: number
   doctorCount: number
   appointmentCount: number
-  connectedApps: number
   /** When rendered on the profile page, never auto-dismiss */
   alwaysShow?: boolean
 }
@@ -41,7 +40,6 @@ export function ProfileCompleteness({
   medicationCount,
   doctorCount,
   appointmentCount,
-  connectedApps,
   alwaysShow = false,
 }: ProfileCompletenessProps) {
   const [dismissed, setDismissed] = useState(false)
@@ -192,24 +190,10 @@ export function ProfileCompleteness({
         </svg>
       ),
     },
-    {
-      key: 'health_records',
-      label: 'Connect health records',
-      weight: 5,
-      filled: connectedApps > 0,
-      action: 'Connect',
-      href: '/settings',
-      icon: (
-        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.856-2.07a4.5 4.5 0 00-1.242-7.244l-4.5-4.5a4.5 4.5 0 00-6.364 6.364L4.343 8.07" />
-        </svg>
-      ),
-    },
   ], [
     patientName, cancerType, cancerStage, treatmentPhase,
     medicationCount, doctorCount, appointmentCount,
     allergies, conditions, emergencyContactName, emergencyContactPhone,
-    connectedApps,
   ])
 
   const percentage = useMemo(() => {

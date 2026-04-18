@@ -3,9 +3,9 @@ import dynamic from 'next/dynamic'
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db';
-import { users, careProfiles, connectedApps, medications, appointments, labResults, documents } from '@/lib/db/schema';
+import { users, careProfiles, medications, appointments, labResults, documents } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
-import type { ConnectedApp, Medication, Appointment, LabResult, Document } from '@/lib/types'
+import type { Medication, Appointment, LabResult, Document } from '@/lib/types'
 
 const RecordsView = dynamic(() => import('@/components/RecordsView').then(m => m.RecordsView))
 
@@ -26,8 +26,7 @@ async function RecordsContent() {
     .where(eq(careProfiles.userId, dbUser.id))
     .limit(1);
 
-  const [apps, meds, appts, labs, docs] = await Promise.all([
-    db.select().from(connectedApps).where(eq(connectedApps.userId, dbUser.id)),
+  const [meds, appts, labs, docs] = await Promise.all([
     profile
       ? db.select().from(medications).where(eq(medications.careProfileId, profile.id)).orderBy(desc(medications.createdAt))
       : Promise.resolve([] as Medication[]),
@@ -42,7 +41,6 @@ async function RecordsContent() {
 
   return (
     <RecordsView
-      connectedApps={apps as ConnectedApp[]}
       medications={meds as Medication[]}
       appointments={appts as Appointment[]}
       labResults={labs as LabResult[]}

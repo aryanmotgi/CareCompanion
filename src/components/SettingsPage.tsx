@@ -7,11 +7,10 @@ import { useCsrfToken } from './CsrfProvider'
 import { ThemeToggle } from './ThemeToggle'
 import { ReminderManager } from './ReminderManager'
 import { NotificationPreferences } from './NotificationPreferences'
-import type { UserSettings, ConnectedApp, MedicationReminder, Medication } from '@/lib/types'
+import type { UserSettings, MedicationReminder, Medication } from '@/lib/types'
 
 interface SettingsPageProps {
   settings: UserSettings | null
-  connectedApps: ConnectedApp[]
   medicationReminders?: MedicationReminder[]
   medications?: Medication[]
 }
@@ -62,7 +61,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function SettingsPage({ settings: initialSettings, connectedApps, medicationReminders = [], medications = [] }: SettingsPageProps) {
+export function SettingsPage({ settings: initialSettings, medicationReminders = [], medications = [] }: SettingsPageProps) {
   const router = useRouter()
   const { showToast } = useToast()
   const csrfToken = useCsrfToken()
@@ -214,28 +213,6 @@ export function SettingsPage({ settings: initialSettings, connectedApps, medicat
       <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl overflow-hidden p-4">
         <ReminderManager reminders={medicationReminders} medications={medications} />
       </div>
-
-      <SectionLabel>Connected Accounts</SectionLabel>
-      <SettingsGroup>
-        {connectedApps.length === 0 ? (
-          <SettingsRow
-            label="No accounts connected"
-            description="Connect health systems, insurance, and more"
-            onClick={() => router.push('/connect')}
-          />
-        ) : (
-          connectedApps.map((app) => (
-            <SettingsRow
-              key={app.id}
-              label={app.source}
-              description={app.lastSynced ? `Last synced ${new Date(app.lastSynced).toLocaleDateString()}` : undefined}
-              right={<span className="text-[#10b981] text-xs font-semibold">Connected</span>}
-              onClick={() => router.push('/connect')}
-            />
-          ))
-        )}
-        <SettingsRow label="Manage Connections" onClick={() => router.push('/connect')} />
-      </SettingsGroup>
 
       <SectionLabel>App Preferences</SectionLabel>
       <SettingsGroup>

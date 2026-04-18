@@ -1,7 +1,7 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { apiSuccess, apiError, ApiErrors } from '@/lib/api-response';
 import { db } from '@/lib/db';
-import { careProfiles, medications, appointments, doctors, labResults, insurance, connectedApps, userSettings, notifications } from '@/lib/db/schema';
+import { careProfiles, medications, appointments, doctors, labResults, insurance, userSettings, notifications } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { rateLimit } from '@/lib/rate-limit';
 
@@ -97,16 +97,6 @@ export async function POST(req: Request) {
     }).onConflictDoUpdate({
       target: insurance.userId,
       set: { provider: 'Blue Cross Blue Shield', memberId: 'BCB-882991-04', groupNumber: 'GRP-7420' },
-    });
-
-    // Mark 1upHealth as connected
-    await db.delete(connectedApps).where(and(eq(connectedApps.userId, dbUser!.id), eq(connectedApps.source, '1uphealth')));
-    await db.insert(connectedApps).values({
-      userId: dbUser!.id,
-      source: '1uphealth',
-      accessToken: 'demo-token',
-      lastSynced: new Date(),
-      metadata: { provider_name: '1upHealth', provider_id: '1uphealth', demo: true },
     });
 
     // Upsert user settings

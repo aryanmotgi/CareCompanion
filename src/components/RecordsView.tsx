@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
-import Link from 'next/link'
+import { useState, useMemo } from 'react'
 import { useToast } from '@/components/ToastProvider'
-import type { ConnectedApp, Medication, Appointment, LabResult, Document } from '@/lib/types'
+import type { Medication, Appointment, LabResult, Document } from '@/lib/types'
 
 /* ─── Types ─── */
 
@@ -20,7 +19,6 @@ interface UnifiedRecord {
 }
 
 interface RecordsViewProps {
-  connectedApps: ConnectedApp[]
   medications: Medication[]
   appointments: Appointment[]
   labResults: LabResult[]
@@ -92,27 +90,6 @@ function SearchIcon() {
   )
 }
 
-function SyncIcon({ spinning }: { spinning?: boolean }) {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={spinning ? 'animate-spin' : ''}
-    >
-      <polyline points="23 4 23 10 17 10" />
-      <polyline points="1 20 1 14 7 14" />
-      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" />
-      <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14" />
-    </svg>
-  )
-}
-
 function ChevronIcon({ open }: { open: boolean }) {
   return (
     <svg
@@ -127,15 +104,6 @@ function ChevronIcon({ open }: { open: boolean }) {
       className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
     >
       <polyline points="6 9 12 15 18 9" />
-    </svg>
-  )
-}
-
-function LinkIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
     </svg>
   )
 }
@@ -215,55 +183,6 @@ function getTypeLabel(type: UnifiedRecord['type']): string {
 }
 
 /* ─── Subcomponents ─── */
-
-function ConnectedSystemCard({
-  app,
-  onSync,
-  syncing,
-}: {
-  app: ConnectedApp
-  onSync: (source: string) => void
-  syncing: boolean
-}) {
-  const providerName =
-    (app.metadata as Record<string, string>)?.provider_name || app.source
-  const isExpired = app.expiresAt
-    ? new Date(app.expiresAt) < new Date()
-    : false
-
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.04] border border-white/[0.08] px-4 py-3">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="w-9 h-9 rounded-full bg-[#6366F1]/20 flex items-center justify-center flex-shrink-0">
-          <LinkIcon />
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-[#f1f5f9] truncate">
-            {providerName}
-          </p>
-          <p className="text-xs text-[#94a3b8]">
-            {isExpired ? (
-              <span className="text-[#ef4444]">Connection expired</span>
-            ) : app.lastSynced ? (
-              <>Synced {formatRelativeDate(app.lastSynced instanceof Date ? app.lastSynced.toISOString() : app.lastSynced)}</>
-            ) : (
-              'Never synced'
-            )}
-          </p>
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={() => onSync(app.source)}
-        disabled={syncing || isExpired}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#6366F1]/15 text-[#818cf8] hover:bg-[#6366F1]/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        <SyncIcon spinning={syncing} />
-        {syncing ? 'Syncing...' : 'Sync'}
-      </button>
-    </div>
-  )
-}
 
 function RecordCard({ record }: { record: UnifiedRecord }) {
   const [expanded, setExpanded] = useState(false)
@@ -495,7 +414,6 @@ function EmptyState({ category }: { category: Category }) {
 /* ─── Main Component ─── */
 
 export function RecordsView({
-  connectedApps,
   medications,
   appointments,
   labResults,
@@ -506,8 +424,6 @@ export function RecordsView({
   const { showToast } = useToast()
   const [activeCategory, setActiveCategory] = useState<Category>('all')
   const [search, setSearch] = useState('')
-  const [syncingSource, setSyncingSource] = useState<string | null>(null)
-  const [syncMessage, setSyncMessage] = useState<string | null>(null)
 
   // Build unified records
   const allRecords = useMemo<UnifiedRecord[]>(() => {
@@ -646,39 +562,6 @@ export function RecordsView({
     return filtered
   }, [allRecords, activeCategory, search])
 
-  // Sync handler
-  const handleSync = useCallback(async (source: string) => {
-    setSyncingSource(source)
-    setSyncMessage(null)
-    try {
-      // Extract provider_id from the source field
-      const providerId = source.startsWith('fhir_')
-        ? source.replace('fhir_', '')
-        : source
-
-      const res = await fetch('/api/fhir/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider_id: providerId }),
-      })
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        const errMsg = data.error || 'Sync failed'
-        setSyncMessage(errMsg)
-        showToast(errMsg, 'error')
-      } else {
-        setSyncMessage('Sync complete! Refresh to see updated records.')
-        showToast('Records synced', 'success')
-      }
-    } catch {
-      setSyncMessage('Sync failed. Please try again.')
-      showToast('Sync failed. Please try again.', 'error')
-    } finally {
-      setSyncingSource(null)
-    }
-  }, [showToast])
-
   const categories: { key: Category; label: string; count: number }[] = [
     { key: 'all', label: 'All', count: allRecords.length },
     { key: 'medications', label: 'Medications', count: allRecords.filter((r) => r.type === 'medication').length },
@@ -697,48 +580,6 @@ export function RecordsView({
           All your health data in one place
         </p>
       </div>
-
-      {/* Connected Systems */}
-      {connectedApps.length > 0 ? (
-        <div className="space-y-2">
-          <h2 className="text-xs font-medium uppercase tracking-wider text-[#64748b]">
-            Connected Systems
-          </h2>
-          {connectedApps.map((app) => (
-            <ConnectedSystemCard
-              key={app.id}
-              app={app}
-              onSync={handleSync}
-              syncing={syncingSource === app.source}
-            />
-          ))}
-          {syncMessage && (
-            <p className={`text-xs px-1 ${syncMessage.includes('complete') ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
-              {syncMessage}
-            </p>
-          )}
-        </div>
-      ) : (
-        <Link
-          href="/connect"
-          className="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-[#6366F1]/10 to-[#A78BFA]/5 border border-[#6366F1]/20 px-4 py-4 transition-colors hover:border-[#6366F1]/40"
-        >
-          <div className="w-10 h-10 rounded-xl bg-[#6366F1]/20 flex items-center justify-center flex-shrink-0">
-            <LinkIcon />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-[#f1f5f9]">
-              Connect a Health System
-            </p>
-            <p className="text-xs text-[#94a3b8] mt-0.5">
-              Import medications, labs, and appointments from your provider
-            </p>
-          </div>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </Link>
-      )}
 
       {/* Search */}
       <div className="relative">

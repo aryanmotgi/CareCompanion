@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { users, careProfiles, medications, appointments, labResults, claims, reminderLogs, connectedApps, scannedDocuments, doctors } from '@/lib/db/schema';
+import { users, careProfiles, medications, appointments, labResults, claims, reminderLogs, scannedDocuments, doctors } from '@/lib/db/schema';
 import { eq, and, gte, lte, desc, asc, count } from 'drizzle-orm';
 import { DashboardView } from '@/components/DashboardView';
 import { DashboardSkeleton } from '@/components/skeletons/DashboardSkeleton';
@@ -35,7 +35,6 @@ async function DashboardContent() {
     labs,
     claimsData,
     reminderLogsData,
-    connectedAppsData,
     [scannedDocCount],
     [doctorCount],
   ] = await Promise.all([
@@ -50,15 +49,10 @@ async function DashboardContent() {
         lte(reminderLogs.scheduledTime, todayEnd),
       )
     ).orderBy(asc(reminderLogs.scheduledTime)),
-    db.select().from(connectedApps).where(eq(connectedApps.userId, dbUser.id)),
     db.select({ value: count() }).from(scannedDocuments).where(eq(scannedDocuments.userId, dbUser.id)),
     db.select({ value: count() }).from(doctors).where(eq(doctors.careProfileId, profile.id)),
   ]);
 
-  // Only count connections with a non-expired token
-  const hasHealthRecords = connectedAppsData.some(
-    (a) => a.expiresAt && new Date(a.expiresAt) > new Date()
-  );
   const hasEmergencyContact = !!(profile.emergencyContactName && profile.emergencyContactPhone);
   const hasDocumentsScanned = (scannedDocCount?.value ?? 0) > 0;
 
@@ -83,7 +77,6 @@ async function DashboardContent() {
         treatmentPhase={profile.treatmentPhase || null}
         onboardingComplete={onboardingComplete}
         priorities={profile.onboardingPriorities || null}
-        hasHealthRecords={hasHealthRecords}
         hasEmergencyContact={hasEmergencyContact}
         hasDocumentsScanned={hasDocumentsScanned}
         profileCreatedAt={profile.createdAt?.toISOString() ?? ''}
@@ -92,7 +85,6 @@ async function DashboardContent() {
         emergencyContactName={profile.emergencyContactName || null}
         emergencyContactPhone={profile.emergencyContactPhone || null}
         doctorCount={doctorCount?.value ?? 0}
-        connectedAppCount={connectedAppsData.filter((a) => a.expiresAt && new Date(a.expiresAt) > new Date()).length}
       />
       <div className="px-4 sm:px-5 pb-6 space-y-4">
         <ShareHealthCard />

@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db';
-import { users, userSettings, connectedApps, medicationReminders, medications } from '@/lib/db/schema';
+import { users, userSettings, medicationReminders, medications } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { getActiveProfile } from '@/lib/active-profile'
 import { SettingsPage } from '@/components/SettingsPage'
@@ -28,8 +28,7 @@ async function SettingsContent() {
     settings = newSettings;
   }
 
-  const [apps, reminders, meds] = await Promise.all([
-    db.select().from(connectedApps).where(eq(connectedApps.userId, dbUser.id)),
+  const [reminders, meds] = await Promise.all([
     db.select().from(medicationReminders).where(eq(medicationReminders.userId, dbUser.id)).orderBy(desc(medicationReminders.createdAt)),
     profile
       ? db.select().from(medications).where(eq(medications.careProfileId, profile.id))
@@ -39,7 +38,6 @@ async function SettingsContent() {
   return (
     <SettingsPage
       settings={settings}
-      connectedApps={apps}
       medicationReminders={reminders}
       medications={meds}
     />

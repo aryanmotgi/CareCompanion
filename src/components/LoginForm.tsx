@@ -5,12 +5,16 @@ import { useState } from 'react'
 export function LoginForm({ initialError, mode }: { initialError?: string; mode?: string }) {
   const [consentChecked, setConsentChecked] = useState(false)
   const [showConsentError, setShowConsentError] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     if (!consentChecked) {
       e.preventDefault()
       setShowConsentError(true)
+      return
     }
+    setLoading(true)
+    // Form POSTs and redirects to Cognito — loading state persists until navigation (intentional)
   }
 
   const isSignIn = mode === 'signin'
@@ -33,7 +37,10 @@ export function LoginForm({ initialError, mode }: { initialError?: string; mode?
           <p className="text-center text-xs text-white/30 mb-5 uppercase tracking-widest">Welcome back</p>
         )}
 
-        <form method="GET" action="/api/auth/start" onSubmit={handleSubmit} className="space-y-5">
+        <form method="POST" action="/api/auth/start" onSubmit={handleSubmit} className="space-y-5">
+
+          {/* Hidden consent field — server validates this before initiating OAuth */}
+          <input type="hidden" name="consent" value={consentChecked ? 'true' : ''} />
 
           {/* Consent checkbox */}
           <label className="flex items-start gap-3 cursor-pointer group">
@@ -78,30 +85,50 @@ export function LoginForm({ initialError, mode }: { initialError?: string; mode?
           {/* CTA button */}
           <button
             type="submit"
-            className="w-full relative rounded-xl py-3.5 text-sm font-semibold text-white transition-all duration-200 active:scale-[0.98] focus:outline-none overflow-hidden group"
+            disabled={loading}
+            className="w-full relative rounded-xl py-3.5 text-sm font-semibold text-white transition-all duration-200 active:scale-[0.98] focus:outline-none overflow-hidden group disabled:opacity-80 disabled:cursor-not-allowed disabled:active:scale-100"
             style={{
               background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
               boxShadow: '0 0 20px rgba(99,102,241,0.35), 0 4px 16px rgba(0,0,0,0.3)',
             }}
-            onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 0 30px rgba(99,102,241,0.55), 0 4px 20px rgba(0,0,0,0.3)')}
+            onMouseEnter={e => { if (!loading) e.currentTarget.style.boxShadow = '0 0 30px rgba(99,102,241,0.55), 0 4px 20px rgba(0,0,0,0.3)' }}
             onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 0 20px rgba(99,102,241,0.35), 0 4px 16px rgba(0,0,0,0.3)')}
           >
             <span className="relative z-10 flex items-center justify-center gap-2">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
-              </svg>
-              Continue with CareCompanion
+              {loading ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                </svg>
+              )}
+              {loading ? 'Signing in...' : 'Continue with CareCompanion'}
             </span>
           </button>
         </form>
 
         {initialError && (
-          <p role="alert" className="mt-4 text-center text-xs text-red-400/80">{initialError}</p>
+          <div role="alert" className="mt-4 flex items-start gap-2 rounded-lg px-3 py-2.5"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
+            <svg className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+            </svg>
+            <div>
+              <p className="text-xs text-red-400/90">{initialError}</p>
+              <p className="text-[10px] text-red-400/50 mt-1">
+                Having trouble?{' '}
+                <a href="mailto:support@carecompanionai.org" className="underline">Contact support</a>
+              </p>
+            </div>
+          </div>
         )}
 
         {/* Subtext */}
         <p className="mt-4 text-center text-[11px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
-          Sign in with email or Google — secured by AWS Cognito
+          Sign in securely — protected by AWS Cognito
         </p>
 
         {/* Trust badges */}

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { ReEngagementNudge, isDismissed, isSnoozed } from './ReEngagementNudge'
 
 interface NudgeManagerProps {
-  hasHealthRecords: boolean
   hasMedications: boolean
   hasAppointments: boolean
   hasEmergencyContact: boolean
@@ -22,18 +21,6 @@ interface NudgeConfig {
 }
 
 const NUDGE_CONFIGS: NudgeConfig[] = [
-  {
-    type: 'health_records',
-    title: 'Connect your health records',
-    description: 'Link MyChart, Kaiser, or your insurer for automatic updates to medications, labs, and claims.',
-    actionLabel: 'Connect',
-    actionHref: '/connect',
-    icon: (
-      <svg className="w-5 h-5 text-[var(--lavender)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
-      </svg>
-    ),
-  },
   {
     type: 'medications',
     title: 'Add your medications',
@@ -90,7 +77,6 @@ const NUDGE_CONFIGS: NudgeConfig[] = [
 ]
 
 export function NudgeManager({
-  hasHealthRecords,
   hasMedications,
   hasAppointments,
   hasEmergencyContact,
@@ -111,7 +97,6 @@ export function NudgeManager({
 
     // Map of which data is missing
     const missingFlags: Record<string, boolean> = {
-      health_records: !hasHealthRecords,
       medications: !hasMedications,
       appointments: !hasAppointments,
       emergency_contact: !hasEmergencyContact,
@@ -128,7 +113,7 @@ export function NudgeManager({
 
     setActiveNudge(nudge)
     setReady(true)
-  }, [hasHealthRecords, hasMedications, hasAppointments, hasEmergencyContact, hasDocumentsScanned, profileCreatedAt])
+  }, [hasMedications, hasAppointments, hasEmergencyContact, hasDocumentsScanned, profileCreatedAt])
 
   if (!ready || !activeNudge) return null
 

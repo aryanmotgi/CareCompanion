@@ -5,6 +5,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { error, mode } = await searchParams
   const errorMsg = error === 'db'
     ? 'Database is temporarily unavailable. Please try again in a moment.'
+    : error === 'consent_required'
+    ? 'You must agree to the Terms and Privacy Policy to continue.'
     : error
     ? `Sign in failed (${error}). Please try again.`
     : undefined

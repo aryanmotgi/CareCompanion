@@ -34,7 +34,7 @@ export default function DemoWalkthroughPage() {
       <PublicNav />
       <div className="max-w-3xl mx-auto px-4 sm:px-5 pt-24 pb-8 space-y-6">
 
-      {/* Reviewer credentials card — only for 1upHealth review team */}
+      {/* Reviewer credentials card */}
       <details className="rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-500/[0.06] to-orange-500/[0.04] overflow-hidden group">
         <summary className="cursor-pointer list-none p-4 sm:p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
           <div className="flex items-center gap-3">
@@ -74,22 +74,6 @@ export default function DemoWalkthroughPage() {
           <div>
             <p className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider mb-2">What to verify</p>
             <ul className="space-y-1.5 text-xs text-white/70">
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-400 mt-0.5">✓</span>
-                <span>1upHealth OAuth flow works end-to-end (connect page → authorize → callback)</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-400 mt-0.5">✓</span>
-                <span>FHIR data imports correctly (medications, conditions, labs, appointments, practitioners)</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-400 mt-0.5">✓</span>
-                <span>Data consent modal appears before OAuth redirect</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-emerald-400 mt-0.5">✓</span>
-                <span>User can disconnect and data sync stops</span>
-              </li>
               <li className="flex items-start gap-2">
                 <span className="text-emerald-400 mt-0.5">✓</span>
                 <span>Privacy policy and terms are accessible and thorough</span>

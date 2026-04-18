@@ -95,32 +95,18 @@ export default function PrivacyPolicy() {
               ))}</div>
             },
             {
-              num: 5, title: 'HEALTH SYSTEM INTEGRATIONS (FHIR/OAuth)',
-              content: <>
-                <p className="mb-3">When you connect a health system like <strong className="text-[var(--text)]">Epic MyChart</strong> via <strong className="text-[var(--text)]">1upHealth</strong>:</p>
-                <ul className="space-y-1.5">{[
-                  '1upHealth acts as a secure intermediary, connecting to 700+ health systems. We use their FHIR R4 API to import your records.',
-                  'You are redirected to your hospital\'s official login page',
-                  'You log in and explicitly grant CareCompanion read-only access',
-                  'We store only an encrypted access token in our database',
-                  'We never see or store your hospital login password',
-                  'You can disconnect at any time, which immediately deletes your access token',
-                ].map((t,i) => <li key={i} className="flex items-start gap-2"><span className="text-[#A78BFA] mt-0.5">&#x2022;</span>{t}</li>)}</ul>
-              </>
-            },
-            {
-              num: 6, title: 'CARE TEAM SHARING',
+              num: 5, title: 'CARE TEAM SHARING',
               content: <>
                 <p className="mb-3">When you invite family members to your care team:</p>
                 <ul className="space-y-1.5">{['You control their permission level (viewer, editor, or owner)','They only see data for the patient profile you invited them to','You can remove them at any time','All care team activity is logged in the activity feed'].map((t,i) => <li key={i} className="flex items-start gap-2"><span className="text-[#A78BFA] mt-0.5">&#x2022;</span>{t}</li>)}</ul>
               </>
             },
             {
-              num: 7, title: 'DATA RETENTION',
+              num: 6, title: 'DATA RETENTION',
               content: <p>We keep your data for as long as your account is active. If you delete your account, <strong className="text-[var(--text)]">all associated data is permanently deleted within 30 days</strong> including patient profiles, medications, appointments, messages, memories, and uploaded documents. You can also <strong className="text-[var(--text)]">export all your data</strong> before deletion from the Settings page.</p>
             },
             {
-              num: 8, title: 'YOUR RIGHTS',
+              num: 7, title: 'YOUR RIGHTS',
               content: <>
                 <p className="mb-3">You have the right to:</p>
                 <div className="grid gap-2">{[
@@ -138,19 +124,19 @@ export default function PrivacyPolicy() {
               </>
             },
             {
-              num: 9, title: 'CHILDREN\'S PRIVACY',
+              num: 8, title: 'CHILDREN\'S PRIVACY',
               content: <p>CareCompanion is not directed at children under 13. We do not knowingly collect data from children under 13.</p>
             },
             {
-              num: 10, title: 'CHANGES TO THIS POLICY',
+              num: 9, title: 'CHANGES TO THIS POLICY',
               content: <p>We will notify users by email and in-app notification of any material changes to this policy <strong className="text-[var(--text)]">at least 14 days before they take effect</strong>.</p>
             },
             {
-              num: 11, title: 'CONTACT US',
+              num: 10, title: 'CONTACT US',
               content: <p>For any privacy questions, data requests, or concerns:<br />Email: <a href="mailto:privacy@carecompanionai.org" className="text-[#A78BFA] hover:text-[#c4b5fd] transition-colors font-medium underline decoration-[#A78BFA]/30 hover:decoration-[#A78BFA]">privacy@carecompanionai.org</a><br />Website: carecompanionai.org</p>
             },
             {
-              num: 12, title: 'SECURITY PRACTICES',
+              num: 11, title: 'SECURITY PRACTICES',
               content: <div className="p-5 rounded-xl bg-gradient-to-br from-[#6366F1]/[0.06] to-transparent border border-[#6366F1]/15">
                 <p>CareCompanion AI encrypts all data in transit using <strong className="text-[var(--text)]">TLS 1.2+</strong> and at rest using <strong className="text-[var(--text)]">AES-256</strong> encryption through our database provider (Supabase, SOC 2 Type II certified). Every database table is protected by <strong className="text-[var(--text)]">row-level security (RLS)</strong> policies that cryptographically enforce user-scoped access, meaning no user can ever query another user&apos;s data, even through direct API calls. All API keys, OAuth tokens, and secrets are stored in environment variables and <strong className="text-[var(--text)]">never committed to source code</strong>. We conduct regular dependency audits and follow OWASP security guidelines. Health portal connections use the <strong className="text-[var(--text)]">SMART on FHIR OAuth 2.0</strong> protocol with PKCE where supported, and we never see or store hospital login passwords.</p>
               </div>

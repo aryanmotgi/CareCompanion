@@ -87,7 +87,6 @@ const TOTAL_STEPS = 6;
 export function OnboardingWizard({ userName, userEmail, userAvatar, existingProfileId, existingProfile }: OnboardingWizardProps) {
   const router = useRouter();
 
-  // Resume from step 5 if user went through FHIR connect flow
   const getInitialStep = () => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('onboarding_step');
@@ -128,10 +127,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
   const [profileId, setProfileId] = useState<string | null>(existingProfileId);
 
   // Step 3 sub-state: which data path was chosen
-  const [dataChoice, setDataChoice] = useState<'connect' | 'manual' | 'skip' | null>(null);
-
-  // Step 3 inline connect state
-  const [connectStarted, setConnectStarted] = useState(false);
+  const [dataChoice, setDataChoice] = useState<'manual' | 'skip' | null>(null);
 
   // Step 4: simplified manual entry
   const [medications, setMedications] = useState<SimpleMed[]>([{ name: '', dose: '' }]);
@@ -299,27 +295,16 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
   };
 
   // Handle step 3 data choice
-  const handleDataChoice = async (choice: 'connect' | 'manual' | 'skip') => {
+  const handleDataChoice = async (choice: 'manual' | 'skip') => {
     setDataChoice(choice);
 
-    if (choice === 'connect') {
-      // Show inline connect UI
-      setConnectStarted(true);
-    } else if (choice === 'manual') {
+    if (choice === 'manual') {
       // Go to step 4 (manual entry)
       goForward(4);
     } else {
       // Skip — jump to step 5 (priorities)
       goForward(5);
     }
-  };
-
-  // Handle connect flow — redirect to FHIR authorize
-  const handleStartConnect = () => {
-    // Save step so we can resume at step 5 after returning from external flows
-    localStorage.setItem('onboarding_step', '5');
-    saveStepProgress(step);
-    window.location.href = '/api/fhir/authorize?provider=epic';
   };
 
   const saveAndFinish = async () => {
@@ -659,37 +644,6 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
             </p>
           </div>
 
-          {/* Quick connect CTA — skip manual entry */}
-          <a
-            href="/api/fhir/authorize?provider=1uphealth"
-            onClick={() => {
-              localStorage.setItem('onboarding_step', '5');
-              saveStepProgress(2);
-            }}
-            className="block rounded-2xl p-4 border border-[#6366F1]/30 transition-all hover:border-[#6366F1]/50"
-            style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(167,139,250,0.08))' }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(99,102,241,0.2)' }}>
-                <svg className="w-5 h-5 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white">Import from your health system instead</p>
-                <p className="text-xs text-[#94a3b8] mt-0.5">Pull diagnosis, meds, labs, and more automatically from MyChart, Epic, Kaiser, and 300+ providers.</p>
-              </div>
-              <svg className="w-5 h-5 text-[#A78BFA] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-              </svg>
-            </div>
-          </a>
-
-          <div className="relative flex items-center gap-3">
-            <div className="flex-1 h-px bg-white/[0.08]" />
-            <span className="text-xs text-[#64748b] font-medium">or enter manually</span>
-            <div className="flex-1 h-px bg-white/[0.08]" />
-          </div>
 
           <div className="space-y-4">
             {/* Cancer type */}
@@ -799,8 +753,8 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
         </div>
       )}
 
-      {/* Step 3: Data connection choice */}
-      {step === 3 && !connectStarted && (
+      {/* Step 3: Data entry choice */}
+      {step === 3 && (
         <div key={animKey} className="space-y-6" style={{ animation: `${slideDir === 'left' ? 'slideInLeft' : 'slideInRight'} 0.35s ease-out` }}>
           <div className="text-center">
             <h1 ref={stepHeadingRef} tabIndex={-1} className="font-display text-3xl font-bold text-white outline-none">
@@ -812,26 +766,6 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
           </div>
 
           <div className="space-y-3">
-            {/* Connect Health Records */}
-            <button
-              onClick={() => handleDataChoice('connect')}
-              disabled={loading}
-              className="w-full text-left rounded-2xl p-5 border border-[var(--border)] bg-[var(--bg-card)] hover:border-[#A78BFA]/30 hover:bg-[#A78BFA]/5 transition-all group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-blue-500/15 flex items-center justify-center group-hover:bg-blue-500/25 transition-colors">
-                  <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-white">Connect Health Records</p>
-                  <p className="text-sm text-[var(--text-muted)]">MyChart, Epic, Kaiser, and 300+ providers</p>
-                </div>
-                <svg className="w-5 h-5 text-[var(--text-muted)] group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
-              </div>
-            </button>
-
             {/* Enter Manually */}
             <button
               onClick={() => handleDataChoice('manual')}
@@ -910,102 +844,6 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
               className="flex-1 text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors py-3.5"
             >
               Skip — I&apos;ll add data later
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 3: Inline connect health records UI */}
-      {step === 3 && connectStarted && (
-        <div key={`connect-${animKey}`} className="space-y-6" style={{ animation: 'slideInLeft 0.35s ease-out' }}>
-          <div className="text-center">
-            <h1 ref={stepHeadingRef} tabIndex={-1} className="font-display text-3xl font-bold text-white outline-none">
-              Connect Health Records
-            </h1>
-            <p className="mt-2 text-[var(--text-secondary)]">
-              Securely link your health data through your provider
-            </p>
-          </div>
-
-          {/* 1upHealth connection card */}
-          <div className="rounded-2xl border border-[#A78BFA]/30 bg-[#A78BFA]/5 p-6 space-y-5">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-blue-500/15 flex items-center justify-center flex-shrink-0">
-                <svg className="w-7 h-7 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-white text-lg">Health Records via 1upHealth</h3>
-                <p className="text-sm text-[var(--text-secondary)] mt-1 leading-relaxed">
-                  Connect to MyChart, Kaiser, Sutter Health, Aetna, UnitedHealthcare, Medicare, and 300+ more
-                </p>
-              </div>
-            </div>
-
-            {/* Data type pills */}
-            <div className="flex flex-wrap gap-2">
-              {[
-                { label: 'medications', color: 'bg-blue-500/20 text-blue-300' },
-                { label: 'lab results', color: 'bg-cyan-500/20 text-cyan-300' },
-                { label: 'conditions', color: 'bg-violet-500/20 text-violet-300' },
-                { label: 'allergies', color: 'bg-amber-500/20 text-amber-300' },
-                { label: 'appointments', color: 'bg-emerald-500/20 text-emerald-300' },
-                { label: 'doctors', color: 'bg-pink-500/20 text-pink-300' },
-              ].map((pill) => (
-                <span
-                  key={pill.label}
-                  className={`text-[11px] font-medium px-2.5 py-1 rounded-full ${pill.color}`}
-                >
-                  {pill.label}
-                </span>
-              ))}
-            </div>
-
-            <button
-              onClick={handleStartConnect}
-              className="w-full rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] py-3.5 px-6 text-base text-white font-semibold hover:opacity-90 active:scale-[0.98] transition-all inline-flex items-center justify-center gap-2.5"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
-              </svg>
-              Connect Health Records
-            </button>
-
-            {/* Trust badges */}
-            <div className="flex items-center justify-center gap-4 flex-wrap">
-              {[
-                { icon: '🔒', label: 'HIPAA-compliant' },
-                { icon: '👁️', label: 'Read-only access' },
-                { icon: '✕', label: 'Revoke anytime' },
-              ].map((badge) => (
-                <div key={badge.label} className="flex items-center gap-1.5">
-                  <span className="text-sm" aria-hidden="true">{badge.icon}</span>
-                  <span className="text-xs text-[var(--text-muted)]">{badge.label}</span>
-                </div>
-              ))}
-            </div>
-
-            <p className="text-xs text-[var(--text-muted)] text-center">
-              You&apos;ll be redirected to sign in with your provider. We never store your credentials.
-            </p>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => setConnectStarted(false)}
-              className="flex-shrink-0 rounded-xl border border-[var(--border)] py-3.5 px-5 text-sm text-[var(--text-muted)] hover:text-white hover:border-white/20 transition-all"
-            >
-              Back
-            </button>
-            <button
-              onClick={() => {
-                setConnectStarted(false);
-                goForward(5);
-              }}
-              className="flex-1 text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors py-3.5"
-            >
-              Skip — I&apos;ll connect later
             </button>
           </div>
         </div>
@@ -1390,15 +1228,13 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
             )}
 
             {/* Data source */}
-            {dataChoice && dataChoice !== 'skip' && (
+            {dataChoice === 'manual' && (
               <div className="rounded-xl bg-[var(--bg-card)] border border-[var(--border)] p-4">
                 <div className="flex items-center gap-3">
-                  <svg className="w-4 h-4 text-[#60A5FA]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={dataChoice === 'connect' ? 'M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25' : 'M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10'} /></svg>
+                  <svg className="w-4 h-4 text-[#60A5FA]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-white">
-                      {dataChoice === 'connect' ? 'Health records connected' : 'Manual data entered'}
-                    </p>
-                    {dataChoice === 'manual' && (manualSummary.meds > 0 || manualSummary.docs > 0 || manualSummary.appts > 0) && (
+                    <p className="text-sm font-medium text-white">Manual data entered</p>
+                    {(manualSummary.meds > 0 || manualSummary.docs > 0 || manualSummary.appts > 0) && (
                       <p className="text-xs text-[var(--text-muted)]">
                         {[
                           manualSummary.meds > 0 ? `${manualSummary.meds} medication${manualSummary.meds > 1 ? 's' : ''}` : null,
@@ -1441,8 +1277,8 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
               <div className="space-y-2">
                 {[
                   { icon: '💊', label: 'Add your medications', href: '/medications' },
-                  { icon: '🏥', label: 'Connect health records', href: '/connect' },
                   { icon: '📅', label: 'Log an upcoming appointment', href: '/appointments' },
+                  { icon: '👨‍⚕️', label: 'Add your care team', href: '/care-team' },
                 ].map((item) => (
                   <a
                     key={item.href}

@@ -5,10 +5,6 @@
       "schedule": "0 6 * * *"
     },
     {
-      "path": "/api/sync/all",
-      "schedule": "0 8 * * *"
-    },
-    {
       "path": "/api/notifications/generate",
       "schedule": "0 9 * * *"
     },

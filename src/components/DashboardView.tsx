@@ -7,7 +7,6 @@ import { AnimatedNumber } from './AnimatedNumber'
 import { AlertInsights } from './AlertInsights'
 import { GuidedTour } from './GuidedTour'
 import { NudgeManager } from './NudgeManager'
-import { ConnectHealthModal } from './ConnectHealthModal'
 import { ProfileCompleteness } from './ProfileCompleteness'
 import { AppealGenerator } from './AppealGenerator'
 import { parseLabValue } from '@/lib/lab-parsing'
@@ -24,7 +23,6 @@ interface DashboardViewProps {
   treatmentPhase?: string | null
   onboardingComplete?: boolean
   priorities?: string[] | null
-  hasHealthRecords?: boolean
   hasEmergencyContact?: boolean
   hasDocumentsScanned?: boolean
   profileCreatedAt?: string
@@ -33,7 +31,6 @@ interface DashboardViewProps {
   emergencyContactName?: string | null
   emergencyContactPhone?: string | null
   doctorCount?: number
-  connectedAppCount?: number
 }
 
 const PHASE_LABELS: Record<string, { label: string; color: string }> = {
@@ -55,7 +52,6 @@ export function DashboardView({
   treatmentPhase,
   onboardingComplete = true,
   priorities,
-  hasHealthRecords = false,
   hasEmergencyContact = false,
   hasDocumentsScanned = false,
   profileCreatedAt,
@@ -64,7 +60,6 @@ export function DashboardView({
   emergencyContactName,
   emergencyContactPhone,
   doctorCount = 0,
-  connectedAppCount = 0,
 }: DashboardViewProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showTourTooltip, setShowTourTooltip] = useState(false)
@@ -365,7 +360,6 @@ export function DashboardView({
 
   return (
     <>
-    <ConnectHealthModal show={!hasHealthRecords} />
     <div className="px-4 sm:px-5 py-5 sm:py-6">
       <div className="mb-1 text-[var(--text-secondary)] text-xs uppercase tracking-wider">{greeting}</div>
       <h2 className="text-fluid-xl font-bold mb-2 animate-greeting">
@@ -432,34 +426,9 @@ export function DashboardView({
         </a>
       )}
 
-      {/* Connect health records — always visible until connected */}
-      {!hasHealthRecords && (
-        <a
-          href="/connect"
-          className="block mb-4 rounded-2xl p-4 hover:opacity-90 transition-opacity"
-          style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(167,139,250,0.10) 100%)', border: '1px solid rgba(167,139,250,0.25)' }}
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(167,139,250,0.15)' }}>
-              <svg className="w-5 h-5 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white">Connect your health records</p>
-              <p className="text-xs text-[#A78BFA]/70 mt-0.5">Sync meds, labs &amp; appointments from Kaiser, MyChart, Medicare &amp; 700+ more</p>
-            </div>
-            <div className="gradient-btn text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex-shrink-0">
-              Connect
-            </div>
-          </div>
-        </a>
-      )}
-
       {/* Re-engagement nudges for skipped onboarding steps */}
       {onboardingComplete && profileCreatedAt && (
         <NudgeManager
-          hasHealthRecords={hasHealthRecords}
           hasMedications={medications.length > 0}
           hasAppointments={appointments.length > 0}
           hasEmergencyContact={hasEmergencyContact}
@@ -481,7 +450,6 @@ export function DashboardView({
         medicationCount={medications.length}
         doctorCount={doctorCount}
         appointmentCount={appointments.length}
-        connectedApps={connectedAppCount}
       />
 
       {/* Treatment Cycle Tracker */}
