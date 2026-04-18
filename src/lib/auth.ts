@@ -27,7 +27,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         url: `${COGNITO_DOMAIN}/oauth2/authorize`,
         params: { scope: 'openid email profile', response_type: 'code' },
       },
-      token: `${COGNITO_DOMAIN}/oauth2/token`,
+      token: {
+        url: `${COGNITO_DOMAIN}/oauth2/token`,
+        // Strip id_token from the response so Auth.js skips JWT/nonce validation entirely.
+        // Cognito embeds its own nonce in the ID token when federating with Google,
+        // which doesn't match what Auth.js sent — causing OAUTH_JWT_CLAIM_COMPARISON_FAILED.
+        // Removing id_token forces Auth.js to use the userinfo endpoint for the profile instead.
+        async conform(response: Response) {
+          const json = await response.json() as Record<string, unknown>
+          const { id_token: _removed, ...tokens } = json
+          return Response.json(tokens)
+        },
+      },
       userinfo: `${COGNITO_DOMAIN}/oauth2/userInfo`,
       checks: [],
       profile(profile: Record<string, string>) {
