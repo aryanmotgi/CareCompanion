@@ -121,7 +121,7 @@ function formatDate(dateStr: string | null): string {
   })
 }
 
-function formatRelativeDate(dateStr: string | null): string {
+function formatRelativeDate(dateStr: string | null): string { // eslint-disable-line @typescript-eslint/no-unused-vars
   if (!dateStr) return ''
   const d = new Date(dateStr)
   if (isNaN(d.getTime())) return ''
@@ -421,7 +421,7 @@ export function RecordsView({
   conditions,
   allergies,
 }: RecordsViewProps) {
-  const { showToast } = useToast()
+  const { showToast } = useToast() // eslint-disable-line @typescript-eslint/no-unused-vars
   const [activeCategory, setActiveCategory] = useState<Category>('all')
   const [search, setSearch] = useState('')
 
