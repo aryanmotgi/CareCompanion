@@ -490,7 +490,7 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-3">
             <Link href="/login" className="hidden md:inline-block px-4 py-2 rounded-lg text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-all">Log In</Link>
-            <Link href="/login" className="hidden md:inline-block px-5 py-2 rounded-lg bg-violet-600 text-white text-sm font-semibold hover:bg-violet-500 transition-colors shadow-lg shadow-violet-600/20">Sign Up</Link>
+            <Link href="/login" className="hidden md:inline-block px-5 py-2 rounded-lg bg-violet-600 text-white text-sm font-semibold hover:bg-violet-500 transition-colors shadow-lg shadow-violet-600/20">Get Started</Link>
             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 rounded-lg hover:bg-white/[0.06] transition-colors cursor-pointer">
               <svg className="w-5 h-5 text-white/70" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                 {mobileMenuOpen ? <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /> : <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />}
@@ -507,7 +507,7 @@ export default function LandingPage() {
               <Link href="/terms" onClick={() => setMobileMenuOpen(false)} className="text-sm text-white/60 hover:text-white py-2.5">Terms</Link>
               <div className="border-t border-white/[0.07] pt-3 mt-2 flex flex-col gap-2">
                 <Link href="/login" className="w-full text-center py-3 rounded-lg border border-white/[0.10] text-sm font-medium text-white/70">Log In</Link>
-                <Link href="/login" className="w-full text-center py-3 rounded-lg bg-violet-600 text-white text-sm font-semibold">Sign Up</Link>
+                <Link href="/login" className="w-full text-center py-3 rounded-lg bg-violet-600 text-white text-sm font-semibold">Get Started</Link>
               </div>
             </div>
           </div>
