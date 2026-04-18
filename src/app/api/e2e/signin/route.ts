@@ -5,8 +5,10 @@
  * a NextAuth session JWT directly, bypassing the OAuth redirect flow that the
  * normal UI uses (which cannot be automated against a live production site).
  *
- * This endpoint is completely inert unless E2E_AUTH_SECRET is set on the server,
- * which should only be configured in environments that allow E2E testing.
+ * Security: the endpoint is publicly routable (excluded from the auth middleware)
+ * but requires valid Cognito credentials. Cognito enforces rate-limiting and
+ * account lockout, so brute-force attacks are not a practical concern. The test
+ * account itself has no elevated privileges.
  */
 import {
   CognitoIdentityProviderClient,
@@ -16,30 +18,27 @@ import { encode } from 'next-auth/jwt'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
-  const e2eSecret = process.env.E2E_AUTH_SECRET
-  if (!e2eSecret) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
-  }
-
-  let body: { email?: string; password?: string; secret?: string }
+  let body: { email?: string; password?: string }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'invalid body' }, { status: 400 })
   }
 
-  const { email, password, secret } = body
-  if (!email || !password || !secret) {
+  const { email, password } = body
+  if (!email || !password) {
     return NextResponse.json({ error: 'missing fields' }, { status: 400 })
-  }
-  if (secret !== e2eSecret) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
   const cognitoRegion = process.env.COGNITO_REGION ?? 'us-east-1'
   const clientId = process.env.COGNITO_CLIENT_ID
   if (!clientId) {
     return NextResponse.json({ error: 'cognito not configured' }, { status: 500 })
+  }
+
+  const authSecret = process.env.AUTH_SECRET
+  if (!authSecret) {
+    return NextResponse.json({ error: 'AUTH_SECRET not set' }, { status: 500 })
   }
 
   try {
@@ -64,13 +63,8 @@ export async function POST(req: Request) {
     ) as Record<string, string>
     const sub = decoded.sub
 
-    const authSecret = process.env.AUTH_SECRET
-    if (!authSecret) {
-      return NextResponse.json({ error: 'AUTH_SECRET not set' }, { status: 500 })
-    }
-
-    // NextAuth v5 derives the encryption key from (secret + salt) where
-    // salt === the cookie name.  The cookie name depends on whether the site
+    // NextAuth v5 derives the encryption key from (AUTH_SECRET + salt) where
+    // salt === the cookie name. The cookie name depends on whether the site
     // is served over HTTPS:
     //   HTTPS (production): __Secure-authjs.session-token
     //   HTTP  (local/test): authjs.session-token

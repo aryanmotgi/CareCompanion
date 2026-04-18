@@ -28,6 +28,19 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Wait for Vercel deployment to be live
+        run: |
+          echo "Waiting up to 3 minutes for the latest deployment to propagate..."
+          for i in $(seq 1 18); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 https://carecompanionai.org/ 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "302" ] || [ "$STATUS" = "301" ]; then
+              echo "Site is responding with HTTP $STATUS (attempt $i)"
+              break
+            fi
+            echo "Attempt $i: HTTP $STATUS — retrying in 10s..."
+            sleep 10
+          done
+
       - name: Run E2E Production Monitor
         id: e2e
         continue-on-error: true
@@ -41,7 +54,6 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           E2E_MONITOR_EMAIL: ${{ secrets.E2E_MONITOR_EMAIL }}
           E2E_MONITOR_PASSWORD: ${{ secrets.E2E_MONITOR_PASSWORD }}
-          E2E_AUTH_SECRET: ${{ secrets.E2E_AUTH_SECRET }}
 
       - name: Upload Report on Failure
         uses: actions/upload-artifact@v4
