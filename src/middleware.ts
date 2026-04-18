@@ -14,6 +14,7 @@ const PUBLIC_PATHS = [
   '/privacy',
   '/terms',
   '/contact',
+  '/conditions',  // Public SEO treatment guides
   '/robots.txt',
   '/sitemap.xml',
   '/favicon.ico',
