@@ -51,8 +51,8 @@ export async function POST(req: Request) {
   // Aurora Serverless auto-pauses after inactivity. The first DB call after a
   // pause will fail while the cluster resumes (typically < 30 s). Retry up to
   // 4 times with a 10 s delay so the scheduled monitor survives a cold start.
-  let cognitoSub: string
-  let displayName: string
+  let cognitoSub!: string
+  let displayName!: string
   const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
   const MAX_ATTEMPTS = 4
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
