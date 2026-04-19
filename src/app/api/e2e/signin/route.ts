@@ -47,50 +47,62 @@ export async function POST(req: Request) {
   // Look up the user in the database to get their cognitoSub.
   // The test user must have logged in at least once via normal OAuth so that
   // their record exists in the users table.
+  //
+  // Aurora Serverless auto-pauses after inactivity. The first DB call after a
+  // pause will fail while the cluster resumes (typically < 30 s). Retry up to
+  // 4 times with a 10 s delay so the scheduled monitor survives a cold start.
   let cognitoSub: string
   let displayName: string
-  try {
-    const [user] = await db
-      .select({ id: users.id, cognitoSub: users.cognitoSub, displayName: users.displayName })
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1)
+  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+  const MAX_ATTEMPTS = 4
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const [user] = await db
+        .select({ id: users.id, cognitoSub: users.cognitoSub, displayName: users.displayName })
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1)
 
-    if (!user) {
-      return NextResponse.json({ error: 'user not found in database' }, { status: 404 })
+      if (!user) {
+        return NextResponse.json({ error: 'user not found in database' }, { status: 404 })
+      }
+      cognitoSub = user.cognitoSub
+      displayName = user.displayName ?? email
+
+      // Ensure HIPAA consent is set so the app layout doesn't redirect to /consent.
+      // The E2E account bypasses the normal OAuth + consent UI flow, so this gate
+      // would otherwise block every test navigation.
+      await db
+        .update(users)
+        .set({ hipaaConsent: true })
+        .where(eq(users.email, email))
+
+      // Ensure a care profile exists so pages like /dashboard and /care don't
+      // redirect() inside a <Suspense> boundary (which causes ERR_ABORTED in
+      // Playwright).  A minimal profile with onboardingCompleted=true prevents
+      // the onboarding banner from appearing and stops all profile-guard redirects.
+      const [existingProfile] = await db
+        .select({ id: careProfiles.id })
+        .from(careProfiles)
+        .where(eq(careProfiles.userId, user.id))
+        .limit(1)
+
+      if (!existingProfile) {
+        await db.insert(careProfiles).values({
+          userId: user.id,
+          patientName: 'E2E Monitor',
+          onboardingCompleted: true,
+        })
+      }
+      break // success — exit retry loop
+    } catch (err) {
+      const e = err as { message?: string }
+      console.error(`[e2e/signin] DB error (attempt ${attempt}/${MAX_ATTEMPTS}):`, e.message)
+      if (attempt === MAX_ATTEMPTS) {
+        return NextResponse.json({ error: 'database error' }, { status: 500 })
+      }
+      await sleep(10_000) // wait for Aurora to resume before retrying
     }
-    cognitoSub = user.cognitoSub
-    displayName = user.displayName ?? email
-
-    // Ensure HIPAA consent is set so the app layout doesn't redirect to /consent.
-    // The E2E account bypasses the normal OAuth + consent UI flow, so this gate
-    // would otherwise block every test navigation.
-    await db
-      .update(users)
-      .set({ hipaaConsent: true })
-      .where(eq(users.email, email))
-
-    // Ensure a care profile exists so pages like /dashboard and /care don't
-    // redirect() inside a <Suspense> boundary (which causes ERR_ABORTED in
-    // Playwright).  A minimal profile with onboardingCompleted=true prevents
-    // the onboarding banner from appearing and stops all profile-guard redirects.
-    const [existingProfile] = await db
-      .select({ id: careProfiles.id })
-      .from(careProfiles)
-      .where(eq(careProfiles.userId, user.id))
-      .limit(1)
-
-    if (!existingProfile) {
-      await db.insert(careProfiles).values({
-        userId: user.id,
-        patientName: 'E2E Monitor',
-        onboardingCompleted: true,
-      })
-    }
-  } catch (err) {
-    const e = err as { message?: string }
-    console.error('[e2e/signin] DB error:', e.message)
-    return NextResponse.json({ error: 'database error' }, { status: 500 })
   }
 
   // NextAuth v5 derives the encryption key from (AUTH_SECRET + salt) where
