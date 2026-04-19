@@ -23,7 +23,7 @@ import { NextResponse } from 'next/server'
 // deployment is live.  The "v" field is bumped each time the endpoint changes
 // so the CI wait step can poll for the specific version it expects.
 export async function GET() {
-  return Response.json({ ready: true, v: 4 })
+  return Response.json({ ready: true, v: 5 })
 }
 
 export async function POST(req: Request) {
@@ -61,6 +61,14 @@ export async function POST(req: Request) {
     }
     cognitoSub = user.cognitoSub
     displayName = user.displayName ?? email
+
+    // Ensure HIPAA consent is set so the app layout doesn't redirect to /consent.
+    // The E2E account bypasses the normal OAuth + consent UI flow, so this gate
+    // would otherwise block every test navigation.
+    await db
+      .update(users)
+      .set({ hipaaConsent: true })
+      .where(eq(users.email, email))
   } catch (err) {
     const e = err as { message?: string }
     console.error('[e2e/signin] DB error:', e.message)
