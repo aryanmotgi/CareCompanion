@@ -52,17 +52,21 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
   // Fix hydration mismatch — voice button only renders after mount
   useEffect(() => { setMounted(true) }, []);
 
-  // Cmd+F / Ctrl+F opens search
+  // Cmd+F / Ctrl+F opens search; Escape closes it
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
         e.preventDefault();
         setShowSearch(true);
       }
+      if (e.key === 'Escape' && showSearch) {
+        setShowSearch(false);
+        e.preventDefault();
+      }
     };
     document.addEventListener('keydown', handleGlobalKeyDown);
     return () => document.removeEventListener('keydown', handleGlobalKeyDown);
-  }, []);
+  }, [showSearch]);
 
   const handleScrollToMessage = (messageId: string) => {
     const el = messageRefs.current.get(messageId);
@@ -140,30 +144,28 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
   return (
     <div className="flex flex-col h-[calc(100dvh-56px-72px)] -mx-4 sm:-mx-8 -mb-6">
       {/* Header bar — New Chat + Search buttons */}
-      {messages.length > 0 && (
-        <div className="flex justify-end gap-2 px-4 sm:px-8 pt-3 pb-1">
-          <button
-            onClick={() => setShowSearch(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[var(--text-secondary)] text-xs hover:bg-white/[0.08] hover:text-[var(--text)] transition-colors"
-            title="Search messages (Cmd+F)"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-            </svg>
-            Search
-          </button>
-          <button
-            onClick={handleNewChat}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[var(--text-secondary)] text-xs hover:bg-white/[0.08] hover:text-[var(--text)] transition-colors"
-            title="Start a new conversation"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            New Chat
-          </button>
-        </div>
-      )}
+      <div className="flex justify-end gap-2 px-4 sm:px-8 pt-3 pb-1">
+        <button
+          onClick={() => setShowSearch(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[var(--text-secondary)] text-xs hover:bg-white/[0.08] hover:text-[var(--text)] transition-colors"
+          title="Search messages (Cmd+F)"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          </svg>
+          Search
+        </button>
+        <button
+          onClick={handleNewChat}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[var(--text-secondary)] text-xs hover:bg-white/[0.08] hover:text-[var(--text)] transition-colors"
+          title="Start a new conversation"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          New Chat
+        </button>
+      </div>
       {/* Chat search overlay */}
       <ChatSearch
         messages={messages}
@@ -200,7 +202,7 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
             <p className="text-[var(--text-secondary)] mb-8 max-w-xs text-[15px] leading-relaxed">
               Ask me anything about {patientName === 'your loved one' ? 'your' : `${patientName}\u2019s`} care, medications, or records.
             </p>
-            <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
+            <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2 w-full max-w-sm">
               {starterPrompts.map((prompt) => (
                 <button
                   key={prompt.text}
@@ -282,28 +284,30 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z" />
               </svg>
             </button>
-            {/* Voice input button */}
-            {mounted && voiceSupported && (
-              <button
-                onClick={toggleListening}
-                className={`p-1.5 transition-colors flex-shrink-0 ${
-                  isListening
-                    ? 'text-red-400 animate-pulse'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text)]'
-                }`}
-                title={isListening ? 'Stop listening' : 'Voice input'}
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
-                </svg>
-              </button>
-            )}
+            {/* Voice input button — wrapper always rendered to prevent layout shift */}
+            <div style={{ width: '2rem', visibility: (mounted && voiceSupported) ? 'visible' : 'hidden', flexShrink: 0 }}>
+              {mounted && voiceSupported && (
+                <button
+                  onClick={toggleListening}
+                  className={`p-1.5 transition-colors ${
+                    isListening
+                      ? 'text-red-400 animate-pulse'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text)]'
+                  }`}
+                  title={isListening ? 'Stop listening' : 'Voice input'}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+                  </svg>
+                </button>
+              )}
+            </div>
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about your health..."
+              placeholder={patientName ? `Ask about ${patientName}'s care...` : "Ask about cancer care, medications, side effects..."}
               className="flex-1 bg-transparent text-[#e2e8f0] text-sm outline-none placeholder:text-[#64748b] min-h-[32px]"
             />
             {isStreaming ? (
