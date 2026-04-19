@@ -61,7 +61,8 @@ export function PushNotificationSetup() {
     if (permission === 'default') {
       const dismissed = localStorage.getItem(DISMISSED_KEY)
       if (!dismissed) {
-        setShowBanner(true)
+        const timer = setTimeout(() => setShowBanner(true), 8000)
+        return () => clearTimeout(timer)
       }
     }
     // If 'denied', show nothing

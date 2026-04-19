@@ -168,7 +168,10 @@ export function ProfileMenu({ isOpen, onClose, userName, patientName }: ProfileM
 
         <div className="p-3 pt-0 border-t border-[var(--border)]">
           <button
-            onClick={() => signOut({ callbackUrl: '/api/auth/cognito-logout' })}
+            onClick={async () => {
+              const confirmed = window.confirm('Sign out of CareCompanion?');
+              if (confirmed) signOut({ callbackUrl: '/api/auth/cognito-logout' });
+            }}
             className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-red-500/10 transition-colors w-full animate-press"
           >
             <svg width="18" height="18" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24">

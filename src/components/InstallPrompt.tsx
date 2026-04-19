@@ -18,9 +18,13 @@ export function InstallPrompt() {
       sessionStorage.getItem('install-prompt-dismissed')
     ) return;
 
+    let savedEvent: BeforeInstallPromptEvent | null = null;
     const handler = (e: Event) => {
       e.preventDefault();
-      setPromptEvent(e as BeforeInstallPromptEvent);
+      savedEvent = e as BeforeInstallPromptEvent;
+      setTimeout(() => {
+        if (savedEvent) setPromptEvent(savedEvent);
+      }, 15000);
     };
 
     window.addEventListener('beforeinstallprompt', handler);

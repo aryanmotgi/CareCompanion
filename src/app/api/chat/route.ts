@@ -161,7 +161,7 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     system: fullSystemPrompt,
     messages: conversationMessages,
     tools,
-    stopWhen: stepCountIs(5),
+    stopWhen: stepCountIs(10),
     onFinish: async ({ text }) => {
       // Save assistant message
       if (text) {
