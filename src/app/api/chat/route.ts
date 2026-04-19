@@ -12,19 +12,25 @@ import { rateLimit } from '@/lib/rate-limit';
 import { ApiErrors } from '@/lib/api-response';
 import { withMetrics } from '@/lib/api-metrics';
 
-const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 5 });
+const ipLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 30 });
+const userLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 10 });
 
 export const maxDuration = 60;
 
 async function handler(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
-  const { success } = await limiter.check(ip);
-  if (!success) {
+  const { success: ipSuccess } = await ipLimiter.check(ip);
+  if (!ipSuccess) {
     return ApiErrors.rateLimited();
   }
 
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return error;
+
+  const { success: userSuccess } = await userLimiter.check(dbUser!.id);
+  if (!userSuccess) {
+    return ApiErrors.rateLimited();
+  }
 
   // Demo mode: skip the full pipeline and return a brief response with signup CTA
   if (dbUser!.isDemo === true) {

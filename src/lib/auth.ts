@@ -85,8 +85,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           .onConflictDoUpdate({
             target: users.cognitoSub,
             set: {
-              email: user.email,
-              displayName: user.name || user.email,
+              email: user.email ?? '',
+              // displayName intentionally omitted — preserve user's custom name
             },
           })
       } catch (e) {
