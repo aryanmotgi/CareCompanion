@@ -35,6 +35,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
 
+  // Verify the caller knows the secret — without this, anyone can forge sessions
+  const callerSecret = req.headers.get('x-e2e-secret') || req.headers.get('authorization')?.replace('Bearer ', '')
+  if (callerSecret !== process.env.E2E_AUTH_SECRET) {
+    return NextResponse.json({ error: 'not found' }, { status: 404 })
+  }
+
   // Rate limit: 5 requests per minute per IP
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1'
   const { success } = await limiter.check(`e2e-signin:${ip}`)
