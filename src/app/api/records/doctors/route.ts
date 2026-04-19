@@ -41,6 +41,9 @@ export async function POST(req: Request) {
 
 // DELETE — remove a doctor by id
 export async function DELETE(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return error;
 

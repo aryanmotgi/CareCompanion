@@ -99,6 +99,9 @@ export async function GET(req: Request) {
 
 // DELETE — remove a symptom entry by date
 export async function DELETE(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   const { success: rlSuccess } = await limiter.check(ip);
   if (!rlSuccess) return ApiErrors.rateLimited();

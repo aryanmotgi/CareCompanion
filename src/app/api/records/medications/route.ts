@@ -45,6 +45,9 @@ export async function POST(req: Request) {
 
 // DELETE — remove a medication by id
 export async function DELETE(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return error;
 
@@ -74,6 +77,9 @@ export async function DELETE(req: Request) {
 
 // PATCH — update a medication's refill date
 export async function PATCH(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return error;
 
