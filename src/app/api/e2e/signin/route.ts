@@ -13,6 +13,13 @@
  *  - The test account has no elevated privileges, so worst-case exposure is
  *    read-only access to that single account's data.
  */
+// GET /api/e2e/signin — liveness probe used by CI to detect when the new
+// deployment is live.  Returns a stable JSON response that old versions of
+// this route (which had no GET handler) would not return.
+export async function GET() {
+  return Response.json({ ready: true })
+}
+
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
