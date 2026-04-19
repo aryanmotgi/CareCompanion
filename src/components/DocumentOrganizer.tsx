@@ -105,7 +105,12 @@ export function DocumentOrganizer({ documents, onScanNew }: DocumentOrganizerPro
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortOption>('date-newest')
   const [showSortMenu, setShowSortMenu] = useState(false)
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('scans-view') as ViewMode) || 'list'
+    }
+    return 'list'
+  })
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkMode, setBulkMode] = useState(false)
   const [showRecategorize, setShowRecategorize] = useState(false)
@@ -181,6 +186,11 @@ export function DocumentOrganizer({ documents, onScanNew }: DocumentOrganizerPro
     setShowRecategorize(false)
   }, [])
 
+  const handleViewChange = useCallback((newView: ViewMode) => {
+    setViewMode(newView)
+    localStorage.setItem('scans-view', newView)
+  }, [])
+
   return (
     <div className="px-4 sm:px-5 py-5 sm:py-6 pb-28">
       {/* Header */}
@@ -215,7 +225,7 @@ export function DocumentOrganizer({ documents, onScanNew }: DocumentOrganizerPro
         </svg>
         <input
           type="text"
-          placeholder="Search documents..."
+          placeholder="Search by filename or type..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-10 pr-4 py-2.5 text-sm text-[#f1f5f9] placeholder:text-[#64748b] focus:outline-none focus:ring-1 focus:ring-[#6366F1]/40 focus:border-[#6366F1]/40 transition-all"
@@ -299,7 +309,7 @@ export function DocumentOrganizer({ documents, onScanNew }: DocumentOrganizerPro
         {/* View toggle */}
         <div className="flex items-center bg-white/[0.04] border border-white/[0.08] rounded-lg p-0.5">
           <button
-            onClick={() => setViewMode('list')}
+            onClick={() => handleViewChange('list')}
             aria-label="List view"
             aria-pressed={viewMode === 'list'}
             className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-[#6366F1] text-white' : 'text-[#64748b] hover:text-[#94a3b8]'}`}
@@ -309,7 +319,7 @@ export function DocumentOrganizer({ documents, onScanNew }: DocumentOrganizerPro
             </svg>
           </button>
           <button
-            onClick={() => setViewMode('grid')}
+            onClick={() => handleViewChange('grid')}
             aria-label="Grid view"
             aria-pressed={viewMode === 'grid'}
             className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-[#6366F1] text-white' : 'text-[#64748b] hover:text-[#94a3b8]'}`}
