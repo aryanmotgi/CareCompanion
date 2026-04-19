@@ -42,7 +42,7 @@ async function handler(req: Request) {
       : '';
 
     const demoResult = streamText({
-      model: anthropic('claude-haiku-4.5'),
+      model: anthropic('claude-sonnet-4.6'),
       system: `You are CareCompanion AI. The user is in demo mode exploring the app.
 Give a short, helpful 1-2 sentence answer about their question as it relates to cancer care.
 Then end with exactly this line on its own: "Sign up for free to save your conversations and get full AI-powered care insights."
