@@ -186,8 +186,8 @@ export function LoginForm({ initialError, mode }: { initialError?: string; mode?
                 </span>
               </label>
               {showConsentError && (
-                <p id="consent-error" role="alert" className="text-xs text-red-400/80 pl-7 mt-1.5">
-                  Please agree to continue.
+                <p id="consent-error" role="alert" className="text-xs text-amber-500 pl-7 mt-1.5">
+                  Please accept the HIPAA consent to continue.
                 </p>
               )}
             </div>

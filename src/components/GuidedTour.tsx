@@ -14,7 +14,7 @@ const BASE_TOUR_STEPS: TourStep[] = [
     target: 'dashboard-cards',
     title: 'Your Action Items',
     description:
-      'This is your personalized dashboard. Urgent refills, upcoming appointments, and abnormal labs appear here as priority cards.',
+      'Once you add medications and appointments, urgent refills and upcoming visits will appear here automatically.',
     position: 'bottom',
   },
   {
@@ -222,6 +222,20 @@ export function GuidedTour() {
     }
   }, [positionStep])
 
+  useEffect(() => {
+    if (!active) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === 'ArrowRight') {
+        goNext()
+      }
+      if (e.key === 'Escape') {
+        completeTour()
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [active, goNext, completeTour])
+
   const completeTour = useCallback(() => {
     setActive(false)
     localStorage.setItem('guided_tour_completed', 'true')
@@ -291,7 +305,7 @@ export function GuidedTour() {
         <div className="guided-tour-actions">
           <button
             onClick={completeTour}
-            className="guided-tour-skip"
+            className="guided-tour-skip underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded"
             type="button"
           >
             Skip tour

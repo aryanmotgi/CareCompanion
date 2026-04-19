@@ -140,7 +140,15 @@ export function DocumentScanner({ onClose, onSaved }: DocumentScannerProps) {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
           <h2 className="font-display text-lg font-semibold text-white">Scan Document</h2>
-          <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
+          <button
+            onClick={() => {
+              if (scanning || saving) {
+                if (!window.confirm('Data extraction is in progress. Close and discard?')) return;
+              }
+              onClose();
+            }}
+            className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+          >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
             </svg>

@@ -372,7 +372,7 @@ export function DashboardView({
   return (
     <>
     <div className="px-4 sm:px-5 py-5 sm:py-6">
-      <div className="mb-1 text-[var(--text-secondary)] text-xs uppercase tracking-wider">{greeting}</div>
+      <div className="mb-1 text-[var(--text-secondary)] text-xs tracking-wider">{greeting}</div>
       <h2 className="text-fluid-xl font-bold mb-2 animate-greeting">
         {actionCount > 0 ? (
           <>
