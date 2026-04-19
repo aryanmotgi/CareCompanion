@@ -9,40 +9,26 @@ test.describe('Production 24/7 Monitor', () => {
 
   test.beforeEach(async ({ page }) => {
     const email = process.env.E2E_MONITOR_EMAIL!
-    const baseUrl = process.env.PLAYWRIGHT_BASE_URL!
 
-    // Authenticate via the dedicated E2E endpoint.
-    // Use page.request so that Set-Cookie headers are stored in the browser
-    // context and are automatically sent on the next page.goto() call.
-    const res = await page.request.post(`${baseUrl}/api/e2e/signin`, {
-      data: { email },
-      headers: { 'Content-Type': 'application/json' },
-    })
-    if (!res.ok()) {
-      throw new Error(`E2E signin failed: ${res.status()} ${await res.text()}`)
-    }
+    // Navigate to the site first so the browser context has the correct origin,
+    // then call the E2E signin endpoint via fetch inside the page (same origin).
+    // This means the browser itself handles Set-Cookie, including Secure cookies.
+    await page.goto('/login')
+    const result = await page.evaluate(
+      async ({ email }: { email: string }) => {
+        const res = await fetch('/api/e2e/signin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+          credentials: 'include',
+        })
+        return { ok: res.ok, status: res.status, body: await res.text() }
+      },
+      { email }
+    )
 
-    // Manually copy any Set-Cookie headers into the browser context to ensure
-    // they are sent on subsequent navigations (Playwright's APIRequestContext
-    // stores cookies separately from the BrowserContext by default).
-    const rawCookies = res.headersArray().filter(h => h.name.toLowerCase() === 'set-cookie')
-    for (const { value } of rawCookies) {
-      // Parse each Set-Cookie header and add it to the browser context.
-      const parts = value.split(';').map(p => p.trim())
-      const [nameVal] = parts
-      const eqIdx = nameVal.indexOf('=')
-      const cookieName = nameVal.slice(0, eqIdx)
-      const cookieValue = nameVal.slice(eqIdx + 1)
-      const domain = new URL(baseUrl).hostname
-      await page.context().addCookies([{
-        name: cookieName,
-        value: cookieValue,
-        domain,
-        path: '/',
-        httpOnly: true,
-        secure: true,
-        sameSite: 'Lax',
-      }])
+    if (!result.ok) {
+      throw new Error(`E2E signin failed: ${result.status} ${result.body}`)
     }
 
     // Navigate to trigger middleware/session validation and confirm we are
