@@ -85,9 +85,10 @@ async function DashboardContent() {
         emergencyContactName={profile.emergencyContactName || null}
         emergencyContactPhone={profile.emergencyContactPhone || null}
         doctorCount={doctorCount?.value ?? 0}
+        profileId={profile.id}
       />
       <div className="px-4 sm:px-5 pb-6 space-y-4">
-        <ShareHealthCard />
+        {profile?.cancerType && <ShareHealthCard />}
         <DashboardInsights />
       </div>
     </>

@@ -31,6 +31,7 @@ interface DashboardViewProps {
   emergencyContactName?: string | null
   emergencyContactPhone?: string | null
   doctorCount?: number
+  profileId?: string | null
 }
 
 const PHASE_LABELS: Record<string, { label: string; color: string }> = {
@@ -60,6 +61,7 @@ export function DashboardView({
   emergencyContactName,
   emergencyContactPhone,
   doctorCount = 0,
+  profileId,
 }: DashboardViewProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showTourTooltip, setShowTourTooltip] = useState(false)
@@ -401,7 +403,7 @@ export function DashboardView({
       {/* Resume onboarding banner for users who skipped */}
       {onboardingComplete && !cancerType && (
         <a
-          href="/onboarding"
+          href={profileId ? `/onboarding?profileId=${profileId}` : '/onboarding'}
           className="block rounded-2xl bg-gradient-to-r from-violet-500/10 to-blue-500/10 border border-violet-500/20 p-4 mb-4 hover:border-violet-500/30 transition-colors"
         >
           <div className="flex items-center justify-between">
@@ -419,7 +421,7 @@ export function DashboardView({
       {/* Onboarding banner for existing users */}
       {!onboardingComplete && (
         <a
-          href="/onboarding"
+          href={profileId ? `/onboarding?profileId=${profileId}` : '/onboarding'}
           className="block mb-4 sm:mb-5 rounded-2xl border border-[#A78BFA]/30 bg-[#A78BFA]/5 p-4 hover:bg-[#A78BFA]/10 transition-colors"
         >
           <div className="flex items-center gap-3">

@@ -33,6 +33,7 @@ export default async function EmergencyPage() {
         allergies: profile.allergies,
         emergencyContactName: profile.emergencyContactName,
         emergencyContactPhone: profile.emergencyContactPhone,
+        updatedAt: profile.createdAt,
       }}
       medications={meds.map((m) => ({
         name: m.name,

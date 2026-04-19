@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { BottomTabBar } from './BottomTabBar'
 import { AmbientBackground } from './AmbientBackground'
 import { NotificationBell } from './NotificationBell'
@@ -82,6 +83,7 @@ export function AppShell({
   const [menuVisible, setMenuVisible] = useState(false)
   const pathname = usePathname()
   const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const { data: session } = useSession()
 
   const openMenu = () => {
     setMenuOpen(true)
@@ -99,9 +101,10 @@ export function AppShell({
   const setupRoutes = ['/connect', '/manual-setup', '/setup']
   const isSetup = setupRoutes.some((r) => pathname.startsWith(r))
 
-  const initials = (userName || '?')
+  const liveDisplayName = (session?.user as { displayName?: string } | undefined)?.displayName || session?.user?.name || userName || '?'
+  const initials = liveDisplayName
     .split(' ')
-    .map((n) => n[0])
+    .map((n: string) => n[0])
     .join('')
     .toUpperCase()
     .slice(0, 2)

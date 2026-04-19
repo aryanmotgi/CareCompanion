@@ -8,7 +8,7 @@ export function AmbientBackground() {
         className="absolute w-[600px] h-[600px] rounded-full animate-blob-1"
         style={{
           background: 'radial-gradient(circle, rgba(99, 102, 241, 0.06) 0%, transparent 70%)',
-          top: '-10%',
+          top: 'max(env(safe-area-inset-top, 0px), 60px)',
           right: '-10%',
           filter: 'blur(80px)',
         }}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import type { Appointment, Medication } from '@/lib/types';
 
@@ -25,6 +25,7 @@ export function CalendarView({ appointments, medications, patientName }: Calenda
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const touchStartX = useRef(0);
 
   const firstDay = new Date(currentYear, currentMonth, 1).getDay();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
@@ -69,11 +70,21 @@ export function CalendarView({ appointments, medications, patientName }: Calenda
     else setCurrentMonth(currentMonth + 1);
   };
 
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    const delta = touchStartX.current - e.changedTouches[0].clientX;
+    if (delta > 50) nextMonth();
+    if (delta < -50) prevMonth();
+  }
+
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const selectedEvents = selectedDate ? eventMap.get(selectedDate) || [] : [];
 
   return (
-    <div className="px-5 py-4 max-w-lg mx-auto">
+    <div className="px-5 py-4 max-w-lg mx-auto" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-xl font-bold text-white">Calendar</h2>
         <p className="text-xs text-[var(--text-muted)]">{patientName}&apos;s schedule</p>

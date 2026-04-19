@@ -10,6 +10,7 @@ interface EmergencyCardProps {
     allergies: string | null;
     emergencyContactName: string | null | undefined;
     emergencyContactPhone: string | null | undefined;
+    updatedAt?: Date | string | null;
   };
   medications: Array<{
     name: string;
@@ -221,6 +222,13 @@ export function EmergencyCard({ patient, medications, doctors, insurance }: Emer
           988 Crisis Line
         </a>
       </div>
+
+      {/* Last updated timestamp */}
+      <p className="text-xs text-[var(--text-secondary)] mt-4 text-center">
+        Last updated: {patient.updatedAt
+          ? new Date(patient.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          : 'Never'}
+      </p>
 
       {/* Empty state guidance */}
       {isEmpty && (

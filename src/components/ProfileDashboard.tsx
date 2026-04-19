@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { AnimatedNumber } from './AnimatedNumber'
 import { parseLabValue } from '@/lib/lab-parsing'
 import type { CareProfile, Doctor, LabResult } from '@/lib/types'
@@ -11,6 +12,7 @@ interface ProfileDashboardProps {
 }
 
 export function ProfileDashboard({ profile, doctors, labResults }: ProfileDashboardProps) {
+  const [isEditing, setIsEditing] = useState(false)
   const initials = (profile.patientName || '?')
     .split(' ')
     .map((n) => n[0])
@@ -141,13 +143,36 @@ export function ProfileDashboard({ profile, doctors, labResults }: ProfileDashbo
         </div>
       )}
 
-      {/* Edit Profile */}
-      <a
-        href="/profile/edit"
-        className="block w-full text-center py-3 rounded-xl bg-white/[0.06] border border-white/[0.1] text-[#e2e8f0] text-sm font-semibold animate-press"
-      >
-        Edit Profile
-      </a>
+      {/* Edit Profile toggle */}
+      {!isEditing ? (
+        <button
+          onClick={() => setIsEditing(true)}
+          className="block w-full text-center py-3 rounded-xl bg-white/[0.06] border border-white/[0.1] text-[#e2e8f0] text-sm font-semibold animate-press"
+        >
+          Edit Profile
+        </button>
+      ) : (
+        <div className="space-y-3">
+          <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-4 space-y-3">
+            <p className="text-[#94a3b8] text-xs uppercase tracking-wider font-semibold">Editing Profile</p>
+            <p className="text-[#e2e8f0] text-sm">
+              To update your profile details, visit the full editor below.
+            </p>
+            <a
+              href="/profile/edit"
+              className="block w-full text-center py-2.5 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold animate-press"
+            >
+              Open Profile Editor
+            </a>
+          </div>
+          <button
+            onClick={() => setIsEditing(false)}
+            className="block w-full text-center py-3 rounded-xl bg-white/[0.06] border border-white/[0.1] text-[#94a3b8] text-sm font-semibold animate-press"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   )
 }

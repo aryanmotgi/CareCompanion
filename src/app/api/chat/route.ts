@@ -15,6 +15,7 @@ import { withMetrics } from '@/lib/api-metrics';
 const ipLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 30 });
 const userLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 10 });
 
+// maxDuration = 60s requires Vercel Pro plan or higher. Hobby plan caps at 10s.
 export const maxDuration = 60;
 
 async function handler(req: Request) {

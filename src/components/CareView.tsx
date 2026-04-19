@@ -292,17 +292,27 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
           <div>
             <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2">Active Medications</div>
             {activeMeds.length === 0 && needsRefill.length === 0 ? (
-              <div className="text-center py-8 text-[#64748b] text-sm">No medications added yet</div>
+              <div className="text-center py-8 space-y-4">
+                <p className="text-[#64748b] text-sm">No medications added yet</p>
+                <button
+                  onClick={() => setShowMedForm(true)}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold animate-press shimmer-btn relative overflow-hidden"
+                >
+                  + Add Medication
+                </button>
+              </div>
             ) : (
               <div className="space-y-2">{activeMeds.map((m, i) => renderMedCard(m, i + needsRefill.length))}</div>
             )}
           </div>
-          <button
-            onClick={() => setShowMedForm(true)}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold animate-press shimmer-btn relative overflow-hidden"
-          >
-            + Add Medication
-          </button>
+          {(activeMeds.length > 0 || needsRefill.length > 0) && (
+            <button
+              onClick={() => setShowMedForm(true)}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold animate-press shimmer-btn relative overflow-hidden"
+            >
+              + Add Medication
+            </button>
+          )}
           <MedicationReminders reminders={todayReminders} />
         </div>
       )}

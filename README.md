@@ -132,6 +132,27 @@ cd carecompanion
 npm install
 ```
 
+## Environment Variables
+
+Copy `.env.local.example` to `.env.local` and fill in all required values.
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | ✅ | Supabase/Postgres connection string |
+| `NEXTAUTH_SECRET` | ✅ | Random string for NextAuth session signing |
+| `NEXTAUTH_URL` | ✅ | Your app URL (e.g. http://localhost:3000) |
+| `COGNITO_CLIENT_ID` | ✅ | AWS Cognito app client ID |
+| `COGNITO_CLIENT_SECRET` | ✅ | AWS Cognito app client secret |
+| `COGNITO_ISSUER` | ✅ | Cognito user pool issuer URL |
+| `COGNITO_USER_POOL_ID` | ✅ | AWS Cognito user pool ID (for AdminDeleteUser) |
+| `AWS_REGION` | ✅ | AWS region (e.g. us-east-1) |
+| `AWS_ACCESS_KEY_ID` | ✅ | AWS IAM access key (needs cognito-idp:AdminDeleteUser) |
+| `AWS_SECRET_ACCESS_KEY` | ✅ | AWS IAM secret key |
+| `ANTHROPIC_API_KEY` | ✅ | Anthropic API key for Claude |
+| `NEXT_PUBLIC_APP_URL` | ✅ | Public app URL for emails and shared links |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | ⚠️ | VAPID public key for push notifications |
+| `VAPID_PRIVATE_KEY` | ⚠️ | VAPID private key for push notifications |
+
 Create `.env.local`:
 ```
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
