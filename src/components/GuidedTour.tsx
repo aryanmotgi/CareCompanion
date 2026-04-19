@@ -222,20 +222,6 @@ export function GuidedTour() {
     }
   }, [positionStep])
 
-  useEffect(() => {
-    if (!active) return
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === 'ArrowRight') {
-        goNext()
-      }
-      if (e.key === 'Escape') {
-        completeTour()
-      }
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [active, goNext, completeTour])
-
   const completeTour = useCallback(() => {
     setActive(false)
     localStorage.setItem('guided_tour_completed', 'true')
@@ -253,6 +239,20 @@ export function GuidedTour() {
       setTransitioning(false)
     }, 200)
   }, [currentStep, tourSteps, completeTour])
+
+  useEffect(() => {
+    if (!active) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === 'ArrowRight') {
+        goNext()
+      }
+      if (e.key === 'Escape') {
+        completeTour()
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [active, goNext, completeTour])
 
   if (!active || !spotlightRect) return null
 
