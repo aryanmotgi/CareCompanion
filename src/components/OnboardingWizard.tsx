@@ -39,6 +39,7 @@ interface SimpleMed {
 interface SimpleDoc {
   name: string;
   specialty: string;
+  phone?: string;
 }
 
 interface SimpleAppt {
@@ -132,6 +133,18 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
     // Show intro animation for fresh onboarding (step 1, no existing profile data)
     return initial === 1 && !existingProfile?.cancer_type ? 0 : initial;
   });
+
+  // Deep-link: read ?step= URL param on mount and jump to that step
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const stepParam = parseInt(params.get('step') ?? '', 10);
+      if (!isNaN(stepParam) && stepParam >= 1 && stepParam <= 6) {
+        setStep(stepParam);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [slideDir, setSlideDir] = useState<'left' | 'right'>('left');
@@ -156,8 +169,12 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
   const [dataChoice, setDataChoice] = useState<'manual' | 'skip' | null>(null);
 
   // Step 4: simplified manual entry
-  const [medications, setMedications] = useState<SimpleMed[]>([{ name: '', dose: '' }]);
-  const [doctors, setDoctors] = useState<SimpleDoc[]>([{ name: '', specialty: '' }]);
+  const [medications, setMedications] = useState<SimpleMed[]>([
+    { name: '', dose: '' },
+    { name: '', dose: '' },
+    { name: '', dose: '' },
+  ]);
+  const [doctors, setDoctors] = useState<SimpleDoc[]>([{ name: '', specialty: '', phone: '' }]);
   const [appointments, setAppointments] = useState<SimpleAppt[]>([{ doctor_name: '', date_time: '' }]);
   const [manualSection, setManualSection] = useState<'meds' | 'doctors' | 'appointments'>('meds');
 
@@ -276,7 +293,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       if (step === 1 && role !== null && (role === 'patient' || patientName.trim().length > 0)) goForward(2);
       if (step === 2) goForward(3);
-      if (step === 5 && !loading) goForward(6);
+      if (step === 5 && !loading) saveAndFinish();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -369,7 +386,10 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
         localStorage.setItem('onboarding_priorities', JSON.stringify(priorities));
       }
 
-      router.push('/dashboard');
+      // Only advance to summary step after confirmed successful save
+      setSlideDir('left');
+      setAnimKey((k) => k + 1);
+      setStep(6);
     } catch (err) {
       console.error('Onboarding error:', err);
       setError('Something went wrong saving your profile. Please try again.');
@@ -1013,12 +1033,22 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
                         className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] py-2.5 px-3 text-sm text-white placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[#A78BFA]/40 transition-colors"
                       />
                     </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs text-[var(--text-muted)] mb-1">Phone (optional)</label>
+                      <input
+                        type="tel"
+                        value={doc.phone || ''}
+                        onChange={(e) => setDoctors((prev) => prev.map((d, j) => j === i ? { ...d, phone: e.target.value } : d))}
+                        placeholder="e.g., (555) 123-4567"
+                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] py-2.5 px-3 text-sm text-white placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[#A78BFA]/40 transition-colors"
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
               <button
                 type="button"
-                onClick={() => setDoctors((prev) => [...prev, { name: '', specialty: '' }])}
+                onClick={() => setDoctors((prev) => [...prev, { name: '', specialty: '', phone: '' }])}
                 className="text-sm text-[#A78BFA] hover:text-[#C4B5FD] font-medium"
               >
                 + Add another doctor
@@ -1172,15 +1202,30 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
               Back
             </button>
             <button
-              onClick={() => goForward(6)}
+              onClick={saveAndFinish}
               disabled={loading}
               className="flex-1 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] py-3.5 px-6 text-base text-white font-semibold hover:opacity-90 active:scale-[0.98] disabled:opacity-50 transition-all"
             >
-              Continue
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" aria-hidden="true" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Saving...
+                </span>
+              ) : (
+                'Finish Setup'
+              )}
             </button>
           </div>
+          {error && (
+            <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              {error}
+            </div>
+          )}
           <button
-            onClick={() => goForward(6)}
+            onClick={() => router.push('/dashboard')}
             className="w-full text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
           >
             Skip for now
@@ -1339,28 +1384,11 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
             ))}
           </div>
 
-          {error && (
-            <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-              {error}
-            </div>
-          )}
-
           <button
-            onClick={saveAndFinish}
-            disabled={loading}
-            className="w-full rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] py-3.5 px-6 text-base text-white font-semibold hover:opacity-90 active:scale-[0.98] disabled:opacity-50 transition-all"
+            onClick={() => router.push('/dashboard')}
+            className="w-full rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] py-3.5 px-6 text-base text-white font-semibold hover:opacity-90 active:scale-[0.98] transition-all"
           >
-            {loading ? (
-              <span className="inline-flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" aria-hidden="true" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Setting up...
-              </span>
-            ) : (
-              'Go to Dashboard'
-            )}
+            Go to Dashboard
           </button>
 
           <p className="text-center text-xs text-[var(--text-muted)]">

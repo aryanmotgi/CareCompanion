@@ -75,7 +75,7 @@ export function ProfileCompleteness({
       weight: 10,
       filled: Boolean(cancerType),
       action: 'Add cancer type',
-      href: '/profile/edit',
+      href: '/onboarding?step=2',
       icon: (
         <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714a2.25 2.25 0 00.659 1.591L19 14.5M14.25 3.104c.251.023.501.05.75.082M19 14.5l-2.47 2.47a2.25 2.25 0 01-1.59.659H9.06a2.25 2.25 0 01-1.59-.659L5 14.5m14 0V17a2.25 2.25 0 01-2.25 2.25H7.25A2.25 2.25 0 015 17v-2.5" />
@@ -88,7 +88,7 @@ export function ProfileCompleteness({
       weight: 10,
       filled: Boolean(cancerStage),
       action: 'Add stage',
-      href: '/profile/edit',
+      href: '/onboarding?step=2',
       icon: (
         <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
@@ -101,7 +101,7 @@ export function ProfileCompleteness({
       weight: 10,
       filled: Boolean(treatmentPhase),
       action: 'Set phase',
-      href: '/profile/edit',
+      href: '/onboarding?step=2',
       icon: (
         <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -111,7 +111,7 @@ export function ProfileCompleteness({
     {
       key: 'medications',
       label: 'Add a medication',
-      weight: 15,
+      weight: 20,
       filled: medicationCount > 0,
       action: 'Add medication',
       href: '/medications',
