@@ -13,6 +13,10 @@ import { InstallPrompt } from '@/components/InstallPrompt'
 import { CsrfProvider } from '@/components/CsrfProvider'
 import { getActiveProfile, getAllProfiles } from '@/lib/active-profile'
 
+export const metadata = {
+  robots: { index: false, follow: false },
+}
+
 export default async function AppLayout({
   children,
 }: {

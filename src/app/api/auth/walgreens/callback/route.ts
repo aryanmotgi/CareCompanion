@@ -6,7 +6,8 @@ import { and, eq } from 'drizzle-orm';
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
   const state = req.nextUrl.searchParams.get('state');
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://carecompanionai.app');
 
   if (!code || !state) {
     return NextResponse.redirect(`${appUrl}/settings?error=oauth_failed`);

@@ -62,7 +62,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function SettingsPage({ settings: initialSettings, medicationReminders = [], medications = [] }: SettingsPageProps) {
-  const router = useRouter() // eslint-disable-line @typescript-eslint/no-unused-vars
+  const router = useRouter()
   const { showToast } = useToast()
   const csrfToken = useCsrfToken()
   const [settings, setSettings] = useState<UserSettings | null>(initialSettings)
@@ -361,9 +361,9 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
       <SettingsGroup>
         <SettingsRow
           label="App Version"
-          right={<span className="text-[#64748b] text-sm">0.1.2.0</span>}
+          right={<span className="text-[#64748b] text-sm">0.1.2</span>}
         />
-        <SettingsRow label="Terms &amp; Privacy Policy" onClick={() => {}} />
+        <SettingsRow label="Terms &amp; Privacy Policy" onClick={() => { router.push('/terms'); }} />
       </SettingsGroup>
 
       <div className="h-8" />
