@@ -216,6 +216,7 @@ export function NotificationPreferences({ settings, onSettingsChange }: Notifica
         })
 
         setSaveStatus('saved')
+        showToast('Preferences saved', 'success')
         if (saveStatusTimeoutRef.current) clearTimeout(saveStatusTimeoutRef.current)
         saveStatusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 2000)
       } catch {

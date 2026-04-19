@@ -22,6 +22,7 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [filterSeverity, setFilterSeverity] = useState<number | null>(null);
 
   const today = new Date().toISOString().split('T')[0];
   const todayEntry = entries.find((e) => e.date === today);
@@ -240,14 +241,36 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
 
       {/* History */}
       <div>
-        <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Recent Entries</h3>
-        {entries.length === 0 ? (
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Recent Entries</h3>
+        </div>
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+          <button
+            onClick={() => setFilterSeverity(null)}
+            className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${filterSeverity === null ? 'bg-indigo-500/20 border border-indigo-500/40 text-indigo-300' : 'bg-white/[0.04] border border-white/[0.06] text-[var(--text-secondary)]'}`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setFilterSeverity(7)}
+            className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${filterSeverity === 7 ? 'bg-red-500/20 border border-red-500/40 text-red-300' : 'bg-white/[0.04] border border-white/[0.06] text-[var(--text-secondary)]'}`}
+          >
+            High pain (7+)
+          </button>
+          <button
+            onClick={() => setFilterSeverity(4)}
+            className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${filterSeverity === 4 ? 'bg-amber-500/20 border border-amber-500/40 text-amber-300' : 'bg-white/[0.04] border border-white/[0.06] text-[var(--text-secondary)]'}`}
+          >
+            Moderate (4+)
+          </button>
+        </div>
+        {entries.filter((e) => filterSeverity === null || (e.painLevel ?? 0) >= filterSeverity).length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-[var(--text-muted)] text-sm">No entries yet. Start tracking today!</p>
+            <p className="text-[var(--text-muted)] text-sm">{entries.length === 0 ? 'No entries yet. Start tracking today!' : 'No entries match this filter.'}</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {entries.map((entry) => (
+            {entries.filter((e) => filterSeverity === null || (e.painLevel ?? 0) >= filterSeverity).map((entry) => (
               <div key={entry.id} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl px-4 py-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-white">

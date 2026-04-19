@@ -217,6 +217,9 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
       {canManage && (
         <div className="mb-6">
           <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Invite Someone</h3>
+          <p className="text-sm text-[var(--text-secondary)] mb-4">
+            Viewers can see medications, appointments, and your health summary — but cannot make changes or view chat history.
+          </p>
           <form onSubmit={sendInvite} className="space-y-3">
             <input
               type="email"
