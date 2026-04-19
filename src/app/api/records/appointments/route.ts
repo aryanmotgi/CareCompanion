@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { appointments, careProfiles } from '@/lib/db/schema';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { getAuthenticatedUser, parseBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { validateCsrf } from '@/lib/csrf';
@@ -96,7 +96,7 @@ export async function GET(req: Request) {
   const appts = await db
     .select()
     .from(appointments)
-    .where(eq(appointments.careProfileId, profileId))
+    .where(and(eq(appointments.careProfileId, profileId), isNull(appointments.deletedAt)))
     .orderBy(desc(appointments.dateTime));
 
   return apiSuccess(appts);

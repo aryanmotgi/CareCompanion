@@ -12,6 +12,7 @@ import { eq } from 'drizzle-orm'
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { rateLimit } from '@/lib/rate-limit'
 import { apiSuccess, apiError, ApiErrors } from '@/lib/api-response'
+import { validateCsrf } from '@/lib/csrf'
 
 const limiter = rateLimit({ interval: 60000, maxRequests: 10 })
 
@@ -41,6 +42,9 @@ const TriageResultSchema = z.object({
 export type TriageResult = z.infer<typeof TriageResultSchema>
 
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req)
+  if (!valid) return csrfError!
+
   const ip = req.headers.get('x-forwarded-for') || 'unknown'
   const { success } = await limiter.check(ip)
   if (!success) return ApiErrors.rateLimited()

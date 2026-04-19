@@ -1,5 +1,6 @@
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
+import { validateCsrf } from '@/lib/csrf';
 import { db } from '@/lib/db';
 import { reminderLogs, notifications } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
@@ -15,6 +16,9 @@ const RespondSchema = z.object({
 // POST — mark a medication reminder as taken, snoozed, or missed
 export async function POST(req: Request) {
   try {
+    const { valid, error: csrfError } = await validateCsrf(req);
+    if (!valid) return csrfError!;
+
     const { user: dbUser, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
 

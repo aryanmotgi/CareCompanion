@@ -8,6 +8,10 @@ import { messages } from '@/lib/db/schema'
 import { and, eq, desc, sql } from 'drizzle-orm'
 import { apiSuccess, ApiErrors } from '@/lib/api-response'
 
+function escapeLike(str: string): string {
+  return str.replace(/[%_\\]/g, '\\$&');
+}
+
 export async function GET(req: Request) {
   try {
     const { user: dbUser, error } = await getAuthenticatedUser()
@@ -22,7 +26,7 @@ export async function GET(req: Request) {
       return ApiErrors.badRequest('Search query must be at least 2 characters')
     }
 
-    const searchTerm = `%${query.trim()}%`
+    const searchTerm = `%${escapeLike(query.trim())}%`
 
     const results = await db
       .select({ id: messages.id, role: messages.role, content: messages.content, createdAt: messages.createdAt })

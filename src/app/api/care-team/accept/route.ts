@@ -1,5 +1,6 @@
-import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { getAuthenticatedUser, parseBody } from '@/lib/api-helpers';
 import { ApiErrors } from '@/lib/api-response';
+import { validateCsrf } from '@/lib/csrf';
 import { db } from '@/lib/db';
 import { careTeamInvites, careTeamMembers, careTeamActivity } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
@@ -9,6 +10,9 @@ const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxReq
 
 // POST — accept a care team invitation
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   const { success } = await limiter.check(ip);
   if (!success) {
@@ -18,7 +22,9 @@ export async function POST(req: Request) {
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error || !dbUser) return new Response('Unauthorized', { status: 401 });
 
-  const { invite_id } = await req.json();
+  const { body, error: bodyError } = await parseBody<{ invite_id?: string }>(req);
+  if (bodyError) return bodyError;
+  const { invite_id } = body;
 
   if (!invite_id) {
     return Response.json({ error: 'invite_id is required' }, { status: 400 });

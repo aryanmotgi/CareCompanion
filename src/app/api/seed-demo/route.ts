@@ -1,5 +1,6 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { apiSuccess, apiError, ApiErrors } from '@/lib/api-response';
+import { validateCsrf } from '@/lib/csrf';
 import { db } from '@/lib/db';
 import { careProfiles, medications, appointments, doctors, labResults, insurance, userSettings, notifications } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
@@ -8,6 +9,9 @@ import { rateLimit } from '@/lib/rate-limit';
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 5 });
 
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   const { success } = await limiter.check(ip);
   if (!success) return ApiErrors.rateLimited();
@@ -89,15 +93,17 @@ export async function POST(req: Request) {
     ]).returning({ id: doctors.id });
 
     // Insurance
-    await db.insert(insurance).values({
-      userId: dbUser!.id,
-      provider: 'Blue Cross Blue Shield',
-      memberId: 'BCB-882991-04',
-      groupNumber: 'GRP-7420',
-    }).onConflictDoUpdate({
-      target: insurance.userId,
-      set: { provider: 'Blue Cross Blue Shield', memberId: 'BCB-882991-04', groupNumber: 'GRP-7420' },
-    });
+    const [existingInsurance] = await db.select({ id: insurance.id }).from(insurance).where(eq(insurance.userId, dbUser!.id)).limit(1);
+    if (existingInsurance) {
+      await db.update(insurance).set({ provider: 'Blue Cross Blue Shield', memberId: 'BCB-882991-04', groupNumber: 'GRP-7420' }).where(eq(insurance.id, existingInsurance.id));
+    } else {
+      await db.insert(insurance).values({
+        userId: dbUser!.id,
+        provider: 'Blue Cross Blue Shield',
+        memberId: 'BCB-882991-04',
+        groupNumber: 'GRP-7420',
+      });
+    }
 
     // Upsert user settings
     await db.insert(userSettings).values({

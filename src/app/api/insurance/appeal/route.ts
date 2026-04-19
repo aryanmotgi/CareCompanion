@@ -6,6 +6,7 @@ import { generateText, Output } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { z } from 'zod'
 import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { validateCsrf } from '@/lib/csrf'
 import { db } from '@/lib/db'
 import { claims, careProfiles, insurance } from '@/lib/db/schema'
 import { and, eq } from 'drizzle-orm'
@@ -24,6 +25,9 @@ const AppealLetterSchema = z.object({
 })
 
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req)
+  if (!valid) return csrfError!
+
   const ip = req.headers.get('x-forwarded-for') || 'unknown'
   const { success } = await limiter.check(ip)
   if (!success) return ApiErrors.rateLimited()

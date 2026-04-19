@@ -2,7 +2,7 @@ import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { db } from '@/lib/db'
 import { auditLogs } from '@/lib/db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, count } from 'drizzle-orm'
 
 /**
  * GET /api/compliance/audit-log
@@ -23,15 +23,21 @@ export async function GET(req: Request) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
     const offset = parseInt(searchParams.get('offset') || '0')
 
-    const logs = await db
-      .select()
-      .from(auditLogs)
-      .where(eq(auditLogs.userId, user!.id))
-      .orderBy(desc(auditLogs.createdAt))
-      .limit(limit)
-      .offset(offset)
+    const [logs, [{ total }]] = await Promise.all([
+      db
+        .select()
+        .from(auditLogs)
+        .where(eq(auditLogs.userId, user!.id))
+        .orderBy(desc(auditLogs.createdAt))
+        .limit(limit)
+        .offset(offset),
+      db
+        .select({ total: count() })
+        .from(auditLogs)
+        .where(eq(auditLogs.userId, user!.id)),
+    ])
 
-    return apiSuccess({ logs, total: logs.length, limit, offset })
+    return apiSuccess({ logs, total, limit, offset })
   } catch (err) {
     console.error('[audit-log] GET error:', err)
     return apiError('Internal server error', 500)

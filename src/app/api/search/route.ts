@@ -4,6 +4,10 @@ import { db } from '@/lib/db'
 import { careProfiles, medications, appointments, labResults, documents, symptomEntries } from '@/lib/db/schema'
 import { and, eq, ilike, or } from 'drizzle-orm'
 
+function escapeLike(str: string): string {
+  return str.replace(/[%_\\]/g, '\\$&');
+}
+
 export async function GET(req: Request) {
   try {
     const { user, error: authError } = await getAuthenticatedUser()
@@ -22,7 +26,7 @@ export async function GET(req: Request) {
       .limit(1)
 
     const profileId = profile?.id
-    const searchPattern = `%${query}%`
+    const searchPattern = `%${escapeLike(query)}%`
 
     // Search across all data types in parallel
     const [medsData, apptsData, labsData, docsData, journalData] = await Promise.all([

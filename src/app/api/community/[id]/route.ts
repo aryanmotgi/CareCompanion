@@ -1,5 +1,6 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
+import { validateCsrf } from '@/lib/csrf';
 import { db } from '@/lib/db';
 import { communityPosts, communityReplies, communityUpvotes } from '@/lib/db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
@@ -76,6 +77,9 @@ const replySchema = z.object({
 
 export async function POST(request: Request, { params }: Props) {
   try {
+    const { valid, error: csrfError } = await validateCsrf(request);
+    if (!valid) return csrfError!;
+
     const { user, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
 

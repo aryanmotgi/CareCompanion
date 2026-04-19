@@ -3,7 +3,7 @@ import { generateText } from 'ai';
 import { db } from '@/lib/db';
 import { appointments, careProfiles, medications, labResults, memories } from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
-import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { getAuthenticatedUser, parseBody } from '@/lib/api-helpers';
 import { detectVisitType, getVisitTemplate } from '@/lib/visit-prep-templates';
 import { rateLimit } from '@/lib/rate-limit';
 import { ApiErrors } from '@/lib/api-response';
@@ -24,7 +24,10 @@ async function handler(req: Request) {
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return new Response('Unauthorized', { status: 401 });
 
-  const { appointment_id } = await req.json();
+  const { body, error: bodyError } = await parseBody<{ appointment_id?: string }>(req);
+  if (bodyError) return bodyError;
+  const { appointment_id } = body;
+  if (!appointment_id) return Response.json({ error: 'appointment_id is required' }, { status: 400 });
 
   // Get the appointment
   const [appt] = await db

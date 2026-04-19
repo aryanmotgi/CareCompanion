@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { userSettings } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { getAuthenticatedUser, parseBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { validateCsrf } from '@/lib/csrf';
 
@@ -13,7 +13,8 @@ export async function PATCH(req: Request) {
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return error;
 
-  const body = await req.json();
+  const { body, error: bodyError } = await parseBody(req);
+  if (bodyError) return bodyError;
 
   const allowed: Record<string, unknown> = {};
   if (body.ai_personality !== undefined) allowed.aiPersonality = body.ai_personality;

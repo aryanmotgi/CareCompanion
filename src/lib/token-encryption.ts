@@ -16,15 +16,24 @@ function getEncryptionKey(): Buffer | null {
   const hex = process.env.TOKEN_ENCRYPTION_KEY;
   if (!hex) {
     if (process.env.NODE_ENV === 'production') {
-      console.warn(
-        '[token-encryption] TOKEN_ENCRYPTION_KEY not set. Storing tokens as plaintext. ' +
+      throw new Error(
+        '[token-encryption] TOKEN_ENCRYPTION_KEY is required in production. ' +
         'Generate a key with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
       );
     }
+    console.warn(
+      '[token-encryption] TOKEN_ENCRYPTION_KEY not set. Storing tokens as plaintext in development. ' +
+      'Generate a key with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
+    );
     return null;
   }
   if (hex.length !== 64) {
-    // Don't throw — degrade to plaintext with a loud warning so the flow still works
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        `[token-encryption] TOKEN_ENCRYPTION_KEY is ${hex.length} chars — must be exactly 64 hex chars (32 bytes). ` +
+        'Fix this env var before deploying.'
+      );
+    }
     console.error(
       `[token-encryption] TOKEN_ENCRYPTION_KEY is ${hex.length} chars — must be exactly 64 hex chars (32 bytes). ` +
       'Falling back to plaintext token storage. Fix this env var immediately.'

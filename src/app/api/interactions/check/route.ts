@@ -5,6 +5,7 @@
  * 2. Check ALL current medications against each other (POST with { check_all: true })
  */
 import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { validateCsrf } from '@/lib/csrf'
 import { db } from '@/lib/db'
 import { careProfiles, medications } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -15,6 +16,9 @@ import { apiSuccess, apiError, ApiErrors } from '@/lib/api-response'
 const limiter = rateLimit({ interval: 60000, maxRequests: 10 })
 
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req)
+  if (!valid) return csrfError!
+
   const ip = req.headers.get('x-forwarded-for') || 'unknown'
   const { success } = await limiter.check(ip)
   if (!success) return ApiErrors.rateLimited()

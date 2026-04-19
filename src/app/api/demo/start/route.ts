@@ -239,16 +239,18 @@ async function seedDemoData(userId: string) {
   ]);
 
   // ── INSURANCE ─────────────────────────────────────────────────
-  await db.insert(insurance).values({
-    userId,
-    provider: 'Blue Cross Blue Shield',
-    memberId: 'BCB-882991-04',
-    groupNumber: 'GRP-7420',
-    planYear: new Date().getFullYear(),
-  }).onConflictDoUpdate({
-    target: insurance.userId,
-    set: { provider: 'Blue Cross Blue Shield', memberId: 'BCB-882991-04', groupNumber: 'GRP-7420' },
-  });
+  const [existingInsurance] = await db.select({ id: insurance.id }).from(insurance).where(eq(insurance.userId, userId)).limit(1);
+  if (existingInsurance) {
+    await db.update(insurance).set({ provider: 'Blue Cross Blue Shield', memberId: 'BCB-882991-04', groupNumber: 'GRP-7420' }).where(eq(insurance.id, existingInsurance.id));
+  } else {
+    await db.insert(insurance).values({
+      userId,
+      provider: 'Blue Cross Blue Shield',
+      memberId: 'BCB-882991-04',
+      groupNumber: 'GRP-7420',
+      planYear: new Date().getFullYear(),
+    });
+  }
 
   // ── NOTIFICATIONS ─────────────────────────────────────────────
   await db.insert(notifications).values([

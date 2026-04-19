@@ -1,5 +1,6 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { validateCsrf } from '@/lib/csrf'
 import { db } from '@/lib/db'
 import { messages } from '@/lib/db/schema'
 import { eq, lt, desc, and } from 'drizzle-orm'
@@ -54,8 +55,11 @@ export async function GET(req: Request) {
  *
  * Clear all chat messages for the current user.
  */
-export async function DELETE() {
+export async function DELETE(req: Request) {
   try {
+    const { valid, error: csrfError } = await validateCsrf(req)
+    if (!valid) return csrfError!
+
     const { user, error: authError } = await getAuthenticatedUser()
     if (authError) return authError
 

@@ -18,6 +18,9 @@ import { users, careProfiles } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { encode } from 'next-auth/jwt'
 import { NextResponse } from 'next/server'
+import { rateLimit } from '@/lib/rate-limit'
+
+const limiter = rateLimit({ interval: 60_000, maxRequests: 5 })
 
 // GET /api/e2e/signin — liveness probe used by CI to detect when the new
 // deployment is live.  The "v" field is bumped each time the endpoint changes
@@ -27,6 +30,18 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  // Only enable this endpoint when E2E_AUTH_SECRET is configured
+  if (!process.env.E2E_AUTH_SECRET) {
+    return NextResponse.json({ error: 'not found' }, { status: 404 })
+  }
+
+  // Rate limit: 5 requests per minute per IP
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1'
+  const { success } = await limiter.check(`e2e-signin:${ip}`)
+  if (!success) {
+    return NextResponse.json({ error: 'too many requests' }, { status: 429 })
+  }
+
   const authSecret = process.env.AUTH_SECRET
   if (!authSecret) {
     return NextResponse.json({ error: 'AUTH_SECRET not set' }, { status: 500 })
