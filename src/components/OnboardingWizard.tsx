@@ -69,6 +69,13 @@ const CANCER_TIPS: Record<string, string> = {
   Prostate: 'Track PSA levels and treatment side effects.',
   Lymphoma: 'Monitor blood counts and infusion schedules.',
   Leukemia: 'Monitor blood counts and infusion schedules.',
+  Melanoma: 'Sun protection and regular skin checks are key parts of ongoing melanoma surveillance.',
+  Ovarian: 'Tracking CA-125 levels and symptom changes helps your care team monitor treatment response.',
+  Pancreatic: 'Nutrition support is often critical — many centers have dedicated pancreatic dietitians.',
+  Thyroid: 'Most thyroid cancers have excellent outcomes; TSH monitoring is a routine part of follow-up.',
+  Bladder: 'Cystoscopy surveillance schedules vary by grade — ask your urologist for your specific interval.',
+  Brain: 'Cognitive changes are common — ask about neuropsych support and occupational therapy.',
+  Other: 'Every cancer journey is unique. Your care team is your best source for condition-specific guidance.',
 };
 
 const TREATMENT_PHASES = [
@@ -76,7 +83,7 @@ const TREATMENT_PHASES = [
   { value: 'active_treatment', label: 'Active treatment', color: '#A78BFA', svgPath: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z', desc: 'Chemo, radiation, or surgery' },
   { value: 'between_treatments', label: 'Between treatments', color: '#FB923C', svgPath: 'M15.75 5.25v13.5m-7.5-13.5v13.5', desc: 'Resting between cycles' },
   { value: 'remission', label: 'In remission', color: '#34D399', svgPath: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z', desc: 'Monitoring and follow-ups' },
-  { value: 'unsure', label: 'Not sure yet', color: '#94A3B8', svgPath: 'M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z', desc: 'Still figuring things out' },
+  { value: 'unsure', label: 'Unsure', color: '#94A3B8', svgPath: 'M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z', desc: 'Still figuring things out' },
 ];
 
 const PRIORITIES = [
@@ -139,6 +146,8 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
   }, [step]);
 
   const firstName = userName.split(' ')[0];
+  const emailPrefix = (userEmail ?? '').split('@')[0];
+  const displayGreeting = userName || emailPrefix || 'there';
 
   // Track the profile ID we're working with (may get set during save)
   const [profileId, setProfileId] = useState<string | null>(existingProfileId);
@@ -418,7 +427,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
 
           <div>
             <h1 className="font-display text-3xl font-bold text-white mb-3">CareCompanion</h1>
-            <p className="text-[var(--text-secondary)] text-lg">Your AI-powered cancer care assistant</p>
+            <p className="text-[var(--text-secondary)] text-lg">Your AI-powered care assistant</p>
             <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full bg-white/[0.06] border border-white/10">
               <svg className="w-3.5 h-3.5 text-[#A78BFA]" aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
@@ -485,10 +494,10 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
               />
             )}
             <h1 ref={stepHeadingRef} tabIndex={-1} className="font-display text-3xl font-bold text-white outline-none">
-              {firstName ? `Welcome, ${firstName}` : 'Welcome'}
+              {`Welcome, ${displayGreeting}`}
             </h1>
             <p className="mt-2 text-[var(--text-secondary)]">
-              Let&apos;s set up your cancer care companion
+              Let&apos;s set up your CareCompanion
             </p>
           </div>
 
@@ -569,6 +578,9 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
                   <label className="block text-sm text-[var(--text-muted)] mb-1.5">Age</label>
                   <input
                     type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={120}
                     value={patientAge}
                     onChange={(e) => setPatientAge(e.target.value)}
                     placeholder="e.g., 65"
@@ -576,7 +588,9 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-[var(--text-muted)] mb-1.5">Relationship</label>
+                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                    Your relationship to the patient
+                  </label>
                   <select
                     value={relationship}
                     onChange={(e) => setRelationship(e.target.value)}
@@ -677,7 +691,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
                     key={t}
                     type="button"
                     onClick={() => setCancerType(cancerType === t ? '' : t)}
-                    className={`px-3 py-2.5 rounded-xl text-sm font-medium border transition-all text-left ${
+                    className={`${t === 'Other' ? 'col-span-2' : ''} px-3 py-2.5 rounded-xl text-sm font-medium border transition-all text-left ${
                       cancerType === t
                         ? 'border-[#A78BFA]/50 bg-[#A78BFA]/15 text-white'
                         : 'border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:border-white/20 hover:text-white'
