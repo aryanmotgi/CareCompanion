@@ -5,6 +5,13 @@ import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/analytics';
 import { useCsrfToken } from '@/components/CsrfProvider';
 
+function getCsrfToken(): string {
+  return document.cookie
+    .split('; ')
+    .find(row => row.startsWith('cc-csrf-token='))
+    ?.split('=')[1] ?? '';
+}
+
 interface ExistingProfile {
   id: string;
   cancer_type?: string | null;
@@ -277,7 +284,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
       if (validMeds.length > 0) {
         await fetch('/api/records/medications', {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-csrf-token': getCsrfToken() },
           body: JSON.stringify({ profileId: pid, medications: validMeds }),
         });
       }
@@ -286,7 +293,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
       if (validDocs.length > 0) {
         await fetch('/api/records/doctors', {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-csrf-token': getCsrfToken() },
           body: JSON.stringify({ profileId: pid, doctors: validDocs }),
         });
       }
@@ -295,7 +302,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
       if (validAppts.length > 0) {
         await fetch('/api/records/appointments', {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-csrf-token': getCsrfToken() },
           body: JSON.stringify({ profileId: pid, appointments: validAppts }),
         });
       }
