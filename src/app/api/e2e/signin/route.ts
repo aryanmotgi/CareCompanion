@@ -14,7 +14,7 @@
  *    is read-only access to one account's data.
  */
 import { db } from '@/lib/db'
-import { users } from '@/lib/db/schema'
+import { users, careProfiles } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { encode } from 'next-auth/jwt'
 import { NextResponse } from 'next/server'
@@ -23,7 +23,7 @@ import { NextResponse } from 'next/server'
 // deployment is live.  The "v" field is bumped each time the endpoint changes
 // so the CI wait step can poll for the specific version it expects.
 export async function GET() {
-  return Response.json({ ready: true, v: 5 })
+  return Response.json({ ready: true, v: 6 })
 }
 
 export async function POST(req: Request) {
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   let displayName: string
   try {
     const [user] = await db
-      .select({ cognitoSub: users.cognitoSub, displayName: users.displayName })
+      .select({ id: users.id, cognitoSub: users.cognitoSub, displayName: users.displayName })
       .from(users)
       .where(eq(users.email, email))
       .limit(1)
@@ -69,6 +69,24 @@ export async function POST(req: Request) {
       .update(users)
       .set({ hipaaConsent: true })
       .where(eq(users.email, email))
+
+    // Ensure a care profile exists so pages like /dashboard and /care don't
+    // redirect() inside a <Suspense> boundary (which causes ERR_ABORTED in
+    // Playwright).  A minimal profile with onboardingCompleted=true prevents
+    // the onboarding banner from appearing and stops all profile-guard redirects.
+    const [existingProfile] = await db
+      .select({ id: careProfiles.id })
+      .from(careProfiles)
+      .where(eq(careProfiles.userId, user.id))
+      .limit(1)
+
+    if (!existingProfile) {
+      await db.insert(careProfiles).values({
+        userId: user.id,
+        patientName: 'E2E Monitor',
+        onboardingCompleted: true,
+      })
+    }
   } catch (err) {
     const e = err as { message?: string }
     console.error('[e2e/signin] DB error:', e.message)
