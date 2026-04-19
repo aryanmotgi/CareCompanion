@@ -151,6 +151,13 @@ export function CalendarView({ appointments, medications, patientName }: Calenda
         </div>
       </div>
 
+      {/* Empty state guidance */}
+      {appointments.length === 0 && medications.length === 0 && (
+        <p className="text-sm text-center text-[var(--text-secondary)] mt-4">
+          Add appointments in the Care tab to see them here.
+        </p>
+      )}
+
       {/* Selected date events */}
       {selectedDate && (
         <div className="animate-card-in">

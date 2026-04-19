@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 interface EmergencyCardProps {
   patient: {
     name: string;
@@ -27,6 +29,11 @@ interface EmergencyCardProps {
 }
 
 export function EmergencyCard({ patient, medications, doctors, insurance }: EmergencyCardProps) {
+  const isEmpty =
+    !patient.allergies &&
+    medications.length === 0 &&
+    !patient.emergencyContactName;
+
   const primaryDoctor = doctors.find((d) =>
     d.specialty?.toLowerCase().includes('primary') ||
     d.specialty?.toLowerCase().includes('family') ||
@@ -214,6 +221,18 @@ export function EmergencyCard({ patient, medications, doctors, insurance }: Emer
           988 Crisis Line
         </a>
       </div>
+
+      {/* Empty state guidance */}
+      {isEmpty && (
+        <div className="mt-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 px-5 py-4 text-center">
+          <p className="text-sm text-[var(--text-secondary)] py-1">
+            Add emergency information so first responders can help you.
+          </p>
+          <Link href="/care" className="text-[var(--accent)] text-sm font-medium" style={{ color: '#A78BFA' }}>
+            Add medications &amp; allergies →
+          </Link>
+        </div>
+      )}
 
       {/* Tip */}
       <p className="text-center text-[var(--text-muted)] text-xs mt-5">

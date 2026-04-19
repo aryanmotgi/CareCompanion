@@ -128,10 +128,11 @@ export function LabsView({ labResults }: { labResults: LabResult[] }) {
 }
 
 function EmptyState({ filter }: { filter: Filter }) {
-  const messages: Record<Filter, { title: string; body: string }> = {
+  const messages: Record<Filter, { title: string; body: string; hint?: string }> = {
     all: {
       title: 'No lab results yet',
       body: 'When your lab results are added \u2014 through conversation, document scans, or connected apps \u2014 they will appear here with easy-to-understand interpretations.',
+      hint: 'Scan a lab report in the Documents tab to import results automatically.',
     },
     abnormal: {
       title: 'No abnormal results',
@@ -142,6 +143,7 @@ function EmptyState({ filter }: { filter: Filter }) {
       body: 'No lab results from the past 30 days. Check back after your next lab work.',
     },
   }
+
 
   const msg = messages[filter]
 
@@ -166,6 +168,11 @@ function EmptyState({ filter }: { filter: Filter }) {
       <p className="text-sm text-[var(--text-muted)] max-w-sm mx-auto leading-relaxed">
         {msg.body}
       </p>
+      {msg.hint && (
+        <p className="text-sm text-[var(--text-secondary)] mt-2">
+          {msg.hint}
+        </p>
+      )}
     </div>
   )
 }

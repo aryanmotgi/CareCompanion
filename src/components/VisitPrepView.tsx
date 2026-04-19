@@ -396,6 +396,7 @@ export function VisitPrepView({ appointments }: VisitPrepViewProps) {
           </svg>
           <p className="text-sm text-[var(--text-secondary)] mb-1">No upcoming appointments</p>
           <p className="text-xs text-[var(--text-muted)]">Appointments in the next 30 days will appear here for prep</p>
+          <p className="text-xs text-[var(--text-muted)] mt-1">Appointments you&apos;ve added in Care will appear here automatically.</p>
           <a
             href="/appointments"
             className="inline-block mt-4 px-5 py-2 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold animate-press"

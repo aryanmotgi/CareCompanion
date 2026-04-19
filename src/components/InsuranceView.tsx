@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
+import Link from 'next/link'
 import { AppealGenerator } from './AppealGenerator'
 import type { Claim } from '@/lib/types'
 
@@ -101,6 +102,15 @@ export function InsuranceView({
             </p>
           )}
         </div>
+        {!insuranceProvider && (
+          <Link
+            href={`/chat?prompt=${encodeURIComponent('Add my insurance — provider name, member ID, and group number')}`}
+            className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-sm font-medium"
+            style={{ background: 'linear-gradient(to right, #6366F1, #A78BFA)' }}
+          >
+            + Add Insurance
+          </Link>
+        )}
       </div>
 
       {/* Summary cards */}

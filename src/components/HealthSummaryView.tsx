@@ -200,8 +200,11 @@ export function HealthSummaryView({ patientName }: HealthSummaryViewProps) {
             </svg>
           </div>
           <h3 className="text-white font-semibold mb-2">Generate Health Summary</h3>
-          <p className="text-sm text-[var(--text-secondary)] mb-6 max-w-xs mx-auto">
+          <p className="text-sm text-[var(--text-secondary)] mb-2 max-w-xs mx-auto">
             Creates a complete summary including medications, lab results, conditions, providers, and recent health trends.
+          </p>
+          <p className="text-sm text-[var(--text-secondary)] mb-6 max-w-xs mx-auto">
+            Your AI summary will generate once you add your diagnosis, medications, and recent lab results.
           </p>
           <button
             onClick={generateSummary}
