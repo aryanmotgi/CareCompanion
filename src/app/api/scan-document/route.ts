@@ -72,18 +72,12 @@ async function handler(req: Request) {
       notes: data.follow_up_notes || '',
       date_taken: data.lab_results?.[0]?.date_taken || null,
     })
-  } catch {
-    return Response.json({
-      document_type: 'OTHER',
-      summary: 'Failed to analyze document',
-      medications: [],
-      lab_results: [],
-      insurance: null,
-      conditions: [],
-      appointments: [],
-      claims: [],
-      notes: '',
-    })
+  } catch (err) {
+    console.error('[scan-document] Error:', err)
+    return Response.json(
+      { error: 'Failed to analyze document' },
+      { status: 500 }
+    )
   }
 }
 

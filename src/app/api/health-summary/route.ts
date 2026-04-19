@@ -3,7 +3,7 @@ import { generateText } from 'ai';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { db } from '@/lib/db';
 import { careProfiles, medications, doctors, appointments, labResults, insurance, claims, priorAuths, memories, symptomEntries, healthSummaries } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, isNull } from 'drizzle-orm';
 import { rateLimit } from '@/lib/rate-limit';
 import { logAudit } from '@/lib/audit';
 import { ApiErrors } from '@/lib/api-response';
@@ -38,7 +38,7 @@ async function postHandler(req: Request) {
   if (!profile) return Response.json({ error: 'No care profile found' }, { status: 400 });
 
   const [meds, docs, appts, labs, [ins],, priorAuthsData, memoriesData, symptoms] = await Promise.all([
-    db.select().from(medications).where(eq(medications.careProfileId, profile.id)),
+    db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))),
     db.select().from(doctors).where(eq(doctors.careProfileId, profile.id)),
     db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)).orderBy(desc(appointments.dateTime)).limit(10),
     db.select().from(labResults).where(eq(labResults.userId, dbUser!.id)).orderBy(desc(labResults.dateTaken)).limit(25),

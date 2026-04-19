@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { sharedLinks } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { rateLimit } from '@/lib/rate-limit';
 
@@ -32,7 +32,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
 
   // Increment view count (fire-and-forget, but actually execute the query)
   db.update(sharedLinks)
-    .set({ viewCount: (link.viewCount ?? 0) + 1 })
+    .set({ viewCount: sql`${sharedLinks.viewCount} + 1` })
     .where(eq(sharedLinks.token, token))
     .execute()
     .catch(() => {});

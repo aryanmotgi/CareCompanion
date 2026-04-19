@@ -65,24 +65,29 @@ export async function POST(req: Request) {
 
     const { medication_id, medication_name, dose, reminder_times, days_of_week } = validated;
 
-    await db.insert(medicationReminders).values({
-      userId: dbUser!.id,
-      medicationId: medication_id,
-      medicationName: medication_name,
-      dose: dose || null,
-      reminderTimes: reminder_times,
-      daysOfWeek: days_of_week || ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
-      isActive: true,
-    }).onConflictDoUpdate({
-      target: [medicationReminders.userId, medicationReminders.medicationId],
-      set: {
+    const [existingReminder] = await db.select({ id: medicationReminders.id }).from(medicationReminders).where(
+      and(eq(medicationReminders.userId, dbUser!.id), eq(medicationReminders.medicationId, medication_id))
+    ).limit(1);
+
+    if (existingReminder) {
+      await db.update(medicationReminders).set({
         medicationName: medication_name,
         dose: dose || null,
         reminderTimes: reminder_times,
         daysOfWeek: days_of_week || ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
         isActive: true,
-      },
-    });
+      }).where(eq(medicationReminders.id, existingReminder.id));
+    } else {
+      await db.insert(medicationReminders).values({
+        userId: dbUser!.id,
+        medicationId: medication_id,
+        medicationName: medication_name,
+        dose: dose || null,
+        reminderTimes: reminder_times,
+        daysOfWeek: days_of_week || ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+        isActive: true,
+      });
+    }
 
     return apiSuccess({ success: true, message: `Reminder set for ${medication_name}.` });
   } catch (err) {

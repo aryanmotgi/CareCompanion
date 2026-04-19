@@ -204,19 +204,21 @@ async function autoImportExtraction(userId: string, profileId: string, extractio
 
   // Import insurance
   if (data.insurance?.provider) {
-    await db.insert(insurance).values({
-      userId,
-      provider: data.insurance.provider,
-      memberId: data.insurance.member_id || null,
-      groupNumber: data.insurance.group_number || null,
-    }).onConflictDoUpdate({
-      target: insurance.userId,
-      set: {
+    const [existingIns] = await db.select({ id: insurance.id }).from(insurance).where(eq(insurance.userId, userId)).limit(1)
+    if (existingIns) {
+      await db.update(insurance).set({
         provider: data.insurance.provider,
         memberId: data.insurance.member_id || null,
         groupNumber: data.insurance.group_number || null,
-      },
-    })
+      }).where(eq(insurance.userId, userId))
+    } else {
+      await db.insert(insurance).values({
+        userId,
+        provider: data.insurance.provider,
+        memberId: data.insurance.member_id || null,
+        groupNumber: data.insurance.group_number || null,
+      })
+    }
     counts.insurance = 1
   }
 

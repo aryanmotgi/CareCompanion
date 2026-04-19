@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { db } from '@/lib/db';
 import { sharedLinks } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -257,7 +257,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
   }
 
   // Increment view count (fire-and-forget)
-  db.update(sharedLinks).set({ viewCount: (link.viewCount ?? 0) + 1 }).where(eq(sharedLinks.token, token)).catch(() => {});
+  db.update(sharedLinks).set({ viewCount: sql`${sharedLinks.viewCount} + 1` }).where(eq(sharedLinks.token, token)).catch(() => {});
 
   // Weekly summary gets its own layout
   if (link.type === 'weekly_summary') {

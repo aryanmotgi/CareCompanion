@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { users, careProfiles, medications, appointments, labResults, claims, reminderLogs, scannedDocuments, doctors } from '@/lib/db/schema';
-import { eq, and, gte, lte, desc, asc, count } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, asc, count, isNull } from 'drizzle-orm';
 import { DashboardView } from '@/components/DashboardView';
 import { DashboardSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { MedicationReminders } from '@/components/MedicationReminders';
@@ -38,8 +38,8 @@ async function DashboardContent() {
     [scannedDocCount],
     [doctorCount],
   ] = await Promise.all([
-    db.select().from(medications).where(eq(medications.careProfileId, profile.id)),
-    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)).orderBy(asc(appointments.dateTime)),
+    db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))),
+    db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(asc(appointments.dateTime)),
     db.select().from(labResults).where(eq(labResults.userId, dbUser.id)).orderBy(desc(labResults.dateTaken)).limit(5),
     db.select().from(claims).where(eq(claims.userId, dbUser.id)).orderBy(desc(claims.createdAt)).limit(5),
     db.select().from(reminderLogs).where(

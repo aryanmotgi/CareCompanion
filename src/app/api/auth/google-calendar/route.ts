@@ -1,4 +1,5 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { signState } from '@/lib/token-encryption';
 import { redirect } from 'next/navigation';
 
 export async function GET() {
@@ -20,7 +21,7 @@ export async function GET() {
     scope: 'https://www.googleapis.com/auth/calendar',
     access_type: 'offline',
     prompt: 'consent',
-    state: dbUser!.id,
+    state: signState({ userId: dbUser!.id }),
   });
 
   redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);

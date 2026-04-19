@@ -6,7 +6,7 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { db } from '@/lib/db'
 import { careProfiles, medications, doctors, appointments, labResults, claims } from '@/lib/db/schema'
-import { eq, asc, desc } from 'drizzle-orm'
+import { eq, asc, desc, and, isNull } from 'drizzle-orm'
 import { ApiErrors } from '@/lib/api-response'
 import { rateLimit } from '@/lib/rate-limit'
 
@@ -30,9 +30,9 @@ export async function GET(req: Request) {
     if (!profile) return ApiErrors.notFound('Care profile')
 
     const [meds, docs, appts, labs, claimsData] = await Promise.all([
-      db.select().from(medications).where(eq(medications.careProfileId, profile.id)).orderBy(asc(medications.name)),
-      db.select().from(doctors).where(eq(doctors.careProfileId, profile.id)).orderBy(asc(doctors.name)),
-      db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)).orderBy(asc(appointments.dateTime)),
+      db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).orderBy(asc(medications.name)),
+      db.select().from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))).orderBy(asc(doctors.name)),
+      db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(asc(appointments.dateTime)),
       db.select().from(labResults).where(eq(labResults.userId, dbUser!.id)).orderBy(desc(labResults.dateTaken)).limit(30),
       db.select().from(claims).where(eq(claims.userId, dbUser!.id)).orderBy(desc(claims.serviceDate)).limit(20),
     ])

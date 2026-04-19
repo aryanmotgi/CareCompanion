@@ -1,4 +1,5 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { signState } from '@/lib/token-encryption';
 import { redirect } from 'next/navigation';
 
 export async function GET() {
@@ -19,7 +20,7 @@ export async function GET() {
     redirect_uri: `${appUrl}/api/auth/walgreens/callback`,
     response_type: 'code',
     scope: 'prescriptions',
-    state: dbUser!.id,
+    state: signState({ userId: dbUser!.id }),
   });
 
   redirect(`https://developer.walgreens.com/oauth/authorize?${params.toString()}`);

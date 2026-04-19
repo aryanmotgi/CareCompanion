@@ -249,16 +249,22 @@ async function seedDemoData(userId: string) {
     { careProfileId, name: 'Sarah Johnson, RN', specialty: 'Oncology Nurse Navigator', phone: '555-0211', notes: 'First point of contact for treatment questions or side effects.' },
   ]);
 
-  await db.insert(insurance).values({
-    userId,
-    provider: 'Blue Cross Blue Shield',
-    memberId: 'BCB-882991-04',
-    groupNumber: 'GRP-7420',
-    planYear: new Date().getFullYear(),
-  }).onConflictDoUpdate({
-    target: insurance.userId,
-    set: { provider: 'Blue Cross Blue Shield', memberId: 'BCB-882991-04', groupNumber: 'GRP-7420' },
-  });
+  const [existingIns] = await db.select({ id: insurance.id }).from(insurance).where(eq(insurance.userId, userId)).limit(1);
+  if (existingIns) {
+    await db.update(insurance).set({
+      provider: 'Blue Cross Blue Shield',
+      memberId: 'BCB-882991-04',
+      groupNumber: 'GRP-7420',
+    }).where(eq(insurance.userId, userId));
+  } else {
+    await db.insert(insurance).values({
+      userId,
+      provider: 'Blue Cross Blue Shield',
+      memberId: 'BCB-882991-04',
+      groupNumber: 'GRP-7420',
+      planYear: new Date().getFullYear(),
+    });
+  }
 
   await db.insert(notifications).values([
     { userId, type: 'lab_result', title: 'Low WBC — Neutropenia Warning', message: 'WBC is 3.2 K/uL (normal: 4.5-11.0). Watch for fever or signs of infection. Contact oncology if temp > 100.4°F.', isRead: false },

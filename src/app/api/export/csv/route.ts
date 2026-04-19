@@ -1,7 +1,7 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { db } from '@/lib/db'
 import { careProfiles, medications, labResults, appointments, symptomEntries } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, and, isNull } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
@@ -34,7 +34,7 @@ export async function GET(req: Request) {
               created_at: medications.createdAt,
             })
             .from(medications)
-            .where(eq(medications.careProfileId, profileId))
+            .where(and(eq(medications.careProfileId, profileId), isNull(medications.deletedAt)))
         : []
       rows = data
       filename = 'medications.csv'
@@ -67,7 +67,7 @@ export async function GET(req: Request) {
               purpose: appointments.purpose,
             })
             .from(appointments)
-            .where(eq(appointments.careProfileId, profileId))
+            .where(and(eq(appointments.careProfileId, profileId), isNull(appointments.deletedAt)))
         : []
       rows = data
       filename = 'appointments.csv'
@@ -103,7 +103,7 @@ export async function GET(req: Request) {
     headers.join(','),
     ...rows.map(row => headers.map(h => {
       const val = String(row[h] ?? '')
-      return val.includes(',') || val.includes('"') || val.includes('\n') ? `"${val.replace(/"/g, '""')}"` : val
+      return val.includes(',') || val.includes('"') || val.includes('\n') || val.includes('\r') ? `"${val.replace(/"/g, '""')}"` : val
     }).join(','))
   ]
 

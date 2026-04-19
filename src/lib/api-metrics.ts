@@ -38,7 +38,7 @@ export function withMetrics(routeName: string, handler: RouteHandler): RouteHand
       })
 
       return NextResponse.json(
-        { error: 'Internal server error', detail: errorMessage },
+        { error: 'Internal server error', ...(process.env.NODE_ENV !== 'production' ? { detail: errorMessage } : {}) },
         { status: 500 }
       )
     }

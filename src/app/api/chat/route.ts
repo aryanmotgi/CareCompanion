@@ -3,7 +3,7 @@ import { streamText, stepCountIs, type UIMessage } from 'ai';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { db } from '@/lib/db';
 import { careProfiles, medications, doctors, appointments, labResults, notifications, claims, priorAuths, fsaHsa, symptomEntries, insurance, messages } from '@/lib/db/schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, isNull } from 'drizzle-orm';
 import { buildSystemPrompt } from '@/lib/system-prompt';
 import { buildTools } from '@/lib/tools';
 import { extractAndSaveMemories, loadMemories, loadConversationSummaries, touchReferencedMemories, summarizeConversation } from '@/lib/memory';
@@ -53,7 +53,16 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     return demoResult.toUIMessageStreamResponse();
   }
 
-  const { messages: msgs }: { messages: UIMessage[] } = await req.json();
+  let msgs: UIMessage[];
+  try {
+    const body = await req.json();
+    msgs = body.messages;
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
   // Pre-screen for dangerous account-management intents (Bug #6)
   const lastMsg = msgs[msgs.length - 1];
@@ -101,9 +110,9 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     symptoms,
     [ins],
   ] = await Promise.all([
-    profile?.id ? db.select().from(medications).where(eq(medications.careProfileId, profile.id)).limit(50) : Promise.resolve([]),
-    profile?.id ? db.select().from(doctors).where(eq(doctors.careProfileId, profile.id)).limit(50) : Promise.resolve([]),
-    profile?.id ? db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)).limit(50) : Promise.resolve([]),
+    profile?.id ? db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).limit(50) : Promise.resolve([]),
+    profile?.id ? db.select().from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))).limit(50) : Promise.resolve([]),
+    profile?.id ? db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).limit(50) : Promise.resolve([]),
     db.select().from(labResults).where(eq(labResults.userId, dbUser!.id)).orderBy(desc(labResults.dateTaken)).limit(20),
     db.select().from(notifications).where(and(eq(notifications.userId, dbUser!.id), eq(notifications.isRead, false))).limit(10),
     db.select().from(claims).where(and(eq(claims.userId, dbUser!.id), eq(claims.status, 'denied'))).limit(5),

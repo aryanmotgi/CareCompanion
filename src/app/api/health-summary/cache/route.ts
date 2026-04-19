@@ -6,7 +6,7 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { db } from '@/lib/db'
 import { careProfiles, medications, appointments, labResults, notifications, healthSummaries } from '@/lib/db/schema'
-import { and, eq, gt, desc } from 'drizzle-orm'
+import { and, eq, gt, lt, desc } from 'drizzle-orm'
 import { calculateHealthScore } from '@/lib/health-score'
 import { apiSuccess, ApiErrors } from '@/lib/api-response'
 
@@ -95,6 +95,14 @@ async function generateAndCache(userId: string) {
     conditions: profile.conditions,
     allergies: profile.allergies,
   }
+
+  // Clean up expired summaries for this user
+  await db.delete(healthSummaries).where(
+    and(
+      eq(healthSummaries.userId, userId),
+      lt(healthSummaries.expiresAt, new Date()),
+    )
+  )
 
   await db.insert(healthSummaries).values({
     userId,

@@ -6,6 +6,18 @@ export async function POST(req: Request) {
   const provider = formData.get('provider') as string | null
   const email = formData.get('email') as string | null
 
+  // Validate provider — must be 'google' or empty/null
+  if (provider && provider !== 'google') {
+    const url = new URL(req.url)
+    return Response.redirect(url.origin + '/login?error=invalid_provider', 302)
+  }
+
+  // Validate email format if provided
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    const url = new URL(req.url)
+    return Response.redirect(url.origin + '/login?error=invalid_email', 302)
+  }
+
   // Consent is required when signing up (consent field is 'true' for sign-in flows)
   if (consent !== 'true') {
     const url = new URL(req.url)

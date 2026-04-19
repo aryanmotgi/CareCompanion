@@ -4,7 +4,7 @@ import { rateLimit } from '@/lib/rate-limit'
 import { logAudit } from '@/lib/audit'
 import { db } from '@/lib/db'
 import { careProfiles, medications, appointments, doctors, labResults, claims, documents, notifications } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, and, isNull } from 'drizzle-orm'
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 5 })
 
@@ -32,8 +32,8 @@ export async function GET(req: Request) {
     const profileId = profile?.id
 
     const [medsData, apptsData, docsData, doctorsData, labsData, claimsData, notifsData] = await Promise.all([
-      profileId ? db.select().from(medications).where(eq(medications.careProfileId, profileId)) : [],
-      profileId ? db.select().from(appointments).where(eq(appointments.careProfileId, profileId)) : [],
+      profileId ? db.select().from(medications).where(and(eq(medications.careProfileId, profileId), isNull(medications.deletedAt))) : [],
+      profileId ? db.select().from(appointments).where(and(eq(appointments.careProfileId, profileId), isNull(appointments.deletedAt))) : [],
       profileId ? db.select().from(documents).where(eq(documents.careProfileId, profileId)) : [],
       profileId ? db.select().from(doctors).where(eq(doctors.careProfileId, profileId)) : [],
       db.select().from(labResults).where(eq(labResults.userId, user!.id)),
