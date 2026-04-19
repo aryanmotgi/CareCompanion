@@ -614,9 +614,14 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
               Enter the patient&apos;s name to continue
             </p>
           )}
-          <a href="/login" className="block text-center text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors mt-3">
-            Back to login
-          </a>
+          <button
+            onClick={() => {
+              import('next-auth/react').then(({ signOut }) => signOut({ callbackUrl: '/login' }));
+            }}
+            className="block w-full text-center text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors mt-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded"
+          >
+            Sign out
+          </button>
           <button
             onClick={async () => {
               setLoading(true);
@@ -628,7 +633,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
                     id: profileId,
                     patient_name: firstName || 'Me',
                     relationship: 'self',
-                    onboarding_completed: true,
+                    onboarding_completed: false,
                   }),
                 });
                 localStorage.setItem('onboarding_just_completed', 'true');

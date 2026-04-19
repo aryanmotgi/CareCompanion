@@ -38,7 +38,7 @@ export function OnboardingShell({
   // undefined = not yet chosen; null = create new; string = edit existing
   const [selectedProfileId, setSelectedProfileId] = useState<
     string | null | undefined
-  >(undefined);
+  >(allProfiles.length === 1 ? allProfiles[0].id : undefined);
 
   const completedProfiles = allProfiles.filter(
     (p) => p.onboardingCompleted === true
@@ -47,7 +47,7 @@ export function OnboardingShell({
 
   // If there are no completed profiles, skip picker and go straight to wizard
   // using the first incomplete profile (if any) or null for brand-new.
-  const shouldShowPicker = hasCompleted && selectedProfileId === undefined;
+  const shouldShowPicker = hasCompleted && allProfiles.length > 1 && selectedProfileId === undefined;
 
   // Determine which profile to load into the wizard
   const activeProfile: ShellProfile | null = (() => {
