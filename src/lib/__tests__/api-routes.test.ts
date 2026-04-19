@@ -33,6 +33,14 @@ vi.mock('@/lib/api-helpers', () => ({
     }
     return { data: r.data, error: null }
   },
+  parseBody: async (req: Request) => {
+    try {
+      const body = await req.clone().json()
+      return { body, error: undefined }
+    } catch {
+      return { body: undefined, error: Response.json({ error: 'Invalid JSON' }, { status: 400 }) }
+    }
+  },
 }))
 
 // ---------------------------------------------------------------------------
@@ -89,6 +97,13 @@ vi.mock('@/lib/db', () => {
     },
   }
 })
+
+// ---------------------------------------------------------------------------
+// Mock CSRF — always valid
+// ---------------------------------------------------------------------------
+vi.mock('@/lib/csrf', () => ({
+  validateCsrf: () => ({ valid: true, error: null }),
+}))
 
 // ---------------------------------------------------------------------------
 // Mock rate-limit — always allow
