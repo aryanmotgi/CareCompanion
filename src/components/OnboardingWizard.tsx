@@ -5,12 +5,6 @@ import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/lib/analytics';
 import { useCsrfToken } from '@/components/CsrfProvider';
 
-function getCsrfToken(): string {
-  return document.cookie
-    .split('; ')
-    .find(row => row.startsWith('cc-csrf-token='))
-    ?.split('=')[1] ?? '';
-}
 
 interface ExistingProfile {
   id: string;
