@@ -3,6 +3,7 @@
 import { useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { signOut } from 'next-auth/react'
+import { ThemeToggle } from './ThemeToggle'
 
 interface ProfileMenuProps {
   isOpen: boolean
@@ -147,6 +148,11 @@ export function ProfileMenu({ isOpen, onClose, userName, patientName }: ProfileM
             <div className="text-[var(--text)] text-[15px] font-semibold">{userName || 'User'}</div>
             <div className="text-[var(--text-muted)] text-xs">Caring for {patientName}</div>
           </div>
+        </div>
+
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+          <span className="text-sm font-medium text-[var(--text)]">Dark mode</span>
+          <ThemeToggle />
         </div>
 
         <div className="flex-1 flex flex-col gap-1 p-3 pt-4">

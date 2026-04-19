@@ -12,10 +12,15 @@ export function InstallPrompt() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
+    // Only show on mobile devices
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      ('ontouchstart' in window && navigator.maxTouchPoints > 0);
+    if (isMobile === false) return;
+
     // Don't show if already installed or previously dismissed
     if (
       window.matchMedia('(display-mode: standalone)').matches ||
-      sessionStorage.getItem('install-prompt-dismissed')
+      localStorage.getItem('install-prompt-dismissed')
     ) return;
 
     let savedEvent: BeforeInstallPromptEvent | null = null;
@@ -44,7 +49,7 @@ export function InstallPrompt() {
   }
 
   function handleDismiss() {
-    sessionStorage.setItem('install-prompt-dismissed', '1');
+    localStorage.setItem('install-prompt-dismissed', '1');
     setDismissed(true);
   }
 

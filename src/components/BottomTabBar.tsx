@@ -149,7 +149,7 @@ export function BottomTabBar() {
                 )}
                 {tab.icon(active)}
               </div>
-              <span style={{
+              <span className="text-[9px] xs:text-[10px] truncate max-w-[60px]" style={{
                 fontSize: 11,
                 fontWeight: active ? 700 : 500,
                 letterSpacing: active ? '0.04em' : '0.02em',
