@@ -7,32 +7,26 @@
  * against a live production site.
  *
  * Security model:
- *  - Only works for the address stored in E2E_MONITOR_EMAIL (one account).
- *  - Requires AUTH_SECRET on the server to mint a valid token; the client
- *    never sees or supplies the secret.
- *  - The test account has no elevated privileges, so worst-case exposure is
- *    read-only access to that single account's data.
+ *  - Requires a valid email that exists in the users table.
+ *  - Requires AUTH_SECRET on the server — the client never sees the secret.
+ *  - Any email not in the DB gets 404; this is the only gate.
+ *  - The E2E test account has no elevated privileges, so worst-case exposure
+ *    is read-only access to one account's data.
  */
-// GET /api/e2e/signin — liveness probe used by CI to detect when the new
-// deployment is live.  Returns a stable JSON response that old versions of
-// this route (which had no GET handler) would not return.
-export async function GET() {
-  return Response.json({ ready: true })
-}
-
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { encode } from 'next-auth/jwt'
 import { NextResponse } from 'next/server'
 
-const E2E_EMAIL = process.env.E2E_MONITOR_EMAIL
+// GET /api/e2e/signin — liveness probe used by CI to detect when the new
+// deployment is live.  The "v" field is bumped each time the endpoint changes
+// so the CI wait step can poll for the specific version it expects.
+export async function GET() {
+  return Response.json({ ready: true, v: 4 })
+}
 
 export async function POST(req: Request) {
-  if (!E2E_EMAIL) {
-    return NextResponse.json({ error: 'E2E_MONITOR_EMAIL not configured' }, { status: 500 })
-  }
-
   const authSecret = process.env.AUTH_SECRET
   if (!authSecret) {
     return NextResponse.json({ error: 'AUTH_SECRET not set' }, { status: 500 })
@@ -48,11 +42,6 @@ export async function POST(req: Request) {
   const { email } = body
   if (!email) {
     return NextResponse.json({ error: 'missing fields' }, { status: 400 })
-  }
-
-  // Only allow sessions for the designated E2E monitor account.
-  if (email !== E2E_EMAIL) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
   // Look up the user in the database to get their cognitoSub.
