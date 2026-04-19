@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { appointments, careProfiles } from '@/lib/db/schema';
 import { and, desc, eq } from 'drizzle-orm';
-import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { getAuthenticatedUser, parseBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { validateCsrf } from '@/lib/csrf';
 
@@ -13,8 +13,12 @@ export async function POST(req: Request) {
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return error;
 
-  const body = await req.json();
-  const { doctor_name, date_time, purpose, location, specialty, care_profile_id } = body;
+  const { body, error: bodyError } = await parseBody<Record<string, unknown>>(req);
+  if (bodyError) return bodyError;
+  const { doctor_name, date_time, purpose, location, specialty, care_profile_id } = body as {
+    doctor_name?: string; date_time?: string; purpose?: string;
+    location?: string; specialty?: string; care_profile_id?: string;
+  };
 
   let profileId = care_profile_id;
   if (!profileId) {
@@ -47,7 +51,9 @@ export async function DELETE(req: Request) {
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return error;
 
-  const { id } = await req.json();
+  const { body, error: bodyError } = await parseBody<{ id?: string }>(req);
+  if (bodyError) return bodyError;
+  const { id } = body;
   if (!id) return apiError('id is required', 400);
 
   const [appt] = await db

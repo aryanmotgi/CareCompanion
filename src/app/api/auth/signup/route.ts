@@ -3,11 +3,14 @@ import {
   CognitoIdentityProviderClient,
   SignUpCommand,
 } from '@aws-sdk/client-cognito-identity-provider'
+import { parseBody } from '@/lib/api-helpers'
 
 const client = new CognitoIdentityProviderClient({ region: process.env.COGNITO_REGION! })
 
 export async function POST(req: Request) {
-  const { email, password, name } = await req.json()
+  const { body, error: bodyError } = await parseBody<{ email: string; password: string; name: string }>(req);
+  if (bodyError) return bodyError;
+  const { email, password, name } = body;
   try {
     await client.send(new SignUpCommand({
       ClientId: process.env.COGNITO_CLIENT_ID!,

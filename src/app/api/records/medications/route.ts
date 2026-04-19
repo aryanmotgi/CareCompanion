@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { medications, careProfiles } from '@/lib/db/schema';
 import { and, desc, eq } from 'drizzle-orm';
-import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { getAuthenticatedUser, parseBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { validateCsrf } from '@/lib/csrf';
 
@@ -13,8 +13,12 @@ export async function POST(req: Request) {
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return error;
 
-  const body = await req.json();
-  const { name, dose, frequency, prescribing_doctor, refill_date, notes, care_profile_id } = body;
+  const { body, error: bodyError } = await parseBody<Record<string, unknown>>(req);
+  if (bodyError) return bodyError;
+  const { name, dose, frequency, prescribing_doctor, refill_date, notes, care_profile_id } = body as {
+    name?: string; dose?: string; frequency?: string; prescribing_doctor?: string;
+    refill_date?: string; notes?: string; care_profile_id?: string;
+  };
 
   if (!name) return apiError('name is required', 400);
 
@@ -51,7 +55,9 @@ export async function DELETE(req: Request) {
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return error;
 
-  const { id } = await req.json();
+  const { body, error: bodyError } = await parseBody<{ id?: string }>(req);
+  if (bodyError) return bodyError;
+  const { id } = body;
   if (!id) return apiError('id is required', 400);
 
   // Verify ownership via care profile
@@ -83,7 +89,9 @@ export async function PATCH(req: Request) {
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return error;
 
-  const { id, refill_date } = await req.json();
+  const { body, error: bodyError } = await parseBody<{ id?: string; refill_date?: string }>(req);
+  if (bodyError) return bodyError;
+  const { id, refill_date } = body;
   if (!id) return apiError('id is required', 400);
 
   // Verify ownership via care profile

@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { careProfiles } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
-import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { getAuthenticatedUser, parseBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { validateCsrf } from '@/lib/csrf';
 
@@ -28,7 +28,13 @@ export async function PATCH(req: Request) {
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return error;
 
-  const body = await req.json();
+  const { body, error: bodyError } = await parseBody<{
+    id?: string;
+    patient_name?: string; patient_age?: number; relationship?: string;
+    cancer_type?: string; cancer_stage?: string; treatment_phase?: string;
+    conditions?: string; allergies?: string; onboarding_completed?: boolean;
+  }>(req);
+  if (bodyError) return bodyError;
   const { id, ...fields } = body;
 
   // Map snake_case client fields to camelCase schema columns
@@ -81,7 +87,12 @@ export async function POST(req: Request) {
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return error;
 
-  const body = await req.json();
+  const { body, error: bodyError } = await parseBody<{
+    patient_name?: string; patient_age?: number; relationship?: string;
+    cancer_type?: string; cancer_stage?: string; treatment_phase?: string;
+    conditions?: string; allergies?: string; onboarding_completed?: boolean;
+  }>(req);
+  if (bodyError) return bodyError;
 
   const [profile] = await db.insert(careProfiles).values({
     userId: dbUser!.id,

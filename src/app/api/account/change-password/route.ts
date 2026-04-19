@@ -4,7 +4,7 @@ import {
   AdminSetUserPasswordCommand,
   AdminInitiateAuthCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { getAuthenticatedUser, parseBody } from '@/lib/api-helpers';
 import { rateLimit } from '@/lib/rate-limit';
 import { validateCsrf } from '@/lib/csrf';
 import { db } from '@/lib/db';
@@ -32,7 +32,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Too many password change attempts. Please try again later.' }, { status: 429 });
   }
 
-  const { currentPassword, password } = await req.json();
+  const { body, error: bodyError } = await parseBody<{ currentPassword: string; password: string }>(req);
+  if (bodyError) return bodyError;
+  const { currentPassword, password } = body;
 
   if (!currentPassword) {
     return NextResponse.json({ error: 'Current password is required' }, { status: 400 });

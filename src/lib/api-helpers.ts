@@ -50,3 +50,20 @@ export function validateBody<T extends z.ZodType>(
   }
   return { data: result.data, error: null }
 }
+
+/**
+ * Safely parse a JSON request body.
+ * Returns { body } on success or { error: Response } with 400 on malformed JSON.
+ */
+export async function parseBody<T = Record<string, unknown>>(
+  req: Request
+): Promise<{ body: T; error?: undefined } | { body?: undefined; error: NextResponse }> {
+  try {
+    const body = (await req.json()) as T;
+    return { body };
+  } catch {
+    return {
+      error: NextResponse.json({ error: 'Invalid or missing JSON body' }, { status: 400 }),
+    };
+  }
+}
