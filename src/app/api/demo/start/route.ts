@@ -34,6 +34,7 @@ import {
 } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { rateLimit } from '@/lib/rate-limit';
+import { encode } from 'next-auth/jwt';
 import crypto from 'crypto';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 10 });
@@ -115,15 +116,47 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Failed to seed demo data' }, { status: 500 });
   }
 
-  // Return credentials for client-side sign-in redirect
-  // The client should POST to /api/auth/signin with these credentials
-  return NextResponse.json({
+  // Mint a session JWT directly (like E2E signin) so we never expose the password
+  const authSecret = process.env.AUTH_SECRET;
+  if (!authSecret) {
+    return NextResponse.json({ error: 'AUTH_SECRET not configured' }, { status: 500 });
+  }
+
+  const isProd = process.env.NODE_ENV === 'production';
+  const cookieName = isProd
+    ? '__Secure-authjs.session-token'
+    : 'authjs.session-token';
+
+  const sessionToken = await encode({
+    token: {
+      sub: cognitoSub,
+      email,
+      name: 'Demo',
+      cognitoSub,
+      displayName: 'Demo',
+      isDemo: true,
+    },
+    secret: authSecret,
+    salt: cookieName,
+    maxAge: 60 * 60, // 1 hour
+  });
+
+  const res = NextResponse.json({
     success: true,
     email,
-    password,
     redirect: '/dashboard?demo=started',
     shortId,
   });
+
+  res.cookies.set(cookieName, sessionToken, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60,
+  });
+
+  return res;
 }
 
 // ═════════════════════════════════════════════════════════════════════════

@@ -12,7 +12,8 @@ const COGNITO_DOMAIN = (process.env.COGNITO_DOMAIN ?? '').replace(/\/$/, '')
 // Format: https://cognito-idp.{region}.amazonaws.com/{userPoolId}
 // Auth.js v5 beta defaults to "https://authjs.dev" when no issuer is set,
 // causing OAUTH_JWT_CLAIM_COMPARISON_FAILED on the iss claim.
-const COGNITO_ISSUER = process.env.COGNITO_ISSUER ?? 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_ZLns0ABGw'
+const COGNITO_ISSUER = process.env.COGNITO_ISSUER
+if (!COGNITO_ISSUER) throw new Error('COGNITO_ISSUER environment variable is required')
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [

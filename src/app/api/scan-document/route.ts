@@ -2,6 +2,7 @@ import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { extractDocument } from '@/lib/extract-document'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { logAudit } from '@/lib/audit'
+import { validateCsrf } from '@/lib/csrf'
 import { withMetrics } from '@/lib/api-metrics'
 
 export const maxDuration = 60
@@ -16,6 +17,9 @@ export const maxDuration = 60
  * Returns the legacy response shape (flat arrays, uppercase doc types).
  */
 async function handler(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req)
+  if (!valid) return csrfError!
+
   try {
     const { user: dbUser, error } = await getAuthenticatedUser()
     if (error) return new Response('Unauthorized', { status: 401 })

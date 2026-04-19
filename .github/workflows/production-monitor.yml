@@ -16,9 +16,9 @@ jobs:
       issues: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
           cache: npm
@@ -58,7 +58,7 @@ jobs:
           E2E_MONITOR_PASSWORD: ${{ secrets.E2E_MONITOR_PASSWORD }}
 
       - name: Upload Report on Failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: steps.e2e.outcome == 'failure'
         with:
           name: playwright-report
@@ -67,7 +67,7 @@ jobs:
 
       - name: Send failure email alert
         if: steps.e2e.outcome == 'failure'
-        uses: dawidd6/action-send-mail@v3
+        uses: dawidd6/action-send-mail@2cea9617b09d79a095af21254fbcb7ae95903dde # v3
         with:
           server_address: smtp.gmail.com
           server_port: 465
@@ -75,7 +75,7 @@ jobs:
           username: ${{ secrets.ALERT_EMAIL_USERNAME }}
           password: ${{ secrets.ALERT_EMAIL_PASSWORD }}
           subject: "🚨 CareCompanion Production Monitor Failed"
-          to: ${{ secrets.ALERT_EMAIL_TO }}, externqllymc@gmail.com
+          to: ${{ secrets.ALERT_EMAIL_TO }}
           from: CareCompanion Alerts <${{ secrets.ALERT_EMAIL_USERNAME }}>
           body: |
             The CareCompanion production monitor detected a failure on carecompanionai.org.
@@ -89,7 +89,7 @@ jobs:
 
       - name: Create auto-fix issue
         if: steps.e2e.outcome == 'failure'
-        uses: actions/github-script@v7
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
         with:
           script: |
             const fs = require('fs');
@@ -138,7 +138,7 @@ jobs:
 
       - name: Send success email alert
         if: steps.e2e.outcome == 'success'
-        uses: dawidd6/action-send-mail@v3
+        uses: dawidd6/action-send-mail@2cea9617b09d79a095af21254fbcb7ae95903dde # v3
         with:
           server_address: smtp.gmail.com
           server_port: 465

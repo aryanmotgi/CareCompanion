@@ -1,6 +1,7 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { extractDocument } from '@/lib/extract-document'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { validateCsrf } from '@/lib/csrf'
 
 export const maxDuration = 30
 
@@ -14,6 +15,9 @@ export const maxDuration = 30
  * Returns { medications: [...] } in the legacy format.
  */
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req)
+  if (!valid) return csrfError!
+
   try {
     const { user: dbUser, error } = await getAuthenticatedUser()
     if (error) return error

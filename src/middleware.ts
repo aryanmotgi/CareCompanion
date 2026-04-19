@@ -22,7 +22,7 @@ const PUBLIC_PATHS = [
   '/api/cron',               // Cron jobs (protected by verifyCronRequest internally)
   '/api/notifications/generate', // Notification cron
   '/api/reminders/check',    // Reminder cron
-  '/api/share',              // Public share links (auth checked by token, not session)
+  '/api/share/',             // Public share links with token (e.g. /api/share/abc123) — POST /api/share itself is protected
   '/shared',                 // Public share pages
 ]
 

@@ -12,6 +12,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { ApiErrors } from '@/lib/api-response';
 import { withMetrics } from '@/lib/api-metrics';
 import { validateCsrf } from '@/lib/csrf';
+import { logAudit } from '@/lib/audit';
 
 const ipLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 30 });
 const userLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 10 });
@@ -32,6 +33,13 @@ async function handler(req: Request) {
   const { user: dbUser, error } = await getAuthenticatedUser();
   if (error) return error;
 
+  // Audit log PHI access (fire-and-forget)
+  logAudit({
+    user_id: dbUser!.id,
+    action: 'view_records',
+    ip_address: ip,
+  }).catch(() => {});
+
   const { success: userSuccess } = await userLimiter.check(dbUser!.id);
   if (!userSuccess) {
     return ApiErrors.rateLimited();
@@ -47,6 +55,7 @@ async function handler(req: Request) {
 
     const demoResult = streamText({
       model: anthropic('claude-sonnet-4.6'),
+      maxOutputTokens: 512,
       system: `You are CareCompanion AI. The user is in demo mode exploring the app.
 Give a short, helpful 1-2 sentence answer about their question as it relates to cancer care.
 Then end with exactly this line on its own: "Sign up for free to save your conversations and get full AI-powered care insights."
@@ -197,6 +206,7 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
 
   const result = streamText({
     model: anthropic('claude-sonnet-4.6'),
+    maxOutputTokens: 4096,
     system: fullSystemPrompt,
     messages: conversationMessages,
     tools,
