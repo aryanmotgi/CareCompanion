@@ -141,6 +141,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
   }, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveSucceeded, setSaveSucceeded] = useState(false);
   const [slideDir, setSlideDir] = useState<'left' | 'right'>('left');
   const [animKey, setAnimKey] = useState(0);
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -268,14 +269,18 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
 
   // Step 5: Priorities
   const [priorities, setPriorities] = useState<string[]>(existingProfile?.onboarding_priorities || []);
+  const [shakeId, setShakeId] = useState<string | null>(null);
 
   const togglePriority = (value: string) => {
+    if (!priorities.includes(value) && priorities.length >= 3) {
+      setShakeId(value);
+      setTimeout(() => setShakeId(null), 500);
+      return;
+    }
     setPriorities((prev) =>
       prev.includes(value)
         ? prev.filter((p) => p !== value)
-        : prev.length < 3
-          ? [...prev, value]
-          : prev
+        : [...prev, value]
     );
   };
 
@@ -381,6 +386,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
       }
 
       // Only advance to summary step after confirmed successful save
+      setSaveSucceeded(true);
       setSlideDir('left');
       setAnimKey((k) => k + 1);
       setStep(6);
@@ -441,7 +447,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
 
           <div>
             <h1 className="font-display text-3xl font-bold text-white mb-3">CareCompanion</h1>
-            <p className="text-[var(--text-secondary)] text-lg">Your AI-powered care assistant</p>
+            <p className="text-[var(--text-secondary)] text-lg">Your family&apos;s AI-powered cancer care companion</p>
             <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full bg-white/[0.06] border border-white/10">
               <svg className="w-3.5 h-3.5 text-[#A78BFA]" aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
@@ -972,9 +978,10 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
                         type="text"
                         value={med.dose}
                         onChange={(e) => setMedications((prev) => prev.map((m, j) => j === i ? { ...m, dose: e.target.value } : m))}
-                        placeholder="e.g., 500mg"
+                        placeholder="e.g., 20mg twice daily"
                         className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] py-2.5 px-3 text-sm text-white placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[#A78BFA]/40 transition-colors"
                       />
+                      <p className="mt-1 text-[10px] text-[var(--text-muted)]">Include amount and frequency</p>
                     </div>
                   </div>
                 </div>
@@ -1079,11 +1086,13 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-[var(--text-muted)] mb-1">Date</label>
+                      <label htmlFor={`appt-date-${i}`} className="block text-xs text-[var(--text-muted)] mb-1">Date &amp; Time</label>
                       <input
-                        type="date"
+                        id={`appt-date-${i}`}
+                        type="datetime-local"
                         value={appt.date_time}
                         onChange={(e) => setAppointments((prev) => prev.map((a, j) => j === i ? { ...a, date_time: e.target.value } : a))}
+                        aria-label={`Appointment ${i + 1} date and time`}
                         className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] py-2.5 px-3 text-sm text-white focus:outline-none focus:border-[#A78BFA]/40 transition-colors"
                       />
                     </div>
@@ -1153,14 +1162,13 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
                   key={p.value}
                   type="button"
                   onClick={() => togglePriority(p.value)}
-                  disabled={disabled}
                   className={`w-full text-left rounded-xl px-4 py-3.5 border transition-all ${
                     selected
                       ? 'border-[#A78BFA]/50 bg-[#A78BFA]/10'
                       : disabled
                         ? 'border-[var(--border)] bg-[var(--bg-card)] opacity-40 cursor-not-allowed'
                         : 'border-[var(--border)] bg-[var(--bg-card)] hover:border-white/20'
-                  }`}
+                  } ${shakeId === p.value ? 'animate-shake' : ''}`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: p.color + '20' }}>
@@ -1262,7 +1270,8 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
             </p>
           </div>
 
-          {/* Summary cards */}
+          {/* Summary cards — only shown when save succeeded */}
+          {saveSucceeded ? (
           <div className="space-y-3">
             {/* Profile */}
             <div className="rounded-xl bg-[var(--bg-card)] border border-[var(--border)] p-4">
@@ -1344,6 +1353,12 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
               </div>
             )}
           </div>
+          ) : (
+          <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            <p className="font-medium">Save failed</p>
+            <p className="mt-1 text-xs text-red-300/80">Your profile could not be saved. Please go back and try again, or head to the dashboard and update your info in Settings.</p>
+          </div>
+          )}
 
           {/* What's next — shown when user skipped most steps */}
           {!cancerType && !dataChoice && priorities.length === 0 && (

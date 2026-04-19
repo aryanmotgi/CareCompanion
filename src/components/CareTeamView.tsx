@@ -28,6 +28,53 @@ function timeAgo(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function RoleExplanation() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-6">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-white transition-colors w-full"
+      >
+        <svg className={`w-4 h-4 transition-transform ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+        </svg>
+        What can each role do?
+      </button>
+      {open && (
+        <div className="mt-3 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-4 space-y-3 animate-card-in">
+          <div>
+            <p className="text-sm font-medium text-white mb-1">Viewer (View Only)</p>
+            <ul className="text-xs text-[var(--text-secondary)] space-y-0.5 ml-3 list-disc">
+              <li>View medications, appointments, and lab results</li>
+              <li>View the AI health summary</li>
+              <li>Cannot make any changes or edits</li>
+              <li>Cannot view chat history</li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white mb-1">Editor (Can Edit)</p>
+            <ul className="text-xs text-[var(--text-secondary)] space-y-0.5 ml-3 list-disc">
+              <li>Everything a Viewer can do</li>
+              <li>Add and update medications, appointments, and notes</li>
+              <li>Log journal entries and upload documents</li>
+              <li>Invite other members to the care team</li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white mb-1">Owner</p>
+            <ul className="text-xs text-[var(--text-secondary)] space-y-0.5 ml-3 list-disc">
+              <li>Full access to all features</li>
+              <li>Manage team members and roles</li>
+              <li>Remove members from the care team</li>
+            </ul>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | null }) {
   const { showToast } = useToast();
   const csrfToken = useCsrfToken();
@@ -212,6 +259,9 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
           </div>
         </div>
       )}
+
+      {/* Role Explanation */}
+      <RoleExplanation />
 
       {/* Invite Form */}
       {canManage && (

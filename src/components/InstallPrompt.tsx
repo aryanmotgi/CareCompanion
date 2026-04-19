@@ -17,10 +17,11 @@ export function InstallPrompt() {
       ('ontouchstart' in window && navigator.maxTouchPoints > 0);
     if (isMobile === false) return;
 
-    // Don't show if already installed or previously dismissed
+    // Don't show if already installed, previously dismissed, or onboarding just completed
     if (
       window.matchMedia('(display-mode: standalone)').matches ||
-      localStorage.getItem('install-prompt-dismissed')
+      localStorage.getItem('install-prompt-dismissed') ||
+      !localStorage.getItem('guided_tour_completed')
     ) return;
 
     let savedEvent: BeforeInstallPromptEvent | null = null;

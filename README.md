@@ -136,29 +136,104 @@ npm install
 
 Copy `.env.local.example` to `.env.local` and fill in all required values.
 
+### AWS / Database
+
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DATABASE_URL` | ✅ | Supabase/Postgres connection string |
-| `NEXTAUTH_SECRET` | ✅ | Random string for NextAuth session signing |
-| `NEXTAUTH_URL` | ✅ | Your app URL (e.g. http://localhost:3000) |
-| `COGNITO_CLIENT_ID` | ✅ | AWS Cognito app client ID |
-| `COGNITO_CLIENT_SECRET` | ✅ | AWS Cognito app client secret |
-| `COGNITO_ISSUER` | ✅ | Cognito user pool issuer URL |
-| `COGNITO_USER_POOL_ID` | ✅ | AWS Cognito user pool ID (for AdminDeleteUser) |
-| `AWS_REGION` | ✅ | AWS region (e.g. us-east-1) |
-| `AWS_ACCESS_KEY_ID` | ✅ | AWS IAM access key (needs cognito-idp:AdminDeleteUser) |
-| `AWS_SECRET_ACCESS_KEY` | ✅ | AWS IAM secret key |
-| `ANTHROPIC_API_KEY` | ✅ | Anthropic API key for Claude |
-| `NEXT_PUBLIC_APP_URL` | ✅ | Public app URL for emails and shared links |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | ⚠️ | VAPID public key for push notifications |
-| `VAPID_PRIVATE_KEY` | ⚠️ | VAPID private key for push notifications |
+| `AWS_REGION` | Yes | AWS region (e.g. `us-east-1`) |
+| `AWS_ACCESS_KEY_ID` | Yes | AWS IAM access key (needs `cognito-idp:AdminDeleteUser` and RDS Data API access) |
+| `AWS_SECRET_ACCESS_KEY` | Yes | AWS IAM secret key |
+| `AWS_RESOURCE_ARN` | Yes | ARN of the Aurora Serverless cluster (used by RDS Data API) |
+| `AWS_SECRET_ARN` | Yes | ARN of the Secrets Manager secret for database credentials |
+| `DATABASE_URL` | Yes | Postgres connection string (used by Drizzle migrations) |
+
+### AWS Cognito (Auth)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `COGNITO_USER_POOL_ID` | Yes | AWS Cognito user pool ID |
+| `COGNITO_DOMAIN` | Yes | Cognito hosted UI domain (e.g. `https://your-pool.auth.us-east-1.amazoncognito.com`) |
+| `COGNITO_CLIENT_ID` | Yes | Cognito app client ID |
+| `COGNITO_CLIENT_SECRET` | Yes | Cognito app client secret |
+| `COGNITO_ISSUER` | Yes | Cognito issuer URL (e.g. `https://cognito-idp.us-east-1.amazonaws.com/<pool-id>`) |
+| `COGNITO_REGION` | Yes | AWS region for Cognito (e.g. `us-east-1`) |
+
+### NextAuth
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXTAUTH_SECRET` | Yes | Random string for NextAuth session signing |
+| `NEXTAUTH_URL` | Yes | Your app URL (e.g. `http://localhost:3000`) |
+| `AUTH_SECRET` | Yes | Auth.js secret (used by e2e sign-in route) |
+
+### AI
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ANTHROPIC_API_KEY` | Yes | Anthropic API key for Claude chat and document extraction |
+
+### Application URLs
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_APP_URL` | Yes | Public app URL used in emails, OAuth callbacks, and shared links. **Defaults to `http://localhost:3000` in development. You must set this to your production URL (e.g. `https://carecompanionai.app`) in Vercel environment settings, otherwise email links and OAuth redirects will point to localhost.** |
+| `NEXT_PUBLIC_SITE_URL` | No | Site URL used in notification emails. Falls back to `https://carecompanionai.org` |
+
+### Push Notifications (VAPID)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Optional | VAPID public key for web push notifications |
+| `VAPID_PRIVATE_KEY` | Optional | VAPID private key for web push notifications |
+
+### Integrations (Optional)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `GOOGLE_CLIENT_ID` | Optional | Google OAuth client ID (calendar sync) |
+| `GOOGLE_CLIENT_SECRET` | Optional | Google OAuth client secret |
+| `WALGREENS_CLIENT_ID` | Optional | Walgreens API client ID |
+| `WALGREENS_CLIENT_SECRET` | Optional | Walgreens API client secret |
+| `ONEUP_CLIENT_ID` | Optional | 1upHealth FHIR client ID |
+| `ONEUP_CLIENT_SECRET` | Optional | 1upHealth FHIR client secret |
+| `EPIC_CLIENT_ID` | Optional | Epic FHIR client ID |
+| `EPIC_CLIENT_SECRET` | Optional | Epic FHIR client secret |
+| `RESEND_API_KEY` | Optional | Resend API key for transactional emails |
+
+### Infrastructure (Optional)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `CRON_SECRET` | Optional | Secret for authenticating Vercel Cron requests |
+| `KV_REST_API_URL` | Optional | Vercel KV URL (enables Redis-backed rate limiting) |
+| `KV_REST_API_TOKEN` | Optional | Vercel KV token |
+| `TOKEN_ENCRYPTION_KEY` | Optional | 32-byte hex key for encrypting OAuth tokens at rest |
+| `OAUTH_STATE_SECRET` | Optional | Secret for signing OAuth state parameters |
+| `LOG_LEVEL` | Optional | Logging level (`debug`, `info`, `warn`, `error`). Defaults to `info` |
+
+### Supabase (Legacy)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | No | Supabase project URL (used by some legacy paths) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | No | Supabase anonymous key |
+| `SUPABASE_SERVICE_ROLE_KEY` | No | Supabase service role key |
 
 Create `.env.local`:
 ```
-NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_RESOURCE_ARN=your-aurora-cluster-arn
+AWS_SECRET_ARN=your-secrets-manager-arn
+COGNITO_USER_POOL_ID=your-pool-id
+COGNITO_DOMAIN=https://your-pool.auth.us-east-1.amazoncognito.com
+COGNITO_CLIENT_ID=your-client-id
+COGNITO_CLIENT_SECRET=your-client-secret
+COGNITO_ISSUER=https://cognito-idp.us-east-1.amazonaws.com/your-pool-id
+COGNITO_REGION=us-east-1
 ANTHROPIC_API_KEY=your-anthropic-key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 Run database migrations in the Supabase SQL Editor (in order):
@@ -175,6 +250,12 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+## Vercel Deployment Notes
+
+- **`NEXT_PUBLIC_APP_URL`**: Defaults to `http://localhost:3000`. You **must** override this in your Vercel project environment settings with your production URL (e.g. `https://carecompanionai.app`). If left unset, email invitation links, OAuth callback URLs, and shared links will incorrectly point to localhost.
+- **Chat API timeout**: The chat route (`/api/chat`) sets `maxDuration = 60` (60 seconds). This **requires the Vercel Pro plan or higher**. The Hobby plan caps function execution at 10 seconds, which is not enough for multi-agent AI responses. Several other API routes (`/api/cron/sync`, `/api/cron/weekly-summary`) use up to 300 seconds and also require Pro.
+- **Cron jobs**: Vercel Cron is used for notifications, medication reminders, and health data sync. Set the `CRON_SECRET` environment variable and configure cron schedules in `vercel.json`.
 
 ## Architecture
 

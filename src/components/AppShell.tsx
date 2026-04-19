@@ -7,6 +7,7 @@ import { BottomTabBar } from './BottomTabBar'
 import { AmbientBackground } from './AmbientBackground'
 import { NotificationBell } from './NotificationBell'
 import { GlobalSearch } from './GlobalSearch'
+import { ThemeToggle } from './ThemeToggle'
 import { ProfileSwitcher } from './ProfileSwitcher'
 import { DemoBanner } from './DemoBanner'
 import { signOut } from 'next-auth/react'
@@ -160,6 +161,7 @@ export function AppShell({
             {/* Right actions */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <GlobalSearch />
+              <ThemeToggle />
               <NotificationBell
                 initialNotifications={notifications}
                 initialCount={notifications.filter((n: { is_read: boolean }) => !n.is_read).length}

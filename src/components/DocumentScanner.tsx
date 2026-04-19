@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ToastProvider';
 
@@ -54,6 +54,26 @@ export function DocumentScanner({ onClose, onSaved }: DocumentScannerProps) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Warn user before leaving page during active scan/save
+  const isProcessing = scanning || saving;
+
+  useEffect(() => {
+    if (!isProcessing) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isProcessing]);
+
+  const handleClose = useCallback(() => {
+    if (scanning || saving) {
+      if (!window.confirm('Are you sure? Your scan is still in progress.')) return;
+    }
+    onClose();
+  }, [scanning, saving, onClose]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -141,12 +161,7 @@ export function DocumentScanner({ onClose, onSaved }: DocumentScannerProps) {
         <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
           <h2 className="font-display text-lg font-semibold text-white">Scan Document</h2>
           <button
-            onClick={() => {
-              if (scanning || saving) {
-                if (!window.confirm('Data extraction is in progress. Close and discard?')) return;
-              }
-              onClose();
-            }}
+            onClick={handleClose}
             className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">

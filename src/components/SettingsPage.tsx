@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useToast } from './ToastProvider'
 import { useCsrfToken } from './CsrfProvider'
 import { ThemeToggle } from './ThemeToggle'
@@ -62,7 +61,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function SettingsPage({ settings: initialSettings, medicationReminders = [], medications = [] }: SettingsPageProps) {
-  const router = useRouter()
   const { showToast } = useToast()
   const csrfToken = useCsrfToken()
   const [settings, setSettings] = useState<UserSettings | null>(initialSettings)
@@ -220,9 +218,14 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
           <div className="text-sm text-[var(--text)] mb-2">Theme</div>
           <ThemeToggle />
         </div>
-        <SettingsRow
-          label="AI Personality"
-          right={
+        <div className="px-4 py-3.5">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-[#e2e8f0]">AI Personality</div>
+              <div className="text-[11px] text-[#A78BFA] mt-0.5 font-medium">
+                {settings?.aiPersonality === 'friendly' ? 'Warm & Friendly' : settings?.aiPersonality === 'concise' ? 'Brief & Concise' : 'Professional & Thorough'}
+              </div>
+            </div>
             <select
               value={settings?.aiPersonality || 'professional'}
               onChange={async (e) => {
@@ -242,8 +245,8 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
               <option value="friendly">Friendly</option>
               <option value="concise">Concise</option>
             </select>
-          }
-        />
+          </div>
+        </div>
       </SettingsGroup>
 
       <SectionLabel>Data Management</SectionLabel>
@@ -363,7 +366,8 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
           label="App Version"
           right={<span className="text-[#64748b] text-sm">0.1.2</span>}
         />
-        <SettingsRow label="Terms &amp; Privacy Policy" onClick={() => { router.push('/terms'); }} />
+        <SettingsRow label="Terms of Service" onClick={() => window.open('/terms', '_blank')} />
+        <SettingsRow label="Privacy Policy" onClick={() => window.open('/privacy', '_blank')} />
       </SettingsGroup>
 
       <div className="h-8" />

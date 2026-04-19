@@ -102,15 +102,16 @@ export function InsuranceView({
             </p>
           )}
         </div>
-        {!insuranceProvider && (
-          <Link
-            href={`/chat?prompt=${encodeURIComponent('Add my insurance — provider name, member ID, and group number')}`}
-            className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-sm font-medium"
-            style={{ background: 'linear-gradient(to right, #6366F1, #A78BFA)' }}
-          >
-            + Add Insurance
-          </Link>
-        )}
+        <Link
+          href={`/chat?prompt=${encodeURIComponent('Add my insurance — provider name, member ID, and group number')}`}
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-white text-sm font-semibold shadow-lg shadow-[#6366F1]/25 hover:shadow-xl hover:shadow-[#6366F1]/30 transition-all active:scale-[0.98]"
+          style={{ background: 'linear-gradient(to right, #6366F1, #A78BFA)' }}
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          {insuranceProvider ? 'Add Plan' : 'Add Insurance'}
+        </Link>
       </div>
 
       {/* Summary cards */}
@@ -225,11 +226,23 @@ export function InsuranceView({
               ? 'No claims found'
               : `No ${FILTER_TABS.find((t) => t.key === activeTab)?.label.toLowerCase()} claims`}
           </p>
-          <p className="text-xs text-[#64748b] mt-1">
+          <p className="text-xs text-[#64748b] mt-1 mb-5">
             {activeTab === 'all'
               ? 'Claims from your insurance will appear here once synced.'
               : `No ${FILTER_TABS.find((t) => t.key === activeTab)?.label.toLowerCase()} claims right now.`}
           </p>
+          {!insuranceProvider && (
+            <Link
+              href={`/chat?prompt=${encodeURIComponent('Add my insurance — provider name, member ID, and group number')}`}
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-white text-sm font-semibold shadow-lg shadow-[#6366F1]/25 transition-all active:scale-[0.98]"
+              style={{ background: 'linear-gradient(to right, #6366F1, #A78BFA)' }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Add Insurance Plan
+            </Link>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

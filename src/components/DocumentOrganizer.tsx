@@ -641,11 +641,11 @@ function EmptyState({
         </svg>
       </div>
       <p className="text-[#f1f5f9] font-semibold text-sm mb-1">
-        {catConfig ? `No ${catConfig.label.toLowerCase()}` : 'No documents yet'}
+        {catConfig ? `No ${catConfig.label.toLowerCase()} documents yet` : 'No documents yet'}
       </p>
       <p className="text-[#64748b] text-xs mb-5">
         {catConfig
-          ? `Scan a document to add it to ${catConfig.label.toLowerCase()}`
+          ? `Scan or upload a document to add it to ${catConfig.label.toLowerCase()}`
           : 'Scan your first medical document to get started'}
       </p>
       <button

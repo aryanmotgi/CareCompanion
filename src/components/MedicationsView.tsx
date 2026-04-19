@@ -128,8 +128,13 @@ export function MedicationsView({ medications: initial, profileId }: Medications
           <Button variant="secondary" onClick={() => setShowScanner(true)} className="!py-2 !px-4 !min-h-0 text-sm">
             Scan Medication
           </Button>
-          <Button onClick={() => setShowAdd(!showAdd)} className="!py-2 !px-4 !min-h-0 text-sm">
-            + Add
+          <Button onClick={() => setShowAdd(!showAdd)} className="!py-2.5 !px-5 !min-h-0 text-sm !bg-gradient-to-r !from-[#6366F1] !to-[#A78BFA] !shadow-lg !shadow-[#6366F1]/25">
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Add Medication
+            </span>
           </Button>
         </div>
       </div>
@@ -161,13 +166,22 @@ export function MedicationsView({ medications: initial, profileId }: Medications
       {/* List */}
       {medications.length === 0 ? (
         <div className="flex flex-col items-center py-8 text-center">
-          <div className="w-12 h-12 rounded-full bg-white/[0.06] flex items-center justify-center mb-3">
-            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <div className="w-14 h-14 rounded-2xl bg-[#6366F1]/10 border border-[#6366F1]/20 flex items-center justify-center mb-4">
+            <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#6366F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3" />
             </svg>
           </div>
-          <p className="text-sm text-[#94a3b8]">No medications yet</p>
-          <p className="text-xs text-[#64748b] mt-1">Tap &ldquo;+ Add&rdquo; above or scan a pill bottle to get started</p>
+          <p className="text-sm font-semibold text-[#f1f5f9] mb-1">No medications yet</p>
+          <p className="text-xs text-[#64748b] mb-5">Add your first medication to start tracking doses and refills</p>
+          <button
+            onClick={() => setShowAdd(true)}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold shadow-lg shadow-[#6366F1]/25 hover:shadow-xl hover:shadow-[#6366F1]/30 transition-all active:scale-[0.98]"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Add Medication
+          </button>
         </div>
       ) : (
         <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] divide-y divide-[var(--border)] overflow-hidden">

@@ -37,9 +37,6 @@ export function withMetrics(routeName: string, handler: RouteHandler): RouteHand
         path: url.pathname,
       })
 
-      // Log the full error details to aid debugging
-      console.error(`[withMetrics] ${routeName} unhandled error:`, error)
-
       return NextResponse.json(
         { error: 'Internal server error', detail: errorMessage },
         { status: 500 }

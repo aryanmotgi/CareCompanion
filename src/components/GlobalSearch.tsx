@@ -265,9 +265,14 @@ export function GlobalSearch() {
 
                 {/* Default state */}
                 {!loading && query.length < 2 && (
-                  <p className="text-sm text-center text-[var(--text-secondary)] py-6 px-4">
-                    Add medications, appointments, and notes in the Care tab to make them searchable here.
-                  </p>
+                  <div className="py-6 px-4 text-center">
+                    <p className="text-sm text-[var(--text-secondary)] mb-2">
+                      Search your medications, appointments, lab results, documents, and journal entries.
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      Tip: Add medications, appointments, and notes in the Care tab to make them searchable here.
+                    </p>
+                  </div>
                 )}
 
                 {/* Grouped results */}

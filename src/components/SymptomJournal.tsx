@@ -1,8 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { SymptomEntry } from '@/lib/types';
 import { useToast } from '@/components/ToastProvider';
+
+const DRAFT_KEY = 'journal-draft';
+
+interface JournalDraft {
+  painLevel: number;
+  nauseaLevel: number;
+  fatigueLevel: number;
+  mood: string;
+  sleepQuality: string;
+  sleepHours: string;
+  appetite: string;
+  energy: string;
+  symptoms: string[];
+  notes: string;
+}
 
 interface SymptomJournalProps {
   patientName: string;
@@ -23,21 +38,104 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
   const [showForm, setShowForm] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [filterSeverity, setFilterSeverity] = useState<number | null>(null);
+  const [searchFilter, setSearchFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const today = new Date().toISOString().split('T')[0];
   const todayEntry = entries.find((e) => e.date === today);
 
-  // Form state
-  const [painLevel, setPainLevel] = useState(todayEntry?.painLevel ?? 0);
-  const [nauseaLevel, setNauseaLevel] = useState(0);
-  const [fatigueLevel, setFatigueLevel] = useState(0);
-  const [mood, setMood] = useState(todayEntry?.mood || '');
-  const [sleepQuality, setSleepQuality] = useState(todayEntry?.sleepQuality || '');
-  const [sleepHours, setSleepHours] = useState(todayEntry?.sleepHours?.toString() || '');
-  const [appetite, setAppetite] = useState(todayEntry?.appetite || '');
-  const [energy, setEnergy] = useState(todayEntry?.energy || '');
-  const [symptoms, setSymptoms] = useState<string[]>(todayEntry?.symptoms || []);
-  const [notes, setNotes] = useState(todayEntry?.notes || '');
+  // Form state — restore draft from localStorage on mount
+  const [painLevel, setPainLevel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || ''); return d.painLevel ?? 0; } catch { /* no draft */ }
+    }
+    return todayEntry?.painLevel ?? 0;
+  });
+  const [nauseaLevel, setNauseaLevel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || ''); return d.nauseaLevel ?? 0; } catch { /* no draft */ }
+    }
+    return 0;
+  });
+  const [fatigueLevel, setFatigueLevel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || ''); return d.fatigueLevel ?? 0; } catch { /* no draft */ }
+    }
+    return 0;
+  });
+  const [mood, setMood] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || ''); return d.mood ?? ''; } catch { /* no draft */ }
+    }
+    return todayEntry?.mood || '';
+  });
+  const [sleepQuality, setSleepQuality] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || ''); return d.sleepQuality ?? ''; } catch { /* no draft */ }
+    }
+    return todayEntry?.sleepQuality || '';
+  });
+  const [sleepHours, setSleepHours] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || ''); return d.sleepHours ?? ''; } catch { /* no draft */ }
+    }
+    return todayEntry?.sleepHours?.toString() || '';
+  });
+  const [appetite, setAppetite] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || ''); return d.appetite ?? ''; } catch { /* no draft */ }
+    }
+    return todayEntry?.appetite || '';
+  });
+  const [energy, setEnergy] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || ''); return d.energy ?? ''; } catch { /* no draft */ }
+    }
+    return todayEntry?.energy || '';
+  });
+  const [symptoms, setSymptoms] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || ''); return d.symptoms ?? []; } catch { /* no draft */ }
+    }
+    return todayEntry?.symptoms || [];
+  });
+  const [notes, setNotes] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || ''); return d.notes ?? ''; } catch { /* no draft */ }
+    }
+    return todayEntry?.notes || '';
+  });
+
+  // Auto-open form if draft exists
+  const [draftRestored] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try { JSON.parse(localStorage.getItem(DRAFT_KEY) || ''); return true; } catch { return false; }
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (draftRestored && !showForm) {
+      setShowForm(true);
+    }
+    // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save draft to localStorage on every form field change
+  const saveDraft = useCallback(() => {
+    const draft: JournalDraft = { painLevel, nauseaLevel, fatigueLevel, mood, sleepQuality, sleepHours, appetite, energy, symptoms, notes };
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch { /* storage full */ }
+  }, [painLevel, nauseaLevel, fatigueLevel, mood, sleepQuality, sleepHours, appetite, energy, symptoms, notes]);
+
+  useEffect(() => {
+    saveDraft();
+  }, [saveDraft]);
+
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+  }
 
   const toggleSymptom = (s: string) => {
     setSymptoms((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
@@ -74,6 +172,7 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
         const without = prev.filter((e) => e.date !== today);
         return [data.entry, ...without];
       });
+      clearDraft();
       setMessage('Saved!');
       setShowForm(false);
       setTimeout(() => setMessage(null), 2000);
@@ -244,6 +343,42 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Recent Entries</h3>
         </div>
+
+        {/* Search and date filters */}
+        <div className="space-y-2 mb-4">
+          <input
+            type="text"
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            placeholder="Search symptoms, notes..."
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] py-2 px-3 text-white text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-600"
+          />
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] py-1.5 px-2 text-white text-xs focus:outline-none focus:border-blue-600"
+              placeholder="From"
+            />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] py-1.5 px-2 text-white text-xs focus:outline-none focus:border-blue-600"
+              placeholder="To"
+            />
+            {(searchFilter || dateFrom || dateTo) && (
+              <button
+                onClick={() => { setSearchFilter(''); setDateFrom(''); setDateTo(''); }}
+                className="px-2 py-1.5 rounded-lg bg-white/[0.06] text-[var(--text-muted)] text-xs hover:text-white transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
           <button
             onClick={() => setFilterSeverity(null)}
@@ -264,13 +399,35 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
             Moderate (4+)
           </button>
         </div>
-        {entries.filter((e) => filterSeverity === null || (e.painLevel ?? 0) >= filterSeverity).length === 0 ? (
+        {entries.filter((e) => {
+          if (filterSeverity !== null && (e.painLevel ?? 0) < filterSeverity) return false;
+          if (searchFilter) {
+            const q = searchFilter.toLowerCase();
+            const matchSymptoms = e.symptoms?.some((s) => s.toLowerCase().includes(q));
+            const matchNotes = e.notes?.toLowerCase().includes(q);
+            if (!matchSymptoms && !matchNotes) return false;
+          }
+          if (dateFrom && e.date < dateFrom) return false;
+          if (dateTo && e.date > dateTo) return false;
+          return true;
+        }).length === 0 ? (
           <div className="text-center py-8">
             <p className="text-[var(--text-muted)] text-sm">{entries.length === 0 ? 'No entries yet. Start tracking today!' : 'No entries match this filter.'}</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {entries.filter((e) => filterSeverity === null || (e.painLevel ?? 0) >= filterSeverity).map((entry) => (
+            {entries.filter((e) => {
+              if (filterSeverity !== null && (e.painLevel ?? 0) < filterSeverity) return false;
+              if (searchFilter) {
+                const q = searchFilter.toLowerCase();
+                const matchSymptoms = e.symptoms?.some((s) => s.toLowerCase().includes(q));
+                const matchNotes = e.notes?.toLowerCase().includes(q);
+                if (!matchSymptoms && !matchNotes) return false;
+              }
+              if (dateFrom && e.date < dateFrom) return false;
+              if (dateTo && e.date > dateTo) return false;
+              return true;
+            }).map((entry) => (
               <div key={entry.id} className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl px-4 py-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-white">

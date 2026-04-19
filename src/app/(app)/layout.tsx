@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { users, notifications } from '@/lib/db/schema'
+import { users, notifications, careProfiles } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { AppShell } from '@/components/AppShell'
 import { ToastProvider } from '@/components/ToastProvider'
@@ -96,6 +96,22 @@ export default async function AppLayout({
   }
 
   const userId = dbUser.id
+
+  // Onboarding gate — redirect if user has a profile with onboardingCompleted === false
+  try {
+    const [activeProfile] = await db
+      .select({ onboardingCompleted: careProfiles.onboardingCompleted })
+      .from(careProfiles)
+      .where(eq(careProfiles.userId, userId))
+      .limit(1)
+    if (activeProfile && activeProfile.onboardingCompleted === false) {
+      redirect('/onboarding')
+    }
+  } catch (e) {
+    // If redirect was thrown, re-throw it (Next.js redirect throws an error internally)
+    if (e && typeof e === 'object' && 'digest' in e) throw e
+    // Otherwise column may not exist yet — allow through
+  }
 
   const [profile, allProfiles, unreadNotifications] = await Promise.all([
     getActiveProfile(userId).catch(() => null),

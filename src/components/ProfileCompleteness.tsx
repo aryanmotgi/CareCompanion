@@ -59,7 +59,7 @@ export function ProfileCompleteness({
     {
       key: 'name',
       label: 'Add patient name',
-      weight: 10,
+      weight: 11,
       filled: Boolean(patientName && patientName.trim() && patientName !== 'your loved one'),
       action: 'Add name',
       href: '/profile/edit',
@@ -72,7 +72,7 @@ export function ProfileCompleteness({
     {
       key: 'cancer_type',
       label: 'Set cancer type',
-      weight: 10,
+      weight: 11,
       filled: Boolean(cancerType),
       action: 'Add cancer type',
       href: '/onboarding?step=2',
@@ -85,7 +85,7 @@ export function ProfileCompleteness({
     {
       key: 'cancer_stage',
       label: 'Set cancer stage',
-      weight: 10,
+      weight: 11,
       filled: Boolean(cancerStage),
       action: 'Add stage',
       href: '/onboarding?step=2',
@@ -98,7 +98,7 @@ export function ProfileCompleteness({
     {
       key: 'treatment_phase',
       label: 'Set treatment phase',
-      weight: 10,
+      weight: 11,
       filled: Boolean(treatmentPhase),
       action: 'Set phase',
       href: '/onboarding?step=2',
@@ -111,7 +111,7 @@ export function ProfileCompleteness({
     {
       key: 'medications',
       label: 'Add a medication',
-      weight: 20,
+      weight: 11,
       filled: medicationCount > 0,
       action: 'Add medication',
       href: '/medications',
@@ -126,7 +126,7 @@ export function ProfileCompleteness({
     {
       key: 'doctors',
       label: 'Add a doctor',
-      weight: 10,
+      weight: 11,
       filled: doctorCount > 0,
       action: 'Add doctor',
       href: '/profile/edit',
@@ -140,7 +140,7 @@ export function ProfileCompleteness({
     {
       key: 'appointments',
       label: 'Add an appointment',
-      weight: 10,
+      weight: 11,
       filled: appointmentCount > 0,
       action: 'Add appointment',
       href: '/appointments',
@@ -154,7 +154,7 @@ export function ProfileCompleteness({
     {
       key: 'allergies',
       label: 'Add allergies',
-      weight: 5,
+      weight: 11,
       filled: Boolean(allergies && allergies.trim()),
       action: 'Add allergies',
       href: '/profile/edit',
@@ -167,7 +167,7 @@ export function ProfileCompleteness({
     {
       key: 'conditions',
       label: 'Add medical conditions',
-      weight: 5,
+      weight: 11,
       filled: Boolean(conditions && conditions.trim()),
       action: 'Add conditions',
       href: '/profile/edit',
@@ -180,7 +180,7 @@ export function ProfileCompleteness({
     {
       key: 'emergency_contact',
       label: 'Add emergency contact',
-      weight: 10,
+      weight: 11,
       filled: Boolean(emergencyContactName && emergencyContactPhone),
       action: 'Add contact',
       href: '/profile/edit',
@@ -201,7 +201,7 @@ export function ProfileCompleteness({
     for (const item of items) {
       if (item.filled) total += item.weight
     }
-    return total
+    return Math.min(total, 100)
   }, [items])
 
   const missingItems = useMemo(() => {

@@ -403,7 +403,7 @@ export function DashboardView({
       {/* Resume onboarding banner for users who skipped */}
       {onboardingComplete && !cancerType && (
         <a
-          href={profileId ? `/onboarding?profileId=${profileId}` : '/onboarding'}
+          href={profileId ? `/onboarding?step=1&profileId=${profileId}` : '/onboarding?step=1'}
           className="block rounded-2xl bg-gradient-to-r from-violet-500/10 to-blue-500/10 border border-violet-500/20 p-4 mb-4 hover:border-violet-500/30 transition-colors"
         >
           <div className="flex items-center justify-between">
@@ -421,7 +421,7 @@ export function DashboardView({
       {/* Onboarding banner for existing users */}
       {!onboardingComplete && (
         <a
-          href={profileId ? `/onboarding?profileId=${profileId}` : '/onboarding'}
+          href={profileId ? `/onboarding?step=1&profileId=${profileId}` : '/onboarding?step=1'}
           className="block mb-4 sm:mb-5 rounded-2xl border border-[#A78BFA]/30 bg-[#A78BFA]/5 p-4 hover:bg-[#A78BFA]/10 transition-colors"
         >
           <div className="flex items-center gap-3">

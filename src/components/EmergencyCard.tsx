@@ -232,12 +232,16 @@ export function EmergencyCard({ patient, medications, doctors, insurance }: Emer
 
       {/* Empty state guidance */}
       {isEmpty && (
-        <div className="mt-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 px-5 py-4 text-center">
-          <p className="text-sm text-[var(--text-secondary)] py-1">
-            Add emergency information so first responders can help you.
+        <div className="mt-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 px-5 py-5 text-center">
+          <svg className="w-10 h-10 text-amber-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+          </svg>
+          <h3 className="text-white font-semibold mb-1">Set up your emergency card</h3>
+          <p className="text-sm text-[var(--text-secondary)] mb-3">
+            Add your emergency contact, medications, and allergies so first responders can help you quickly.
           </p>
-          <Link href="/care" className="text-[var(--accent)] text-sm font-medium" style={{ color: '#A78BFA' }}>
-            Add medications &amp; allergies →
+          <Link href="/profile" className="inline-block px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold">
+            Complete your profile
           </Link>
         </div>
       )}

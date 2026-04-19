@@ -305,8 +305,19 @@ export function GuidedTour() {
         <div className="guided-tour-actions">
           <button
             onClick={completeTour}
-            className="guided-tour-skip underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded"
+            className="guided-tour-skip focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
             type="button"
+            style={{
+              padding: '8px 18px',
+              borderRadius: 10,
+              border: '1px solid rgba(255,255,255,0.15)',
+              background: 'rgba(255,255,255,0.06)',
+              color: 'rgba(255,255,255,0.7)',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
           >
             Skip tour
           </button>

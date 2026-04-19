@@ -88,7 +88,7 @@ async function DashboardContent() {
         profileId={profile.id}
       />
       <div className="px-4 sm:px-5 pb-6 space-y-4">
-        {profile?.cancerType && <ShareHealthCard />}
+        {profile?.cancerType && (meds.length > 0 || appts.length > 0 || labs.length > 0) && <ShareHealthCard />}
         <DashboardInsights />
       </div>
     </>

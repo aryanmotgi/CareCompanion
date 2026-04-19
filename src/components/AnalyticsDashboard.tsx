@@ -1,6 +1,7 @@
 'use client';
 
 import type { LabResult, Medication, Claim, SymptomEntry, ReminderLog } from '@/lib/types';
+import { Skeleton } from '@/components/Skeleton';
 
 interface AnalyticsDashboardProps {
   patientName: string;
@@ -9,6 +10,7 @@ interface AnalyticsDashboardProps {
   reminderLogs: ReminderLog[];
   medications: Medication[];
   claims: Claim[];
+  loading?: boolean;
 }
 
 const MOOD_VALUES: Record<string, number> = { terrible: 1, bad: 2, okay: 3, good: 4, great: 5 };
@@ -23,7 +25,7 @@ function MiniBar({ value, max, color }: { value: number; max: number; color: str
   );
 }
 
-export function AnalyticsDashboard({ patientName, labResults, symptoms, reminderLogs, medications, claims }: AnalyticsDashboardProps) {
+export function AnalyticsDashboard({ patientName, labResults, symptoms, reminderLogs, medications, claims, loading }: AnalyticsDashboardProps) {
   // ---- Medication Adherence ----
   const totalReminders = reminderLogs.length;
   const takenCount = reminderLogs.filter((l) => l.status === 'taken').length;
@@ -65,6 +67,25 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
   const totalPaid = claims.reduce((sum, c) => sum + parseFloat(c.paidAmount || '0'), 0);
   const totalOOP = claims.reduce((sum, c) => sum + parseFloat(c.patientResponsibility || '0'), 0);
   const deniedCount = claims.filter((c) => c.status === 'denied').length;
+
+  if (loading) {
+    return (
+      <div className="px-5 py-4 max-w-lg mx-auto">
+        <h2 className="text-xl font-bold text-white mb-1">Health Analytics</h2>
+        <p className="text-xs text-[var(--text-muted)] mb-5">{patientName}&apos;s trends and insights</p>
+        {/* Skeleton stat cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+          <Skeleton className="h-[72px]" />
+          <Skeleton className="h-[72px]" />
+          <Skeleton className="h-[72px]" />
+        </div>
+        {/* Skeleton chart blocks */}
+        <Skeleton className="h-[160px] mb-4" />
+        <Skeleton className="h-[120px] mb-4" />
+        <Skeleton className="h-[100px] mb-4" />
+      </div>
+    );
+  }
 
   return (
     <div className="px-5 py-4 max-w-lg mx-auto">
@@ -229,10 +250,18 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
         </div>
       )}
 
-      {/* Empty state */}
+      {/* Empty state for new users */}
       {recentSymptoms.length === 0 && labTrends.length === 0 && totalReminders === 0 && claims.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-[var(--text-muted)] text-sm">Start logging symptoms, labs, and medications to see trends here.</p>
+          <div className="w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+            </svg>
+          </div>
+          <h3 className="text-white font-semibold mb-2">No analytics yet</h3>
+          <p className="text-sm text-[var(--text-secondary)] max-w-xs mx-auto">
+            Your analytics will populate after your first week of tracking. Start logging symptoms, labs, and medications to see trends here.
+          </p>
         </div>
       )}
     </div>

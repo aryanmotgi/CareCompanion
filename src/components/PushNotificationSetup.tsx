@@ -60,7 +60,8 @@ export function PushNotificationSetup() {
 
     if (permission === 'default') {
       const dismissed = localStorage.getItem(DISMISSED_KEY)
-      if (!dismissed) {
+      const tourCompleted = localStorage.getItem('guided_tour_completed')
+      if (!dismissed && tourCompleted) {
         const timer = setTimeout(() => setShowBanner(true), 8000)
         return () => clearTimeout(timer)
       }

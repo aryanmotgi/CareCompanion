@@ -103,7 +103,19 @@ export function ChatSearch({ messages, isOpen, onClose, onScrollToMessage }: Cha
     setResults(found);
   }, [debouncedQuery, messages]);
 
-  // Keyboard shortcut: Escape to close
+  // Keyboard shortcut: Escape to close (works even when input not focused)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       onClose();

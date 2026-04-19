@@ -308,7 +308,11 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={patientName ? `Ask about ${patientName}'s care...` : "Ask about cancer care, medications, side effects..."}
+              placeholder={
+                patientName && patientName !== 'your loved one'
+                  ? `Ask about ${patientName}\u2019s care...`
+                  : 'Ask about care, medications, side effects...'
+              }
               className="flex-1 bg-transparent text-[#e2e8f0] text-sm outline-none placeholder:text-[#64748b] min-h-[32px]"
             />
             {isStreaming ? (

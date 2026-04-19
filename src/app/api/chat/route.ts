@@ -55,6 +55,31 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
 
   const { messages: msgs }: { messages: UIMessage[] } = await req.json();
 
+  // Pre-screen for dangerous account-management intents (Bug #6)
+  const lastMsg = msgs[msgs.length - 1];
+  if (lastMsg?.role === 'user') {
+    const userText = lastMsg.parts
+      ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+      .map((p) => p.text)
+      .join('') || '';
+    const dangerousIntentPattern = /\b(delete\s+(my\s+)?account|cancel\s+(my\s+)?(subscription|plan|membership)|change\s+(my\s+)?password|reset\s+(my\s+)?password|close\s+(my\s+)?account|deactivate\s+(my\s+)?account)\b/i;
+    if (dangerousIntentPattern.test(userText)) {
+      const encoder = new TextEncoder();
+      const message = "I can\u2019t make account changes directly. You can manage your account, password, and subscription from the **Settings** page. Go to **Settings > Account** to make those changes safely.";
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(`0:${JSON.stringify(message)}\n`));
+          controller.enqueue(encoder.encode(`e:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":0},"isContinued":false}\n`));
+          controller.enqueue(encoder.encode(`d:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":0}}\n`));
+          controller.close();
+        },
+      });
+      return new Response(stream, {
+        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Vercel-AI-Data-Stream': 'v1' },
+      });
+    }
+  }
+
   const [profile] = await db
     .select()
     .from(careProfiles)
