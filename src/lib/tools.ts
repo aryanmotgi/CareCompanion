@@ -287,24 +287,26 @@ export function buildTools(userId: string, careProfileId: string | null) {
       }),
       execute: async (params) => {
         try {
-          await db.insert(insurance).values({
-            userId,
-            provider: params.provider,
-            memberId: params.member_id,
-            groupNumber: params.group_number,
-            deductibleLimit: params.deductible_limit?.toString(),
-            oopLimit: params.oop_limit?.toString(),
-            planYear: new Date().getFullYear(),
-          }).onConflictDoUpdate({
-            target: insurance.userId,
-            set: {
+          const [existingIns] = await db.select({ id: insurance.id }).from(insurance).where(eq(insurance.userId, userId)).limit(1);
+          if (existingIns) {
+            await db.update(insurance).set({
               provider: params.provider,
               memberId: params.member_id,
               groupNumber: params.group_number,
               deductibleLimit: params.deductible_limit?.toString(),
               oopLimit: params.oop_limit?.toString(),
-            },
-          });
+            }).where(eq(insurance.id, existingIns.id));
+          } else {
+            await db.insert(insurance).values({
+              userId,
+              provider: params.provider,
+              memberId: params.member_id,
+              groupNumber: params.group_number,
+              deductibleLimit: params.deductible_limit?.toString(),
+              oopLimit: params.oop_limit?.toString(),
+              planYear: new Date().getFullYear(),
+            });
+          }
           return { success: true, message: `Saved ${params.provider} insurance details.` };
         } catch (err) {
           return { success: false, error: String(err) };
@@ -512,22 +514,24 @@ export function buildTools(userId: string, careProfileId: string | null) {
         if (!med) return { success: false, error: `Medication "${params.medication_name}" not found. Add it first.` };
 
         try {
-          await db.insert(medicationReminders).values({
-            userId,
-            medicationId: med.id,
-            medicationName: params.medication_name,
-            dose: params.dose || null,
-            reminderTimes: params.reminder_times,
-            daysOfWeek: params.days_of_week || ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
-            isActive: true,
-          }).onConflictDoUpdate({
-            target: [medicationReminders.userId, medicationReminders.medicationId],
-            set: {
+          const [existingReminder] = await db.select({ id: medicationReminders.id }).from(medicationReminders).where(and(eq(medicationReminders.userId, userId), eq(medicationReminders.medicationId, med.id))).limit(1);
+          if (existingReminder) {
+            await db.update(medicationReminders).set({
               reminderTimes: params.reminder_times,
               daysOfWeek: params.days_of_week || ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
               isActive: true,
-            },
-          });
+            }).where(eq(medicationReminders.id, existingReminder.id));
+          } else {
+            await db.insert(medicationReminders).values({
+              userId,
+              medicationId: med.id,
+              medicationName: params.medication_name,
+              dose: params.dose || null,
+              reminderTimes: params.reminder_times,
+              daysOfWeek: params.days_of_week || ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+              isActive: true,
+            });
+          }
 
           const timesStr = params.reminder_times.map((t) => {
             const [h, m] = t.split(':').map(Number);
@@ -559,21 +563,9 @@ export function buildTools(userId: string, careProfileId: string | null) {
         const today = new Date().toISOString().split('T')[0];
 
         try {
-          await db.insert(symptomEntries).values({
-            userId,
-            careProfileId,
-            date: today,
-            painLevel: params.pain_level,
-            mood: params.mood,
-            sleepQuality: params.sleep_quality,
-            sleepHours: params.sleep_hours?.toString(),
-            appetite: params.appetite,
-            energy: params.energy,
-            symptoms: params.symptoms,
-            notes: params.notes,
-          }).onConflictDoUpdate({
-            target: [symptomEntries.userId, symptomEntries.date],
-            set: {
+          const [existingEntry] = await db.select({ id: symptomEntries.id }).from(symptomEntries).where(and(eq(symptomEntries.userId, userId), eq(symptomEntries.date, today))).limit(1);
+          if (existingEntry) {
+            await db.update(symptomEntries).set({
               painLevel: params.pain_level,
               mood: params.mood,
               sleepQuality: params.sleep_quality,
@@ -582,8 +574,22 @@ export function buildTools(userId: string, careProfileId: string | null) {
               energy: params.energy,
               symptoms: params.symptoms,
               notes: params.notes,
-            },
-          });
+            }).where(eq(symptomEntries.id, existingEntry.id));
+          } else {
+            await db.insert(symptomEntries).values({
+              userId,
+              careProfileId,
+              date: today,
+              painLevel: params.pain_level,
+              mood: params.mood,
+              sleepQuality: params.sleep_quality,
+              sleepHours: params.sleep_hours?.toString(),
+              appetite: params.appetite,
+              energy: params.energy,
+              symptoms: params.symptoms,
+              notes: params.notes,
+            });
+          }
 
           const parts = [];
           if (params.pain_level !== undefined) parts.push(`pain: ${params.pain_level}/10`);

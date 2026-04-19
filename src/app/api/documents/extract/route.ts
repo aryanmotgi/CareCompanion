@@ -1,4 +1,5 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { validateCsrf } from '@/lib/csrf'
 import { db } from '@/lib/db'
 import { careProfiles, labResults, medications, insurance, claims, appointments, documents } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -27,6 +28,9 @@ const MAX_BASE64_LENGTH = 13_500_000 // ~10 MB decoded
  * Optionally auto-imports extracted data into the care profile.
  */
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   try {
     const { user: dbUser, error } = await getAuthenticatedUser()
     if (error) return error

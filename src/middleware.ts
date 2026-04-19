@@ -22,6 +22,8 @@ const PUBLIC_PATHS = [
   '/api/cron',               // Cron jobs (protected by verifyCronRequest internally)
   '/api/notifications/generate', // Notification cron
   '/api/reminders/check',    // Reminder cron
+  '/api/share',              // Public share links (auth checked by token, not session)
+  '/shared',                 // Public share pages
 ]
 
 export default auth((req) => {
