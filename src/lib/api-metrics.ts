@@ -25,16 +25,23 @@ export function withMetrics(routeName: string, handler: RouteHandler): RouteHand
       return response
     } catch (error) {
       const duration = Date.now() - start
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorStack = error instanceof Error ? error.stack : undefined
+
       logger.error(`${method} ${routeName} failed`, {
         route: routeName,
         method,
         duration,
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
+        error: errorMessage,
+        stack: errorStack,
+        path: url.pathname,
       })
 
+      // Log the full error details to aid debugging
+      console.error(`[withMetrics] ${routeName} unhandled error:`, error)
+
       return NextResponse.json(
-        { error: 'Internal server error' },
+        { error: 'Internal server error', detail: errorMessage },
         { status: 500 }
       )
     }
