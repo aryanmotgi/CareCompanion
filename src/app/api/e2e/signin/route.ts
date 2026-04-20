@@ -20,13 +20,13 @@ import { encode } from 'next-auth/jwt'
 import { NextResponse } from 'next/server'
 import { rateLimit } from '@/lib/rate-limit'
 
-const limiter = rateLimit({ interval: 60_000, maxRequests: 5 })
+const limiter = rateLimit({ interval: 60_000, maxRequests: 20 })
 
 // GET /api/e2e/signin — liveness probe used by CI to detect when the new
 // deployment is live.  The "v" field is bumped each time the endpoint changes
 // so the CI wait step can poll for the specific version it expects.
 export async function GET() {
-  return Response.json({ ready: true, v: 7 })
+  return Response.json({ ready: true, v: 8 })
 }
 
 export async function POST(req: Request) {

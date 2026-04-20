@@ -7,8 +7,12 @@ test.describe('Production 24/7 Monitor', () => {
     test.skip(!process.env.PLAYWRIGHT_BASE_URL, 'This test suite only runs against a deployed environment.')
   })
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, context }) => {
     const email = process.env.E2E_MONITOR_EMAIL!
+
+    // Clear all cookies before each test to prevent stale session tokens from
+    // a previous test causing ERR_TOO_MANY_REDIRECTS (stale JWT + redirect loop).
+    await context.clearCookies()
 
     // Navigate to the site first so the browser context has the correct origin,
     // then call the E2E signin endpoint via fetch inside the page (same origin).
