@@ -132,8 +132,10 @@ export function LoginForm({ initialError, mode }: { initialError?: string; mode?
                   required
                   className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none transition-all"
                   style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: 'rgba(255,255,255,0.1)',
                   }}
                   onFocus={e => (e.currentTarget.style.borderColor = 'rgba(99,102,241,0.5)')}
                   onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
