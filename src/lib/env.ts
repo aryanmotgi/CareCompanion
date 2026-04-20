@@ -27,8 +27,6 @@ export const env = {
   // Integrations — optional, features degrade gracefully
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
-  WALGREENS_CLIENT_ID: process.env.WALGREENS_CLIENT_ID,
-  WALGREENS_CLIENT_SECRET: process.env.WALGREENS_CLIENT_SECRET,
   ONEUP_CLIENT_ID: process.env.ONEUP_CLIENT_ID,
   ONEUP_CLIENT_SECRET: process.env.ONEUP_CLIENT_SECRET,
   EPIC_CLIENT_ID: process.env.EPIC_CLIENT_ID,

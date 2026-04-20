@@ -96,7 +96,6 @@ src/
 
 - React Query integration (deferred)
 - Full Zod form validation (forms accept basic input, Zod installed but not wired)
-- Walgreens API integration (deferred per project memory)
 - Offline support / optimistic updates
 
 <!-- /autoplan restore point: /Users/aryanmotgi/.gstack/projects/aryanmotgi-CareCompanion/feat-backend-ai-improvements-autoplan-restore-20260402-180230.md -->

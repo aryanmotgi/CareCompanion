@@ -192,8 +192,6 @@ Copy `.env.local.example` to `.env.local` and fill in all required values.
 |----------|----------|-------------|
 | `GOOGLE_CLIENT_ID` | Optional | Google OAuth client ID (calendar sync) |
 | `GOOGLE_CLIENT_SECRET` | Optional | Google OAuth client secret |
-| `WALGREENS_CLIENT_ID` | Optional | Walgreens API client ID |
-| `WALGREENS_CLIENT_SECRET` | Optional | Walgreens API client secret |
 | `ONEUP_CLIENT_ID` | Optional | 1upHealth FHIR client ID |
 | `ONEUP_CLIENT_SECRET` | Optional | 1upHealth FHIR client secret |
 | `EPIC_CLIENT_ID` | Optional | Epic FHIR client ID |
