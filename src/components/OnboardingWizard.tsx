@@ -667,7 +667,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
                     id: profileId,
                     patient_name: firstName || 'Me',
                     relationship: 'self',
-                    onboarding_completed: false,
+                    onboarding_completed: true,
                   }),
                 });
                 localStorage.setItem('onboarding_just_completed', 'true');
