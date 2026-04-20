@@ -15,6 +15,12 @@ export function LoginForm({ initialError, mode }: { initialError?: string; mode?
     return () => window.removeEventListener('pageshow', handlePageShow)
   }, [])
 
+  // Reset loading when an auth error comes back via soft navigation
+  // (pageshow doesn't fire on Next.js client-side redirects from /api/auth/start)
+  useEffect(() => {
+    if (initialError) setLoading(null)
+  }, [initialError])
+
   // Sign-up requires explicit mode=signup; everything else (including default) is sign-in
   const isSignIn = mode !== 'signup'
   // Consent is only required when creating a new account
