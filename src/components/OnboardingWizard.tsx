@@ -665,8 +665,8 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
                   headers: { 'Content-Type': 'application/json', 'x-csrf-token': getCsrfToken() },
                   body: JSON.stringify({
                     id: profileId,
-                    patient_name: firstName || 'Me',
-                    relationship: 'self',
+                    patient_name: role === 'caregiver' ? (patientName.trim() || 'My loved one') : (firstName || 'Me'),
+                    relationship: role === 'caregiver' ? (relationship || null) : 'self',
                     onboarding_completed: true,
                   }),
                 });
@@ -1133,7 +1133,16 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
             </button>
           </div>
           <button
-            onClick={() => goForward(5)}
+            onClick={async () => {
+              setLoading(true);
+              try {
+                await saveManualData();
+              } finally {
+                setLoading(false);
+              }
+              goForward(5);
+            }}
+            disabled={loading}
             className="w-full text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
           >
             Skip — I&apos;ll add these later
@@ -1227,7 +1236,8 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
             </div>
           )}
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={saveAndFinish}
+            disabled={loading}
             className="w-full text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
           >
             Skip for now
