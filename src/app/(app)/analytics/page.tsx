@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { users, labResults, symptomEntries, reminderLogs, medications, claims } from '@/lib/db/schema';
-import { eq, and, gte, asc, desc } from 'drizzle-orm';
+import { eq, and, gte, asc, desc, isNull } from 'drizzle-orm';
 import { getActiveProfile } from '@/lib/active-profile';
 
 const AnalyticsDashboard = dynamic(() => import('@/components/AnalyticsDashboard').then(m => m.AnalyticsDashboard));
@@ -24,12 +24,12 @@ export default async function AnalyticsPage() {
   const [labs, symptoms, logs, meds, claimsData] = await Promise.all([
     db.select().from(labResults).where(eq(labResults.userId, dbUser.id)).orderBy(asc(labResults.dateTaken)),
     db.select().from(symptomEntries)
-      .where(and(eq(symptomEntries.userId, dbUser.id)))
+      .where(eq(symptomEntries.userId, dbUser.id))
       .orderBy(asc(symptomEntries.date)),
     db.select().from(reminderLogs)
       .where(and(eq(reminderLogs.userId, dbUser.id), gte(reminderLogs.createdAt, thirtyDaysAgo)))
       .orderBy(asc(reminderLogs.createdAt)),
-    db.select().from(medications).where(eq(medications.careProfileId, profile.id)),
+    db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))),
     db.select().from(claims).where(eq(claims.userId, dbUser.id)).orderBy(desc(claims.createdAt)).limit(20),
   ]);
 

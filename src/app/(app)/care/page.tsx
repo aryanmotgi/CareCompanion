@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db';
 import { users, careProfiles, medications, appointments, doctors, careTeamMembers, reminderLogs } from '@/lib/db/schema';
-import { eq, and, gte, asc } from 'drizzle-orm';
+import { eq, and, gte, asc, isNull } from 'drizzle-orm';
 import { getAllProfiles } from '@/lib/active-profile'
 import { CareView } from '@/components/CareView'
 import { CareSkeleton } from '@/components/skeletons/CareSkeleton'
@@ -33,9 +33,9 @@ async function CareContent() {
   todayStart.setHours(0, 0, 0, 0);
 
   const [meds, appts, docs, teamMembers, todayLogs] = await Promise.all([
-    db.select().from(medications).where(eq(medications.careProfileId, profile.id)),
-    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)).orderBy(asc(appointments.dateTime)),
-    db.select().from(doctors).where(eq(doctors.careProfileId, profile.id)),
+    db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))),
+    db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(asc(appointments.dateTime)),
+    db.select().from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))),
     db.select().from(careTeamMembers).where(eq(careTeamMembers.careProfileId, profile.id)),
     db.select().from(reminderLogs).where(
       and(eq(reminderLogs.userId, dbUser.id), gte(reminderLogs.scheduledTime, todayStart))

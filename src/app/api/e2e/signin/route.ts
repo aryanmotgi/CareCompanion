@@ -37,6 +37,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'too many requests' }, { status: 429 })
   }
 
+  // Require a shared secret so arbitrary callers cannot mint sessions for DB users.
+  const e2eSecret = process.env.E2E_SECRET
+  if (!e2eSecret) {
+    return NextResponse.json({ error: 'E2E_SECRET not configured' }, { status: 503 })
+  }
+  const callerSecret = req.headers.get('x-e2e-secret')
+  if (callerSecret !== e2eSecret) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
+
   const authSecret = process.env.AUTH_SECRET
   if (!authSecret) {
     return NextResponse.json({ error: 'AUTH_SECRET not set' }, { status: 500 })

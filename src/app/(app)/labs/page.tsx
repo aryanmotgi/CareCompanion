@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db';
 import { users, labResults } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { and, eq, desc, isNull } from 'drizzle-orm';
 import type { LabResult } from '@/lib/types'
 import { LabsView } from './LabsView'
 
@@ -21,7 +21,7 @@ async function LabsContent() {
   const labs = await db
     .select()
     .from(labResults)
-    .where(eq(labResults.userId, dbUser.id))
+    .where(and(eq(labResults.userId, dbUser.id), isNull(labResults.deletedAt)))
     .orderBy(desc(labResults.dateTaken));
 
   return <LabsView labResults={labs as LabResult[]} />

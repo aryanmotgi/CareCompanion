@@ -5,6 +5,6 @@ export default async function SetupPage() {
   const session = await auth();
   if (!session?.user?.id) redirect('/login');
 
-  // New users go straight to the connect page
-  redirect('/connect');
+  // New users go through onboarding to create a care profile
+  redirect('/onboarding');
 }

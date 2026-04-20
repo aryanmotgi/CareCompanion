@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { users, medications, appointments } from '@/lib/db/schema';
-import { eq, asc } from 'drizzle-orm';
+import { and, eq, asc, isNull } from 'drizzle-orm';
 import { getActiveProfile } from '@/lib/active-profile';
 import { CalendarView } from '@/components/CalendarView';
 
@@ -17,11 +17,11 @@ export default async function CalendarPage() {
   if (!profile) redirect('/setup');
 
   const [appts, meds] = await Promise.all([
-    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)).orderBy(asc(appointments.dateTime)),
+    db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(asc(appointments.dateTime)),
     db
       .select({ name: medications.name, refillDate: medications.refillDate })
       .from(medications)
-      .where(eq(medications.careProfileId, profile.id)),
+      .where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))),
   ]);
 
   const medsWithRefill = meds.filter(m => m.refillDate !== null);

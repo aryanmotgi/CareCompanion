@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { users, careProfiles, appointments } from '@/lib/db/schema';
-import { eq, asc } from 'drizzle-orm';
+import { and, eq, asc, isNull } from 'drizzle-orm';
 import { AppointmentsView } from '@/components/AppointmentsView';
 
 export default async function AppointmentsPage() {
@@ -23,7 +23,7 @@ export default async function AppointmentsPage() {
   const appts = await db
     .select()
     .from(appointments)
-    .where(eq(appointments.careProfileId, profile.id))
+    .where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt)))
     .orderBy(asc(appointments.dateTime));
 
   return (

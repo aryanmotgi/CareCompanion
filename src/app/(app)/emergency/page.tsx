@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { users, careProfiles, medications, doctors, insurance } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { EmergencyCard } from '@/components/EmergencyCard';
 
 export default async function EmergencyPage() {
@@ -17,9 +17,9 @@ export default async function EmergencyPage() {
 
   const [meds, docs, [ins]] = await Promise.all([
     db.select({ name: medications.name, dose: medications.dose, frequency: medications.frequency })
-      .from(medications).where(eq(medications.careProfileId, profile.id)),
+      .from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))),
     db.select({ name: doctors.name, specialty: doctors.specialty, phone: doctors.phone })
-      .from(doctors).where(eq(doctors.careProfileId, profile.id)),
+      .from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))),
     db.select({ provider: insurance.provider, memberId: insurance.memberId, groupNumber: insurance.groupNumber })
       .from(insurance).where(eq(insurance.userId, dbUser.id)).limit(1),
   ]);

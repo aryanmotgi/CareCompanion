@@ -26,7 +26,7 @@ async function buildShareData(type: string, profileId: string) {
       // labResults is keyed by userId — fetch user from profileId via careProfiles
       const [prof] = await db.select({ userId: careProfiles.userId }).from(careProfiles).where(eq(careProfiles.id, profileId)).limit(1);
       const labs = prof ? await db.select().from(labResults)
-        .where(eq(labResults.userId, prof.userId))
+        .where(and(eq(labResults.userId, prof.userId), isNull(labResults.deletedAt)))
         .limit(20) : [];
       return { lab_results: labs.map(l => ({ name: l.testName, value: l.value, unit: l.unit, referenceRange: l.referenceRange, date: l.dateTaken, isAbnormal: l.isAbnormal })) };
     }
@@ -36,8 +36,8 @@ async function buildShareData(type: string, profileId: string) {
       const [profile] = await db.select().from(careProfiles).where(eq(careProfiles.id, profileId)).limit(1);
       const [meds, appts, docs] = await Promise.all([
         db.select().from(medications).where(and(eq(medications.careProfileId, profileId), isNull(medications.deletedAt))),
-        db.select().from(appointments).where(eq(appointments.careProfileId, profileId)).limit(10),
-        db.select().from(doctors).where(eq(doctors.careProfileId, profileId)),
+        db.select().from(appointments).where(and(eq(appointments.careProfileId, profileId), isNull(appointments.deletedAt))).limit(10),
+        db.select().from(doctors).where(and(eq(doctors.careProfileId, profileId), isNull(doctors.deletedAt))),
       ]);
       return {
         patient: {

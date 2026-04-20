@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { users, notifications, careProfiles } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { AppShell } from '@/components/AppShell'
 import { ToastProvider } from '@/components/ToastProvider'
 import { ThemeProvider } from '@/components/ThemeProvider'
@@ -127,12 +127,12 @@ export default async function AppLayout({
     db
       .select()
       .from(notifications)
-      .where(eq(notifications.userId, userId))
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)))
       .limit(20)
       .catch(() => []),
   ])
 
-  const unread = unreadNotifications.filter(n => !n.isRead)
+  const unread = unreadNotifications
 
   return (
     <SessionProvider>

@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { users, careProfiles, medications, appointments, labResults, symptomEntries } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { and, eq, desc, isNull } from 'drizzle-orm';
 import { TreatmentTimeline } from '@/components/TreatmentTimeline';
 import type { Medication, Appointment, LabResult, SymptomEntry } from '@/lib/types';
 
@@ -52,8 +52,8 @@ async function TimelineData() {
   if (!profile) redirect('/setup');
 
   const [meds, appts, labs, symptoms] = await Promise.all([
-    db.select().from(medications).where(eq(medications.careProfileId, profile.id)).orderBy(desc(medications.createdAt)),
-    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)).orderBy(desc(appointments.dateTime)),
+    db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).orderBy(desc(medications.createdAt)),
+    db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(desc(appointments.dateTime)),
     db.select().from(labResults).where(eq(labResults.userId, dbUser.id)).orderBy(desc(labResults.dateTaken)),
     db.select().from(symptomEntries).where(eq(symptomEntries.userId, dbUser.id)).orderBy(desc(symptomEntries.date)),
   ]);

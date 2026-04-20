@@ -13,7 +13,7 @@ export default async function UploadPage() {
   const [dbUser] = await db
     .select({ id: users.id })
     .from(users)
-    .where(eq(users.cognitoSub, String(session.user.id)))
+    .where(eq(users.cognitoSub, session.user.id))
     .limit(1);
   if (!dbUser) redirect('/login');
 

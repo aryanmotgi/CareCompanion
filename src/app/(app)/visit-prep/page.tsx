@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { users, careProfiles, appointments } from '@/lib/db/schema';
-import { eq, and, gte, lte, asc } from 'drizzle-orm';
+import { eq, and, gte, lte, asc, isNull } from 'drizzle-orm';
 import { VisitPrepView } from '@/components/VisitPrepView';
 import { SkeletonCard } from '@/components/SkeletonCard';
 
@@ -49,6 +49,7 @@ async function VisitPrepData() {
     .where(
       and(
         eq(appointments.careProfileId, profile.id),
+        isNull(appointments.deletedAt),
         gte(appointments.dateTime, now),
         lte(appointments.dateTime, thirtyDaysOut),
       )

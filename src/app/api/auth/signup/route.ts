@@ -5,6 +5,7 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider'
 import { parseBody } from '@/lib/api-helpers'
 import { rateLimit } from '@/lib/rate-limit'
+import { validateCsrf } from '@/lib/csrf'
 
 const client = new CognitoIdentityProviderClient({ region: process.env.COGNITO_REGION! })
 
@@ -14,6 +15,9 @@ const signupLimiter = rateLimit({
 })
 
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req)
+  if (!valid) return csrfError!
+
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
   const { success } = await signupLimiter.check(ip)
   if (!success) {
