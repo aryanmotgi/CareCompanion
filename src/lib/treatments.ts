@@ -1,18 +1,18 @@
-export interface SideEffect {
+interface SideEffect {
   name: string;
   timing: string;
   severity: 'mild' | 'moderate' | 'severe';
   tip: string;
 }
 
-export interface CriticalDay {
+interface CriticalDay {
   day: number;
   label: string;
   watchFor: string[];
   whenToCall: string;
 }
 
-export interface Treatment {
+interface Treatment {
   slug: string;
   name: string;
   fullName: string;

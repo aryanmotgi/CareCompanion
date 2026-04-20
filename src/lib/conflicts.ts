@@ -14,7 +14,7 @@ export interface Conflict {
   severity: 'high' | 'medium'
 }
 
-export interface ResolutionOption {
+interface ResolutionOption {
   type: 'delegate' | 'find-caregiver' | 'reschedule' | 'chat'
   label: string
   description: string

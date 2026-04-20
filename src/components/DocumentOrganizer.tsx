@@ -3,11 +3,11 @@
 import { useState, useMemo, useCallback } from 'react'
 
 // ---------- Types ----------
-export type DocCategory = 'all' | 'medical' | 'insurance' | 'lab' | 'prescriptions' | 'other'
+type DocCategory = 'all' | 'medical' | 'insurance' | 'lab' | 'prescriptions' | 'other'
 type SortOption = 'date-newest' | 'date-oldest' | 'category' | 'name'
 type ViewMode = 'grid' | 'list'
 
-export interface OrganizableDocument {
+interface OrganizableDocument {
   id: string
   type: string
   description: string | null

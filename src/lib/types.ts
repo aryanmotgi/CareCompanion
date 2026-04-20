@@ -53,7 +53,7 @@ export interface Appointment {
   createdAt: Date | null;
 }
 
-export interface Document {
+interface Document {
   id: string;
   careProfileId: string;
   type: string | null;
@@ -65,7 +65,7 @@ export interface Document {
   createdAt: Date | null;
 }
 
-export interface Message {
+interface Message {
   id: string;
   userId: string;
   role: 'user' | 'assistant';
@@ -73,7 +73,7 @@ export interface Message {
   createdAt: Date | null;
 }
 
-export interface ConnectedApp {
+interface ConnectedApp {
   id: string;
   userId: string;
   source: string;
@@ -85,7 +85,7 @@ export interface ConnectedApp {
   createdAt: Date | null;
 }
 
-export interface Insurance {
+interface Insurance {
   id: string;
   userId: string;
   provider: string;
@@ -205,7 +205,7 @@ export interface AppointmentForm {
   purpose: string;
 }
 
-export interface SetupFormData {
+interface SetupFormData {
   patient_name: string;
   patient_age: string;
   relationship: string;
@@ -273,7 +273,7 @@ export interface CareTeamActivity {
   createdAt: Date | null;
 }
 
-export interface UserPreferences {
+interface UserPreferences {
   id: string;
   userId: string;
   activeProfileId: string | null;

@@ -9,7 +9,7 @@ import { db } from '@/lib/db'
 import { auditLogs } from '@/lib/db/schema'
 import { logger } from '@/lib/logger'
 
-export type AuditAction =
+type AuditAction =
   | 'view_profile'
   | 'edit_profile'
   | 'view_medications'

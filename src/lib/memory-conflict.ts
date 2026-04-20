@@ -111,7 +111,7 @@ function extractEntities(text: string): string[] {
  * Memories not referenced in 90+ days get downgraded.
  * Run from a cron job.
  */
-export async function decayOldMemories(): Promise<number> {
+async function decayOldMemories(): Promise<number> {
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
   const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000)
 

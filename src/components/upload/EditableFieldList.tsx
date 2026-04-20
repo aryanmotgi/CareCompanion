@@ -3,7 +3,7 @@
 import { FormField } from '@/components/ui/FormField';
 
 // Field definition for each category
-export interface FieldDef {
+interface FieldDef {
   key: string;
   label: string;
   type?: string;

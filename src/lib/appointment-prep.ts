@@ -21,7 +21,7 @@ import {
 import { eq, and, gte, desc } from 'drizzle-orm';
 import { logger } from '@/lib/logger';
 
-export interface AppointmentPrepResult {
+interface AppointmentPrepResult {
   appointmentId: string;
   doctorName: string | null;
   specialty: string | null;

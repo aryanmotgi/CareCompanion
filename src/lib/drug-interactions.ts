@@ -24,7 +24,7 @@ const InteractionSchema = z.object({
   safe_to_combine: z.boolean().describe('False if any major interactions found'),
 })
 
-export type InteractionResult = z.infer<typeof InteractionSchema>
+type InteractionResult = z.infer<typeof InteractionSchema>
 
 export async function checkDrugInteractions(
   currentMedications: Array<{ name: string; dose?: string | null }>,

@@ -71,7 +71,7 @@ export function encryptToken(plaintext: string): string {
  * Decrypt a token encrypted by encryptToken.
  * Throws if the ciphertext has been tampered with (GCM auth tag mismatch).
  */
-export function decryptToken(encrypted: string): string {
+function decryptToken(encrypted: string): string {
   if (!encrypted.startsWith(ENCRYPTED_PREFIX)) {
     throw new Error('Value is not an encrypted token (missing prefix)');
   }
@@ -102,7 +102,7 @@ export function decryptToken(encrypted: string): string {
  * Use this on reads during the migration window so existing connections keep working.
  * Once all rows are encrypted, this can be simplified to just decryptToken.
  */
-export function safeDecryptToken(value: string | null | undefined): string | null {
+function safeDecryptToken(value: string | null | undefined): string | null {
   if (!value) return null;
 
   // If it's already marked as encrypted, try to decrypt — but fall back to null

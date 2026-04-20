@@ -1,0 +1,103 @@
+<h2>Manual FHIR Export — How It Would Work</h2>
+<p class="subtitle">User journey from onboarding → fully populated profile</p>
+
+<div class="section">
+  <p class="label">The Flow</p>
+  <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px;">
+
+    <div style="display:flex;align-items:flex-start;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
+      <div style="min-width:36px;height:36px;border-radius:50%;background:#6366f1;color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;">1</div>
+      <div>
+        <h3 style="margin:0 0 4px;">User signs up → hits onboarding</h3>
+        <p style="margin:0;color:var(--text-secondary);font-size:14px;">Instead of the current wizard form, we show: <strong>"Import your health records in one step"</strong></p>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:flex-start;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
+      <div style="min-width:36px;height:36px;border-radius:50%;background:#6366f1;color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;">2</div>
+      <div>
+        <h3 style="margin:0 0 4px;">We ask: "What patient portal does your doctor use?"</h3>
+        <p style="margin:0;color:var(--text-secondary);font-size:14px;">User picks from a list: <strong>Epic MyChart · CommonHealth · Cerner · Kaiser · UCLA Health · etc.</strong></p>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:flex-start;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
+      <div style="min-width:36px;height:36px;border-radius:50%;background:#6366f1;color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;">3</div>
+      <div>
+        <h3 style="margin:0 0 4px;">CareCompanion shows step-by-step instructions</h3>
+        <p style="margin:0;color:var(--text-secondary);font-size:14px;">Tailored to their portal — with screenshots. e.g. for MyChart: <em>"Tap Menu → Health → Download My Data → Select All → Download"</em></p>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:flex-start;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
+      <div style="min-width:36px;height:36px;border-radius:50%;background:#6366f1;color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;">4</div>
+      <div>
+        <h3 style="margin:0 0 4px;">User uploads the file (JSON or XML)</h3>
+        <p style="margin:0;color:var(--text-secondary);font-size:14px;">Drag & drop or file picker. Usually a single <code>.json</code> file or a zip.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:flex-start;gap:16px;background:var(--surface);border:1px solid #22c55e;border-radius:10px;padding:16px;">
+      <div style="min-width:36px;height:36px;border-radius:50%;background:#22c55e;color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;">5</div>
+      <div>
+        <h3 style="margin:0 0 4px;">CareCompanion auto-fills everything</h3>
+        <p style="margin:0;color:var(--text-secondary);font-size:14px;">Medications · Conditions · Allergies · Lab results · Doctors · Diagnoses — all imported. User just <strong>reviews and confirms</strong>.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <p class="label">What gets imported from one FHIR file</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;">
+      <div style="color:#22c55e;font-weight:600;margin-bottom:6px;">✓ Reliably present</div>
+      <ul style="margin:0;padding-left:18px;color:var(--text-secondary);font-size:14px;line-height:1.8;">
+        <li>Active medications + doses</li>
+        <li>Diagnoses / conditions</li>
+        <li>Allergies</li>
+        <li>Lab results (historical)</li>
+        <li>Immunizations</li>
+        <li>Procedures</li>
+        <li>Care team / providers</li>
+      </ul>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;">
+      <div style="color:#f59e0b;font-weight:600;margin-bottom:6px;">~ Sometimes present</div>
+      <ul style="margin:0;padding-left:18px;color:var(--text-secondary);font-size:14px;line-height:1.8;">
+        <li>Upcoming appointments</li>
+        <li>Insurance / coverage info</li>
+        <li>Prior authorizations</li>
+        <li>Pharmacy info</li>
+        <li>Vitals history</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="label">Honest tradeoffs</p>
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>Pros</h4>
+      <ul>
+        <li>No approval needed — ships now</li>
+        <li>Works with any US hospital</li>
+        <li>One file = entire medical history</li>
+        <li>User controls their data</li>
+        <li>No ongoing API dependency</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>Cons</h4>
+      <ul>
+        <li>Not automated — user does 5-10 steps</li>
+        <li>Export UI buried in portals</li>
+        <li>One-time snapshot (not live-syncing)</li>
+        <li>Some users won't have portal access</li>
+        <li>File parsing complexity</li>
+      </ul>
+    </div>
+  </div>
+</div>

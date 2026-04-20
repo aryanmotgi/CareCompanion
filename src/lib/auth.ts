@@ -3,7 +3,7 @@ import Google from 'next-auth/providers/google'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const { handlers, signIn, auth } = NextAuth({
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,

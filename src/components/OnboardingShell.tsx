@@ -10,7 +10,7 @@ const OnboardingWizard = dynamic(
 );
 
 // Shape returned from page.tsx DB select (camelCase Drizzle keys)
-export interface ShellProfile {
+interface ShellProfile {
   id: string;
   patientName: string | null;
   patientAge: number | null;

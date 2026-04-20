@@ -1,4 +1,4 @@
-export interface ParsedLabValue {
+interface ParsedLabValue {
   displayValue: string
   numericValue: number | null
   referenceMax: number | null

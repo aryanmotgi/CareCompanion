@@ -9,7 +9,7 @@
 
 export type SpecialistType = 'medication' | 'insurance' | 'scheduling' | 'wellness' | 'labs' | 'general';
 
-export interface SpecialistConfig {
+interface SpecialistConfig {
   name: string;
   description: string;
   systemPrompt: string;

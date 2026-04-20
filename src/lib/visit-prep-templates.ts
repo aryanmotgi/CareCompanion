@@ -4,9 +4,9 @@
  * whether it's a first visit, follow-up, specialist referral, etc.
  */
 
-export type VisitType = 'first_oncology' | 'follow_up' | 'new_specialist' | 'er_visit' | 'infusion' | 'scan_results' | 'second_opinion' | 'general'
+type VisitType = 'first_oncology' | 'follow_up' | 'new_specialist' | 'er_visit' | 'infusion' | 'scan_results' | 'second_opinion' | 'general'
 
-export interface VisitPrepTemplate {
+interface VisitPrepTemplate {
   type: VisitType
   label: string
   questions: string[]

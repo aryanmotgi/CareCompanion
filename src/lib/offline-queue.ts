@@ -23,7 +23,7 @@ function saveQueue(queue: QueuedMutation[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(queue))
 }
 
-export function queueMutation(mutation: Omit<QueuedMutation, 'id' | 'timestamp'>) {
+function queueMutation(mutation: Omit<QueuedMutation, 'id' | 'timestamp'>) {
   const queue = getQueue()
   queue.push({
     ...mutation,
@@ -70,7 +70,7 @@ export async function flushQueue(): Promise<{ succeeded: number; failed: number 
   return { succeeded, failed }
 }
 
-export function clearQueue() {
+function clearQueue() {
   localStorage.removeItem(STORAGE_KEY)
   window.dispatchEvent(new CustomEvent('offline-queue-change', { detail: { count: 0 } }))
 }

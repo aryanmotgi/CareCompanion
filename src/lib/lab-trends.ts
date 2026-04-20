@@ -5,7 +5,7 @@
  */
 import type { LabResult } from './types'
 
-export interface TrendAnalysis {
+interface TrendAnalysis {
   test_name: string
   trend: 'improving' | 'stable' | 'declining' | 'rapid_decline' | 'insufficient_data'
   current_value: number | null
@@ -16,7 +16,7 @@ export interface TrendAnalysis {
   prediction_7d: number | null
 }
 
-export interface TrendAlert {
+interface TrendAlert {
   severity: 'critical' | 'warning' | 'info'
   message: string
   action: string

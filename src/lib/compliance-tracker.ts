@@ -6,7 +6,7 @@ import { db } from '@/lib/db'
 import { reminderLogs, medicationReminders } from '@/lib/db/schema'
 import { eq, and, gte, asc } from 'drizzle-orm'
 
-export interface ComplianceReport {
+interface ComplianceReport {
   period_days: number
   total_expected: number
   total_taken: number
