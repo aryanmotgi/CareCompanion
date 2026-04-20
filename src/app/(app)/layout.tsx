@@ -11,6 +11,7 @@ import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistratio
 import { PushNotificationSetup } from '@/components/PushNotificationSetup'
 import { InstallPrompt } from '@/components/InstallPrompt'
 import { CsrfProvider } from '@/components/CsrfProvider'
+import { SessionProvider } from '@/components/providers/SessionProvider'
 import { getActiveProfile, getAllProfiles } from '@/lib/active-profile'
 
 export const metadata = {
@@ -40,13 +41,16 @@ export default async function AppLayout({
         createdAt: users.createdAt,
       })
       .from(users)
-      .where(eq(users.cognitoSub, session.user.id))
+      .where(eq(users.cognitoSub, String(session.user.id)))
       .limit(1)
     dbUser = found as typeof users.$inferSelect
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    console.error('[app/layout] DB lookup failed:', msg, e)
-    const encoded = encodeURIComponent(msg.slice(0, 200))
+    const cause = (e as Error & { cause?: unknown })?.cause
+    const causeMsg = cause instanceof Error ? cause.message : (cause ? JSON.stringify(cause) : '')
+    const fullMsg = msg + (causeMsg ? ' | cause: ' + causeMsg : '')
+    console.error('[app/layout] DB lookup failed:', fullMsg, e)
+    const encoded = encodeURIComponent(fullMsg.slice(0, 1000))
     redirect(`/login?error=db&detail=${encoded}`)
   }
 
@@ -56,7 +60,7 @@ export default async function AppLayout({
       const [inserted] = await db
         .insert(users)
         .values({
-          cognitoSub: session.user.id,
+          cognitoSub: String(session.user.id),
           email: session.user.email ?? '',
           displayName: session.user.name || session.user.email || '',
           isDemo: false,
@@ -70,8 +74,12 @@ export default async function AppLayout({
       dbUser = inserted
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      console.error('[app/layout] DB insert failed:', msg, e)
-      const encoded = encodeURIComponent(msg.slice(0, 200))
+      const cause = (e as Error & { cause?: unknown })?.cause
+      console.error('[app/layout] DB insert failed:', msg)
+      console.error('[app/layout] DB insert cause:', cause)
+      const causeStr = cause instanceof Error ? cause.message : (cause ? JSON.stringify(cause) : '')
+      const fullMsg = msg + (causeStr ? ' | cause: ' + causeStr : '')
+      const encoded = encodeURIComponent(fullMsg.slice(0, 1000))
       redirect(`/login?error=db&detail=${encoded}`)
     }
   }
@@ -128,6 +136,7 @@ export default async function AppLayout({
   const unread = unreadNotifications.filter(n => !n.isRead)
 
   return (
+    <SessionProvider>
     <ThemeProvider>
     <CsrfProvider>
     <ToastProvider>
@@ -152,5 +161,6 @@ export default async function AppLayout({
     </ToastProvider>
     </CsrfProvider>
     </ThemeProvider>
+    </SessionProvider>
   )
 }
