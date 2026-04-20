@@ -31,11 +31,11 @@ jobs:
       - name: Wait for Vercel deployment to be live
         run: |
           echo "Waiting up to 4 minutes for the new deployment to go live..."
-          # GET /api/e2e/signin returns {"ready":true,"v":6} in this version.
-          # Poll until we see v=6 so we know the exact code we expect is live.
+          # GET /api/e2e/signin returns {"ready":true,"v":7} in this version.
+          # Poll until we see v=7 so we know the exact code we expect is live.
           for i in $(seq 1 24); do
             BODY=$(curl -s --max-time 10 https://carecompanionai.org/api/e2e/signin 2>/dev/null || echo "")
-            if echo "$BODY" | grep -q '"v":6'; then
+            if echo "$BODY" | grep -q '"v":7'; then
               echo "New deployment is live (attempt $i)"
               break
             fi
