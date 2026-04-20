@@ -67,8 +67,7 @@ export default async function AppLayout({
         })
         .onConflictDoUpdate({
           target: users.cognitoSub,
-          // Only update email on conflict — preserve any custom displayName the user set in-app
-          set: { email: session.user.email ?? '' },
+          set: { email: session.user.email ?? '', displayName: session.user.name || session.user.email || '' },
         })
         .returning()
       dbUser = inserted

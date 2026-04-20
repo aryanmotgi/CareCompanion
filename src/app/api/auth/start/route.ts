@@ -6,8 +6,8 @@ export async function POST(req: Request) {
   const provider = formData.get('provider') as string | null
   const email = formData.get('email') as string | null
 
-  // Validate provider — must be 'google' or empty/null
-  if (provider && provider !== 'google') {
+  // Validate provider — must be 'google', 'email', or empty/null
+  if (provider && provider !== 'google' && provider !== 'email') {
     const url = new URL(req.url)
     return Response.redirect(url.origin + '/login?error=invalid_provider', 302)
   }
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     return Response.redirect(url.origin + '/login?error=invalid_email', 302)
   }
 
-  // Consent is required when signing up (consent field is 'true' for sign-in flows)
+  // Consent is required for both signup and signin flows
   if (consent !== 'true') {
     const url = new URL(req.url)
     return Response.redirect(url.origin + '/login?error=consent_required', 302)

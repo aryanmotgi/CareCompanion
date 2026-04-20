@@ -13,10 +13,9 @@ const COGNITO_DOMAIN = (process.env.COGNITO_DOMAIN ?? '').replace(/\/$/, '')
 // Auth.js v5 beta defaults to "https://authjs.dev" when no issuer is set,
 // causing OAUTH_JWT_CLAIM_COMPARISON_FAILED on the iss claim.
 const COGNITO_ISSUER = process.env.COGNITO_ISSUER
-  || (process.env.COGNITO_REGION && process.env.COGNITO_USER_POOL_ID
+  ?? (process.env.COGNITO_REGION && process.env.COGNITO_USER_POOL_ID
     ? `https://cognito-idp.${process.env.COGNITO_REGION}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}`
-    : null)
-if (!COGNITO_ISSUER) throw new Error('COGNITO_ISSUER (or COGNITO_REGION + COGNITO_USER_POOL_ID) environment variable is required')
+    : 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_ZLns0ABGw')
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [

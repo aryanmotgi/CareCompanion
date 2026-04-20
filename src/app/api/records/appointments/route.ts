@@ -4,6 +4,7 @@ import { and, desc, eq, isNull } from 'drizzle-orm';
 import { getAuthenticatedUser, parseBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { validateCsrf } from '@/lib/csrf';
+import { softDelete } from '@/lib/soft-delete';
 
 // POST — add an appointment
 export async function POST(req: Request) {
@@ -20,8 +21,16 @@ export async function POST(req: Request) {
     location?: string; specialty?: string; care_profile_id?: string;
   };
 
-  let profileId = care_profile_id;
-  if (!profileId) {
+  let profileId: string;
+  if (care_profile_id) {
+    const [profile] = await db
+      .select({ id: careProfiles.id })
+      .from(careProfiles)
+      .where(and(eq(careProfiles.id, care_profile_id), eq(careProfiles.userId, dbUser!.id)))
+      .limit(1);
+    if (!profile) return apiError('Forbidden', 403);
+    profileId = profile.id;
+  } else {
     const [profile] = await db
       .select({ id: careProfiles.id })
       .from(careProfiles)
@@ -72,8 +81,8 @@ export async function DELETE(req: Request) {
 
   if (!profile) return apiError('Forbidden', 403);
 
-  await db.delete(appointments).where(eq(appointments.id, id));
-  return apiSuccess({ success: true });
+  const result = await softDelete('appointments', id, dbUser!.id, profile.id);
+  return apiSuccess(result);
 }
 
 // GET — list appointments for a care profile

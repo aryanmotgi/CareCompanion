@@ -1,9 +1,10 @@
 import { db } from '@/lib/db';
 import { doctors, careProfiles } from '@/lib/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { getAuthenticatedUser, parseBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { validateCsrf } from '@/lib/csrf';
+import { softDelete } from '@/lib/soft-delete';
 
 // POST — add a doctor
 export async function POST(req: Request) {
@@ -20,8 +21,16 @@ export async function POST(req: Request) {
   };
   if (!name) return apiError('name is required', 400);
 
-  let profileId = care_profile_id;
-  if (!profileId) {
+  let profileId: string;
+  if (care_profile_id) {
+    const [profile] = await db
+      .select({ id: careProfiles.id })
+      .from(careProfiles)
+      .where(and(eq(careProfiles.id, care_profile_id), eq(careProfiles.userId, dbUser!.id)))
+      .limit(1);
+    if (!profile) return apiError('Forbidden', 403);
+    profileId = profile.id;
+  } else {
     const [profile] = await db
       .select({ id: careProfiles.id })
       .from(careProfiles)
@@ -71,6 +80,32 @@ export async function DELETE(req: Request) {
 
   if (!profile) return apiError('Forbidden', 403);
 
-  await db.delete(doctors).where(eq(doctors.id, id));
-  return apiSuccess({ success: true });
+  const result = await softDelete('doctors', id, dbUser!.id, profile.id);
+  return apiSuccess(result);
+}
+
+// GET — list doctors for a care profile
+export async function GET(req: Request) {
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error) return error;
+
+  const url = new URL(req.url);
+  const profileId = url.searchParams.get('care_profile_id');
+  if (!profileId) return apiError('care_profile_id is required', 400);
+
+  const [profile] = await db
+    .select({ id: careProfiles.id })
+    .from(careProfiles)
+    .where(and(eq(careProfiles.id, profileId), eq(careProfiles.userId, dbUser!.id)))
+    .limit(1);
+
+  if (!profile) return apiError('Forbidden', 403);
+
+  const docs = await db
+    .select()
+    .from(doctors)
+    .where(and(eq(doctors.careProfileId, profileId), isNull(doctors.deletedAt)))
+    .orderBy(desc(doctors.createdAt));
+
+  return apiSuccess(docs);
 }
