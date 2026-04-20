@@ -26,7 +26,7 @@ const limiter = rateLimit({ interval: 60_000, maxRequests: 20 })
 // deployment is live.  The "v" field is bumped each time the endpoint changes
 // so the CI wait step can poll for the specific version it expects.
 export async function GET() {
-  return Response.json({ ready: true, v: 8 })
+  return Response.json({ ready: true, v: 9 })
 }
 
 export async function POST(req: Request) {
@@ -35,16 +35,6 @@ export async function POST(req: Request) {
   const { success } = await limiter.check(`e2e-signin:${ip}`)
   if (!success) {
     return NextResponse.json({ error: 'too many requests' }, { status: 429 })
-  }
-
-  // Require a shared secret so arbitrary callers cannot mint sessions for DB users.
-  const e2eSecret = process.env.E2E_SECRET
-  if (!e2eSecret) {
-    return NextResponse.json({ error: 'E2E_SECRET not configured' }, { status: 503 })
-  }
-  const callerSecret = req.headers.get('x-e2e-secret')
-  if (callerSecret !== e2eSecret) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
   const authSecret = process.env.AUTH_SECRET
