@@ -19,7 +19,7 @@ interface PatientContext {
 }
 
 interface OrchestratorResult {
-  specialistsUsed: Array<{ type: SpecialistType; name: string; emoji: string }>;
+  specialistsUsed: Array<{ type: SpecialistType; name: string }>;
   agentOutputs: Record<string, string>;
   synthesizedContext: string;
   isMultiAgent: boolean;
@@ -104,7 +104,7 @@ Provide your specialist analysis. Be specific, reference the patient's actual da
     if (output) {
       const config = SPECIALISTS[type];
       agentOutputs[type] = output;
-      specialistsUsed.push({ type, name: config.name, emoji: config.emoji });
+      specialistsUsed.push({ type, name: config.name });
     }
   }
 
@@ -116,7 +116,7 @@ Provide your specialist analysis. Be specific, reference the patient's actual da
 
     for (const [type, output] of Object.entries(agentOutputs)) {
       const config = SPECIALISTS[type as SpecialistType];
-      synthesizedContext += `[${config.emoji} ${config.name}]\n${output}\n\n`;
+      synthesizedContext += `[${config.name}]\n${output}\n\n`;
     }
 
     synthesizedContext += 'SYNTHESIS INSTRUCTIONS:\n';

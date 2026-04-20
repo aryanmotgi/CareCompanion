@@ -11,7 +11,6 @@ export type SpecialistType = 'medication' | 'insurance' | 'scheduling' | 'wellne
 
 export interface SpecialistConfig {
   name: string;
-  emoji: string;
   description: string;
   systemPrompt: string;
   relevantDataKeys: string[];
@@ -21,7 +20,7 @@ export interface SpecialistConfig {
 export const SPECIALISTS: Record<SpecialistType, SpecialistConfig> = {
   medication: {
     name: 'Medication Specialist',
-    emoji: '💊',
+
     description: 'Handles medications, drug interactions, dosages, refills, and pharmacy coordination',
     systemPrompt: `You are the Medication Specialist for CareCompanion. You are an expert in:
 - Drug interactions (CYP450 pathways, severity classification)
@@ -44,7 +43,6 @@ Be specific — reference the patient's actual medications by name, dose, and fr
 
   insurance: {
     name: 'Insurance Navigator',
-    emoji: '🏥',
     description: 'Handles insurance claims, denials, prior authorizations, costs, FSA/HSA, and appeals',
     systemPrompt: `You are the Insurance Navigator for CareCompanion. You are an expert in:
 - Explaining denial codes in plain English (CO-4, CO-16, CO-50, PR-1, etc.)
@@ -66,7 +64,6 @@ Explain everything in plain English. No insurance jargon without a definition.`,
 
   scheduling: {
     name: 'Scheduling Coordinator',
-    emoji: '📅',
     description: 'Handles appointments, visit prep, post-visit notes, follow-ups, and calendar management',
     systemPrompt: `You are the Scheduling Coordinator for CareCompanion. You are an expert in:
 - Appointment scheduling and management
@@ -87,7 +84,6 @@ After visits, prompt for: what changed, any new medications, follow-up dates, re
 
   wellness: {
     name: 'Wellness Monitor',
-    emoji: '💚',
     description: 'Handles symptom tracking, caregiver wellbeing, emotional support, and lifestyle',
     systemPrompt: `You are the Wellness Monitor for CareCompanion. You are an expert in:
 - Symptom tracking and pattern recognition
@@ -113,7 +109,6 @@ Crisis resources:
 
   labs: {
     name: 'Lab Analyst',
-    emoji: '🔬',
     description: 'Handles lab results, interpretation, trends, and reference ranges',
     systemPrompt: `You are the Lab Analyst for CareCompanion. You are an expert in:
 - Interpreting lab results in plain English
@@ -134,7 +129,6 @@ Use analogies to explain complex results. "Think of A1C as a 3-month average of 
 
   general: {
     name: 'Care Companion',
-    emoji: '🤝',
     description: 'General assistance, care profile management, and questions that span multiple domains',
     systemPrompt: `You are the general Care Companion assistant. Handle questions about:
 - Care profile updates (conditions, allergies, demographics)

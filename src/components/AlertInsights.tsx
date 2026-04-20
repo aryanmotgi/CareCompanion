@@ -4,7 +4,7 @@ import { useState } from 'react'
 
 interface AlertInsightsProps {
   details: React.ReactNode
-  insights: { text: string; emoji?: string }[]
+  insights: { text: string }[]
   chatPrompt?: string
 }
 
@@ -47,11 +47,7 @@ export function AlertInsights({ details, insights, chatPrompt }: AlertInsightsPr
               key={i}
               className="flex items-start gap-2.5 bg-white/[0.03] rounded-lg px-3 py-2.5"
             >
-              {insight.emoji ? (
-                <span className="text-sm flex-shrink-0" aria-hidden="true">{insight.emoji}</span>
-              ) : (
-                <div className="w-1 h-1 rounded-full bg-[#A78BFA] mt-1.5 flex-shrink-0" />
-              )}
+              <div className="w-1 h-1 rounded-full bg-[#A78BFA] mt-1.5 flex-shrink-0" />
               <span className="text-xs text-[#e2e8f0] leading-relaxed">{insight.text}</span>
             </div>
           ))}

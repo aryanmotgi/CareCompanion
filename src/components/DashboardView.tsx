@@ -158,9 +158,9 @@ export function DashboardView({
                 </div>
               }
               insights={[
-                { emoji: '📞', text: `Call your pharmacy now to request a refill for ${med.name}. Have your prescription number ready.` },
-                { emoji: '⏰', text: `Set a reminder ${daysLeft <= 0 ? 'immediately' : 'today'} to follow up on refill for ${med.name}.` },
-                { emoji: '💬', text: `If refills are denied, ask ${med.prescribingDoctor || 'your doctor'} for a new prescription or 90-day supply to avoid running out again.` },
+                { text: `Call your pharmacy now to request a refill for ${med.name}. Have your prescription number ready.` },
+                { text: `Set a reminder ${daysLeft <= 0 ? 'immediately' : 'today'} to follow up on refill for ${med.name}.` },
+                { text: `If refills are denied, ask ${med.prescribingDoctor || 'your doctor'} for a new prescription or 90-day supply to avoid running out again.` },
               ]}
               chatPrompt={`Help me manage my ${med.name} refill — it's ${daysLeft <= 0 ? 'overdue' : `due in ${daysLeft} days`}`}
             />
@@ -207,10 +207,10 @@ export function DashboardView({
                 </div>
               }
               insights={[
-                { emoji: '📝', text: `Write down your top 3 questions for ${appt.doctorName} before you go — you'll forget in the moment.` },
-                { emoji: '📋', text: `Bring a list of current medications and any new symptoms since your last visit.` },
-                { emoji: '🕐', text: `Arrive 10-15 minutes early ${appt.location ? `at ${appt.location}` : ''} — parking and check-in take time.` },
-                { emoji: '📱', text: `Take notes during the visit or ask if you can record — details fade fast after you leave.` },
+                { text: `Write down your top 3 questions for ${appt.doctorName} before you go — you'll forget in the moment.` },
+                { text: `Bring a list of current medications and any new symptoms since your last visit.` },
+                { text: `Arrive 10-15 minutes early ${appt.location ? `at ${appt.location}` : ''} — parking and check-in take time.` },
+                { text: `Take notes during the visit or ask if you can record — details fade fast after you leave.` },
               ]}
               chatPrompt={`Help me prepare for my ${appt.specialty} appointment with ${appt.doctorName}${appt.purpose ? ` for ${appt.purpose}` : ''}`}
             />
@@ -257,10 +257,10 @@ export function DashboardView({
               </div>
             }
             insights={[
-              { emoji: '🩺', text: `Your ${lab.testName} is ${lab.value} ${lab.unit}, above the normal range of ${lab.referenceRange}. Schedule a follow-up to discuss this result.` },
-              { emoji: '📊', text: `Track this value over time — a single reading can be a fluke, but a trend tells the real story.` },
-              { emoji: '🥗', text: `Ask your doctor what lifestyle changes (diet, exercise, sleep) could help bring this number into range.` },
-              { emoji: '💊', text: `If you're on medication for this, ask whether your dosage needs adjusting based on this result.` },
+              { text: `Your ${lab.testName} is ${lab.value} ${lab.unit}, above the normal range of ${lab.referenceRange}. Schedule a follow-up to discuss this result.` },
+              { text: `Track this value over time — a single reading can be a fluke, but a trend tells the real story.` },
+              { text: `Ask your doctor what lifestyle changes (diet, exercise, sleep) could help bring this number into range.` },
+              { text: `If you're on medication for this, ask whether your dosage needs adjusting based on this result.` },
             ]}
             chatPrompt={`Explain my ${lab.testName} result of ${lab.value} ${lab.unit} — it's above the normal range of ${lab.referenceRange}. What should I do?`}
           />
@@ -290,10 +290,10 @@ export function DashboardView({
               </div>
             }
             insights={[
-              { emoji: '📄', text: `Request the denial letter in writing — you have the right to a formal explanation and it starts the appeal clock.` },
-              { emoji: '📞', text: `Call your insurance and ask exactly what documentation they need to overturn the denial. Get a reference number.` },
-              { emoji: '🏥', text: `Ask ${claim.providerName} if they can resubmit with different coding — many denials are coding errors, not coverage issues.` },
-              { emoji: '⚖️', text: `You can file a formal appeal within 180 days. Most first appeals succeed when medical necessity is documented.` },
+              { text: `Request the denial letter in writing — you have the right to a formal explanation and it starts the appeal clock.` },
+              { text: `Call your insurance and ask exactly what documentation they need to overturn the denial. Get a reference number.` },
+              { text: `Ask ${claim.providerName} if they can resubmit with different coding — many denials are coding errors, not coverage issues.` },
+              { text: `You can file a formal appeal within 180 days. Most first appeals succeed when medical necessity is documented.` },
             ]}
             chatPrompt={`Help me understand and appeal this denied claim from ${claim.providerName} — denied for "${claim.denialReason}". I owe $${claim.patientResponsibility}.`}
           />
