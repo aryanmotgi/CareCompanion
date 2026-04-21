@@ -67,7 +67,7 @@ export const { handlers, signIn, auth } = NextAuth({
         await db
           .insert(users)
           .values({
-            cognitoSub: sub,
+            providerSub: sub,
             email: user.email,
             displayName: user.name || user.email || '',
           })

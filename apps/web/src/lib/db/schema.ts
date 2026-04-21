@@ -14,7 +14,7 @@ import { sql } from 'drizzle-orm'
 // ── Users (populated on sign-in via OAuth provider) ──────────────────────────
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
-  cognitoSub: text('cognito_sub').unique(),
+  providerSub: text('cognito_sub').unique(),
   email: text('email').notNull().unique(),
   displayName: text('display_name'),
   passwordHash: text('password_hash'),

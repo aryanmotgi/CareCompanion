@@ -22,13 +22,8 @@ export function LoginForm({ initialError }: { initialError?: string }) {
   // Reset loading when an auth error comes back via soft navigation
   // (pageshow doesn't fire on Next.js client-side redirects from /api/auth/start)
   useEffect(() => {
-    if (initialError) setLoading(null)
+    if (initialError) setLoading(false)
   }, [initialError])
-
-  // Sign-up requires explicit mode=signup; everything else (including default) is sign-in
-  const isSignIn = mode !== 'signup'
-  // Consent is only required when creating a new account
-  const requiresConsent = !isSignIn
 
   function handleGoogleSubmit(e: React.FormEvent<HTMLFormElement>) {
     if (!consentChecked) {
@@ -104,19 +99,9 @@ export function LoginForm({ initialError }: { initialError?: string }) {
             <label className="flex items-start gap-3 cursor-pointer">
               <div className="relative mt-0.5 flex-shrink-0">
                 <input
-                  type="email"
-                  name="email"
-                  placeholder="Email address"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none transition-all"
-                  style={{
-                    backgroundColor: 'rgba(255,255,255,0.05)',
-                    borderWidth: '1px',
-                    borderStyle: 'solid',
-                    borderColor: 'rgba(255,255,255,0.1)',
-                  }}
+                  type="checkbox"
+                  checked={consentChecked}
+                  onChange={e => setConsentChecked(e.target.checked)}
                   className="sr-only"
                   aria-describedby="consent-error"
                 />
