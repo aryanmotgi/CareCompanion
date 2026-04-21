@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "drizzle-orm": ["../../node_modules/drizzle-orm"],
+      "drizzle-orm/*": ["../../node_modules/drizzle-orm/*"]
+    }
+  },
+  "include": ["src", "../../apps/web/src/lib/db/schema.ts"]
+}
