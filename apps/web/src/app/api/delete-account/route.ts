@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     try {
       await cognitoClient.send(new AdminDeleteUserCommand({
         UserPoolId: process.env.COGNITO_USER_POOL_ID!,
-        Username: user.cognitoSub,
+        Username: user.cognitoSub ?? undefined,
       }));
     } catch (cognitoErr) {
       console.error('[delete-account] Cognito deletion failed (DB record already deleted):', cognitoErr);

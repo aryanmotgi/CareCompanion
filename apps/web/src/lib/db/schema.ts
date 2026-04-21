@@ -14,9 +14,10 @@ import { sql } from 'drizzle-orm'
 // ── Users (mirrors Cognito users, populated on sign-in) ──────────────────────
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
-  cognitoSub: text('cognito_sub').notNull().unique(),
+  cognitoSub: text('cognito_sub').unique(),
   email: text('email').notNull().unique(),
   displayName: text('display_name'),
+  passwordHash: text('password_hash'),
   isDemo: boolean('is_demo').default(false),
   hipaaConsent: boolean('hipaa_consent').default(false),
   hipaaConsentAt: timestamp('hipaa_consent_at', { withTimezone: true }),
@@ -63,6 +64,7 @@ export const medications = pgTable('medications', {
   refillDate: text('refill_date'),
   notes: text('notes'),
   pharmacyPhone: text('pharmacy_phone'),
+  healthkitFhirId: text('healthkit_fhir_id').unique(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
@@ -88,6 +90,7 @@ export const appointments = pgTable('appointments', {
   dateTime: timestamp('date_time', { withTimezone: true }),
   location: text('location'),
   purpose: text('purpose'),
+  healthkitFhirId: text('healthkit_fhir_id').unique(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
@@ -186,6 +189,7 @@ export const labResults = pgTable('lab_results', {
   isAbnormal: boolean('is_abnormal').default(false),
   dateTaken: date('date_taken'),
   source: text('source'),
+  healthkitFhirId: text('healthkit_fhir_id').unique(),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })

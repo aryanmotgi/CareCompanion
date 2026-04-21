@@ -84,7 +84,7 @@ export async function POST(req: Request) {
       if (!user) {
         return NextResponse.json({ error: 'user not found in database' }, { status: 404 })
       }
-      cognitoSub = user.cognitoSub
+      cognitoSub = user.cognitoSub ?? ''
       displayName = user.displayName ?? email
 
       // Ensure HIPAA consent is set so the app layout doesn't redirect to /consent.
