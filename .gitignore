@@ -41,3 +41,8 @@ next-env.d.ts
 CareCompanion_Session_Summary*
 *.bak
 apps/mobile/android/
+.turbo/
+apps/mobile/.expo/
+apps/mobile/.turbo/
+apps/web/.turbo/
+packages/*/.turbo/
