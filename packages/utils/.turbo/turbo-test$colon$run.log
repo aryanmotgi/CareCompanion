@@ -1,0 +1,14 @@
+$ vitest run
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /Users/aryanmotgi/carecompanion/packages/utils
+
+ ✓ src/__tests__/validation.test.ts (7 tests) 8ms
+ ✓ src/__tests__/fhir.test.ts (4 tests) 5ms
+ ✓ src/__tests__/dates.test.ts (7 tests) 9ms
+
+ Test Files  3 passed (3)
+      Tests  18 passed (18)
+   Start at  22:11:59
+   Duration  4.24s (transform 164ms, setup 0ms, collect 2.66s, tests 21ms, environment 1ms, prepare 583ms)
+

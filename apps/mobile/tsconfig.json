@@ -7,5 +7,6 @@
       "@carecompanion/api": ["../../packages/api/src/index.ts"],
       "@carecompanion/utils": ["../../packages/utils/src/index.ts"]
     }
-  }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "global.d.ts"]
 }

@@ -40,3 +40,4 @@ next-env.d.ts
 .gstack/
 CareCompanion_Session_Summary*
 *.bak
+apps/mobile/android/
