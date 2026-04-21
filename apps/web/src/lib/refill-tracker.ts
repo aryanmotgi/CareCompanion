@@ -80,7 +80,7 @@ function buildRefillStatus(
  * Generate refill notifications for all users.
  * Run from a cron job.
  */
-async function generateRefillNotifications(): Promise<{ total: number; users: number }> {
+export async function generateRefillNotifications(): Promise<{ total: number; users: number }> {
   const profiles = await db
     .select({ id: careProfiles.id, userId: careProfiles.userId })
     .from(careProfiles)
@@ -145,7 +145,7 @@ async function generateRefillNotifications(): Promise<{ total: number; users: nu
  * Auto-advance refill date after a refill is confirmed.
  * Estimates next refill based on typical 30 or 90 day cycles.
  */
-async function advanceRefillDate(
+export async function advanceRefillDate(
   medicationId: string,
   cycleLength: 30 | 60 | 90 = 30,
 ): Promise<string> {

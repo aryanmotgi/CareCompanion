@@ -32,7 +32,7 @@ function escapeICS(text: string): string {
   })
 }
 
-function downloadICS(
+export function downloadICS(
   title: string,
   start: Date,
   location?: string,

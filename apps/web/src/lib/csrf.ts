@@ -10,7 +10,7 @@ function generateToken(): string {
   return Array.from(array, b => b.toString(16).padStart(2, '0')).join('')
 }
 
-async function ensureCsrfToken(): Promise<string> {
+export async function ensureCsrfToken(): Promise<string> {
   const cookieStore = await cookies()
   const existing = cookieStore.get(CSRF_COOKIE)
   if (existing) return existing.value

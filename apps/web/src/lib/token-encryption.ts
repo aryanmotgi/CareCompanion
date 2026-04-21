@@ -102,7 +102,7 @@ function decryptToken(encrypted: string): string {
  * Use this on reads during the migration window so existing connections keep working.
  * Once all rows are encrypted, this can be simplified to just decryptToken.
  */
-function safeDecryptToken(value: string | null | undefined): string | null {
+export function safeDecryptToken(value: string | null | undefined): string | null {
   if (!value) return null;
 
   // If it's already marked as encrypted, try to decrypt — but fall back to null
