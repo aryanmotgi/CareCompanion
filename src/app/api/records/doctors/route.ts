@@ -84,6 +84,39 @@ export async function DELETE(req: Request) {
   return apiSuccess(result);
 }
 
+// PUT — bulk-create doctors during onboarding
+export async function PUT(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error) return error;
+
+  const { body, error: bodyError } = await parseBody<{ profileId?: string; doctors?: Array<Record<string, unknown>> }>(req);
+  if (bodyError) return bodyError;
+  const { profileId, doctors: docs } = body;
+  if (!profileId) return apiError('profileId is required', 400);
+  if (!Array.isArray(docs) || docs.length === 0) return apiError('doctors array is required', 400);
+
+  const [profile] = await db
+    .select({ id: careProfiles.id })
+    .from(careProfiles)
+    .where(and(eq(careProfiles.id, profileId), eq(careProfiles.userId, dbUser!.id)))
+    .limit(1);
+  if (!profile) return apiError('Forbidden', 403);
+
+  const rows = docs.map((d) => ({
+    careProfileId: profile.id,
+    name: String(d.name),
+    specialty: d.specialty ? String(d.specialty) : null,
+    phone: d.phone ? String(d.phone) : null,
+    notes: d.notes ? String(d.notes) : null,
+  }));
+
+  const inserted = await db.insert(doctors).values(rows).returning();
+  return apiSuccess(inserted);
+}
+
 // GET — list doctors for a care profile
 export async function GET(req: Request) {
   const { user: dbUser, error } = await getAuthenticatedUser();

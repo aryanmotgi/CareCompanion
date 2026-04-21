@@ -33,6 +33,7 @@ export async function PATCH(req: Request) {
     patient_name?: string; patient_age?: number; relationship?: string;
     cancer_type?: string; cancer_stage?: string; treatment_phase?: string;
     conditions?: string; allergies?: string; onboarding_completed?: boolean;
+    onboarding_priorities?: string[] | null;
   }>(req);
   if (bodyError) return bodyError;
   const { id, ...fields } = body;
@@ -48,6 +49,7 @@ export async function PATCH(req: Request) {
   if (fields.conditions !== undefined) allowed.conditions = fields.conditions;
   if (fields.allergies !== undefined) allowed.allergies = fields.allergies;
   if (fields.onboarding_completed !== undefined) allowed.onboardingCompleted = fields.onboarding_completed;
+  if (fields.onboarding_priorities !== undefined) allowed.onboardingPriorities = fields.onboarding_priorities;
 
   if (Object.keys(allowed).length === 0) return apiError('No valid fields to update', 400);
 
@@ -91,6 +93,7 @@ export async function POST(req: Request) {
     patient_name?: string; patient_age?: number; relationship?: string;
     cancer_type?: string; cancer_stage?: string; treatment_phase?: string;
     conditions?: string; allergies?: string; onboarding_completed?: boolean;
+    onboarding_priorities?: string[] | null;
   }>(req);
   if (bodyError) return bodyError;
 
@@ -105,6 +108,7 @@ export async function POST(req: Request) {
     conditions: body.conditions || null,
     allergies: body.allergies || null,
     onboardingCompleted: body.onboarding_completed || false,
+    onboardingPriorities: body.onboarding_priorities || [],
   }).returning();
 
   return apiSuccess(profile);

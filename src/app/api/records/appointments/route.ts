@@ -85,6 +85,40 @@ export async function DELETE(req: Request) {
   return apiSuccess(result);
 }
 
+// PUT — bulk-create appointments during onboarding
+export async function PUT(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error) return error;
+
+  const { body, error: bodyError } = await parseBody<{ profileId?: string; appointments?: Array<Record<string, unknown>> }>(req);
+  if (bodyError) return bodyError;
+  const { profileId, appointments: appts } = body;
+  if (!profileId) return apiError('profileId is required', 400);
+  if (!Array.isArray(appts) || appts.length === 0) return apiError('appointments array is required', 400);
+
+  const [profile] = await db
+    .select({ id: careProfiles.id })
+    .from(careProfiles)
+    .where(and(eq(careProfiles.id, profileId), eq(careProfiles.userId, dbUser!.id)))
+    .limit(1);
+  if (!profile) return apiError('Forbidden', 403);
+
+  const rows = appts.map((a) => ({
+    careProfileId: profile.id,
+    doctorName: a.doctor_name ? String(a.doctor_name) : null,
+    dateTime: a.date_time ? new Date(String(a.date_time)) : null,
+    purpose: a.purpose ? String(a.purpose) : null,
+    location: a.location ? String(a.location) : null,
+    specialty: a.specialty ? String(a.specialty) : null,
+  }));
+
+  const inserted = await db.insert(appointments).values(rows).returning();
+  return apiSuccess(inserted);
+}
+
 // GET — list appointments for a care profile
 export async function GET(req: Request) {
   const { user: dbUser, error } = await getAuthenticatedUser();
