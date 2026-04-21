@@ -246,6 +246,206 @@ Triggered by tapping the avatar in the Home header. Slides in from the **left** 
 
 ---
 
+## Enhancements
+
+### 1 — Gyroscope Parallax — `app/(tabs)/index.tsx` + `src/components/AmbientOrbs.tsx`
+
+**Trigger:** Device tilt detected via `expo-sensors` `Gyroscope`.
+
+**Behaviour:** As the user tilts the phone, three depth layers respond at different speeds, creating a parallax illusion:
+
+| Layer | Elements | Speed multiplier |
+|-------|----------|-----------------|
+| Background | Ambient glow orbs | 0.3× |
+| Mid | Cards (Medications, Appointment, CTA) | 0.6× |
+| Foreground | Text content inside cards | 1× (stationary — anchored to card) |
+
+**Implementation:**
+- Subscribe to `Gyroscope.addListener({ x, y, z })` on screen focus; unsubscribe on blur. Set `Gyroscope.setUpdateInterval(16)` (≈60fps).
+- Accumulate tilt using a low-pass filter: `tiltX = tiltX * 0.85 + event.y * 0.15`, `tiltY = tiltY * 0.85 + event.x * 0.15`. This smooths jitter.
+- Clamp accumulated tilt to ±15 (degrees equivalent).
+- Drive two Reanimated shared values: `gyroX` and `gyroY` (updated via `runOnJS` from the sensor callback, or directly as they're JS-thread values).
+- Apply to layers via `useAnimatedStyle`:
+  - Orbs: `translateX: gyroX * 0.3 * maxOffset, translateY: gyroY * 0.3 * maxOffset` where `maxOffset = 20`
+  - Cards: `translateX: gyroX * 0.6 * maxOffset, translateY: gyroY * 0.6 * maxOffset`
+- Card translations are applied to the card wrapper `Reanimated.View`, not the inner content, so text stays crisp.
+- On screen unmount, call `subscription.remove()`.
+
+**Accessibility:** Respect `useReducedMotion()` from Reanimated — if true, skip gyroscope subscription and keep everything stationary.
+
+---
+
+### 2 — Rich Haptic Patterns — `src/utils/haptics.ts`
+
+Create a dedicated `haptics.ts` utility (not inline in components) that exports named functions:
+
+```ts
+// Medication marked as taken — double tap feel
+export async function hapticMedTaken() {
+  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+  setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light), 80)
+}
+
+// Abnormal lab value detected
+export async function hapticAbnormalLab() {
+  await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
+}
+
+// New AI message arrives in chat
+export function hapticAIMessage() {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+}
+
+// Document scan completed successfully
+export async function hapticScanSuccess() {
+  await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+}
+```
+
+**Usage sites:**
+- `care.tsx` — call `hapticMedTaken()` when user checks off a medication
+- `care.tsx` — call `hapticAbnormalLab()` when rendering a lab row with out-of-range value, on first render only (use a ref to track)
+- `chat.tsx` — call `hapticAIMessage()` when a new AI message is appended to the list
+- `scan.tsx` — call `hapticScanSuccess()` on successful scan, immediately before triggering particle burst
+
+---
+
+### 3 — Particle Burst on Scan Success — `app/(tabs)/scan.tsx`
+
+**Trigger:** Successful document scan (API returns success response).
+
+**Sequence:**
+1. `hapticScanSuccess()` fires.
+2. 24 particles emit simultaneously from the center of the scan viewport.
+3. Each particle travels outward along a random direction with a random speed.
+4. All particles fade from `rgba(99,102,241,1)` to `rgba(99,102,241,0)` over 600ms.
+5. Particles are removed from the tree after animation completes.
+
+**Implementation:**
+- Maintain a `useRef<boolean>` `burstActive` flag.
+- On success, set `burstActive = true` which renders 24 `Reanimated.View` elements absolutely positioned at the scan center.
+- Each particle: 6×6px circle, `borderRadius: 3`, `backgroundColor: '#6366F1'`.
+- For each particle `i`, compute random `angle = Math.random() * 2 * Math.PI` and `speed = 80 + Math.random() * 120` (pixels).
+- Drive `translateX`, `translateY`, and `opacity` with three shared values per particle, all started via `withTiming({ duration: 600, easing: Easing.out(Easing.quad) })`.
+- At animation end, call `runOnJS(setBurstActive)(false)` to unmount particles.
+- Do not use a loop with `withDelay` — start all 24 simultaneously for a true burst feel.
+
+---
+
+### 4 — Animated Gradient Mesh — `app/(tabs)/index.tsx`
+
+**Purpose:** Replace the static `backgroundColor` on the Home screen with a living gradient that breathes over 20 seconds.
+
+**Implementation:**
+- Drive a single shared value `progress` from 0→1 using `withRepeat(withTiming(1, { duration: 20000, easing: Easing.inOut(Easing.sine) }), -1, true)` (reverse: true for smooth oscillation).
+- The `colors` prop of `LinearGradient` is a JS array and cannot be driven via Reanimated's UI-thread `useAnimatedProps`. Instead, use `useAnimatedReaction` to observe `progress` and call `runOnJS(setColors)(interpolated)` whenever the value crosses a threshold — or more simply, update colors with `runOnJS` on each `progress` tick. At a 20-second period the JS re-render cost is negligible.
+
+  ```ts
+  const [gradientColors, setGradientColors] = useState(paletteA)
+
+  useAnimatedReaction(
+    () => progress.value,
+    (p) => {
+      const c0 = interpolateColor(p, [0, 1], ['#0C0E1A', '#10122B'])
+      const c1 = interpolateColor(p, [0, 1], ['#10122B', '#0C0E1A'])
+      const c2 = interpolateColor(p, [0, 1], ['rgba(99,102,241,0.08)', 'rgba(167,139,250,0.12)'])
+      const c3 = interpolateColor(p, [0, 1], ['#0C0E1A', '#10122B'])
+      runOnJS(setGradientColors)([c0, c1, c2, c3])
+    }
+  )
+  ```
+- Render `<LinearGradient colors={gradientColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>`.
+- In light mode, oscillate between `['#FAFAFA', '#F5F3FF', 'rgba(99,102,241,0.04)', '#FAFAFA']` and `['#F5F3FF', '#FAFAFA', 'rgba(99,102,241,0.07)', '#F5F3FF']` using the same pattern.
+
+---
+
+### 5 — Press-and-Hold Depth Effect — `src/components/GlassCard.tsx`
+
+**Trigger:** `onPressIn` / `onPressOut` on the card's `Pressable` wrapper.
+
+**Press-in state:**
+- Scale: `withSpring(0.97, { damping: 20, stiffness: 300 })`
+- Blur intensity: `expo-blur`'s `intensity` prop is not natively animatable via Reanimated's UI thread. Implement as a JS-thread state toggle: on `onPressIn` call `setBlurIntensity(30)`, on `onPressOut` call `setBlurIntensity(20)`. The step change is acceptable for a press effect; the scale spring provides the perceptible smoothness.
+- Border: `interpolateColor(pressed, [0, 1], [theme.bgCardBorder, theme.borderHover])` via `useAnimatedStyle` on the border View — this works because the border View is a plain `Reanimated.View`, not a native prop of BlurView.
+
+**Press-out state:**
+- Scale: `withSpring(1.0, { damping: 15, stiffness: 200 })`
+- Blur intensity: `setBlurIntensity(20)` (JS state)
+- Border: returns to `theme.bgCardBorder`
+
+**Props added to `GlassCard`:**
+```ts
+interface GlassCardProps {
+  onPress?: () => void
+  // existing children, style, etc.
+}
+```
+The depth effect is always present; `onPress` is passed through to the underlying `Pressable`.
+
+---
+
+### 6 — Breathing Pulse on Status Dots — `app/(tabs)/care.tsx`
+
+Each medication status dot (the coloured circle on the left of a row) is wrapped in a `Reanimated.View` with a continuously looping scale + opacity animation. The animation speed communicates urgency.
+
+| Status | Colour | Scale range | Opacity range | Period |
+|--------|--------|-------------|---------------|--------|
+| Taken  | Green  | 1.0 → 1.2 → 1.0 | 0.6 → 1.0 → 0.6 | 3 000ms |
+| Upcoming | Amber | 1.0 → 1.3 → 1.0 | 0.6 → 1.0 → 0.6 | 1 500ms |
+| Overdue | Rose | 1.0 → 1.4 → 1.0 | 0.6 → 1.0 → 0.6 | 800ms |
+
+**Implementation per dot:**
+```ts
+const scale = useSharedValue(1)
+const opacity = useSharedValue(0.6)
+
+useEffect(() => {
+  scale.value = withRepeat(
+    withSequence(
+      withTiming(maxScale, { duration: period / 2, easing: Easing.inOut(Easing.sine) }),
+      withTiming(1.0,      { duration: period / 2, easing: Easing.inOut(Easing.sine) })
+    ), -1, false
+  )
+  opacity.value = withRepeat(
+    withSequence(
+      withTiming(1.0, { duration: period / 2 }),
+      withTiming(0.6, { duration: period / 2 })
+    ), -1, false
+  )
+}, [])
+```
+
+**Accessibility:** If `useReducedMotion()` is true, skip the pulse — dots render as static circles.
+
+---
+
+### 7 — Animated Number Counter — `app/(tabs)/index.tsx`
+
+All numeric stat displays on the Home screen (e.g. medication count badge, appointment countdown) animate from 0 to their final value on mount.
+
+**Implementation:**
+- Use a `useSharedValue(0)` driven by `withTiming(finalValue, { duration: 800, easing: Easing.out(Easing.cubic) })`.
+- Display using the **ReText pattern**: `Animated.createAnimatedComponent(TextInput)` with `editable={false}` and `pointerEvents="none"`. React Native's `Text` component has no `text` prop — `TextInput` does, and Reanimated v3 has special handling for it:
+
+  ```ts
+  const AnimatedTextInput = Animated.createAnimatedComponent(TextInput)
+
+  const animatedProps = useAnimatedProps(() => ({
+    text: String(Math.round(val.value)),
+  }))
+
+  <AnimatedTextInput
+    editable={false}
+    animatedProps={animatedProps}
+    style={styles.counter}
+  />
+  ```
+
+- **Bounce on completion:** Chain `withSequence(withTiming(finalValue + 1, { duration: 800, easing: Easing.out(Easing.cubic) }), withSpring(finalValue, { damping: 6, stiffness: 300 }))` so the number briefly overshoots by 1 then springs back.
+- The counter restarts if `finalValue` changes (e.g., after data refresh) — reset shared value to 0 in a `useEffect` dep on `finalValue`.
+
+---
+
 ## Motion System Summary
 
 | Effect | Trigger | Implementation |
@@ -260,6 +460,16 @@ Triggered by tapping the avatar in the Home header. Slides in from the **left** 
 | Med check-off | Row tap | `withSpring` on checkmark scale + `withTiming` on row opacity |
 | Scan laser | Camera active | `withRepeat(withTiming(1800ms))` on `translateY` |
 | Splash sequence | App launch | Chained `withTiming` + `withSpring` with delays |
+| Gyroscope parallax | Device tilt | `expo-sensors` Gyroscope → shared values → `translateX/Y` at 0.3×/0.6× |
+| Gradient mesh | Always on (Home bg) | `withRepeat(withTiming(20s))` progress → `useAnimatedReaction` + `runOnJS(setColors)` |
+| GlassCard press depth | Press in/out | `withSpring` scale 0.97 + JS-state `setBlurIntensity` toggle + `interpolateColor` border |
+| Dot breathing pulse | Always on (Care screen) | `withRepeat(withSequence(...))` scale + opacity per status |
+| Particle burst | Scan success | 24 Reanimated Views, `withTiming(600ms)` on translateX/Y + opacity |
+| Number counter | Screen mount / data load | `withTiming(800ms, easeOut)` + `withSpring` bounce on final value |
+| Haptic: med taken | Checkbox tap | `ImpactFeedbackStyle.Medium` then `Light` after 80ms |
+| Haptic: abnormal lab | Lab row render | `NotificationFeedbackType.Warning` |
+| Haptic: AI message | Message received | `ImpactFeedbackStyle.Light` |
+| Haptic: scan success | Scan complete | `NotificationFeedbackType.Success` |
 
 ---
 
@@ -285,9 +495,13 @@ apps/mobile/
     ├── theme.ts                NEW — design tokens + useTheme()
     ├── components/
     │   ├── Drawer.tsx          NEW — slide-out drawer
-    │   ├── GlassCard.tsx       NEW — reusable glass/elevated card
+    │   ├── GlassCard.tsx       NEW — reusable glass/elevated card (press depth effect)
     │   ├── ShimmerSkeleton.tsx NEW — loading placeholder
-    │   └── AmbientOrbs.tsx     NEW — floating background orbs
+    │   ├── AmbientOrbs.tsx     NEW — floating background orbs (gyro-driven)
+    │   ├── ParticleBurst.tsx   NEW — 24-particle burst on scan success
+    │   └── AnimatedCounter.tsx NEW — 0→N number counter with bounce
+    ├── utils/
+    │   └── haptics.ts          NEW — named haptic pattern functions
     └── services/
         ├── auth.ts             UPDATE — dismissAuthSession fix
         └── api.ts              (unchanged)
@@ -299,9 +513,10 @@ apps/mobile/
 
 All already available in Expo SDK 52:
 - `react-native-reanimated` — all animations
-- `expo-haptics` — haptic feedback on tab press + button press
-- `expo-blur` — glassmorphism `<BlurView>` on tab bar and login card
-- `expo-linear-gradient` — gradients throughout
+- `expo-haptics` — haptic feedback on tab press, button press, and rich patterns
+- `expo-blur` — glassmorphism `<BlurView>` on tab bar, login card, and GlassCard press depth
+- `expo-linear-gradient` — gradients throughout + animated gradient mesh
+- `expo-sensors` — `Gyroscope` for parallax depth effect on Home screen
 - `@react-native-async-storage/async-storage` — theme override persistence
 - `expo-secure-store` — session token (existing)
 
