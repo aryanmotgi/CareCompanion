@@ -18,7 +18,7 @@
         "@carecompanion/api": "workspace:*",
         "@carecompanion/types": "workspace:*",
         "@carecompanion/utils": "workspace:*",
-        "@kingstinct/react-native-healthkit": "^10.0.0",
+        "@kingstinct/react-native-healthkit": "9.0.11",
         "@react-native-async-storage/async-storage": "1.23.1",
         "expo": "~52.0.0",
         "expo-auth-session": "~5.5.0",
@@ -651,7 +651,7 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@kingstinct/react-native-healthkit": ["@kingstinct/react-native-healthkit@10.1.0", "", { "peerDependencies": { "react": "*", "react-native": "*", "react-native-nitro-modules": "*" } }, "sha512-p6f3Uf4p6GXs+8xIc5NHu8DPnNJC9kxGvI+4qmgGk5U24hVZBZFAwFT53jkQMoIHZIoQmtuXJDp8jMJ7WzeZ+Q=="],
+    "@kingstinct/react-native-healthkit": ["@kingstinct/react-native-healthkit@9.0.11", "", { "peerDependencies": { "react": "*", "react-native": "*", "react-native-nitro-modules": "*" } }, "sha512-9FQMIzX59r9aotDZVLjm+M8I3N/9wScKTfrgC8z+pn77v5SY0w4KFDXQO9YHYOzQJxDOV0yC4n4XTieb+vVmRA=="],
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.1.4", "", { "dependencies": { "@tybys/wasm-util": "^0.10.1" }, "peerDependencies": { "@emnapi/core": "^1.7.1", "@emnapi/runtime": "^1.7.1" } }, "sha512-3NQNNgA1YSlJb/kMH1ildASP9HW7/7kYnRI2szWJaofaS1hWmbGI4H+d3+22aGzXXN9IJ+n+GiFVcGipJP18ow=="],
 
