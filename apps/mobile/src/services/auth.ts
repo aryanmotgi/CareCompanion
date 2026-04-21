@@ -14,12 +14,22 @@ const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanion.
  * 4. Exchanges code → session JWT → stores in SecureStore
  */
 export async function signInWithGoogle(): Promise<void> {
+  const callbackUrl = encodeURIComponent('/mobile-callback')
   const result = await WebBrowser.openAuthSessionAsync(
-    `${API_BASE}/login`,
+    `${API_BASE}/login?callbackUrl=${callbackUrl}`,
     'carecompanion://auth/callback'
   )
   if (result.type !== 'success') throw new Error('Sign-in cancelled')
-  await generateAndStoreToken()
+
+  // Extract code from carecompanion://auth/callback?code=<code>
+  const url = new URL(result.url)
+  const code = url.searchParams.get('code')
+  if (!code) throw new Error('No code in callback URL')
+
+  const { sessionToken } = await apiClient.auth.exchangeCode(code)
+  await SecureStore.setItemAsync('cc-session-token', sessionToken, {
+    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+  })
 }
 
 export async function signInWithCredentials(
