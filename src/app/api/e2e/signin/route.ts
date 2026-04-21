@@ -54,21 +54,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'missing fields' }, { status: 400 })
   }
 
-  // Look up the user in the database to get their cognitoSub.
+  // Look up the user in the database to get their providerSub.
   // The test user must have logged in at least once via normal OAuth so that
   // their record exists in the users table.
   //
   // Aurora Serverless auto-pauses after inactivity. The first DB call after a
   // pause will fail while the cluster resumes (typically < 30 s). Retry up to
   // 4 times with a 10 s delay so the scheduled monitor survives a cold start.
-  let cognitoSub!: string
+  let providerSub!: string
   let displayName!: string
   const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
   const MAX_ATTEMPTS = 4
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       const [user] = await db
-        .select({ id: users.id, cognitoSub: users.cognitoSub, displayName: users.displayName })
+        .select({ id: users.id, providerSub: users.providerSub, displayName: users.displayName })
         .from(users)
         .where(eq(users.email, email))
         .limit(1)
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
       if (!user) {
         return NextResponse.json({ error: 'user not found in database' }, { status: 404 })
       }
-      cognitoSub = user.cognitoSub
+      providerSub = user.providerSub
       displayName = user.displayName ?? email
 
       // Ensure HIPAA consent is set so the app layout doesn't redirect to /consent.
@@ -124,14 +124,13 @@ export async function POST(req: Request) {
 
   const token = await encode({
     token: {
-      sub: cognitoSub,
+      sub: providerSub,
       // providerSub is what auth.ts jwt callback stores for the Google OAuth sub,
       // and session callback sets session.user.id = token.providerSub.
       // Without it, session.user.id is undefined → redirect('/login') → redirect loop.
-      providerSub: cognitoSub,
+      providerSub,
       email,
       name: displayName,
-      cognitoSub,
       displayName,
       isDemo: false,
     },

@@ -35,13 +35,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         await db
           .insert(users)
           .values({
-            cognitoSub: sub,
+            providerSub: sub,
             email: user.email,
             displayName: user.name || user.email || '',
             isDemo: false,
           })
           .onConflictDoUpdate({
-            target: users.cognitoSub,
+            target: users.providerSub,
             set: { email: user.email ?? '' },
           })
       } catch (e) {

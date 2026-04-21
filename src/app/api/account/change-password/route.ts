@@ -45,12 +45,12 @@ export async function POST(req: Request) {
   }
 
   const [user] = await db
-    .select({ cognitoSub: users.cognitoSub, email: users.email })
+    .select({ providerSub: users.providerSub, email: users.email })
     .from(users)
     .where(eq(users.id, dbUser!.id))
     .limit(1);
 
-  if (!user?.cognitoSub) {
+  if (!user?.providerSub) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
 
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
   try {
     await cognito.send(new AdminSetUserPasswordCommand({
       UserPoolId: USER_POOL_ID,
-      Username: user.cognitoSub,
+      Username: user.providerSub,
       Password: password,
       Permanent: true,
     }));

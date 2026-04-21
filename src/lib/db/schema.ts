@@ -11,10 +11,10 @@ import {
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
-// ── Users (mirrors Cognito users, populated on sign-in) ──────────────────────
+// ── Users (populated on sign-in via OAuth provider) ──────────────────────────
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
-  cognitoSub: text('cognito_sub').notNull().unique(),
+  providerSub: text('provider_sub').notNull().unique(),
   email: text('email').notNull().unique(),
   displayName: text('display_name'),
   isDemo: boolean('is_demo').default(false),
