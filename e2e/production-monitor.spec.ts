@@ -18,17 +18,18 @@ test.describe('Production 24/7 Monitor', () => {
     // then call the E2E signin endpoint via fetch inside the page (same origin).
     // This means the browser itself handles Set-Cookie, including Secure cookies.
     await page.goto('/login')
+    const e2eSecret = process.env.E2E_AUTH_SECRET!
     const result = await page.evaluate(
-      async ({ email }: { email: string }) => {
+      async ({ email, secret }: { email: string; secret: string }) => {
         const res = await fetch('/api/e2e/signin', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-e2e-secret': secret },
           body: JSON.stringify({ email }),
           credentials: 'include',
         })
         return { ok: res.ok, status: res.status, body: await res.text() }
       },
-      { email }
+      { email, secret: e2eSecret }
     )
 
     if (!result.ok) {

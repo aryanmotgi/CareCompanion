@@ -30,6 +30,14 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  // Gate: require E2E_AUTH_SECRET header — this endpoint bypasses OAuth so it
+  // must be callable only by the CI monitor, not arbitrary callers.
+  const e2eSecret = process.env.E2E_AUTH_SECRET
+  const providedSecret = req.headers.get('x-e2e-secret')
+  if (!e2eSecret || providedSecret !== e2eSecret) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
   // Rate limit: 5 requests per minute per IP
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1'
   const { success } = await limiter.check(`e2e-signin:${ip}`)

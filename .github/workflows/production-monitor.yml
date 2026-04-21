@@ -56,6 +56,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           E2E_MONITOR_EMAIL: ${{ secrets.E2E_MONITOR_EMAIL }}
           E2E_MONITOR_PASSWORD: ${{ secrets.E2E_MONITOR_PASSWORD }}
+          E2E_AUTH_SECRET: ${{ secrets.E2E_AUTH_SECRET }}
 
       - name: Upload Report on Failure
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
