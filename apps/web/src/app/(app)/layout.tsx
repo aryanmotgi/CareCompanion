@@ -34,14 +34,14 @@ export default async function AppLayout({
     const [found] = await db
       .select({
         id: users.id,
-        cognitoSub: users.cognitoSub,
+        providerSub: users.providerSub,
         email: users.email,
         displayName: users.displayName,
         isDemo: users.isDemo,
         createdAt: users.createdAt,
       })
       .from(users)
-      .where(eq(users.cognitoSub, String(session.user.id)))
+      .where(eq(users.providerSub, String(session.user.id)))
       .limit(1)
     dbUser = found as typeof users.$inferSelect
   } catch (e) {
@@ -60,13 +60,13 @@ export default async function AppLayout({
       const [inserted] = await db
         .insert(users)
         .values({
-          cognitoSub: String(session.user.id),
+          providerSub: String(session.user.id),
           email: session.user.email ?? '',
           displayName: session.user.name || session.user.email || '',
           isDemo: false,
         })
         .onConflictDoUpdate({
-          target: users.cognitoSub,
+          target: users.providerSub,
           set: { email: session.user.email ?? '', displayName: session.user.name || session.user.email || '' },
         })
         .returning()

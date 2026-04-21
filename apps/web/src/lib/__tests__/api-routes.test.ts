@@ -19,7 +19,7 @@ vi.mock('@/lib/api-response', () => ({
 // ---------------------------------------------------------------------------
 vi.mock('@/lib/api-helpers', () => ({
   getAuthenticatedUser: vi.fn().mockResolvedValue({
-    user: { id: 'user-123', cognitoSub: 'cognito-123', email: 'test@example.com' },
+    user: { id: 'user-123', providerSub: 'cognito-123', email: 'test@example.com' },
     error: null,
   }),
   validateBody: (

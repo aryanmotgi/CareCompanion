@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 
   // Check if the reviewer already exists in the DB
   const [existingUser] = await db
-    .select({ id: users.id, cognitoSub: users.cognitoSub })
+    .select({ id: users.id, providerSub: users.providerSub })
     .from(users)
     .where(eq(users.email, REVIEWER_EMAIL))
     .limit(1);
@@ -99,14 +99,14 @@ export async function POST(req: NextRequest) {
   }
 
   // Check if Cognito user already exists
-  let cognitoSub: string | undefined;
+  let providerSub: string | undefined;
   try {
     const listRes = await cognito.send(new ListUsersCommand({
       UserPoolId: USER_POOL_ID,
       Filter: `email = "${REVIEWER_EMAIL}"`,
     }));
     const existing = listRes.Users?.[0];
-    cognitoSub = existing?.Attributes?.find((a) => a.Name === 'sub')?.Value;
+    providerSub = existing?.Attributes?.find((a) => a.Name === 'sub')?.Value;
   } catch {
     // ignore — will create below
   }
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
   // Store it securely — it cannot be recovered after this call.
   const generatedPassword = randomBytes(16).toString('base64url') + 'Aa1!';
 
-  if (!cognitoSub) {
+  if (!providerSub) {
     try {
       const createRes = await cognito.send(new AdminCreateUserCommand({
         UserPoolId: USER_POOL_ID,
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
         TemporaryPassword: generatedPassword,
       }));
 
-      cognitoSub = createRes.User?.Attributes?.find((a) => a.Name === 'sub')?.Value;
+      providerSub = createRes.User?.Attributes?.find((a) => a.Name === 'sub')?.Value;
 
       // Set permanent password
       await cognito.send(new AdminSetUserPasswordCommand({
@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (!cognitoSub) {
+  if (!providerSub) {
     return NextResponse.json({ error: 'Could not determine Cognito sub' }, { status: 500 });
   }
 
@@ -153,13 +153,13 @@ export async function POST(req: NextRequest) {
   const [newUser] = await db
     .insert(users)
     .values({
-      cognitoSub,
+      providerSub,
       email: REVIEWER_EMAIL,
       displayName: 'Reviewer',
       isDemo: false,
     })
     .onConflictDoUpdate({
-      target: users.cognitoSub,
+      target: users.providerSub,
       set: { email: REVIEWER_EMAIL, displayName: 'Reviewer' },
     })
     .returning({ id: users.id });

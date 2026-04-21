@@ -1,18 +1,22 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 
-export function LoginForm({ initialError, mode }: { initialError?: string; mode?: string }) {
+const CONSENT_KEY = 'cc_consented'
+
+export function LoginForm({ initialError }: { initialError?: string }) {
   const [consentChecked, setConsentChecked] = useState(false)
   const [showConsentError, setShowConsentError] = useState(false)
-  const [email, setEmail] = useState('')
-  const [loading, setLoading] = useState<'google' | 'email' | null>(null)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    const handlePageShow = () => setLoading(null)
-    window.addEventListener('pageshow', handlePageShow)
-    return () => window.removeEventListener('pageshow', handlePageShow)
+    // Pre-check for returning users who already consented
+    if (localStorage.getItem(CONSENT_KEY) === '1') {
+      setConsentChecked(true)
+    }
+    const handlePageShow = () => setLoading(false)
+    window.addEventListener('pageshow', handlePageShow as EventListener)
+    return () => window.removeEventListener('pageshow', handlePageShow as EventListener)
   }, [])
 
   // Reset loading when an auth error comes back via soft navigation
@@ -27,25 +31,13 @@ export function LoginForm({ initialError, mode }: { initialError?: string; mode?
   const requiresConsent = !isSignIn
 
   function handleGoogleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    if (requiresConsent && !consentChecked) {
+    if (!consentChecked) {
       e.preventDefault()
       setShowConsentError(true)
       return
     }
-    setLoading('google')
-  }
-
-  function handleEmailSubmit(e: React.FormEvent<HTMLFormElement>) {
-    if (!email.trim()) {
-      e.preventDefault()
-      return
-    }
-    if (requiresConsent && !consentChecked) {
-      e.preventDefault()
-      setShowConsentError(true)
-      return
-    }
-    setLoading('email')
+    localStorage.setItem(CONSENT_KEY, '1')
+    setLoading(true)
   }
 
   const buttonBase = "w-full relative rounded-xl py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.98] focus:outline-none overflow-hidden disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100"
@@ -68,16 +60,16 @@ export function LoginForm({ initialError, mode }: { initialError?: string; mode?
 
           {/* Section label */}
           <p className="text-xs font-medium uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>
-            {isSignIn ? 'Sign in with other accounts' : 'Create account with'}
+            Continue with
           </p>
 
           {/* Google button */}
           <form method="POST" action="/api/auth/start" onSubmit={handleGoogleSubmit}>
             <input type="hidden" name="provider" value="google" />
-            <input type="hidden" name="consent" value={!requiresConsent || consentChecked ? 'true' : ''} />
+            <input type="hidden" name="consent" value={consentChecked ? 'true' : ''} />
             <button
               type="submit"
-              disabled={loading !== null}
+              disabled={loading}
               className={`${buttonBase} flex items-center justify-center gap-3`}
               style={{
                 background: 'rgba(255,255,255,0.06)',
@@ -85,7 +77,7 @@ export function LoginForm({ initialError, mode }: { initialError?: string; mode?
                 color: 'rgba(255,255,255,0.85)',
               }}
             >
-              {loading === 'google' ? (
+              {loading ? (
                 <>
                   <svg className="w-4 h-4 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -101,28 +93,16 @@ export function LoginForm({ initialError, mode }: { initialError?: string; mode?
                     <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                   </svg>
-                  <span>Sign in with Google</span>
+                  <span>Continue with Google</span>
                 </>
               )}
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.07)' }} />
-            <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.2)' }}>Or</span>
-            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.07)' }} />
-          </div>
-
-          {/* Email form */}
+          {/* Consent checkbox — always required */}
           <div>
-            <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: 'rgba(255,255,255,0.3)' }}>
-              With existing account
-            </p>
-            <form method="POST" action="/api/auth/start" onSubmit={handleEmailSubmit} className="space-y-3">
-              <input type="hidden" name="provider" value="email" />
-              <input type="hidden" name="consent" value={!requiresConsent || consentChecked ? 'true' : ''} />
-              <div>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <div className="relative mt-0.5 flex-shrink-0">
                 <input
                   type="email"
                   name="email"
@@ -137,74 +117,35 @@ export function LoginForm({ initialError, mode }: { initialError?: string; mode?
                     borderStyle: 'solid',
                     borderColor: 'rgba(255,255,255,0.1)',
                   }}
-                  onFocus={e => (e.currentTarget.style.borderColor = 'rgba(99,102,241,0.5)')}
-                  onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
+                  className="sr-only"
+                  aria-describedby="consent-error"
                 />
-              </div>
-              <button
-                type="submit"
-                disabled={loading !== null}
-                className={`${buttonBase} text-white`}
-                style={{
-                  background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
-                  boxShadow: '0 0 20px rgba(99,102,241,0.35), 0 4px 16px rgba(0,0,0,0.3)',
-                }}
-              >
-                {loading === 'email' ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                <div className="w-4 h-4 rounded flex items-center justify-center transition-all duration-200" style={{
+                  background: consentChecked ? 'linear-gradient(135deg, #6366F1, #A78BFA)' : 'rgba(255,255,255,0.05)',
+                  border: consentChecked ? 'none' : '1px solid rgba(255,255,255,0.15)',
+                  boxShadow: consentChecked ? '0 0 10px rgba(99,102,241,0.5)' : 'none',
+                }}>
+                  {consentChecked && (
+                    <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12" strokeWidth={2.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
                     </svg>
-                    {isSignIn ? 'Signing in...' : 'Creating account...'}
-                  </span>
-                ) : 'Next'}
-              </button>
-            </form>
-          </div>
-
-          {/* Consent checkbox — sign-up only */}
-          {requiresConsent && (
-            <div>
-              <label className="flex items-start gap-3 cursor-pointer">
-                <div className="relative mt-0.5 flex-shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={consentChecked}
-                    onChange={(e) => {
-                      setConsentChecked(e.target.checked)
-                      if (e.target.checked) setShowConsentError(false)
-                    }}
-                    className="sr-only"
-                    aria-describedby="consent-error"
-                  />
-                  <div className="w-4 h-4 rounded flex items-center justify-center transition-all duration-200" style={{
-                    background: consentChecked ? 'linear-gradient(135deg, #6366F1, #A78BFA)' : 'rgba(255,255,255,0.05)',
-                    border: consentChecked ? 'none' : '1px solid rgba(255,255,255,0.15)',
-                    boxShadow: consentChecked ? '0 0 10px rgba(99,102,241,0.5)' : 'none',
-                  }}>
-                    {consentChecked && (
-                      <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12" strokeWidth={2.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
-                      </svg>
-                    )}
-                  </div>
+                  )}
                 </div>
-                <span className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                  I agree to the{' '}
-                  <a href="/terms" className="underline underline-offset-2 transition-colors hover:text-white/60" style={{ color: 'rgba(167,139,250,0.7)' }} target="_blank" rel="noopener noreferrer">Terms</a>
-                  {' '}and{' '}
-                  <a href="/privacy" className="underline underline-offset-2 transition-colors hover:text-white/60" style={{ color: 'rgba(167,139,250,0.7)' }} target="_blank" rel="noopener noreferrer">Privacy Policy</a>
-                  , and I understand CareCompanion will access and process my health information to provide the service.
-                </span>
-              </label>
-              {showConsentError && (
-                <p id="consent-error" role="alert" className="text-xs text-amber-500 pl-7 mt-1.5">
-                  Please accept the HIPAA consent to continue.
-                </p>
-              )}
-            </div>
-          )}
+              </div>
+              <span className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                I agree to the{' '}
+                <a href="/terms" className="underline underline-offset-2 transition-colors hover:text-white/60" style={{ color: 'rgba(167,139,250,0.7)' }} target="_blank" rel="noopener noreferrer">Terms</a>
+                {' '}and{' '}
+                <a href="/privacy" className="underline underline-offset-2 transition-colors hover:text-white/60" style={{ color: 'rgba(167,139,250,0.7)' }} target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+                , and I understand CareCompanion will access and process my health information to provide the service.
+              </span>
+            </label>
+            {showConsentError && (
+              <p id="consent-error" role="alert" className="text-xs text-amber-500 pl-7 mt-1.5">
+                Please accept the Terms and Privacy Policy to continue.
+              </p>
+            )}
+          </div>
 
           {initialError && (
             <div role="alert" className="flex items-start gap-2 rounded-lg px-3 py-2.5"
@@ -256,25 +197,6 @@ export function LoginForm({ initialError, mode }: { initialError?: string; mode?
               </div>
             ))}
           </div>
-
-          {/* Mode toggle */}
-          <p className="text-center text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
-            {isSignIn ? (
-              <>
-                New user?{' '}
-                <Link href="/login?mode=signup" className="underline underline-offset-2 transition-colors hover:text-white/50" style={{ color: 'rgba(167,139,250,0.6)' }}>
-                  Create an account
-                </Link>
-              </>
-            ) : (
-              <>
-                Already have an account?{' '}
-                <Link href="/login?mode=signin" className="underline underline-offset-2 transition-colors hover:text-white/50" style={{ color: 'rgba(167,139,250,0.6)' }}>
-                  Sign in
-                </Link>
-              </>
-            )}
-          </p>
         </div>
       </div>
 

@@ -10,7 +10,7 @@ export default async function CalendarPage() {
   const session = await auth();
   if (!session?.user?.id) redirect('/login');
 
-  const [dbUser] = await db.select({ id: users.id, cognitoSub: users.cognitoSub, email: users.email, displayName: users.displayName, isDemo: users.isDemo, createdAt: users.createdAt }).from(users).where(eq(users.cognitoSub, session.user.id)).limit(1);
+  const [dbUser] = await db.select({ id: users.id, providerSub: users.providerSub, email: users.email, displayName: users.displayName, isDemo: users.isDemo, createdAt: users.createdAt }).from(users).where(eq(users.providerSub, session.user.id)).limit(1);
   if (!dbUser) redirect('/login');
 
   const profile = await getActiveProfile(dbUser.id);

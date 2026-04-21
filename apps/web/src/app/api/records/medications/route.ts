@@ -129,6 +129,41 @@ export async function PATCH(req: Request) {
   return apiSuccess(updated);
 }
 
+// PUT — bulk-create medications during onboarding
+export async function PUT(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
+  const { user: dbUser, error } = await getAuthenticatedUser();
+  if (error) return error;
+
+  const { body, error: bodyError } = await parseBody<{ profileId?: string; medications?: Array<Record<string, unknown>> }>(req);
+  if (bodyError) return bodyError;
+  const { profileId, medications: meds } = body;
+  if (!profileId) return apiError('profileId is required', 400);
+  if (!Array.isArray(meds) || meds.length === 0) return apiError('medications array is required', 400);
+
+  const [profile] = await db
+    .select({ id: careProfiles.id })
+    .from(careProfiles)
+    .where(and(eq(careProfiles.id, profileId), eq(careProfiles.userId, dbUser!.id)))
+    .limit(1);
+  if (!profile) return apiError('Forbidden', 403);
+
+  const rows = meds.map((m) => ({
+    careProfileId: profile.id,
+    name: String(m.name),
+    dose: m.dose ? String(m.dose) : null,
+    frequency: m.frequency ? String(m.frequency) : null,
+    prescribingDoctor: m.prescribing_doctor ? String(m.prescribing_doctor) : null,
+    refillDate: m.refill_date ? String(m.refill_date) : null,
+    notes: m.notes ? String(m.notes) : null,
+  }));
+
+  const inserted = await db.insert(medications).values(rows).returning();
+  return apiSuccess(inserted);
+}
+
 // GET — list medications for a care profile
 export async function GET(req: Request) {
   const { user: dbUser, error } = await getAuthenticatedUser();

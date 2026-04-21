@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     console.log(`[delete-account] Starting account deletion for user ${user.id}`)
 
     // Delete the user record (cascades to all related records via FK constraints)
-    await db.delete(users).where(eq(users.cognitoSub, user.id))
+    await db.delete(users).where(eq(users.providerSub, user.id))
 
     // Delete from Cognito user pool so the user can't re-login and recreate their record
     try {

@@ -77,7 +77,7 @@ export async function POST(req: Request) {
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       const [user] = await db
-        .select({ id: users.id, cognitoSub: users.cognitoSub, displayName: users.displayName })
+        .select({ id: users.id, providerSub: users.providerSub, displayName: users.displayName })
         .from(users)
         .where(eq(users.email, email))
         .limit(1)
@@ -142,7 +142,6 @@ export async function POST(req: Request) {
       providerSub: cognitoSub,
       email,
       name: displayName,
-      cognitoSub,
       displayName,
       isDemo: false,
     },

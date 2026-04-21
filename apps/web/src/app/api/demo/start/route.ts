@@ -61,7 +61,7 @@ export async function POST(req: Request) {
   const password = `Demo-${uuid}!`;
 
   // 1. Create the demo Cognito user
-  let cognitoSub: string | undefined;
+  let providerSub: string | undefined;
   try {
     const createRes = await cognito.send(new AdminCreateUserCommand({
       UserPoolId: USER_POOL_ID,
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
       TemporaryPassword: password,
     }));
 
-    cognitoSub = createRes.User?.Attributes?.find((a) => a.Name === 'sub')?.Value;
+    providerSub = createRes.User?.Attributes?.find((a) => a.Name === 'sub')?.Value;
 
     // Set permanent password so user doesn't get force-change-password challenge
     await cognito.send(new AdminSetUserPasswordCommand({
@@ -90,13 +90,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Failed to create demo account' }, { status: 500 });
   }
 
-  if (!cognitoSub) {
+  if (!providerSub) {
     return NextResponse.json({ error: 'Failed to get Cognito sub' }, { status: 500 });
   }
 
   // 2. Insert into local users table
   const [newUser] = await db.insert(users).values({
-    cognitoSub,
+    providerSub,
     email,
     displayName: 'Demo',
     isDemo: true,
@@ -129,10 +129,10 @@ export async function POST(req: Request) {
 
   const sessionToken = await encode({
     token: {
-      sub: cognitoSub,
+      sub: providerSub,
       email,
       name: 'Demo',
-      cognitoSub,
+      providerSub,
       displayName: 'Demo',
       isDemo: true,
     },
