@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "CareCompanion",
+    "slug": "carecompanion",
+    "scheme": "carecompanion",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "bundleIdentifier": "com.carecompanion.app",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "CareCompanion reads your health records to help manage cancer care — including medications, lab results, and appointments from your care team.",
+        "NSHealthUpdateUsageDescription": "CareCompanion saves care data to help you track your treatment progress.",
+        "NSCameraUsageDescription": "CareCompanion uses the camera to scan medical documents and prescriptions."
+      },
+      "entitlements": {
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.healthkit.background-delivery": true,
+        "com.apple.developer.healthkit.access": ["health-records"]
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      ["expo-camera", { "cameraPermission": "CareCompanion uses the camera to scan medical documents." }]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

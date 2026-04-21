@@ -1,0 +1,11 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@carecompanion/types": ["../../packages/types/src/index.ts"],
+      "@carecompanion/api": ["../../packages/api/src/index.ts"],
+      "@carecompanion/utils": ["../../packages/utils/src/index.ts"]
+    }
+  }
+}
