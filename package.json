@@ -20,8 +20,8 @@
     "lint-staged": "^16.4.0"
   },
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "next lint --fix --file"
+    "apps/web/**/*.{ts,tsx}": [
+      "bash -c 'cd apps/web && ./node_modules/.bin/next lint --fix --file \"$@\"' --"
     ]
   }
 }
