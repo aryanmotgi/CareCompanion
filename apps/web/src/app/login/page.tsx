@@ -1,8 +1,8 @@
 import { PublicNav } from '@/components/PublicNav';
 import { LoginForm } from '@/components/LoginForm';
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; detail?: string }> }) {
-  const { error, detail } = await searchParams
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; detail?: string; callbackUrl?: string }> }) {
+  const { error, detail, callbackUrl } = await searchParams
   const errorMsg = error === 'db'
     ? `Database is temporarily unavailable. Please try again in a moment.${detail ? ` (${detail})` : ''}`
     : error === 'consent_required'
@@ -42,7 +42,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <p className="text-sm text-white/40">AI-powered cancer care for patients &amp; caregivers</p>
         </div>
 
-        <LoginForm initialError={errorMsg} />
+        <LoginForm initialError={errorMsg} callbackUrl={callbackUrl} />
       </div>
 
       <style>{`

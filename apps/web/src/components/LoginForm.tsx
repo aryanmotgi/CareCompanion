@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 
 const CONSENT_KEY = 'cc_consented'
 
-export function LoginForm({ initialError }: { initialError?: string }) {
+export function LoginForm({ initialError, callbackUrl }: { initialError?: string; callbackUrl?: string }) {
   const [consentChecked, setConsentChecked] = useState(false)
   const [showConsentError, setShowConsentError] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -62,6 +62,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
           <form method="POST" action="/api/auth/start" onSubmit={handleGoogleSubmit}>
             <input type="hidden" name="provider" value="google" />
             <input type="hidden" name="consent" value={consentChecked ? 'true' : ''} />
+            {callbackUrl && <input type="hidden" name="callbackUrl" value={callbackUrl} />}
             <button
               type="submit"
               disabled={loading}

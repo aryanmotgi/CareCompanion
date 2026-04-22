@@ -10,13 +10,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    const referer = req.headers.get('referer') ?? ''
-    let redirectTo = '/dashboard'
-    try {
-      const refUrl = new URL(referer)
-      const cb = refUrl.searchParams.get('callbackUrl')
-      if (cb && cb.startsWith('/')) redirectTo = cb
-    } catch { /* ignore invalid referer */ }
+    const cb = formData.get('callbackUrl')
+    const redirectTo = (typeof cb === 'string' && cb.startsWith('/')) ? cb : '/dashboard'
     return await signIn('google', { redirectTo })
   } catch (err) {
     if ((err as { digest?: string })?.digest?.startsWith('NEXT_REDIRECT')) throw err
