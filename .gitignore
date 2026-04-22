@@ -46,3 +46,5 @@ apps/mobile/.expo/
 apps/mobile/.turbo/
 apps/web/.turbo/
 packages/*/.turbo/
+# EAS CLI auto-generated monorepo files (regenerated on each build)
+app.json
