@@ -200,7 +200,7 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
               Hi, how can I help?
             </h2>
             <p className="text-[var(--text-secondary)] mb-8 max-w-xs text-[15px] leading-relaxed">
-              Ask me anything about {patientName === 'your loved one' ? 'your' : `${patientName}\u2019s`} care, medications, or records.
+              Ask me anything about your care, medications, or records.
             </p>
             <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2 w-full max-w-sm">
               {starterPrompts.map((prompt) => (
@@ -308,11 +308,7 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={
-                patientName && patientName !== 'your loved one'
-                  ? `Ask about ${patientName}\u2019s care...`
-                  : 'Ask about care, medications, side effects...'
-              }
+              placeholder="Ask about care, medications, side effects..."
               className="flex-1 bg-transparent text-[#e2e8f0] text-sm outline-none placeholder:text-[#64748b] min-h-[32px]"
             />
             {isStreaming ? (

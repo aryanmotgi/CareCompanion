@@ -33,13 +33,13 @@ async function CareContent() {
   todayStart.setHours(0, 0, 0, 0);
 
   const [meds, appts, docs, teamMembers, todayLogs] = await Promise.all([
-    db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))),
-    db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(asc(appointments.dateTime)),
-    db.select().from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))),
-    db.select().from(careTeamMembers).where(eq(careTeamMembers.careProfileId, profile.id)),
+    db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).catch(() => [] as typeof medications.$inferSelect[]),
+    db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(asc(appointments.dateTime)).catch(() => [] as typeof appointments.$inferSelect[]),
+    db.select().from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))).catch(() => [] as typeof doctors.$inferSelect[]),
+    db.select().from(careTeamMembers).where(eq(careTeamMembers.careProfileId, profile.id)).catch(() => [] as typeof careTeamMembers.$inferSelect[]),
     db.select().from(reminderLogs).where(
       and(eq(reminderLogs.userId, dbUser.id), gte(reminderLogs.scheduledTime, todayStart))
-    ).orderBy(asc(reminderLogs.scheduledTime)),
+    ).orderBy(asc(reminderLogs.scheduledTime)).catch(() => [] as typeof reminderLogs.$inferSelect[]),
   ]);
 
   return (

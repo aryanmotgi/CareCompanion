@@ -13,15 +13,17 @@ function Toggle({ enabled, onToggle, label }: { enabled: boolean; onToggle: () =
       aria-checked={enabled}
       aria-label={label}
       onClick={onToggle}
-      className={`w-[42px] h-6 rounded-full relative transition-colors duration-200 min-w-[42px] min-h-[44px] flex items-center ${
-        enabled ? 'bg-[#A78BFA]' : 'bg-white/[0.1]'
-      }`}
+      className="min-w-[44px] min-h-[44px] flex items-center justify-center"
     >
-      <div
-        className={`w-5 h-5 rounded-full absolute top-0.5 transition-all duration-200 ${
-          enabled ? 'right-0.5 bg-white' : 'left-0.5 bg-[#64748b]'
-        }`}
-      />
+      <div className={`w-[44px] h-[24px] rounded-full relative transition-colors duration-200 ${
+        enabled ? 'bg-[#A78BFA]' : 'bg-white/[0.1]'
+      }`}>
+        <div
+          className={`w-[18px] h-[18px] rounded-full absolute top-[3px] transition-all duration-200 shadow-sm ${
+            enabled ? 'right-[3px] bg-white' : 'left-[3px] bg-[#64748b]'
+          }`}
+        />
+      </div>
     </button>
   )
 }

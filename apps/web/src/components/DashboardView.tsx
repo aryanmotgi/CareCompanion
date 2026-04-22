@@ -5,7 +5,6 @@ import { PriorityCard } from './PriorityCard'
 import { TreatmentCycleTracker } from './TreatmentCycleTracker'
 import { AnimatedNumber } from './AnimatedNumber'
 import { AlertInsights } from './AlertInsights'
-import { GuidedTour } from './GuidedTour'
 import { NudgeManager } from './NudgeManager'
 import { ProfileCompleteness } from './ProfileCompleteness'
 import { AppealGenerator } from './AppealGenerator'
@@ -14,6 +13,7 @@ import type { Medication, Appointment, LabResult, Claim } from '@/lib/types'
 
 interface DashboardViewProps {
   patientName: string
+  userName?: string
   medications: Medication[]
   appointments: Appointment[]
   labResults: LabResult[]
@@ -44,6 +44,7 @@ const PHASE_LABELS: Record<string, { label: string; color: string }> = {
 
 export function DashboardView({
   patientName,
+  userName,
   medications,
   appointments,
   labResults,
@@ -381,7 +382,7 @@ export function DashboardView({
             <AnimatedNumber value={actionCount} /> {actionCount === 1 ? 'item needs' : 'items need'} attention
           </>
         ) : (
-          `Looking good, ${patientName.split(' ')[0]}!`
+          `Looking good, ${(userName || 'there').split(' ')[0]}!`
         )}
       </h2>
       {(cancerType || treatmentPhase) && (
@@ -664,8 +665,6 @@ export function DashboardView({
         </div>
       )}
 
-      {/* Guided tour for new users */}
-      <GuidedTour />
     </div>
     </>
   )

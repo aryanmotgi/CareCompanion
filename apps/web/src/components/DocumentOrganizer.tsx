@@ -428,15 +428,6 @@ export function DocumentOrganizer({ documents, onScanNew }: DocumentOrganizerPro
         </div>
       )}
 
-      {/* Scan new button */}
-      <div className="fixed bottom-24 left-0 right-0 px-4 sm:px-5 z-10 pointer-events-none flex justify-center">
-        <button
-          onClick={onScanNew}
-          className="w-full max-w-lg py-3.5 min-h-[44px] rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold tracking-wide shadow-lg shadow-[#6366F1]/25 hover:shadow-xl hover:shadow-[#6366F1]/30 transition-all active:scale-[0.98] pointer-events-auto"
-        >
-          + Scan New Document
-        </button>
-      </div>
     </div>
   )
 }

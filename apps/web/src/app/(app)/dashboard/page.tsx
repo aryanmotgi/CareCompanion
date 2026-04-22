@@ -74,6 +74,7 @@ async function DashboardContent() {
       )}
       <DashboardView
         patientName={patientName}
+        userName={dbUser.displayName || session.user.name || undefined}
         medications={meds}
         appointments={appts}
         labResults={labs}
