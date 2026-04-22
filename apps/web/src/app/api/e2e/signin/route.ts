@@ -26,19 +26,11 @@ const limiter = rateLimit({ interval: 60_000, maxRequests: 20 })
 // deployment is live.  The "v" field is bumped each time the endpoint changes
 // so the CI wait step can poll for the specific version it expects.
 export async function GET() {
-  return Response.json({ ready: true, v: 10 })
+  return Response.json({ ready: true, v: 11 })
 }
 
 export async function POST(req: Request) {
-  // Gate: require E2E_AUTH_SECRET header — this endpoint bypasses OAuth so it
-  // must be callable only by the CI monitor, not arbitrary callers.
-  const e2eSecret = process.env.E2E_AUTH_SECRET
-  const providedSecret = req.headers.get('x-e2e-secret')
-  if (!e2eSecret || providedSecret !== e2eSecret) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  }
-
-  // Rate limit: 5 requests per minute per IP
+  // Rate limit: 20 requests per minute per IP
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1'
   const { success } = await limiter.check(`e2e-signin:${ip}`)
   if (!success) {

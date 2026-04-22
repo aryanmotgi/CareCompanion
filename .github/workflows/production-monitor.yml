@@ -18,24 +18,23 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: npm
+          bun-version: 1.3.11
 
-      - run: npm ci
+      - run: bun install --frozen-lockfile
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: cd apps/web && bunx playwright install --with-deps chromium
 
       - name: Wait for Vercel deployment to be live
         run: |
           echo "Waiting up to 4 minutes for the new deployment to go live..."
-          # GET /api/e2e/signin returns {"ready":true,"v":10} in this version.
-          # Poll until we see v=10 so we know the exact code we expect is live.
+          # GET /api/e2e/signin returns {"ready":true,"v":11} in this version.
+          # Poll until we see v=11 so we know the exact code we expect is live.
           for i in $(seq 1 24); do
             BODY=$(curl -s --max-time 10 https://carecompanionai.org/api/e2e/signin 2>/dev/null || echo "")
-            if echo "$BODY" | grep -q '"v":10'; then
+            if echo "$BODY" | grep -q '"v":11'; then
               echo "New deployment is live (attempt $i)"
               break
             fi
@@ -46,24 +45,23 @@ jobs:
       - name: Run E2E Production Monitor
         id: e2e
         continue-on-error: true
+        working-directory: apps/web
         run: |
           set -o pipefail
-          npx playwright test e2e/production-monitor.spec.ts 2>&1 | tee playwright-output.txt
+          bunx playwright test e2e/production-monitor.spec.ts 2>&1 | tee ../../playwright-output.txt
         env:
           # Point the Playwright test directly at the live Production URL
           PLAYWRIGHT_BASE_URL: https://carecompanionai.org
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           E2E_MONITOR_EMAIL: ${{ secrets.E2E_MONITOR_EMAIL }}
-          E2E_MONITOR_PASSWORD: ${{ secrets.E2E_MONITOR_PASSWORD }}
-          E2E_AUTH_SECRET: ${{ secrets.E2E_AUTH_SECRET }}
 
       - name: Upload Report on Failure
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: steps.e2e.outcome == 'failure'
         with:
           name: playwright-report
-          path: playwright-report/
+          path: apps/web/playwright-report/
           retention-days: 7
 
       - name: Send failure email alert
@@ -131,9 +129,9 @@ jobs:
                 '',
                 '### Instructions for auto-fix agent',
                 '',
-                'Analyze the Playwright test failure above. The test file is `e2e/production-monitor.spec.ts`.',
+                'Analyze the Playwright test failure above. The test file is `apps/web/e2e/production-monitor.spec.ts`.',
                 'Find the root cause in the application code (not the test) and create a PR with a fix.',
-                'The production site is a Next.js app. Check the relevant page components under `src/`.',
+                'The production site is a Next.js app inside a Turborepo monorepo. Check page components under `apps/web/src/`.',
               ].join('\n'),
             });
 
