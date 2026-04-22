@@ -1,0 +1,50 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "ios": {
+        "bundleIdentifier": "com.carecompanion.app",
+        "simulator": false,
+        "distribution": "internal",
+        "buildConfiguration": "Debug"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://carecompanionai.org"
+      }
+    },
+    "preview": {
+      "ios": {
+        "bundleIdentifier": "com.carecompanion.app",
+        "simulator": true,
+        "buildConfiguration": "Release"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://carecompanionai.org"
+      }
+    },
+    "production": {
+      "ios": {
+        "bundleIdentifier": "com.carecompanion.app",
+        "simulator": false,
+        "distribution": "store",
+        "buildConfiguration": "Release",
+        "autoIncrement": "buildNumber"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://carecompanionai.org"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "",
+        "ascAppId": "",
+        "appleTeamId": ""
+      }
+    }
+  }
+}
