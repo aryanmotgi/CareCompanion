@@ -18,6 +18,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
   }
   const passwordHash = await bcrypt.hash(parsed.data.password, 12)
-  await db.update(users).set({ passwordHash }).where(eq(users.id, session.user.id))
+  await db.update(users).set({ passwordHash }).where(eq(users.email, session.user.email!))
   return NextResponse.json({ ok: true })
 }

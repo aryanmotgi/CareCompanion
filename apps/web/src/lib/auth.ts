@@ -34,35 +34,47 @@ export const { handlers, signIn, auth } = NextAuth({
     // needs zero DB queries on every subsequent request.
     async jwt({ token, account, profile, user }) {
       if (account && (profile || user)) {
+        // Initial sign-in: populate token fields from OAuth profile / credentials user.
         const email = (profile as Record<string, string>)?.email ?? (user?.email ?? '')
         const sub = (profile as Record<string, string>)?.sub ?? (user?.id ?? '')
         token.providerSub = sub
         token.displayName = (profile as Record<string, string>)?.name ?? user?.name ?? email
         token.isDemo = false
 
-        // Look up DB UUID once — stored in signed JWT, not repeated on every request.
-        // If Aurora is still waking up, skip gracefully — layout will resolve the user by email.
-        console.log('[auth][jwt] sign-in — looking up user by email:', email, '| providerSub:', sub)
+        // Look up DB UUID once at sign-in. Aurora Serverless may be cold — if it fails,
+        // dbUserId stays null and the retry branch below will resolve it on the next request.
         try {
           const dbUser = await db.query.users.findFirst({ where: eq(users.email, email) })
           token.dbUserId = dbUser?.id ?? null
-          console.log('[auth][jwt] db lookup result — dbUser.id:', dbUser?.id ?? 'NOT FOUND', '| token.dbUserId:', token.dbUserId)
-        } catch (e) {
+        } catch {
           token.dbUserId = null
-          console.error('[auth][jwt] db lookup THREW — Aurora cold start?', e instanceof Error ? e.message : String(e))
         }
-      } else {
-        // Subsequent requests — JWT already populated
-        console.log('[auth][jwt] subsequent request — token.dbUserId:', token.dbUserId, '| token.providerSub:', token.providerSub)
+      } else if (!token.dbUserId) {
+        // dbUserId is null — Aurora was unavailable at sign-in time. Retry on each request
+        // until we get a real UUID so session.user.id is never a bare providerSub.
+        // providerSub is a numeric Google string and is NOT a valid UUID — passing it as
+        // a WHERE clause on a UUID column throws a Postgres type error.
+        const email = token.email as string | undefined
+        if (email) {
+          try {
+            const dbUser = await db.query.users.findFirst({ where: eq(users.email, email) })
+            if (dbUser?.id) token.dbUserId = dbUser.id
+          } catch {
+            // Still unavailable — keep null; will retry on next request
+          }
+        }
       }
       return token
     },
     // session callback: reads from JWT only — zero DB queries
     async session({ session, token }) {
+      // Keep providerSub as fallback so session.user.id is always set — the middleware
+      // and layout both just check truthiness, not UUID validity.
+      // Pages must NOT query WHERE users.id = session.user.id when dbUserId was unavailable
+      // (providerSub is a numeric Google string, not a UUID). Pages query by email instead.
       session.user.id = (token.dbUserId ?? token.providerSub) as string
       session.user.displayName = token.displayName as string
       session.user.isDemo = token.isDemo as boolean
-      console.log('[auth][session] session.user.id:', session.user.id, '| email:', session.user.email, '| source:', token.dbUserId ? 'dbUserId' : 'providerSub (FALLBACK — dbUserId was null!)')
       return session
     },
     async signIn({ user, account, profile }) {
