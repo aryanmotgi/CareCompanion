@@ -1,5 +1,12 @@
-import { auth } from '@/lib/auth'
+/**
+ * Uses the Edge-safe auth config (auth.config.ts) — no Node.js-only imports.
+ * The full server auth config (auth.ts) is only used in route handlers.
+ */
+import NextAuth from 'next-auth'
+import { authConfig } from '@/lib/auth.config'
 import { NextResponse } from 'next/server'
+
+const { auth } = NextAuth(authConfig)
 
 // Everything NOT in this list requires authentication.
 // Add new public routes here — never forget to protect something new.
