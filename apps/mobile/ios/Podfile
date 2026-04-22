@@ -125,6 +125,23 @@ target 'CareCompanion' do
       end
     end
 
+    # Fix Swift/C++ interop duplicate symbol errors (Xcode 16.2 bug).
+    # When multiple pods (NitroModules + ReactNativeHealthkit) both use CxxStdlib,
+    # Swift 6 generates duplicate wrapper symbols for std::optional, std::__wrap_iter
+    # etc.  Adding -Xfrontend -experimental-swift-cxx-module-merge tells the Swift
+    # frontend to merge these into a single definition.  Fixed properly in Xcode 16.3.
+    nitro_prefixes = %w[NitroModules ReactNativeHealthkit]
+    installer.pods_project.targets.each do |target|
+      if nitro_prefixes.any? { |prefix| target.name.start_with?(prefix) }
+        target.build_configurations.each do |cfg|
+          existing = cfg.build_settings['OTHER_SWIFT_FLAGS'] || '$(inherited)'
+          unless existing.include?('experimental-swift-cxx-module-merge')
+            cfg.build_settings['OTHER_SWIFT_FLAGS'] = "#{existing} -Xfrontend -experimental-swift-cxx-module-merge"
+          end
+        end
+      end
+    end
+
     # This is necessary for Xcode 14, because it signs resource bundles by default
     # when building for devices.
     installer.target_installation_results.pod_target_installation_results
