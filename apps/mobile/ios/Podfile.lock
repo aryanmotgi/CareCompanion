@@ -274,29 +274,6 @@ PODS:
   - hermes-engine (0.76.5):
     - hermes-engine/Pre-built (= 0.76.5)
   - hermes-engine/Pre-built (0.76.5)
-  - NitroModules (0.35.4):
-    - DoubleConversion
-    - glog
-    - hermes-engine
-    - RCT-Folly (= 2024.01.01.00)
-    - RCTRequired
-    - RCTTypeSafety
-    - React-callinvoker
-    - React-Core
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - Yoga
   - RCT-Folly (2024.01.01.00):
     - boost
     - DoubleConversion
@@ -1801,30 +1778,6 @@ PODS:
     - React-logger (= 0.76.5)
     - React-perflogger (= 0.76.5)
     - React-utils (= 0.76.5)
-  - ReactNativeHealthkit (13.4.0):
-    - DoubleConversion
-    - glog
-    - hermes-engine
-    - NitroModules
-    - RCT-Folly (= 2024.01.01.00)
-    - RCTRequired
-    - RCTTypeSafety
-    - React-callinvoker
-    - React-Core
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - Yoga
   - RNCAsyncStorage (1.23.1):
     - React-Core
   - RNReanimated (3.16.7):
@@ -1974,7 +1927,6 @@ DEPENDENCIES:
   - "fmt (from `../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/third-party-podspecs/fmt.podspec`)"
   - "glog (from `../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/third-party-podspecs/glog.podspec`)"
   - "hermes-engine (from `../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)"
-  - NitroModules (from `../node_modules/react-native-nitro-modules`)
   - "RCT-Folly (from `../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)"
   - "RCT-Folly/Fabric (from `../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)"
   - "RCTDeprecation (from `../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)"
@@ -2034,7 +1986,6 @@ DEPENDENCIES:
   - "React-utils (from `../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/ReactCommon/react/utils`)"
   - ReactCodegen (from `build/generated/ios`)
   - "ReactCommon/turbomodule/core (from `../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/ReactCommon`)"
-  - "ReactNativeHealthkit (from `../node_modules/@kingstinct/react-native-healthkit`)"
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
@@ -2105,8 +2056,6 @@ EXTERNAL SOURCES:
   hermes-engine:
     :podspec: "../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec"
     :tag: hermes-2024-11-12-RNv0.76.2-5b4aa20c719830dcf5684832b89a6edb95ac3d64
-  NitroModules:
-    :path: "../node_modules/react-native-nitro-modules"
   RCT-Folly:
     :podspec: "../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/third-party-podspecs/RCT-Folly.podspec"
   RCTDeprecation:
@@ -2221,8 +2170,6 @@ EXTERNAL SOURCES:
     :path: build/generated/ios
   ReactCommon:
     :path: "../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/ReactCommon"
-  ReactNativeHealthkit:
-    :path: "../node_modules/@kingstinct/react-native-healthkit"
   RNCAsyncStorage:
     :path: "../node_modules/@react-native-async-storage/async-storage"
   RNReanimated:
@@ -2262,7 +2209,6 @@ SPEC CHECKSUMS:
   fmt: 10c6e61f4be25dc963c36bd73fc7b1705fe975be
   glog: 08b301085f15bcbb6ff8632a8ebaf239aae04e6a
   hermes-engine: 06a9c6900587420b90accc394199527c64259db4
-  NitroModules: e958220ff6fec601a3de8df5d7a46ca537bf74e2
   RCT-Folly: 84578c8756030547307e4572ab1947de1685c599
   RCTDeprecation: fb7d408617e25d7f537940000d766d60149c5fea
   RCTRequired: 9aaf0ffcc1f41f0c671af863970ef25c422a9920
@@ -2320,7 +2266,6 @@ SPEC CHECKSUMS:
   React-utils: f584a494ac233c7857bab176416b0c49cb4037ba
   ReactCodegen: 024355334a9142f86c119500da2c2b4489fddb0b
   ReactCommon: 5809a8ee421b7219221a475b78180f8f34b5c5ec
-  ReactNativeHealthkit: 8860d805f1c06a48f982b92e63913aefaa494687
   RNCAsyncStorage: aa75595c1aefa18f868452091fa0c411a516ce11
   RNReanimated: 469fe1b73870064e327850f30989f62cc9ce0c14
   RNScreens: dca75d1e90a03d2b0229462f3d5a75880e30885d
@@ -2328,6 +2273,6 @@ SPEC CHECKSUMS:
   Yoga: fcc198acd4a55599b3468cfb6ebc526baff5f06e
   ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 
-PODFILE CHECKSUM: 52061f870df629df07fda7f68e2dd7747bf70e1d
+PODFILE CHECKSUM: c14a90973cdc7373d243695d32e11bff72fcadb4
 
 COCOAPODS: 1.16.2

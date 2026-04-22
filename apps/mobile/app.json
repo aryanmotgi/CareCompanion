@@ -37,8 +37,7 @@
         {
           "cameraPermission": "CareCompanion uses the camera to scan medical documents."
         }
-      ],
-      "@kingstinct/react-native-healthkit"
+      ]
     ],
     "experiments": {
       "typedRoutes": true
