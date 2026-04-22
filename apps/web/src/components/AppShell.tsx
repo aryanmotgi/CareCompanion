@@ -195,7 +195,7 @@ export function AppShell({
       )}
 
       <main id="main-content" className={`${isSetup ? '' : (isDemo ? 'pt-[104px] pb-24' : 'pt-14 pb-24')} min-h-screen min-h-dvh`}>
-        <div className="max-w-lg lg:max-w-2xl xl:max-w-3xl mx-auto px-1 sm:px-0">
+        <div className={pathname === '/chat' ? 'mx-auto px-0' : 'max-w-lg lg:max-w-2xl xl:max-w-3xl mx-auto px-1 sm:px-0'}>
           {children}
         </div>
       </main>

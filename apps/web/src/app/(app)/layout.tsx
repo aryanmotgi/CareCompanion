@@ -8,7 +8,6 @@ import { ToastProvider } from '@/components/ToastProvider'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
-import { InstallPrompt } from '@/components/InstallPrompt'
 import { CsrfProvider } from '@/components/CsrfProvider'
 import { SessionProvider } from '@/components/providers/SessionProvider'
 import { getActiveProfile, getAllProfiles } from '@/lib/active-profile'
@@ -139,7 +138,6 @@ export default async function AppLayout({
     <ToastProvider>
       <OfflineIndicator />
       <ServiceWorkerRegistration />
-      <InstallPrompt />
       <AppShell
         patientName={profile?.patientName || 'your loved one'}
         patientAge={profile?.patientAge ?? undefined}

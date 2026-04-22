@@ -141,7 +141,7 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-56px-72px)] -mx-4 sm:-mx-8 lg:-mx-12 -mb-6">
+    <div className="flex flex-col h-[calc(100dvh-56px-72px)]">
       {/* Header bar — New Chat + Search buttons */}
       <div className="flex justify-end gap-2 px-4 sm:px-8 pt-3 pb-1">
         <button
@@ -173,7 +173,7 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
         onScrollToMessage={handleScrollToMessage}
       />
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto chat-scroll px-4 sm:px-8 lg:px-12 py-6">
+      <div className="flex-1 overflow-y-auto chat-scroll px-4 sm:px-6 lg:px-8 py-6">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             {/* Hero icon with glow */}
@@ -198,15 +198,15 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
             <h2 className="font-display text-3xl font-bold text-[var(--text)] mb-2.5" style={{ letterSpacing: '-0.02em' }}>
               Hi, how can I help?
             </h2>
-            <p className="text-[var(--text-secondary)] mb-8 max-w-md text-[15px] leading-relaxed">
+            <p className="text-[var(--text-secondary)] mb-8 text-[15px] leading-relaxed">
               Ask me anything about your care, medications, or records.
             </p>
-            <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3 w-full max-w-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
               {starterPrompts.map((prompt) => (
                 <button
                   key={prompt.text}
                   onClick={() => handleSend(prompt.text)}
-                  className="flex flex-col items-start gap-2 p-4 rounded-2xl text-left active:scale-[0.97] group"
+                  className="flex flex-col items-start gap-2.5 p-5 rounded-2xl text-left active:scale-[0.97] group"
                   style={{
                     background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)',
                     border: '1px solid rgba(255,255,255,0.07)',
@@ -231,7 +231,7 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
             </div>
           </div>
         ) : (
-          <div className="max-w-4xl mx-auto space-y-4">
+          <div className="max-w-5xl mx-auto space-y-4">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -257,8 +257,8 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
 
       {/* Error banner */}
       {error && (
-        <div className="px-4 sm:px-8 lg:px-12 py-3 bg-red-500/10 border-t border-red-500/20">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
+        <div className="px-4 sm:px-6 lg:px-8 py-3 bg-red-500/10 border-t border-red-500/20">
+          <div className="max-w-5xl mx-auto flex items-center justify-between">
             <p className="text-sm text-red-400">Something went wrong.</p>
             <button onClick={() => regenerate()} className="text-sm font-medium text-red-400 hover:text-red-800 underline">
               Retry
@@ -268,8 +268,8 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
       )}
 
       {/* Input area */}
-      <div className="border-t px-4 sm:px-8 lg:px-12 py-4" style={{ borderColor: 'rgba(139,92,246,0.1)', background: 'linear-gradient(to top, rgba(10,8,20,0.95), rgba(10,8,20,0.8))', backdropFilter: 'blur(20px)' }}>
-        <div className="max-w-4xl mx-auto">
+      <div className="border-t px-4 sm:px-6 lg:px-8 py-4" style={{ borderColor: 'rgba(139,92,246,0.1)', background: 'linear-gradient(to top, rgba(10,8,20,0.95), rgba(10,8,20,0.8))', backdropFilter: 'blur(20px)' }}>
+        <div className="max-w-5xl mx-auto">
           {/* Glass input bar */}
           <div className="flex items-center gap-2 rounded-2xl px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(139,92,246,0.2)', boxShadow: '0 0 20px rgba(139,92,246,0.08), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
             {/* Scan button */}

@@ -10,10 +10,6 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    // Pre-check for returning users who already consented
-    if (localStorage.getItem(CONSENT_KEY) === '1') {
-      setConsentChecked(true)
-    }
     const handlePageShow = () => setLoading(false)
     window.addEventListener('pageshow', handlePageShow as EventListener)
     return () => window.removeEventListener('pageshow', handlePageShow as EventListener)
