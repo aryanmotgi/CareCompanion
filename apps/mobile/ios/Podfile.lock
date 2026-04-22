@@ -1801,7 +1801,7 @@ PODS:
     - React-logger (= 0.76.5)
     - React-perflogger (= 0.76.5)
     - React-utils (= 0.76.5)
-  - ReactNativeHealthkit (14.0.0):
+  - ReactNativeHealthkit (9.0.11):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2320,7 +2320,7 @@ SPEC CHECKSUMS:
   React-utils: f584a494ac233c7857bab176416b0c49cb4037ba
   ReactCodegen: 024355334a9142f86c119500da2c2b4489fddb0b
   ReactCommon: 5809a8ee421b7219221a475b78180f8f34b5c5ec
-  ReactNativeHealthkit: f68aa5707b09933255c9093e7c4aa4348adfdf9f
+  ReactNativeHealthkit: c101526c116bede4e0510cc895de1bbd1b84a286
   RNCAsyncStorage: aa75595c1aefa18f868452091fa0c411a516ce11
   RNReanimated: 469fe1b73870064e327850f30989f62cc9ce0c14
   RNScreens: dca75d1e90a03d2b0229462f3d5a75880e30885d
