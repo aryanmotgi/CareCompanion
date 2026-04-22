@@ -19,6 +19,7 @@ import Animated, {
   Easing,
   interpolateColor,
   runOnJS,
+  useReducedMotion,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -40,8 +41,12 @@ function getGreeting() {
   return 'Good evening'
 }
 
+const CLAMP = 15
+const MAX_DISPLACEMENT = 20
+
 export default function HomeScreen() {
   const theme = useTheme()
+  const reduceMotion = useReducedMotion()
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -53,18 +58,22 @@ export default function HomeScreen() {
   // --- Gradient mesh ---
   const [gradientColors, setGradientColors] = useState<string[]>(theme.gradientA)
   const gradientProgress = useSharedValue(0)
+  const lastGradientP = useSharedValue(-1)
 
   useEffect(() => {
+    if (reduceMotion) return
     gradientProgress.value = withRepeat(
       withTiming(1, { duration: 20000, easing: Easing.inOut(Easing.sin) }),
       -1,
       true,
     )
-  }, [gradientProgress])
+  }, [gradientProgress, reduceMotion])
 
   useAnimatedReaction(
     () => gradientProgress.value,
     (p) => {
+      if (Math.abs(p - lastGradientP.value) < 0.008) return  // throttle to ~10fps
+      lastGradientP.value = p
       const c0 = interpolateColor(p, [0, 1], [theme.gradientA[0], theme.gradientB[0]])
       const c1 = interpolateColor(p, [0, 1], [theme.gradientA[1], theme.gradientB[1]])
       const c2 = interpolateColor(p, [0, 1], [theme.gradientA[2], theme.gradientB[2]])
@@ -80,17 +89,18 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      if (reduceMotion) return
       Gyroscope.setUpdateInterval(16)
       const sub = Gyroscope.addListener(({ x, y }) => {
         tiltRef.current.x = tiltRef.current.x * 0.85 + y * 0.15
         tiltRef.current.y = tiltRef.current.y * 0.85 + x * 0.15
-        const cx = Math.max(-15, Math.min(15, tiltRef.current.x))
-        const cy = Math.max(-15, Math.min(15, tiltRef.current.y))
-        cardGyroX.value = cx * 0.6 * 20
-        cardGyroY.value = cy * 0.6 * 20
+        const cx = Math.max(-CLAMP, Math.min(CLAMP, tiltRef.current.x))
+        const cy = Math.max(-CLAMP, Math.min(CLAMP, tiltRef.current.y))
+        cardGyroX.value = (cx / CLAMP) * MAX_DISPLACEMENT * 0.6
+        cardGyroY.value = (cy / CLAMP) * MAX_DISPLACEMENT * 0.6
       })
       return () => sub.remove()
-    }, [cardGyroX, cardGyroY]),
+    }, [reduceMotion, cardGyroX, cardGyroY]),
   )
 
   const cardParallaxStyle = useAnimatedStyle(() => ({
@@ -106,13 +116,22 @@ export default function HomeScreen() {
   const card3Y = useSharedValue(24)
 
   useEffect(() => {
+    if (reduceMotion) {
+      card1Opacity.value = 1
+      card1Y.value = 0
+      card2Opacity.value = 1
+      card2Y.value = 0
+      card3Opacity.value = 1
+      card3Y.value = 0
+      return
+    }
     card1Opacity.value = withDelay(100, withSpring(1))
     card1Y.value = withDelay(100, withSpring(0))
     card2Opacity.value = withDelay(250, withSpring(1))
     card2Y.value = withDelay(250, withSpring(0))
     card3Opacity.value = withDelay(400, withSpring(1))
     card3Y.value = withDelay(400, withSpring(0))
-  }, [card1Opacity, card1Y, card2Opacity, card2Y, card3Opacity, card3Y])
+  }, [card1Opacity, card1Y, card2Opacity, card2Y, card3Opacity, card3Y, reduceMotion])
 
   const card1Style = useAnimatedStyle(() => ({
     opacity: card1Opacity.value,

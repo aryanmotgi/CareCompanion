@@ -7,6 +7,7 @@ import Animated, {
   withRepeat,
   withTiming,
   Easing,
+  useReducedMotion,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -20,6 +21,7 @@ const SCAN_SIZE = width - 64
 export default function ScanScreen() {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
+  const reduceMotion = useReducedMotion()
   const [scanning, setScanning] = useState(false)
   const [burstActive, setBurstActive] = useState(false)
 
@@ -28,18 +30,23 @@ export default function ScanScreen() {
 
   function startScan() {
     setScanning(true)
-    laserOpacity.value = withTiming(1, { duration: 200 })
-    laserY.value = 0
-    laserY.value = withRepeat(
-      withTiming(SCAN_SIZE, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
-      -1,
-      true,
-    )
+
+    if (!reduceMotion) {
+      laserOpacity.value = withTiming(1, { duration: 200 })
+      laserY.value = 0
+      laserY.value = withRepeat(
+        withTiming(SCAN_SIZE, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true,
+      )
+    } else {
+      laserOpacity.value = 1  // Keep laser visible but static
+    }
 
     // Simulate scan completing after 3s
     setTimeout(() => {
       setScanning(false)
-      laserOpacity.value = withTiming(0, { duration: 200 })
+      laserOpacity.value = withTiming(0, { duration: reduceMotion ? 0 : 200 })
       hapticScanSuccess()
       setBurstActive(true)
     }, 3000)

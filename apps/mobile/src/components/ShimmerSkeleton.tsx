@@ -7,6 +7,7 @@ import Animated, {
   withRepeat,
   withTiming,
   Easing,
+  useReducedMotion,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from '../theme'
@@ -19,15 +20,17 @@ interface ShimmerSkeletonProps {
 
 export function ShimmerSkeleton({ width = '100%', height = 20, style }: ShimmerSkeletonProps) {
   const theme = useTheme()
+  const reduceMotion = useReducedMotion()
   const shimmer = useSharedValue(-1)
 
   useEffect(() => {
+    if (reduceMotion) return
     shimmer.value = withRepeat(
       withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
       -1,
       false,
     )
-  }, [shimmer])
+  }, [shimmer, reduceMotion])
 
   const shimmerStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: shimmer.value * (typeof width === 'number' ? width : 300) }],

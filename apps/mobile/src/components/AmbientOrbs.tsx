@@ -13,7 +13,8 @@ import { Gyroscope } from 'expo-sensors'
 import { useFocusEffect } from 'expo-router'
 
 const { width, height } = Dimensions.get('window')
-const MAX_OFFSET = 20
+const CLAMP = 15
+const MAX_DISPLACEMENT = 20
 
 interface AmbientOrbsProps {
   speedMultiplier?: number
@@ -64,8 +65,8 @@ export function AmbientOrbs({ speedMultiplier = 0.3 }: AmbientOrbsProps) {
         tiltRef.current.y = tiltRef.current.y * 0.85 + x * 0.15
         const cx = Math.max(-15, Math.min(15, tiltRef.current.x))
         const cy = Math.max(-15, Math.min(15, tiltRef.current.y))
-        gyroX.value = cx * speedMultiplier * MAX_OFFSET
-        gyroY.value = cy * speedMultiplier * MAX_OFFSET
+        gyroX.value = (cx / CLAMP) * MAX_DISPLACEMENT * speedMultiplier
+        gyroY.value = (cy / CLAMP) * MAX_DISPLACEMENT * speedMultiplier
       })
       return () => sub.remove()
     }, [reduceMotion, speedMultiplier, gyroX, gyroY]),
