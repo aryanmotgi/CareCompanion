@@ -55,6 +55,8 @@
     <string>CareCompanion uses the camera to scan medical documents.</string>
     <key>NSFaceIDUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your Face ID biometric data.</string>
+    <key>NSHealthClinicalHealthRecordsShareUsageDescription</key>
+    <string>CareCompanion reads your clinical health records to help you track medications, lab results, and appointments from your care team.</string>
     <key>NSHealthShareUsageDescription</key>
     <string>CareCompanion reads your health records to help manage cancer care — including medications, lab results, and appointments from your care team.</string>
     <key>NSHealthUpdateUsageDescription</key>

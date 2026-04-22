@@ -24,5 +24,8 @@
     "apps/web/**/*.{ts,tsx}": [
       "bash -c 'cd apps/web && ./node_modules/.bin/next lint --fix --file \"$@\"' --"
     ]
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3"
   }
 }

@@ -3,10 +3,22 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@carecompanion/types": ["../../packages/types/src/index.ts"],
-      "@carecompanion/api": ["../../packages/api/src/index.ts"],
-      "@carecompanion/utils": ["../../packages/utils/src/index.ts"]
+      "@carecompanion/types": [
+        "../../packages/types/src/index.ts"
+      ],
+      "@carecompanion/api": [
+        "../../packages/api/src/index.ts"
+      ],
+      "@carecompanion/utils": [
+        "../../packages/utils/src/index.ts"
+      ]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "global.d.ts"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "global.d.ts",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
 }

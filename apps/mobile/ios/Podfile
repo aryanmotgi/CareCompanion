@@ -52,6 +52,18 @@ target 'CareCompanion' do
       :ccache_enabled => podfile_properties['apple.ccacheEnabled'] == 'true',
     )
 
+    # Force Swift 5 language mode for pods that haven't been updated for Swift 6.
+    # expo-dev-menu@5.x uses closure syntax that Swift 6 (Xcode 26) rejects.
+    # Match by prefix so all subspec targets are covered.
+    swift5_pod_prefixes = %w[EXDevMenu expo-dev-menu]
+    installer.pods_project.targets.each do |target|
+      if swift5_pod_prefixes.any? { |prefix| target.name.start_with?(prefix) }
+        target.build_configurations.each do |cfg|
+          cfg.build_settings['SWIFT_VERSION'] = '5'
+        end
+      end
+    end
+
     # This is necessary for Xcode 14, because it signs resource bundles by default
     # when building for devices.
     installer.target_installation_results.pod_target_installation_results

@@ -2,8 +2,6 @@ import * as WebBrowser from 'expo-web-browser'
 import * as SecureStore from 'expo-secure-store'
 import { apiClient } from './api'
 
-WebBrowser.maybeCompleteAuthSession()
-
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanion.app'
 
 /**
@@ -14,6 +12,8 @@ const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanion.
  * 4. Exchanges code → session JWT → stores in SecureStore
  */
 export async function signInWithGoogle(): Promise<void> {
+  // Dismiss any stuck browser session from a previous attempt
+  WebBrowser.dismissAuthSession()
   const callbackUrl = encodeURIComponent('/mobile-callback')
   const result = await WebBrowser.openAuthSessionAsync(
     `${API_BASE}/login?callbackUrl=${callbackUrl}`,

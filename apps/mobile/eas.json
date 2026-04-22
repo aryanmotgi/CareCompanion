@@ -5,7 +5,7 @@
   },
   "build": {
     "development": {
-      "bun": "1",
+      "bun": "1.3.11",
       "ios": {
         "simulator": false,
         "distribution": "internal",
@@ -16,7 +16,7 @@
       }
     },
     "preview": {
-      "bun": "1",
+      "bun": "1.3.11",
       "ios": {
         "simulator": true,
         "buildConfiguration": "Release"
@@ -26,7 +26,7 @@
       }
     },
     "production": {
-      "bun": "1",
+      "bun": "1.3.11",
       "ios": {
         "simulator": false,
         "distribution": "store",
