@@ -18,6 +18,7 @@
       "name": "@carecompanion/mobile",
       "version": "0.0.1",
       "dependencies": {
+        "@babel/runtime": "^7.20.0",
         "@carecompanion/api": "workspace:*",
         "@carecompanion/types": "workspace:*",
         "@carecompanion/utils": "workspace:*",
