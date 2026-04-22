@@ -20,10 +20,15 @@ export async function getAuthenticatedUser() {
     return { user: null, error: apiError('Unauthorized', 401) }
   }
 
+  const userEmail = session.user.email
+  if (!userEmail) {
+    return { user: null, error: apiError('Unauthorized', 401) }
+  }
+
   const [dbUser] = await db
     .select()
     .from(users)
-    .where(eq(users.providerSub, session.user.id))
+    .where(eq(users.email, userEmail))
     .limit(1)
 
   if (!dbUser) {

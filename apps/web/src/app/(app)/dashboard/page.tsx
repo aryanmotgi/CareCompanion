@@ -38,23 +38,26 @@ async function DashboardContent() {
     labs,
     claimsData,
     reminderLogsData,
-    [scannedDocCount],
-    [doctorCount],
+    scannedDocRows,
+    doctorRows,
   ] = await Promise.all([
-    db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))),
-    db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(asc(appointments.dateTime)),
-    db.select().from(labResults).where(eq(labResults.userId, dbUser.id)).orderBy(desc(labResults.dateTaken)).limit(5),
-    db.select().from(claims).where(eq(claims.userId, dbUser.id)).orderBy(desc(claims.createdAt)).limit(5),
+    db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).catch(() => [] as typeof medications.$inferSelect[]),
+    db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(asc(appointments.dateTime)).catch(() => [] as typeof appointments.$inferSelect[]),
+    db.select().from(labResults).where(eq(labResults.userId, dbUser.id)).orderBy(desc(labResults.dateTaken)).limit(5).catch(() => [] as typeof labResults.$inferSelect[]),
+    db.select().from(claims).where(eq(claims.userId, dbUser.id)).orderBy(desc(claims.createdAt)).limit(5).catch(() => [] as typeof claims.$inferSelect[]),
     db.select().from(reminderLogs).where(
       and(
         eq(reminderLogs.userId, dbUser.id),
         gte(reminderLogs.scheduledTime, todayStart),
         lte(reminderLogs.scheduledTime, todayEnd),
       )
-    ).orderBy(asc(reminderLogs.scheduledTime)),
-    db.select({ value: count() }).from(scannedDocuments).where(eq(scannedDocuments.userId, dbUser.id)),
-    db.select({ value: count() }).from(doctors).where(eq(doctors.careProfileId, profile.id)),
+    ).orderBy(asc(reminderLogs.scheduledTime)).catch(() => [] as typeof reminderLogs.$inferSelect[]),
+    db.select({ value: count() }).from(scannedDocuments).where(eq(scannedDocuments.userId, dbUser.id)).catch(() => [] as { value: number }[]),
+    db.select({ value: count() }).from(doctors).where(eq(doctors.careProfileId, profile.id)).catch(() => [] as { value: number }[]),
   ]);
+
+  const [scannedDocCount] = scannedDocRows;
+  const [doctorCount] = doctorRows;
 
   const hasEmergencyContact = !!(profile.emergencyContactName && profile.emergencyContactPhone);
   const hasDocumentsScanned = (scannedDocCount?.value ?? 0) > 0;
