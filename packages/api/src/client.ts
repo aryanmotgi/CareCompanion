@@ -17,7 +17,12 @@ async function apiFetch(
 
   if (config.getToken) {
     const token = await config.getToken()
-    if (token) headers['Cookie'] = `next-auth.session-token=${token}`
+    if (token) {
+      // Production (HTTPS) uses the __Secure- prefix; dev uses the plain name.
+      const isSecure = config.baseUrl.startsWith('https://')
+      const cookieName = isSecure ? '__Secure-next-auth.session-token' : 'next-auth.session-token'
+      headers['Cookie'] = `${cookieName}=${token}`
+    }
   }
 
   const res = await fetch(`${config.baseUrl}${path}`, { ...options, headers })

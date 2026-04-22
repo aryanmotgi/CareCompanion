@@ -13,6 +13,7 @@ const { auth } = NextAuth(authConfig)
 const PUBLIC_PATHS = [
   '/',               // Landing page (signOut returns here after Cognito logout)
   '/login',
+  '/signup',         // Registration page — must be public or new users loop into login
   '/chat/guest',
   '/api/auth',       // Auth.js callback routes — prefix covers /api/auth/callback/cognito etc.
   '/api/chat/guest', // Guest chat API
@@ -31,6 +32,7 @@ const PUBLIC_PATHS = [
   '/api/reminders/check',    // Reminder cron
   '/api/share/',             // Public share links with token (e.g. /api/share/abc123) — POST /api/share itself is protected
   '/shared',                 // Public share pages
+  '/mobile-callback',        // Post-OAuth redirect target for iOS app
 ]
 
 export default auth((req) => {
