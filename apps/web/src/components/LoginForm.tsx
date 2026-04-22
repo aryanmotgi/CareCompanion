@@ -10,6 +10,8 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    // Clear any previously stored consent — HIPAA requires explicit consent each session
+    localStorage.removeItem(CONSENT_KEY)
     const handlePageShow = () => setLoading(false)
     window.addEventListener('pageshow', handlePageShow as EventListener)
     return () => window.removeEventListener('pageshow', handlePageShow as EventListener)
