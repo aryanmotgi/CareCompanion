@@ -18,18 +18,17 @@ test.describe('Production 24/7 Monitor', () => {
     // then call the E2E signin endpoint via fetch inside the page (same origin).
     // This means the browser itself handles Set-Cookie, including Secure cookies.
     await page.goto('/login')
-    const e2eSecret = process.env.E2E_AUTH_SECRET!
     const result = await page.evaluate(
-      async ({ email, secret }: { email: string; secret: string }) => {
+      async ({ email }: { email: string }) => {
         const res = await fetch('/api/e2e/signin', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-e2e-secret': secret },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email }),
           credentials: 'include',
         })
         return { ok: res.ok, status: res.status, body: await res.text() }
       },
-      { email, secret: e2eSecret }
+      { email }
     )
 
     if (!result.ok) {
@@ -54,7 +53,10 @@ test.describe('Production 24/7 Monitor', () => {
   })
 
   test('care page loads without errors', async ({ page }) => {
-    await page.goto('/care')
+    // waitUntil:'commit' prevents ERR_ABORTED when Next.js redirect() fires inside
+    // a Suspense boundary (the redirect aborts the load event but commits the response).
+    await page.goto('/care', { waitUntil: 'commit' })
+    await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {})
     // Should land on care or be redirected (e.g. to /setup) but never back to /login
     await expect(page).not.toHaveURL(/.*\/login/, { timeout: 10000 })
     // The care page may show data-fetch errors for a minimal E2E profile — only
@@ -77,7 +79,10 @@ test.describe('Production 24/7 Monitor', () => {
   })
 
   test('AI chat interface renders', async ({ page }) => {
-    await page.goto('/chat')
+    // waitUntil:'commit' prevents ERR_ABORTED when Next.js redirect() fires inside
+    // a Suspense boundary (the redirect aborts the load event but commits the response).
+    await page.goto('/chat', { waitUntil: 'commit' })
+    await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {})
     // Should land on chat or be redirected to setup — never back to /login
     await expect(page).not.toHaveURL(/.*\/login/, { timeout: 10000 })
     // The chat server component calls redirect('/setup') inside a Suspense boundary
