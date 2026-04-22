@@ -38,7 +38,6 @@ async function ChatContent() {
   return (
     <ChatInterface
       initialMessages={initialMessages}
-      patientName={profile.patientName || 'your loved one'}
     />
   );
 }

@@ -12,10 +12,9 @@ import { useVoiceInput } from '@/hooks/useVoiceInput';
 
 interface ChatInterfaceProps {
   initialMessages: UIMessage[];
-  patientName: string;
 }
 
-export function ChatInterface({ initialMessages, patientName }: ChatInterfaceProps) {
+export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
