@@ -40,9 +40,14 @@ export const { handlers, signIn, auth } = NextAuth({
         token.displayName = (profile as Record<string, string>)?.name ?? user?.name ?? email
         token.isDemo = false
 
-        // Look up DB UUID once — stored in signed JWT, not repeated on every request
-        const dbUser = await db.query.users.findFirst({ where: eq(users.email, email) })
-        token.dbUserId = dbUser?.id ?? null
+        // Look up DB UUID once — stored in signed JWT, not repeated on every request.
+        // If Aurora is still waking up, skip gracefully — layout will resolve the user by email.
+        try {
+          const dbUser = await db.query.users.findFirst({ where: eq(users.email, email) })
+          token.dbUserId = dbUser?.id ?? null
+        } catch {
+          token.dbUserId = null
+        }
       }
       return token
     },

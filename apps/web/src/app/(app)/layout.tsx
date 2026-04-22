@@ -26,11 +26,10 @@ export default async function AppLayout({
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
-  // Resolve local DB user from Cognito sub
+  // Resolve local DB user by email (stable across provider changes)
+  const userEmail = session.user.email ?? ''
   let dbUser: typeof users.$inferSelect | undefined
   try {
-    // Explicitly select only stable columns so a pending db:push (new columns not yet deployed)
-    // doesn't break the entire app with "column does not exist" errors.
     const [found] = await db
       .select({
         id: users.id,
@@ -41,7 +40,7 @@ export default async function AppLayout({
         createdAt: users.createdAt,
       })
       .from(users)
-      .where(eq(users.providerSub, String(session.user.id)))
+      .where(eq(users.email, userEmail))
       .limit(1)
     dbUser = found as typeof users.$inferSelect
   } catch (e) {
@@ -55,19 +54,19 @@ export default async function AppLayout({
   }
 
   if (!dbUser) {
-    // User authenticated but not in DB yet — try to insert them now
+    // User authenticated but not in DB yet — upsert on email (the stable unique key)
     try {
       const [inserted] = await db
         .insert(users)
         .values({
-          providerSub: String(session.user.id),
-          email: session.user.email ?? '',
-          displayName: session.user.name || session.user.email || '',
+          providerSub: session.user.id ?? userEmail,
+          email: userEmail,
+          displayName: session.user.name || userEmail,
           isDemo: false,
         })
         .onConflictDoUpdate({
-          target: users.providerSub,
-          set: { email: session.user.email ?? '', displayName: session.user.name || session.user.email || '' },
+          target: users.email,
+          set: { providerSub: session.user.id ?? userEmail, displayName: session.user.name || userEmail },
         })
         .returning()
       dbUser = inserted
