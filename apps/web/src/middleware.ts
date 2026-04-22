@@ -51,7 +51,9 @@ export default auth((req) => {
     const errorParam = req.nextUrl.searchParams.get('error')
     if (!errorParam) {
       const url = req.nextUrl.clone()
-      url.pathname = '/dashboard'
+      const cb = req.nextUrl.searchParams.get('callbackUrl')
+      url.search = ''
+      url.pathname = (cb && cb.startsWith('/')) ? cb : '/dashboard'
       return NextResponse.redirect(url)
     }
   }
