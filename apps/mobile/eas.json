@@ -5,7 +5,7 @@
   },
   "build": {
     "development": {
-      "buildRootDirectory": "../..",
+      "bun": "1",
       "ios": {
         "simulator": false,
         "distribution": "internal",
@@ -16,7 +16,7 @@
       }
     },
     "preview": {
-      "buildRootDirectory": "../..",
+      "bun": "1",
       "ios": {
         "simulator": true,
         "buildConfiguration": "Release"
@@ -26,7 +26,7 @@
       }
     },
     "production": {
-      "buildRootDirectory": "../..",
+      "bun": "1",
       "ios": {
         "simulator": false,
         "distribution": "store",
