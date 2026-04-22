@@ -13,10 +13,18 @@ import { ShareHealthCard } from '@/components/ShareHealthCard';
 
 async function DashboardContent() {
   const session = await auth();
-  if (!session?.user?.id) redirect('/login');
+  console.log('[dashboard] session:', JSON.stringify({ id: session?.user?.id, email: session?.user?.email, hasSession: !!session }))
+  if (!session?.user?.id) {
+    console.log('[dashboard] REDIRECT: no session.user.id')
+    redirect('/login');
+  }
 
   const [dbUser] = await db.select({ id: users.id, providerSub: users.providerSub, email: users.email, displayName: users.displayName, isDemo: users.isDemo, createdAt: users.createdAt }).from(users).where(eq(users.id, session.user.id)).limit(1);
-  if (!dbUser) redirect('/login');
+  console.log('[dashboard] db query WHERE users.id =', session.user.id, '→ dbUser:', dbUser ? dbUser.id : 'NOT FOUND')
+  if (!dbUser) {
+    console.log('[dashboard] REDIRECT: dbUser not found — session.user.id may be providerSub not DB UUID')
+    redirect('/login');
+  }
 
   const [profile] = await db.select().from(careProfiles).where(eq(careProfiles.userId, dbUser.id)).limit(1);
   if (!profile) redirect('/onboarding');

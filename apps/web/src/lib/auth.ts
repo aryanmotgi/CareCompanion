@@ -42,12 +42,18 @@ export const { handlers, signIn, auth } = NextAuth({
 
         // Look up DB UUID once — stored in signed JWT, not repeated on every request.
         // If Aurora is still waking up, skip gracefully — layout will resolve the user by email.
+        console.log('[auth][jwt] sign-in — looking up user by email:', email, '| providerSub:', sub)
         try {
           const dbUser = await db.query.users.findFirst({ where: eq(users.email, email) })
           token.dbUserId = dbUser?.id ?? null
-        } catch {
+          console.log('[auth][jwt] db lookup result — dbUser.id:', dbUser?.id ?? 'NOT FOUND', '| token.dbUserId:', token.dbUserId)
+        } catch (e) {
           token.dbUserId = null
+          console.error('[auth][jwt] db lookup THREW — Aurora cold start?', e instanceof Error ? e.message : String(e))
         }
+      } else {
+        // Subsequent requests — JWT already populated
+        console.log('[auth][jwt] subsequent request — token.dbUserId:', token.dbUserId, '| token.providerSub:', token.providerSub)
       }
       return token
     },
@@ -56,6 +62,7 @@ export const { handlers, signIn, auth } = NextAuth({
       session.user.id = (token.dbUserId ?? token.providerSub) as string
       session.user.displayName = token.displayName as string
       session.user.isDemo = token.isDemo as boolean
+      console.log('[auth][session] session.user.id:', session.user.id, '| email:', session.user.email, '| source:', token.dbUserId ? 'dbUserId' : 'providerSub (FALLBACK — dbUserId was null!)')
       return session
     },
     async signIn({ user, account, profile }) {
