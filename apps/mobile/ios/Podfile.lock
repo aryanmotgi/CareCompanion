@@ -1801,7 +1801,7 @@ PODS:
     - React-logger (= 0.76.5)
     - React-perflogger (= 0.76.5)
     - React-utils (= 0.76.5)
-  - ReactNativeHealthkit (9.0.11):
+  - ReactNativeHealthkit (13.4.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1947,7 +1947,7 @@ PODS:
 DEPENDENCIES:
   - "boost (from `../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/third-party-podspecs/boost.podspec`)"
   - "DoubleConversion (from `../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/third-party-podspecs/DoubleConversion.podspec`)"
-  - "EXConstants (from `../../../node_modules/.bun/expo-constants@17.0.8+9a1a613f606ebb7a/node_modules/expo-constants/ios`)"
+  - "EXConstants (from `../../../node_modules/.bun/expo-constants@17.0.8+9166f6408e7218a3/node_modules/expo-constants/ios`)"
   - "EXJSONUtils (from `../../../node_modules/.bun/expo-json-utils@0.14.0/node_modules/expo-json-utils/ios`)"
   - "EXManifests (from `../../../node_modules/.bun/expo-manifests@0.15.8+9a1a613f606ebb7a/node_modules/expo-manifests/ios`)"
   - "Expo (from `../../../node_modules/.bun/expo@52.0.49+9a1a613f606ebb7a/node_modules/expo`)"
@@ -2051,7 +2051,7 @@ EXTERNAL SOURCES:
   DoubleConversion:
     :podspec: "../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/third-party-podspecs/DoubleConversion.podspec"
   EXConstants:
-    :path: "../../../node_modules/.bun/expo-constants@17.0.8+9a1a613f606ebb7a/node_modules/expo-constants/ios"
+    :path: "../../../node_modules/.bun/expo-constants@17.0.8+9166f6408e7218a3/node_modules/expo-constants/ios"
   EXJSONUtils:
     :path: "../../../node_modules/.bun/expo-json-utils@0.14.0/node_modules/expo-json-utils/ios"
   EXManifests:
@@ -2320,7 +2320,7 @@ SPEC CHECKSUMS:
   React-utils: f584a494ac233c7857bab176416b0c49cb4037ba
   ReactCodegen: 024355334a9142f86c119500da2c2b4489fddb0b
   ReactCommon: 5809a8ee421b7219221a475b78180f8f34b5c5ec
-  ReactNativeHealthkit: c101526c116bede4e0510cc895de1bbd1b84a286
+  ReactNativeHealthkit: 8860d805f1c06a48f982b92e63913aefaa494687
   RNCAsyncStorage: aa75595c1aefa18f868452091fa0c411a516ce11
   RNReanimated: 469fe1b73870064e327850f30989f62cc9ce0c14
   RNScreens: dca75d1e90a03d2b0229462f3d5a75880e30885d
@@ -2328,6 +2328,6 @@ SPEC CHECKSUMS:
   Yoga: fcc198acd4a55599b3468cfb6ebc526baff5f06e
   ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 
-PODFILE CHECKSUM: 61c378778f496039067bb36081194f97665c5bb3
+PODFILE CHECKSUM: b7ff4cb6ff70a09fe84e72f038c8d41b17b45032
 
 COCOAPODS: 1.16.2

@@ -13,6 +13,55 @@ install! 'cocoapods',
 
 prepare_react_native_project!
 
+# Patch @kingstinct/react-native-healthkit Swift files to remove trailing commas
+# in function call argument lists.  These commas require Swift 5.10 (SE-0430) /
+# Xcode 15.3+, but EAS build images may run an older Xcode.  Removing them is
+# safe: the code compiles and behaves identically without the trailing commas.
+#
+# We run this in a pre_install block so the patched sources are in place before
+# CocoaPods generates the Xcode project.  CocoaPods references the npm package
+# files in-place (via :path => "...node_modules/@kingstinct/react-native-healthkit")
+# so editing them here patches what Xcode will actually compile.
+pre_install do |installer|
+  hk_pod = installer.podfile.dependencies.find { |d| d.name == 'ReactNativeHealthkit' }
+  next unless hk_pod
+
+  # Locate the healthkit ios/ directory relative to this Podfile
+  hk_ios = File.expand_path('../node_modules/@kingstinct/react-native-healthkit/ios', __dir__)
+  next unless Dir.exist?(hk_ios)
+
+  swift_files = Dir.glob(File.join(hk_ios, '*.swift'))
+  patched = 0
+
+  swift_files.each do |file_path|
+    original = File.read(file_path)
+    lines = original.split("\n")
+    modified = false
+
+    lines.each_with_index do |line, i|
+      next unless line.rstrip.end_with?(',')
+      # Find next non-blank line
+      j = i + 1
+      j += 1 while j < lines.length && lines[j].strip.empty?
+      next if j >= lines.length
+      next_trimmed = lines[j].strip
+      # Only remove when next line is a bare closing paren (optionally with trailing closure)
+      if next_trimmed.match?(/^\)(\s*\{.*)?$/)
+        lines[i] = line.rstrip.chop  # remove trailing comma
+        patched += 1
+        modified = true
+      end
+    end
+
+    if modified
+      File.write(file_path, lines.join("\n"))
+      puts "[healthkit-patch] Patched #{File.basename(file_path)}"
+    end
+  end
+
+  puts "[healthkit-patch] Done — #{patched} trailing comma(s) removed" if patched > 0
+end
+
 target 'CareCompanion' do
   use_expo_modules!
 
