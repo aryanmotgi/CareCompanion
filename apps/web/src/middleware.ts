@@ -27,10 +27,12 @@ const PUBLIC_PATHS = [
   '/robots.txt',
   '/sitemap.xml',
   '/favicon.ico',
+  '/api/test',               // Test/reset endpoints (gated internally by env + isDemo check)
   '/api/cron',               // Cron jobs (protected by verifyCronRequest internally)
   '/api/notifications/generate', // Notification cron
   '/api/reminders/check',    // Reminder cron
   '/api/share/',             // Public share links with token (e.g. /api/share/abc123) — POST /api/share itself is protected
+  '/api/feedback',           // Bug report submissions — works without auth
   '/shared',                 // Public share pages
   '/reset-password',          // Password reset pages
 ]

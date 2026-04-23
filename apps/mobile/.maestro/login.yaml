@@ -1,0 +1,10 @@
+appId: com.carecompanion.app
+---
+- launchApp
+- assertVisible: "Sign in"
+- tapOn: "Email"
+- inputText: "${QA_TEST_EMAIL}"
+- tapOn: "Password"
+- inputText: "${QA_TEST_PASSWORD}"
+- tapOn: "Sign in"
+- assertVisible: "Dashboard"

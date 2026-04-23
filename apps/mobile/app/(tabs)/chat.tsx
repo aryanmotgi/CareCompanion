@@ -26,8 +26,12 @@ import { useTheme } from '../../src/theme'
 import { hapticAIMessage } from '../../src/utils/haptics'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { TabFadeWrapper } from './_layout'
+import { createApiClient } from '@carecompanion/api'
 
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanion.app'
+const apiClient = createApiClient({
+  baseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org',
+  getToken: () => SecureStore.getItemAsync('cc-session-token'),
+})
 
 type Message = { id: string; role: 'user' | 'assistant'; content: string }
 
@@ -146,7 +150,61 @@ function TypingDots() {
 
 const TAB_BAR_HEIGHT = 60
 
-function EmptyState({ color, mutedColor, sparkleStyle }: { color: string; mutedColor: string; sparkleStyle?: object }) {
+const SUGGESTIONS = [
+  { icon: '📊', title: 'What should I expect this chemo cycle?', subtitle: 'Side effects, timing, what to watch for', color: '#f472b6' },
+  { icon: '🔬', title: 'Explain my tumor markers', subtitle: 'CEA, CA-125, PSA trends explained', color: '#2dd4bf' },
+  { icon: '📅', title: 'Prep for oncology appointment', subtitle: 'Questions to ask your oncologist', color: '#60a5fa' },
+  { icon: '✨', title: 'Help me understand my treatment plan', subtitle: 'Plain-language explanations', color: '#c084fc' },
+]
+
+function SuggestionCard({
+  icon,
+  title,
+  subtitle,
+  color,
+  onPress,
+}: {
+  icon: string
+  title: string
+  subtitle: string
+  color: string
+  onPress: () => void
+}) {
+  const theme = useTheme()
+  return (
+    <Pressable onPress={onPress} style={styles.suggestionCard}>
+      <View
+        style={[
+          styles.suggestionCardInner,
+          {
+            backgroundColor: theme.bgCard,
+            borderColor: theme.bgCardBorder,
+          },
+        ]}
+      >
+        <Text style={[styles.suggestionIcon, { color }]}>{icon}</Text>
+        <Text style={[styles.suggestionTitle, { color: theme.text }]} numberOfLines={2}>
+          {title}
+        </Text>
+        <Text style={[styles.suggestionSubtitle, { color: theme.textMuted }]} numberOfLines={2}>
+          {subtitle}
+        </Text>
+      </View>
+    </Pressable>
+  )
+}
+
+function EmptyState({
+  color,
+  mutedColor,
+  sparkleStyle,
+  onSuggestionPress,
+}: {
+  color: string
+  mutedColor: string
+  sparkleStyle?: object
+  onSuggestionPress: (title: string) => void
+}) {
   return (
     <View style={styles.emptyState}>
       <Animated.View style={sparkleStyle}>
@@ -156,6 +214,18 @@ function EmptyState({ color, mutedColor, sparkleStyle }: { color: string; mutedC
       <Text style={[styles.emptySubtitle, { color: mutedColor }]}>
         Ask about your medications, side effects, appointments, or anything else about your care.
       </Text>
+      <View style={styles.suggestionsGrid}>
+        {SUGGESTIONS.map((s) => (
+          <SuggestionCard
+            key={s.title}
+            icon={s.icon}
+            title={s.title}
+            subtitle={s.subtitle}
+            color={s.color}
+            onPress={() => onSuggestionPress(s.title)}
+          />
+        ))}
+      </View>
     </View>
   )
 }
@@ -169,6 +239,7 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(false)
   const listRef = useRef<FlatList>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const csrfTokenRef = useRef<string | null>(null)
 
   const headerOpacity = useSharedValue(reduceMotion ? 1 : 0)
   const headerY = useSharedValue(reduceMotion ? 0 : 12)
@@ -190,38 +261,42 @@ export default function ChatScreen() {
     return () => { abortRef.current?.abort() }
   }, [])
 
-  async function send() {
-    if (!input.trim() || loading) return
-    const msg: Message = { id: Date.now().toString(), role: 'user', content: input }
+  function sendSuggestion(title: string) {
+    setInput(title)
+    // Use a microtask to ensure state is set before sending
+    setTimeout(() => {
+      sendWithText(title)
+    }, 0)
+  }
+
+  async function sendWithText(text: string) {
+    if (!text.trim() || loading) return
+    const msg: Message = { id: Date.now().toString(), role: 'user', content: text }
     const next = [...messages, msg]
     setMessages(next)
     setInput('')
     setLoading(true)
 
-    const controller = new AbortController()
-    abortRef.current = controller
-
     try {
-      const token = await SecureStore.getItemAsync('cc-session-token')
-      const res = await fetch(`${API_BASE}/api/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Cookie: `authjs.session-token=${token}` } : {}),
-        },
-        body: JSON.stringify({ messages: next.map(({ role, content }) => ({ role, content })) }),
-        signal: controller.signal,
-      })
-      const data = await res.json() as { content?: string }
+      if (!csrfTokenRef.current) {
+        const { csrfToken } = await apiClient.csrfToken()
+        csrfTokenRef.current = csrfToken
+      }
+
+      const result = await apiClient.chat.send(
+        next.map(({ role, content }) => ({ role, content })),
+        csrfTokenRef.current,
+      )
       const reply: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.content ?? 'Sorry, try again.',
+        content: result.content ?? 'Sorry, try again.',
       }
       setMessages((prev) => [...prev, reply])
       hapticAIMessage()
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
+      csrfTokenRef.current = null
       setMessages((prev) => [
         ...prev,
         { id: (Date.now() + 1).toString(), role: 'assistant', content: 'Something went wrong. Please try again.' },
@@ -229,6 +304,11 @@ export default function ChatScreen() {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function send() {
+    if (!input.trim() || loading) return
+    sendWithText(input)
   }
 
   return (
@@ -242,8 +322,20 @@ export default function ChatScreen() {
         <Animated.View style={headerAnim}>
           <View style={[styles.header, { paddingTop: insets.top + 16, borderBottomColor: theme.border }]}>
             <BlurView intensity={60} tint={theme.isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
-            <Text style={[styles.headerTitle, { color: theme.text }]}>AI Companion</Text>
-            <Text style={[styles.headerSub, { color: theme.textMuted }]}>Always here for you</Text>
+            <View style={styles.headerRow}>
+              <View>
+                <Text style={[styles.headerTitle, { color: theme.text }]}>AI Companion</Text>
+                <Text style={[styles.headerSub, { color: theme.textMuted }]}>Always here for you</Text>
+              </View>
+              {messages.length > 0 && (
+                <Pressable
+                  onPress={() => setMessages([])}
+                  style={[styles.newChatBtn, { backgroundColor: theme.bgCard, borderColor: theme.bgCardBorder }]}
+                >
+                  <Text style={[styles.newChatText, { color: theme.text }]}>New Chat</Text>
+                </Pressable>
+              )}
+            </View>
           </View>
         </Animated.View>
 
@@ -253,7 +345,7 @@ export default function ChatScreen() {
           keyExtractor={(m) => m.id}
           contentContainerStyle={[styles.list, messages.length === 0 && styles.listEmpty]}
           renderItem={({ item }) => <MessageBubble message={item} />}
-          ListEmptyComponent={!loading ? <EmptyState color={theme.text} mutedColor={theme.textMuted} sparkleStyle={emptyParallax} /> : null}
+          ListEmptyComponent={!loading ? <EmptyState color={theme.text} mutedColor={theme.textMuted} sparkleStyle={emptyParallax} onSuggestionPress={sendSuggestion} /> : null}
           ListFooterComponent={loading ? <TypingDots /> : null}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         />
@@ -354,4 +446,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendIcon: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 1 },
+  newChatBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  newChatText: { fontSize: 13, fontWeight: '600' },
+  suggestionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 24,
+    paddingHorizontal: 4,
+  },
+  suggestionCard: {
+    width: '47%',
+  },
+  suggestionCardInner: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    minHeight: 110,
+  },
+  suggestionIcon: { fontSize: 22, marginBottom: 8 },
+  suggestionTitle: { fontSize: 13, fontWeight: '600', lineHeight: 18, marginBottom: 4 },
+  suggestionSubtitle: { fontSize: 11, lineHeight: 16 },
 })

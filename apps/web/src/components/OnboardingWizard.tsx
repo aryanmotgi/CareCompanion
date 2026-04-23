@@ -232,7 +232,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
   };
 
   const goForward = (nextStep: number) => {
-    trackEvent({ name: 'onboarding_step', properties: { from: step, to: nextStep } });
+    trackEvent('onboarding_step', { from: step, to: nextStep });
     saveStepProgress(step);
     setError(null);
     setSlideDir('left');
@@ -350,7 +350,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
   };
 
   const saveAndFinish = async () => {
-    trackEvent({ name: 'onboarding_complete', properties: { dataChoice: dataChoice || 'skip' } });
+    trackEvent('onboarding_complete', { dataChoice: dataChoice || 'skip' });
     setLoading(true);
     setError(null);
     try {
@@ -846,7 +846,7 @@ export function OnboardingWizard({ userName, userEmail, userAvatar, existingProf
             <button
               onClick={async () => {
                 setLoading(true);
-                trackEvent({ name: 'onboarding_complete', properties: { dataSource: 'demo' } });
+                trackEvent('onboarding_complete', { dataSource: 'demo' });
                 try {
                   await saveStepProgress(step);
                   const pid = await ensureProfileId();

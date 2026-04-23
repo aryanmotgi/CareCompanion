@@ -12,13 +12,14 @@
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "test:run": "turbo run test:run",
-    "prepare": "husky"
+    "prepare": "husky",
+    "seed:test-users": "npx tsx scripts/seed-test-users.ts"
   },
   "devDependencies": {
-    "turbo": "^2.0.0",
-    "typescript": "^5",
     "husky": "^9.1.7",
-    "lint-staged": "^16.4.0"
+    "lint-staged": "^16.4.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5"
   },
   "lint-staged": {
     "apps/web/**/*.{ts,tsx}": [
@@ -26,6 +27,7 @@
     ]
   },
   "dependencies": {
-    "bcryptjs": "^3.0.3"
+    "bcryptjs": "^3.0.3",
+    "expo-image-picker": "16.0.6"
   }
 }

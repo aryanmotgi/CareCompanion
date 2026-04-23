@@ -1,0 +1,49 @@
+name: Daily QA Digest
+
+on:
+  schedule:
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gather bug reports
+        id: bugs
+        run: |
+          BUGS=$(gh api repos/${{ github.repository }}/issues --jq '[.[] | select(.labels[].name == "bug") | select(.created_at > (now - 86400 | strftime("%Y-%m-%dT%H:%M:%SZ")))] | length')
+          echo "count=$BUGS" >> $GITHUB_OUTPUT
+          TITLES=$(gh api repos/${{ github.repository }}/issues --jq '[.[] | select(.labels[].name == "bug") | select(.created_at > (now - 86400 | strftime("%Y-%m-%dT%H:%M:%SZ"))) | .title] | join("\n- ")')
+          echo "titles=$TITLES" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check CI status
+        id: ci
+        run: |
+          STATUS=$(gh api repos/${{ github.repository }}/actions/runs --jq '.workflow_runs[0].conclusion')
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Send digest email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.resend.com
+          server_port: 465
+          username: resend
+          password: ${{ secrets.RESEND_API_KEY }}
+          subject: 'CareCompanion Daily QA Digest'
+          to: ${{ secrets.TEAM_EMAIL }}
+          from: 'CareCompanion QA <qa@carecompanionai.org>'
+          body: |
+            ## Daily QA Digest
+
+            **New bugs filed (24h):** ${{ steps.bugs.outputs.count }}
+            ${{ steps.bugs.outputs.titles && format('- {0}', steps.bugs.outputs.titles) || 'None' }}
+
+            **Latest CI status:** ${{ steps.ci.outputs.status }}
+
+            ---
+            View all open bugs: https://github.com/${{ github.repository }}/issues?q=is%3Aopen+label%3Abug

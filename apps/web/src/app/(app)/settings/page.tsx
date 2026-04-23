@@ -40,6 +40,7 @@ async function SettingsContent() {
       settings={settings}
       medicationReminders={reminders}
       medications={meds}
+      isDemo={dbUser.isDemo ?? false}
     />
   )
 }

@@ -15,18 +15,20 @@ import { useReducedMotion } from 'react-native-reanimated'
 import { BlurView } from 'expo-blur'
 import * as Haptics from 'expo-haptics'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '../../src/theme'
 import { NoiseOverlay } from '../../src/components/NoiseOverlay'
+import { ProfileProvider } from '../../src/context/ProfileContext'
 
 const TABS = [
-  { name: 'index', label: 'Home', icon: '⌂' },
-  { name: 'chat', label: 'Chat', icon: '💬' },
-  { name: 'care', label: 'Care', icon: '♥' },
-  { name: 'scan', label: 'Scan', icon: '⊞' },
-  { name: 'settings', label: 'Settings', icon: '⚙' },
+  { name: 'index', label: 'Home', icon: 'home-outline', iconActive: 'home' },
+  { name: 'chat', label: 'Chat', icon: 'chatbubble-outline', iconActive: 'chatbubble' },
+  { name: 'care', label: 'Care', icon: 'heart-outline', iconActive: 'heart' },
+  { name: 'scan', label: 'Scan', icon: 'scan-outline', iconActive: 'scan' },
+  { name: 'settings', label: 'Settings', icon: 'settings-outline', iconActive: 'settings' },
 ]
 
-function TabIcon({ icon, active }: { icon: string; active: boolean }) {
+function TabIcon({ icon, iconActive, active }: { icon: string; iconActive: string; active: boolean }) {
   const scale = useSharedValue(1)
   const ty = useSharedValue(0)
   const theme = useTheme()
@@ -60,9 +62,7 @@ function TabIcon({ icon, active }: { icon: string; active: boolean }) {
         },
       ]}
     >
-      <Text style={[styles.iconText, { color: active ? theme.accent : theme.textMuted }]}>
-        {icon}
-      </Text>
+      <Ionicons name={(active ? iconActive : icon) as any} size={22} color={active ? theme.accent : theme.textMuted} />
     </Animated.View>
   )
 }
@@ -157,7 +157,7 @@ function CustomTabBar({ state, navigation }: any) {
                 }
               }}
             >
-              <TabIcon icon={tab.icon} active={active} />
+              <TabIcon icon={tab.icon} iconActive={tab.iconActive} active={active} />
               <GlowDot active={active} />
               <Text
                 style={[
@@ -197,19 +197,21 @@ export function TabFadeWrapper({ children }: { children: React.ReactNode }) {
 
 export default function TabLayout() {
   return (
-    <View style={{ flex: 1 }}>
-      <NoiseOverlay />
-      <Tabs
-        tabBar={(props) => <CustomTabBar {...props} />}
-        screenOptions={{ headerShown: false }}
-      >
-        <Tabs.Screen name="index" />
-        <Tabs.Screen name="chat" />
-        <Tabs.Screen name="care" />
-        <Tabs.Screen name="scan" />
-        <Tabs.Screen name="settings" />
-      </Tabs>
-    </View>
+    <ProfileProvider>
+      <View style={{ flex: 1 }}>
+        <NoiseOverlay />
+        <Tabs
+          tabBar={(props) => <CustomTabBar {...props} />}
+          screenOptions={{ headerShown: false }}
+        >
+          <Tabs.Screen name="index" />
+          <Tabs.Screen name="chat" />
+          <Tabs.Screen name="care" />
+          <Tabs.Screen name="scan" />
+          <Tabs.Screen name="settings" />
+        </Tabs>
+      </View>
+    </ProfileProvider>
   )
 }
 
@@ -239,6 +241,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 2,
   },
-  iconText: { fontSize: 18 },
   label: { fontSize: 10 },
 })

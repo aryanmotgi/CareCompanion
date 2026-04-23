@@ -6,8 +6,10 @@ import {
   ScrollView,
   StyleSheet,
   Pressable,
+  Linking,
   ViewStyle,
 } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -24,6 +26,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '../../src/theme'
 import { GlassCard } from '../../src/components/GlassCard'
 import { AmbientOrbs } from '../../src/components/AmbientOrbs'
@@ -33,6 +36,38 @@ import { syncHealthKitData } from '../../src/services/healthkit'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { ShimmerSkeleton } from '../../src/components/ShimmerSkeleton'
 import { TabFadeWrapper } from './_layout'
+import { useProfile } from '../../src/context/ProfileContext'
+import { apiClient } from '../../src/services/api'
+
+interface Profile {
+  patientName?: string
+  displayName?: string
+  cancerType?: string
+  cancerStage?: string
+  treatmentPhase?: string
+  allergies?: string
+  conditions?: string
+  emergencyContactName?: string
+  careProfileId?: string
+  [key: string]: unknown
+}
+
+function computeCompletion(profile: Profile | null) {
+  if (!profile) return { percent: 0, remaining: [] as { key: string; label: string; done: boolean }[] }
+  const items = [
+    { key: 'patientName', label: 'Set patient name', done: !!profile.patientName },
+    { key: 'cancerType', label: 'Set cancer type', done: !!profile.cancerType },
+    { key: 'cancerStage', label: 'Set cancer stage', done: !!profile.cancerStage },
+    { key: 'treatmentPhase', label: 'Set treatment phase', done: !!profile.treatmentPhase },
+    { key: 'allergies', label: 'Add allergies', done: !!profile.allergies },
+    { key: 'conditions', label: 'Add conditions', done: !!profile.conditions },
+    { key: 'emergencyContact', label: 'Set emergency contact', done: !!profile.emergencyContactName },
+  ]
+  const done = items.filter(i => i.done).length
+  const percent = Math.round((done / items.length) * 100)
+  const remaining = items.filter(i => !i.done)
+  return { percent, remaining }
+}
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -83,9 +118,47 @@ export default function HomeScreen() {
   const router = useRouter()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
-  const medCount = 3
-  const medTaken = 1
-  const medRemaining = medCount - medTaken
+  // --- Real data from API ---
+  const { profile, loading: profileLoading } = useProfile()
+  const [meds, setMeds] = useState<any[]>([])
+  const [appointments, setAppointments] = useState<any[]>([])
+  const [dataLoading, setDataLoading] = useState(true)
+
+  useEffect(() => {
+    if (!profile?.careProfileId) return
+    setDataLoading(true)
+    Promise.all([
+      apiClient.medications.list(profile.careProfileId),
+      apiClient.appointments.list(profile.careProfileId),
+    ]).then(([medsData, apptsData]) => {
+      setMeds((medsData as any[]) || [])
+      setAppointments((apptsData as any[]) || [])
+    }).catch(err => {
+      console.error('Failed to load home data:', err)
+    }).finally(() => {
+      setDataLoading(false)
+    })
+  }, [profile?.careProfileId])
+
+  const displayName = profile?.patientName || profile?.displayName || 'there'
+  const medCount = meds.length
+
+  // --- Profile completion tracker ---
+  const { percent: profilePercent, remaining: profileRemaining } = computeCompletion(profile as Profile | null)
+  const [profileDismissed, setProfileDismissed] = useState(false)
+
+  useEffect(() => {
+    AsyncStorage.getItem('cc-profile-completion-dismissed').then(v => {
+      if (v === 'true') setProfileDismissed(true)
+    })
+  }, [])
+
+  const showProfileCard = !!profile && profilePercent < 100 && !profileDismissed
+
+  const handleDismissProfile = () => {
+    setProfileDismissed(true)
+    AsyncStorage.setItem('cc-profile-completion-dismissed', 'true')
+  }
 
   // --- Shimmer loading ---
   const [loaded, setLoaded] = useState(false)
@@ -196,19 +269,27 @@ export default function HomeScreen() {
               <Text style={[styles.greeting, { color: theme.textMuted }]}>
                 {getGreeting().toUpperCase()}
               </Text>
-              <Text style={[styles.name, { color: theme.text }]}>Aryan</Text>
+              <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
             </View>
-            <Pressable onPress={() => setDrawerOpen(true)}>
-              <LinearGradient colors={['#6366F1', '#A78BFA']} style={styles.avatar}>
-                <Text style={styles.avatarText}>A</Text>
-              </LinearGradient>
-            </Pressable>
+            <View style={styles.headerRight}>
+              <Pressable onPress={() => router.push('/search')} hitSlop={8} style={styles.bellButton}>
+                <Ionicons name="search-outline" size={22} color={theme.text} />
+              </Pressable>
+              <Pressable onPress={() => router.push('/notifications')} style={styles.bellButton}>
+                <Ionicons name="notifications-outline" size={22} color={theme.text} />
+              </Pressable>
+              <Pressable onPress={() => setDrawerOpen(true)}>
+                <LinearGradient colors={['#6366F1', '#A78BFA']} style={styles.avatar}>
+                  <Text style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</Text>
+                </LinearGradient>
+              </Pressable>
+            </View>
           </View>
 
           {/* Cards at 0.6x parallax */}
           <Animated.View style={cardParallaxStyle}>
             {/* Medications card */}
-            {!loaded ? (
+            {!loaded || dataLoading ? (
               <Animated.View style={card1Style}>
                 <GlassCard style={styles.card}>
                   <ShimmerSkeleton width="60%" height={12} style={{ marginBottom: 12 }} />
@@ -226,44 +307,113 @@ export default function HomeScreen() {
                     </Text>
                     <View style={[styles.badge, { backgroundColor: 'rgba(99,102,241,0.2)' }]}>
                       <AnimatedCounter
-                        value={medRemaining}
+                        value={medCount}
                         style={{ ...styles.badgeText, color: theme.accent }}
-                        suffix=" left"
+                        suffix={medCount === 1 ? ' med' : ' meds'}
                       />
                     </View>
                   </View>
-                  <View style={styles.medRow}>
-                    <View style={[styles.dot, { backgroundColor: theme.green }]} />
-                    <Text style={[styles.medName, { color: theme.text }]}>Tamoxifen 20mg</Text>
-                    <Text style={[styles.medTime, { color: theme.textMuted }]}>8:00 AM ✓</Text>
-                  </View>
-                  <View style={styles.medRow}>
-                    <View style={[styles.dot, { backgroundColor: theme.amber }]} />
-                    <Text style={[styles.medName, { color: theme.text }]}>Ondansetron 4mg</Text>
-                    <Text style={[styles.medTime, { color: theme.textMuted }]}>2:00 PM</Text>
-                  </View>
-                  <View style={styles.medRow}>
-                    <View style={[styles.dot, { backgroundColor: theme.amber }]} />
-                    <Text style={[styles.medName, { color: theme.text }]}>Dexamethasone 4mg</Text>
-                    <Text style={[styles.medTime, { color: theme.textMuted }]}>8:00 PM</Text>
-                  </View>
+                  {meds.length === 0 ? (
+                    <Text style={[styles.medName, { color: theme.textMuted }]}>No medications yet</Text>
+                  ) : (
+                    meds.map((med) => (
+                      <View key={med.id} style={styles.medRow}>
+                        <View style={[styles.dot, { backgroundColor: theme.amber }]} />
+                        <Text style={[styles.medName, { color: theme.text }]}>
+                          {med.name}{med.dose ? ` ${med.dose}` : ''}
+                        </Text>
+                        <Text style={[styles.medTime, { color: theme.textMuted }]}>
+                          {med.frequency || ''}
+                        </Text>
+                      </View>
+                    ))
+                  )}
                 </GlassCard>
               </Animated.View>
             )}
 
+            {/* Profile completion card */}
+            {showProfileCard && (
+              <GlassCard style={styles.card}>
+                <View style={styles.profileCardHeader}>
+                  <View style={styles.profileCardTop}>
+                    <View style={styles.profileRing}>
+                      <Text style={[styles.profileRingText, { color: theme.accent }]}>
+                        {profilePercent}%
+                      </Text>
+                    </View>
+                    <View style={styles.profileCardInfo}>
+                      <Text style={[styles.profileCardTitle, { color: theme.text }]}>
+                        Complete your profile
+                      </Text>
+                      <Text style={[styles.profileCardSub, { color: theme.textMuted }]}>
+                        {profileRemaining.length} item{profileRemaining.length !== 1 ? 's' : ''} remaining for a full profile
+                      </Text>
+                    </View>
+                  </View>
+                  <Pressable onPress={handleDismissProfile} hitSlop={12}>
+                    <Text style={[styles.profileDismiss, { color: theme.textMuted }]}>✕</Text>
+                  </Pressable>
+                </View>
+                {profileRemaining.slice(0, 3).map((item) => (
+                  <Pressable
+                    key={item.key}
+                    style={styles.profileRow}
+                    onPress={() => Linking.openURL('https://carecompanionai.org/onboarding')}
+                  >
+                    <Text style={[styles.profileRowText, { color: theme.text }]}>{item.label}</Text>
+                    <Text style={[styles.profileChevron, { color: theme.textMuted }]}>›</Text>
+                  </Pressable>
+                ))}
+              </GlassCard>
+            )}
+
             {/* Appointment card */}
             <Animated.View style={card2Style}>
-              <AnimatedBorderCard>
-                <View style={{ padding: 16 }}>
-                  <Text style={[styles.cardLabel, { color: theme.textMuted }]}>NEXT APPOINTMENT</Text>
-                  <Text style={[styles.apptName, { color: theme.text }]}>Oncology Follow-up</Text>
-                  <Text style={[styles.apptDoctor, { color: theme.textSub }]}>Dr. Sarah Chen</Text>
-                  <Text style={[styles.apptTime, { color: theme.lavender }]}>Monday · 10:00 AM</Text>
-                  <Text style={[styles.apptLocation, { color: theme.textMuted }]}>
-                    UCSF Medical Center · Room 4B
-                  </Text>
-                </View>
-              </AnimatedBorderCard>
+              {dataLoading ? (
+                <AnimatedBorderCard>
+                  <View style={{ padding: 16 }}>
+                    <ShimmerSkeleton width="50%" height={12} style={{ marginBottom: 12 }} />
+                    <ShimmerSkeleton width="80%" height={16} style={{ marginBottom: 8 }} />
+                    <ShimmerSkeleton width="60%" height={14} style={{ marginBottom: 8 }} />
+                    <ShimmerSkeleton width="70%" height={14} />
+                  </View>
+                </AnimatedBorderCard>
+              ) : (() => {
+                const nextAppt = appointments
+                  .filter((a) => a.dateTime)
+                  .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
+                  .find((a) => new Date(a.dateTime).getTime() >= Date.now()) || appointments[0]
+                return (
+                  <AnimatedBorderCard>
+                    <View style={{ padding: 16 }}>
+                      <Text style={[styles.cardLabel, { color: theme.textMuted }]}>NEXT APPOINTMENT</Text>
+                      {!nextAppt ? (
+                        <Text style={[styles.apptName, { color: theme.textMuted }]}>No upcoming appointments</Text>
+                      ) : (
+                        <>
+                          <Text style={[styles.apptName, { color: theme.text }]}>
+                            {nextAppt.purpose || nextAppt.specialty || 'Appointment'}
+                          </Text>
+                          {nextAppt.doctorName ? (
+                            <Text style={[styles.apptDoctor, { color: theme.textSub }]}>{nextAppt.doctorName}</Text>
+                          ) : null}
+                          {nextAppt.dateTime ? (
+                            <Text style={[styles.apptTime, { color: theme.lavender }]}>
+                              {new Date(nextAppt.dateTime).toLocaleDateString(undefined, { weekday: 'long' })} · {new Date(nextAppt.dateTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                            </Text>
+                          ) : null}
+                          {nextAppt.location ? (
+                            <Text style={[styles.apptLocation, { color: theme.textMuted }]}>
+                              {nextAppt.location}
+                            </Text>
+                          ) : null}
+                        </>
+                      )}
+                    </View>
+                  </AnimatedBorderCard>
+                )
+              })()}
             </Animated.View>
 
             {/* AI CTA card */}
@@ -292,7 +442,7 @@ export default function HomeScreen() {
         <Drawer
           visible={drawerOpen}
           onClose={() => setDrawerOpen(false)}
-          userName="Aryan"
+          userName={displayName}
           userRole="Patient"
         />
       </View>
@@ -312,6 +462,19 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
   name: { fontSize: 22, fontWeight: '700', marginTop: 2 },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  bellButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(99,102,241,0.1)',
+  },
   avatar: {
     width: 40,
     height: 40,
@@ -356,4 +519,62 @@ const styles = StyleSheet.create({
   borderCardOuter: { borderRadius: 15, overflow: 'hidden', marginBottom: 12 },
   borderCardGradientWrap: { alignItems: 'center', justifyContent: 'center' },
   borderCardInner: { margin: 1.5, borderRadius: 14, overflow: 'hidden' },
+  profileCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  profileCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  profileRing: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 3,
+    borderColor: 'rgba(99,102,241,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  profileRingText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  profileCardInfo: {
+    flex: 1,
+  },
+  profileCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  profileCardSub: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  profileDismiss: {
+    fontSize: 18,
+    fontWeight: '600',
+    paddingLeft: 8,
+  },
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+  },
+  profileRowText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  profileChevron: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
 })
