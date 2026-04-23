@@ -26,8 +26,12 @@ import { useTheme } from '../../src/theme'
 import { hapticAIMessage } from '../../src/utils/haptics'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { TabFadeWrapper } from './_layout'
+import { createApiClient } from '@carecompanion/api'
 
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanion.app'
+const apiClient = createApiClient({
+  baseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org',
+  getToken: () => SecureStore.getItemAsync('cc-session-token'),
+})
 
 type Message = { id: string; role: 'user' | 'assistant'; content: string }
 
@@ -169,6 +173,7 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(false)
   const listRef = useRef<FlatList>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const csrfTokenRef = useRef<string | null>(null)
 
   const headerOpacity = useSharedValue(reduceMotion ? 1 : 0)
   const headerY = useSharedValue(reduceMotion ? 0 : 12)
@@ -198,30 +203,28 @@ export default function ChatScreen() {
     setInput('')
     setLoading(true)
 
-    const controller = new AbortController()
-    abortRef.current = controller
-
     try {
-      const token = await SecureStore.getItemAsync('cc-session-token')
-      const res = await fetch(`${API_BASE}/api/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Cookie: `authjs.session-token=${token}` } : {}),
-        },
-        body: JSON.stringify({ messages: next.map(({ role, content }) => ({ role, content })) }),
-        signal: controller.signal,
-      })
-      const data = await res.json() as { content?: string }
+      // Fetch CSRF token if we don't have one
+      if (!csrfTokenRef.current) {
+        const { csrfToken } = await apiClient.csrfToken()
+        csrfTokenRef.current = csrfToken
+      }
+
+      const result = await apiClient.chat.send(
+        next.map(({ role, content }) => ({ role, content })),
+        csrfTokenRef.current,
+      )
       const reply: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.content ?? 'Sorry, try again.',
+        content: result.content ?? 'Sorry, try again.',
       }
       setMessages((prev) => [...prev, reply])
       hapticAIMessage()
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
+      // If CSRF failed, clear token so next send re-fetches
+      csrfTokenRef.current = null
       setMessages((prev) => [
         ...prev,
         { id: (Date.now() + 1).toString(), role: 'assistant', content: 'Something went wrong. Please try again.' },
