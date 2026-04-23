@@ -1,28 +1,38 @@
 // apps/mobile/app/(tabs)/scan.tsx
 import React, { useState } from 'react'
-import { View, Text, Image, Alert, Linking, StyleSheet, Dimensions } from 'react-native'
+import {
+  View,
+  Text,
+  Image,
+  Alert,
+  Linking,
+  StyleSheet,
+  TextInput,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native'
 import Animated from 'react-native-reanimated'
 import * as ImagePicker from 'expo-image-picker'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '../../src/theme'
 import { ParticleBurst } from '../../src/components/ParticleBurst'
 import { useStaggerEntrance } from '../../src/hooks/useStaggerEntrance'
-import { useGyroParallax } from '../../src/hooks/useGyroParallax'
-import { RippleButton } from '../../src/components/RippleButton'
 import { TabFadeWrapper } from './_layout'
 import { hapticScanComplete } from '../../src/utils/haptics'
+import { LinearGradient } from 'expo-linear-gradient'
 
-const { width } = Dimensions.get('window')
-const SCAN_SIZE = width - 64
+const CATEGORIES = ['All', 'Medical', 'Insurance', 'Lab Reports', 'Rx', 'Other'] as const
 
 export default function ScanScreen() {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
   const [burstActive, setBurstActive] = useState(false)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeCategory, setActiveCategory] = useState<string>('All')
 
-  const stagger = useStaggerEntrance(4)
-  const { parallaxStyle: viewportParallax } = useGyroParallax(0.2)
+  const stagger = useStaggerEntrance(5)
 
   async function startScan() {
     const { status } = await ImagePicker.requestCameraPermissionsAsync()
@@ -54,95 +64,178 @@ export default function ScanScreen() {
   return (
     <TabFadeWrapper>
       <View style={[styles.root, { backgroundColor: theme.bg, paddingTop: insets.top + 16 }]}>
+        {/* Header */}
         <Animated.View style={stagger[0]}>
-          <Text style={[styles.title, { color: theme.text }]}>Scan Document</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Documents</Text>
         </Animated.View>
         <Animated.View style={stagger[1]}>
           <Text style={[styles.sub, { color: theme.textMuted }]}>
-            Photograph a prescription, lab report, or insurance card
+            Organize and manage your medical documents
           </Text>
         </Animated.View>
 
-        {/* Scan viewport */}
-        <Animated.View style={[styles.viewportWrapper, stagger[2]]}>
-          <View
-            style={[
-              styles.viewport,
-              {
-                width: SCAN_SIZE,
-                height: SCAN_SIZE,
-                borderColor: theme.border,
-                backgroundColor: theme.bgElevated,
-              },
-            ]}
+        {/* Search bar */}
+        <Animated.View style={[styles.searchWrapper, stagger[2]]}>
+          <View style={[styles.searchBar, { backgroundColor: theme.bgElevated, borderColor: theme.border }]}>
+            <Ionicons name="search" size={18} color={theme.textMuted} style={styles.searchIcon} />
+            <TextInput
+              style={[styles.searchInput, { color: theme.text }]}
+              placeholder="Search documents..."
+              placeholderTextColor={theme.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+        </Animated.View>
+
+        {/* Category filter pills */}
+        <Animated.View style={stagger[3]}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.pillsContainer}
+            style={styles.pillsScroll}
           >
-            <Animated.View style={viewportParallax}>
-              {/* Corner brackets */}
-              {[
-                { top: -1, left: -1, borderTopWidth: 2, borderLeftWidth: 2, borderTopLeftRadius: 4 },
-                { top: -1, right: -1, borderTopWidth: 2, borderRightWidth: 2, borderTopRightRadius: 4 },
-                { bottom: -1, left: -1, borderBottomWidth: 2, borderLeftWidth: 2, borderBottomLeftRadius: 4 },
-                { bottom: -1, right: -1, borderBottomWidth: 2, borderRightWidth: 2, borderBottomRightRadius: 4 },
-              ].map((s, i) => (
-                <View
-                  key={i}
-                  style={[styles.bracket, { borderColor: theme.accent, width: 20, height: 20 }, s]}
-                />
-              ))}
+            {CATEGORIES.map((cat) => {
+              const isActive = activeCategory === cat
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => setActiveCategory(cat)}
+                  style={[
+                    styles.pill,
+                    isActive
+                      ? { backgroundColor: theme.accent }
+                      : { backgroundColor: 'transparent', borderWidth: 1, borderColor: theme.border },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.pillText,
+                      { color: isActive ? '#fff' : theme.textMuted },
+                    ]}
+                  >
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </ScrollView>
+        </Animated.View>
 
-              {/* Idle content */}
-              <View style={styles.idleContent}>
-                <Text style={{ fontSize: 48 }}>📄</Text>
-                <Text style={[styles.idleText, { color: theme.textMuted }]}>
-                  Tap below to start scanning
-                </Text>
-              </View>
-
+        {/* Document list area */}
+        <Animated.View style={[styles.listArea, stagger[4]]}>
+          {/* Captured image preview card */}
+          {capturedImage && (
+            <View style={[styles.capturedCard, { backgroundColor: theme.bgElevated, borderColor: theme.border }]}>
+              <Image source={{ uri: capturedImage }} style={styles.capturedImage} />
+              <Text style={[styles.capturedLabel, { color: theme.textMuted }]}>
+                Document captured
+              </Text>
               {/* Particle burst origin */}
               <View style={styles.burstOrigin} pointerEvents="none">
                 <ParticleBurst active={burstActive} onComplete={() => setBurstActive(false)} />
               </View>
-            </Animated.View>
-          </View>
+            </View>
+          )}
+
+          {/* Empty state */}
+          {!capturedImage && (
+            <View style={styles.emptyState}>
+              <Ionicons name="document-text-outline" size={64} color={theme.textMuted} />
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>No documents yet</Text>
+              <Text style={[styles.emptySub, { color: theme.textMuted }]}>
+                Scan your first document using the{' '}
+                <Ionicons name="camera" size={14} color={theme.accent} /> button below
+              </Text>
+            </View>
+          )}
         </Animated.View>
 
-        {capturedImage && (
-          <View style={{ marginTop: 16, marginHorizontal: 32, borderRadius: 12, overflow: 'hidden' }}>
-            <Image source={{ uri: capturedImage }} style={{ width: '100%', height: 200, borderRadius: 12 }} />
-            <Text style={{ color: theme.textSub, textAlign: 'center', marginTop: 8, fontSize: 13 }}>
-              Document captured
-            </Text>
-          </View>
-        )}
-
-        {/* Button */}
-        <Animated.View style={[styles.btnWrapper, stagger[3]]}>
-          <RippleButton onPress={startScan}>
-            <Text style={styles.btnText}>Open Camera</Text>
-          </RippleButton>
-        </Animated.View>
+        {/* Floating camera FAB */}
+        <TouchableOpacity
+          onPress={startScan}
+          activeOpacity={0.85}
+          style={styles.fabTouchable}
+        >
+          <LinearGradient
+            colors={['#6366f1', '#4f46e5']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.fab}
+          >
+            <Ionicons name="camera" size={26} color="#fff" />
+          </LinearGradient>
+        </TouchableOpacity>
       </View>
     </TabFadeWrapper>
   )
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: 'center', paddingHorizontal: 32, paddingBottom: 100 },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 8, alignSelf: 'flex-start' },
-  sub: { fontSize: 14, marginBottom: 40, alignSelf: 'flex-start' },
-  viewportWrapper: { alignItems: 'center', marginBottom: 40 },
-  viewport: {
+  root: { flex: 1, paddingHorizontal: 24 },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 4 },
+  sub: { fontSize: 14, marginBottom: 20 },
+
+  // Search
+  searchWrapper: { marginBottom: 16 },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    height: 44,
+  },
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, fontSize: 15 },
+
+  // Pills
+  pillsScroll: { marginBottom: 24 },
+  pillsContainer: { gap: 8 },
+  pill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  pillText: { fontSize: 13, fontWeight: '600' },
+
+  // List area
+  listArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  // Captured image card
+  capturedCard: {
+    width: '100%',
     borderRadius: 16,
     borderWidth: 1,
     overflow: 'hidden',
+    marginBottom: 16,
+  },
+  capturedImage: { width: '100%', height: 200 },
+  capturedLabel: { textAlign: 'center', paddingVertical: 10, fontSize: 13 },
+  burstOrigin: { position: 'absolute', alignSelf: 'center', top: 100 },
+
+  // Empty state
+  emptyState: { alignItems: 'center', gap: 12 },
+  emptyTitle: { fontSize: 18, fontWeight: '600' },
+  emptySub: { fontSize: 14, textAlign: 'center', lineHeight: 20, paddingHorizontal: 24 },
+
+  // FAB
+  fabTouchable: {
+    position: 'absolute',
+    bottom: 100,
+    right: 24,
+  },
+  fab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  bracket: { position: 'absolute' },
-  idleContent: { alignItems: 'center', gap: 12 },
-  idleText: { fontSize: 14, textAlign: 'center' },
-  burstOrigin: { position: 'absolute', alignSelf: 'center' },
-  btnWrapper: { width: '100%' },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 })
