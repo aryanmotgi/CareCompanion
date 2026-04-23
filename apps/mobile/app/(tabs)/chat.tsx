@@ -136,7 +136,7 @@ export default function ChatScreen() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Cookie: `next-auth.session-token=${token}` } : {}),
+          ...(token ? { Cookie: `authjs.session-token=${token}` } : {}),
         },
         body: JSON.stringify({ messages: next.map(({ role, content }) => ({ role, content })) }),
       })

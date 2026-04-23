@@ -22,6 +22,7 @@ export const users = pgTable('users', {
   hipaaConsent: boolean('hipaa_consent').default(false),
   hipaaConsentAt: timestamp('hipaa_consent_at', { withTimezone: true }),
   hipaaConsentVersion: text('hipaa_consent_version'),
+  resetNonce: text('reset_nonce'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 

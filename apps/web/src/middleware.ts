@@ -32,7 +32,7 @@ const PUBLIC_PATHS = [
   '/api/reminders/check',    // Reminder cron
   '/api/share/',             // Public share links with token (e.g. /api/share/abc123) — POST /api/share itself is protected
   '/shared',                 // Public share pages
-  '/mobile-callback',        // Post-OAuth redirect target for iOS app
+  '/reset-password',          // Password reset pages
 ]
 
 export default auth((req) => {

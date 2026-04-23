@@ -29,7 +29,7 @@ describe('createApiClient', () => {
       expect.any(String),
       expect.objectContaining({
         headers: expect.objectContaining({
-          Cookie: 'next-auth.session-token=test-session-token',
+          Cookie: '__Secure-authjs.session-token=test-session-token',
         }),
       })
     )

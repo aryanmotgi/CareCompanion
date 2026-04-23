@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ScrollView,
 } from 'react-native'
 import Animated, {
   useSharedValue,
@@ -21,10 +22,13 @@ import { BlurView } from 'expo-blur'
 import { useRouter } from 'expo-router'
 import { signInWithCredentials } from '../src/services/auth'
 
-export default function LoginScreen() {
+export default function SignupScreen() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [displayName, setDisplayName] = useState('')
+  const [consent, setConsent] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const logoOpacity = useSharedValue(0)
@@ -42,18 +46,54 @@ export default function LoginScreen() {
   const logoStyle = useAnimatedStyle(() => ({ opacity: logoOpacity.value, transform: [{ translateY: logoY.value }] }))
   const cardStyle = useAnimatedStyle(() => ({ opacity: cardOpacity.value, transform: [{ translateY: cardY.value }] }))
 
-  async function handleSignIn() {
+  async function handleSignup() {
+    if (!displayName.trim()) {
+      Alert.alert('Missing field', 'Please enter your display name.')
+      return
+    }
     if (!email.trim() || !password) {
       Alert.alert('Missing fields', 'Please enter your email and password.')
       return
     }
+    if (password.length < 8) {
+      Alert.alert('Weak password', 'Password must be at least 8 characters.')
+      return
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('Mismatch', 'Passwords do not match.')
+      return
+    }
+    if (!consent) {
+      Alert.alert('Consent required', 'Please accept the Terms and Privacy Policy to continue.')
+      return
+    }
+
     try {
       setLoading(true)
+
+      const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanion.app'
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+          displayName: displayName.trim(),
+          hipaaConsent: true,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error ?? 'Registration failed')
+      }
+
+      // Auto-login after registration
       await signInWithCredentials(email.trim().toLowerCase(), password)
       router.replace('/(tabs)')
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Sign-in failed'
-      Alert.alert('Sign In Failed', msg)
+      const msg = e instanceof Error ? e.message : 'Sign-up failed'
+      Alert.alert('Sign Up Failed', msg)
     } finally {
       setLoading(false)
     }
@@ -68,14 +108,14 @@ export default function LoginScreen() {
       <View style={[styles.orb, { top: -100, left: -80, backgroundColor: 'rgba(99,102,241,0.12)', width: 300, height: 300 }]} />
       <View style={[styles.orb, { bottom: 0, right: -80, backgroundColor: 'rgba(167,139,250,0.08)', width: 280, height: 280 }]} />
 
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Animated.View style={[styles.logoSection, logoStyle]}>
           <LinearGradient colors={['#6366F1', '#A78BFA']} style={styles.logoCube}>
             <View style={styles.logoHighlight} />
             <Text style={styles.logoHeart}>♥</Text>
           </LinearGradient>
           <Text style={styles.appName}>CareCompanion</Text>
-          <Text style={styles.tagline}>AI Cancer Care</Text>
+          <Text style={styles.tagline}>Create your account</Text>
         </Animated.View>
 
         <Animated.View style={[styles.card, cardStyle]}>
@@ -87,7 +127,17 @@ export default function LoginScreen() {
             style={styles.glowLine}
           />
 
-          <Text style={styles.heading}>Sign In</Text>
+          <Text style={styles.heading}>Sign Up</Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Display name"
+            placeholderTextColor="rgba(255,255,255,0.3)"
+            value={displayName}
+            onChangeText={setDisplayName}
+            autoCapitalize="words"
+            returnKeyType="next"
+          />
 
           <TextInput
             style={styles.input}
@@ -103,18 +153,38 @@ export default function LoginScreen() {
 
           <TextInput
             style={styles.input}
-            placeholder="Password"
+            placeholder="Password (min. 8 characters)"
             placeholderTextColor="rgba(255,255,255,0.3)"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            returnKeyType="done"
-            onSubmitEditing={handleSignIn}
+            returnKeyType="next"
           />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm password"
+            placeholderTextColor="rgba(255,255,255,0.3)"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+            returnKeyType="done"
+            onSubmitEditing={handleSignup}
+          />
+
+          {/* Consent checkbox */}
+          <Pressable style={styles.consentRow} onPress={() => setConsent(!consent)}>
+            <View style={[styles.checkbox, consent && styles.checkboxChecked]}>
+              {consent && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+            <Text style={styles.consentText}>
+              I agree to the Terms and Privacy Policy, and I understand CareCompanion will access and process my health information.
+            </Text>
+          </Pressable>
 
           <Pressable
             style={[styles.signInBtn, loading && { opacity: 0.6 }]}
-            onPress={handleSignIn}
+            onPress={handleSignup}
             disabled={loading}
           >
             <LinearGradient
@@ -124,18 +194,18 @@ export default function LoginScreen() {
               style={styles.signInGradient}
             >
               <Text style={styles.signInText}>
-                {loading ? 'Signing in…' : 'Sign In'}
+                {loading ? 'Creating account…' : 'Create Account'}
               </Text>
             </LinearGradient>
           </Pressable>
 
-          <Pressable onPress={() => router.replace('/signup')}>
-            <Text style={styles.createAccountText}>
-              Don't have an account? <Text style={styles.createAccountLink}>Create one</Text>
+          <Pressable onPress={() => router.replace('/login')}>
+            <Text style={styles.linkText}>
+              Already have an account? <Text style={styles.linkHighlight}>Sign in</Text>
             </Text>
           </Pressable>
         </Animated.View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   )
 }
@@ -144,10 +214,11 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#05060F' },
   orb: { position: 'absolute', borderRadius: 9999 },
   content: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
+    paddingVertical: 40,
     gap: 32,
   },
   logoSection: { alignItems: 'center', gap: 12 },
@@ -206,6 +277,33 @@ const styles = StyleSheet.create({
     color: '#EDE9FE',
     fontSize: 15,
   },
+  consentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  checkboxChecked: {
+    backgroundColor: '#6366F1',
+    borderColor: '#6366F1',
+  },
+  checkmark: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  consentText: {
+    flex: 1,
+    fontSize: 11,
+    lineHeight: 16,
+    color: 'rgba(255,255,255,0.35)',
+  },
   signInBtn: { borderRadius: 12, overflow: 'hidden' },
   signInGradient: {
     paddingVertical: 14,
@@ -213,12 +311,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   signInText: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  createAccountText: {
+  linkText: {
     textAlign: 'center',
     fontSize: 13,
     color: 'rgba(255,255,255,0.35)',
   },
-  createAccountLink: {
+  linkHighlight: {
     color: 'rgba(167,139,250,0.7)',
     textDecorationLine: 'underline',
   },

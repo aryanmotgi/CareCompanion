@@ -52,35 +52,11 @@ export default async function AppLayout({
   }
 
   if (!dbUser) {
-    // User authenticated but not in DB yet — upsert on email (the stable unique key)
-    try {
-      const [inserted] = await db
-        .insert(users)
-        .values({
-          providerSub: session.user.id ?? userEmail,
-          email: userEmail,
-          displayName: session.user.name || userEmail,
-          isDemo: false,
-        })
-        .onConflictDoUpdate({
-          target: users.email,
-          set: { providerSub: session.user.id ?? userEmail, displayName: session.user.name || userEmail },
-        })
-        .returning()
-      dbUser = inserted
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
-      const cause = (e as Error & { cause?: unknown })?.cause
-      console.error('[app/layout] DB insert failed:', msg)
-      console.error('[app/layout] DB insert cause:', cause)
-      const causeStr = cause instanceof Error ? cause.message : (cause ? JSON.stringify(cause) : '')
-      const fullMsg = msg + (causeStr ? ' | cause: ' + causeStr : '')
-      const encoded = encodeURIComponent(fullMsg.slice(0, 1000))
-      redirect(`/login?error=db&detail=${encoded}`)
-    }
+    // With credentials-only auth, users must exist in DB before they can authenticate
+    // (authorize() requires a matching email + passwordHash). If we get here, something
+    // is wrong — redirect to login.
+    redirect('/login?error=user_not_found')
   }
-
-  if (!dbUser) redirect('/login?error=user_not_found')
 
   // HIPAA consent gate — separate query so a pending db:push (hipaaConsent column not yet deployed)
   // doesn't break login. Defaults to allowing through if column doesn't exist yet.

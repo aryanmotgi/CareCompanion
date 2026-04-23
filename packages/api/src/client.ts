@@ -20,7 +20,7 @@ async function apiFetch(
     if (token) {
       // Production (HTTPS) uses the __Secure- prefix; dev uses the plain name.
       const isSecure = config.baseUrl.startsWith('https://')
-      const cookieName = isSecure ? '__Secure-next-auth.session-token' : 'next-auth.session-token'
+      const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
       headers['Cookie'] = `${cookieName}=${token}`
     }
   }
@@ -58,11 +58,6 @@ export function createApiClient(config: ApiClientConfig) {
         }) as Promise<{ synced: number }>,
     },
     auth: {
-      exchangeCode: (code: string) =>
-        apiFetch(config, '/api/auth/mobile-token/exchange', {
-          method: 'POST',
-          body: JSON.stringify({ code }),
-        }) as Promise<{ sessionToken: string }>,
       register: (data: { email: string; password: string; displayName: string }) =>
         apiFetch(config, '/api/auth/register', {
           method: 'POST',
