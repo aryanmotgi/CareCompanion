@@ -125,7 +125,10 @@ export default function HomeScreen() {
   const [dataLoading, setDataLoading] = useState(true)
 
   useEffect(() => {
-    if (!profile?.careProfileId) return
+    if (!profile?.careProfileId) {
+      setDataLoading(false)
+      return
+    }
     setDataLoading(true)
     Promise.all([
       apiClient.medications.list(profile.careProfileId),

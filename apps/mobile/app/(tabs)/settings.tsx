@@ -137,8 +137,9 @@ export default function SettingsScreen() {
                 <Switch
                   value={notifPrefs[item.key]}
                   onValueChange={() => toggleNotif(item.key)}
-                  trackColor={{ false: 'rgba(120,120,128,0.16)', true: 'rgba(99,102,241,0.4)' }}
-                  thumbColor={notifPrefs[item.key] ? '#6366F1' : '#f4f3f4'}
+                  trackColor={{ false: 'rgba(255,255,255,0.1)', true: theme.accent }}
+                  thumbColor="#fff"
+                  ios_backgroundColor="rgba(255,255,255,0.1)"
                 />
               </View>
             ))}
@@ -161,8 +162,9 @@ export default function SettingsScreen() {
                 <Switch
                   value={notifPrefs[item.key]}
                   onValueChange={() => toggleNotif(item.key)}
-                  trackColor={{ false: 'rgba(120,120,128,0.16)', true: 'rgba(99,102,241,0.4)' }}
-                  thumbColor={notifPrefs[item.key] ? '#6366F1' : '#f4f3f4'}
+                  trackColor={{ false: 'rgba(255,255,255,0.1)', true: theme.accent }}
+                  thumbColor="#fff"
+                  ios_backgroundColor="rgba(255,255,255,0.1)"
                 />
               </View>
             ))}

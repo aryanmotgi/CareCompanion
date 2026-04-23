@@ -1,6 +1,7 @@
 // apps/mobile/app/(tabs)/care.tsx
 import React, { useEffect, useRef, useState } from 'react'
 import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -333,46 +334,60 @@ export default function CareScreen() {
         return meds.length > 0
           ? meds.map((m) => <MedRow key={m.id} med={m} onTake={markAsTaken} disabled={takingId === m.id} />)
           : (
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: theme.textMuted }]}>No medications yet</Text>
-            </View>
+            <GlassCard style={{ padding: 32, alignItems: 'center' }}>
+              <Ionicons name="medkit-outline" size={40} color={theme.textMuted} style={{ marginBottom: 12 }} />
+              <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600', marginBottom: 4 }}>No medications yet</Text>
+              <Text style={{ color: theme.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 16 }}>Add your first medication or connect to HealthKit</Text>
+              <Pressable style={{ backgroundColor: theme.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 }}>
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Add Medication</Text>
+              </Pressable>
+            </GlassCard>
           )
 
       case 'appts':
         return appointments.length > 0
           ? appointments.map((a: any, i: number) => <AppointmentRow key={a.id || i} appointment={a} />)
           : (
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: theme.textMuted }]}>No appointments scheduled</Text>
-              <Text style={[styles.emptyCta, { color: theme.accent }]}>Add an appointment</Text>
-            </View>
+            <GlassCard style={{ padding: 32, alignItems: 'center' }}>
+              <Ionicons name="calendar-outline" size={40} color={theme.textMuted} style={{ marginBottom: 12 }} />
+              <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600', marginBottom: 4 }}>No appointments scheduled</Text>
+              <Text style={{ color: theme.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 16 }}>Schedule your next visit with your care team</Text>
+              <Pressable style={{ backgroundColor: theme.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 }}>
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Add an appointment</Text>
+              </Pressable>
+            </GlassCard>
           )
 
       case 'labs':
         return labs.length > 0
           ? labs.map((l) => <LabRow key={l.id} lab={l} />)
           : (
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: theme.textMuted }]}>No lab results yet</Text>
-            </View>
+            <GlassCard style={{ padding: 32, alignItems: 'center' }}>
+              <Ionicons name="flask-outline" size={40} color={theme.textMuted} style={{ marginBottom: 12 }} />
+              <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600', marginBottom: 4 }}>No lab results yet</Text>
+              <Text style={{ color: theme.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 16 }}>Import your lab results or connect to HealthKit</Text>
+              <Pressable style={{ backgroundColor: theme.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 }}>
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Connect to HealthKit</Text>
+              </Pressable>
+            </GlassCard>
           )
 
       case 'journal':
         return (
-          <View style={styles.emptyContainer}>
+          <GlassCard style={{ padding: 32, alignItems: 'center' }}>
             <Text style={[styles.emptyEmoji]}>📝</Text>
             <Text style={[styles.emptyText, { color: theme.textMuted }]}>How are you feeling today?</Text>
             <Text style={[styles.emptyCta, { color: '#fbbf24' }]}>Start your first entry</Text>
-          </View>
+          </GlassCard>
         )
 
       case 'team':
         return (
-          <View style={styles.emptyContainer}>
+          <GlassCard style={{ padding: 32, alignItems: 'center' }}>
             <Text style={[styles.emptyEmoji]}>👥</Text>
             <Text style={[styles.emptyText, { color: theme.textMuted }]}>No care team members yet</Text>
             <Text style={[styles.emptyCta, { color: '#a78bfa' }]}>Add your doctor</Text>
-          </View>
+          </GlassCard>
         )
 
       default:
