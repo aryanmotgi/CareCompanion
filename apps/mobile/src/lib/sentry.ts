@@ -1,5 +1,12 @@
-import * as Sentry from '@sentry/react-native'
-import type { ErrorEvent, Breadcrumb } from '@sentry/react-native'
+// Lazy import — @sentry/react-native requires a native build with the module included.
+let Sentry: typeof import('@sentry/react-native') | null = null
+try {
+  Sentry = require('@sentry/react-native')
+} catch {
+  // Native module not available in this build
+}
+type ErrorEvent = { request?: { data?: unknown }; breadcrumbs?: any[]; extra?: Record<string, unknown> }
+type Breadcrumb = { data?: unknown; [key: string]: unknown }
 
 const PHI_KEYS = [
   'patientName',
@@ -62,6 +69,10 @@ function scrubPHI(event: ErrorEvent, _hint: unknown): ErrorEvent | null {
 }
 
 export function initSentry() {
+  if (!Sentry) {
+    console.log('[Sentry] Native module not available, skipping init')
+    return
+  }
   Sentry.init({
     dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
     environment: __DEV__ ? 'development' : 'production',
