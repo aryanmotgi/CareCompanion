@@ -38,17 +38,17 @@ export function createApiClient(config: ApiClientConfig) {
   return {
     medications: {
       list: (careProfileId: string) =>
-        apiFetch(config, `/api/medications?careProfileId=${careProfileId}`, { method: 'GET' }) as Promise<Medication[]>,
+        apiFetch(config, `/api/records/medications?care_profile_id=${careProfileId}`, { method: 'GET' }) as Promise<Medication[]>,
       create: (data: Partial<Medication>) =>
-        apiFetch(config, '/api/medications', { method: 'POST', body: JSON.stringify(data) }) as Promise<Medication>,
+        apiFetch(config, '/api/records/medications', { method: 'POST', body: JSON.stringify(data) }) as Promise<Medication>,
     },
     labResults: {
-      list: (userId: string) =>
-        apiFetch(config, `/api/lab-results?userId=${userId}`, { method: 'GET' }) as Promise<LabResult[]>,
+      list: (careProfileId: string) =>
+        apiFetch(config, `/api/records/labs?care_profile_id=${careProfileId}`, { method: 'GET' }) as Promise<LabResult[]>,
     },
     appointments: {
       list: (careProfileId: string) =>
-        apiFetch(config, `/api/appointments?careProfileId=${careProfileId}`, { method: 'GET' }) as Promise<Appointment[]>,
+        apiFetch(config, `/api/records/appointments?care_profile_id=${careProfileId}`, { method: 'GET' }) as Promise<Appointment[]>,
     },
     healthkit: {
       sync: (records: HealthKitRecord[]) =>
@@ -63,6 +63,76 @@ export function createApiClient(config: ApiClientConfig) {
           method: 'POST',
           body: JSON.stringify(data),
         }) as Promise<{ id: string }>,
+    },
+    me: () =>
+      apiFetch(config, '/api/me', { method: 'GET' }) as Promise<{
+        userId: string
+        email: string
+        displayName: string
+        careProfileId: string | null
+        patientName: string | null
+        emergencyContactName: string | null
+        emergencyContactPhone: string | null
+        cancerType: string | null
+        cancerStage: string | null
+        treatmentPhase: string | null
+        allergies: string | null
+        conditions: string | null
+      }>,
+    csrfToken: () =>
+      apiFetch(config, '/api/csrf-token', { method: 'GET' }) as Promise<{ csrfToken: string }>,
+    chat: {
+      send: async (
+        messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+        csrfToken: string,
+      ) => {
+        // Convert flat messages to AI SDK UIMessage format with .parts
+        const uiMessages = messages.map((m, i) => ({
+          id: String(i),
+          role: m.role,
+          parts: [{ type: 'text' as const, text: m.content }],
+          createdAt: new Date(),
+        }))
+
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
+        }
+
+        if (config.getToken) {
+          const token = await config.getToken()
+          if (token) {
+            const isSecure = config.baseUrl.startsWith('https://')
+            const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
+            headers['Cookie'] = `${cookieName}=${token}; cc-csrf-token=${csrfToken}`
+          }
+        }
+
+        const res = await fetch(`${config.baseUrl}/api/chat`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ messages: uiMessages }),
+        })
+
+        if (!res.ok) {
+          throw new Error(`Chat API error ${res.status}: ${await res.text()}`)
+        }
+
+        // The chat route returns a streaming response — read full stream and extract text
+        const text = await res.text()
+        const lines = text.split('\n').filter(Boolean)
+        let content = ''
+        for (const line of lines) {
+          if (line.startsWith('0:')) {
+            try {
+              content += JSON.parse(line.slice(2))
+            } catch {
+              // skip non-JSON lines
+            }
+          }
+        }
+        return { content: content || null }
+      },
     },
   }
 }
