@@ -6,8 +6,10 @@ import {
   ScrollView,
   StyleSheet,
   Pressable,
+  Linking,
   ViewStyle,
 } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -35,6 +37,36 @@ import { ShimmerSkeleton } from '../../src/components/ShimmerSkeleton'
 import { TabFadeWrapper } from './_layout'
 import { useProfile } from '../../src/context/ProfileContext'
 import { apiClient } from '../../src/services/api'
+
+interface Profile {
+  patientName?: string
+  displayName?: string
+  cancerType?: string
+  cancerStage?: string
+  treatmentPhase?: string
+  allergies?: string
+  conditions?: string
+  emergencyContactName?: string
+  careProfileId?: string
+  [key: string]: unknown
+}
+
+function computeCompletion(profile: Profile | null) {
+  if (!profile) return { percent: 0, remaining: [] as { key: string; label: string; done: boolean }[] }
+  const items = [
+    { key: 'patientName', label: 'Set patient name', done: !!profile.patientName },
+    { key: 'cancerType', label: 'Set cancer type', done: !!profile.cancerType },
+    { key: 'cancerStage', label: 'Set cancer stage', done: !!profile.cancerStage },
+    { key: 'treatmentPhase', label: 'Set treatment phase', done: !!profile.treatmentPhase },
+    { key: 'allergies', label: 'Add allergies', done: !!profile.allergies },
+    { key: 'conditions', label: 'Add conditions', done: !!profile.conditions },
+    { key: 'emergencyContact', label: 'Set emergency contact', done: !!profile.emergencyContactName },
+  ]
+  const done = items.filter(i => i.done).length
+  const percent = Math.round((done / items.length) * 100)
+  const remaining = items.filter(i => !i.done)
+  return { percent, remaining }
+}
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -109,6 +141,23 @@ export default function HomeScreen() {
 
   const displayName = profile?.patientName || profile?.displayName || 'there'
   const medCount = meds.length
+
+  // --- Profile completion tracker ---
+  const { percent: profilePercent, remaining: profileRemaining } = computeCompletion(profile as Profile | null)
+  const [profileDismissed, setProfileDismissed] = useState(false)
+
+  useEffect(() => {
+    AsyncStorage.getItem('cc-profile-completion-dismissed').then(v => {
+      if (v === 'true') setProfileDismissed(true)
+    })
+  }, [])
+
+  const showProfileCard = profilePercent < 100 && !profileDismissed
+
+  const handleDismissProfile = () => {
+    setProfileDismissed(true)
+    AsyncStorage.setItem('cc-profile-completion-dismissed', 'true')
+  }
 
   // --- Shimmer loading ---
   const [loaded, setLoaded] = useState(false)
@@ -274,6 +323,42 @@ export default function HomeScreen() {
               </Animated.View>
             )}
 
+            {/* Profile completion card */}
+            {showProfileCard && (
+              <GlassCard style={styles.card}>
+                <View style={styles.profileCardHeader}>
+                  <View style={styles.profileCardTop}>
+                    <View style={styles.profileRing}>
+                      <Text style={[styles.profileRingText, { color: theme.accent }]}>
+                        {profilePercent}%
+                      </Text>
+                    </View>
+                    <View style={styles.profileCardInfo}>
+                      <Text style={[styles.profileCardTitle, { color: theme.text }]}>
+                        Complete your profile
+                      </Text>
+                      <Text style={[styles.profileCardSub, { color: theme.textMuted }]}>
+                        {profileRemaining.length} item{profileRemaining.length !== 1 ? 's' : ''} remaining for a full profile
+                      </Text>
+                    </View>
+                  </View>
+                  <Pressable onPress={handleDismissProfile} hitSlop={12}>
+                    <Text style={[styles.profileDismiss, { color: theme.textMuted }]}>✕</Text>
+                  </Pressable>
+                </View>
+                {profileRemaining.slice(0, 3).map((item) => (
+                  <Pressable
+                    key={item.key}
+                    style={styles.profileRow}
+                    onPress={() => Linking.openURL('https://carecompanionai.org/onboarding')}
+                  >
+                    <Text style={[styles.profileRowText, { color: theme.text }]}>{item.label}</Text>
+                    <Text style={[styles.profileChevron, { color: theme.textMuted }]}>›</Text>
+                  </Pressable>
+                ))}
+              </GlassCard>
+            )}
+
             {/* Appointment card */}
             <Animated.View style={card2Style}>
               {dataLoading ? (
@@ -412,4 +497,62 @@ const styles = StyleSheet.create({
   borderCardOuter: { borderRadius: 15, overflow: 'hidden', marginBottom: 12 },
   borderCardGradientWrap: { alignItems: 'center', justifyContent: 'center' },
   borderCardInner: { margin: 1.5, borderRadius: 14, overflow: 'hidden' },
+  profileCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  profileCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  profileRing: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 3,
+    borderColor: 'rgba(99,102,241,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  profileRingText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  profileCardInfo: {
+    flex: 1,
+  },
+  profileCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  profileCardSub: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  profileDismiss: {
+    fontSize: 18,
+    fontWeight: '600',
+    paddingLeft: 8,
+  },
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+  },
+  profileRowText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  profileChevron: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
 })
