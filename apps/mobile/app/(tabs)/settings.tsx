@@ -1,6 +1,6 @@
 // apps/mobile/app/(tabs)/settings.tsx
-import React from 'react'
-import { View, Text, Pressable, StyleSheet, Alert } from 'react-native'
+import React, { useState } from 'react'
+import { View, Text, Pressable, StyleSheet, Alert, Switch, Linking, ScrollView } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
@@ -16,7 +16,20 @@ export default function SettingsScreen() {
   const activeTheme = useThemeOverride()
   const insets = useSafeAreaInsets()
   const router = useRouter()
-  const stagger = useStaggerEntrance(4)
+  const stagger = useStaggerEntrance(7)
+
+  const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({
+    medications: true,
+    refillReminders: true,
+    doseReminders: true,
+    interactionAlerts: true,
+    appointments: true,
+    twentyFourHour: true,
+  })
+
+  function toggleNotif(key: string) {
+    setNotifPrefs((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
 
   function changeTheme(value: ThemeOverride) {
     void setThemeOverride(value)
@@ -38,7 +51,7 @@ export default function SettingsScreen() {
 
   return (
     <TabFadeWrapper>
-      <View style={[styles.root, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 70 }]}>
+      <ScrollView style={[styles.root, { paddingTop: insets.top + 16 }]} contentContainerStyle={{ paddingBottom: insets.bottom + 70 }}>
         <LinearGradient
           colors={theme.gradientAMuted as [string, string, ...string[]]}
           start={{ x: 0, y: 0 }}
@@ -65,8 +78,23 @@ export default function SettingsScreen() {
           </GlassCard>
         </Animated.View>
 
-        {/* Appearance */}
+        {/* Edit Profile & Preferences */}
         <Animated.View style={stagger[2]}>
+          <Pressable onPress={() => Linking.openURL('https://carecompanionai.org/onboarding')}>
+            <GlassCard style={styles.section}>
+              <View style={styles.editProfileRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.editProfileLabel, { color: theme.text }]}>Edit Profile & Preferences</Text>
+                  <Text style={[styles.editProfileSub, { color: theme.textMuted }]}>Update cancer type, treatment phase, and priorities</Text>
+                </View>
+                <Text style={[styles.chevron, { color: theme.textMuted }]}>{'>'}</Text>
+              </View>
+            </GlassCard>
+          </Pressable>
+        </Animated.View>
+
+        {/* Appearance */}
+        <Animated.View style={stagger[3]}>
           <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>APPEARANCE</Text>
           <GlassCard style={styles.section}>
             <View style={[styles.segmentRow, { backgroundColor: theme.bgElevated }]}>
@@ -88,15 +116,68 @@ export default function SettingsScreen() {
           </GlassCard>
         </Animated.View>
 
+        {/* Notifications */}
+        <Animated.View style={stagger[4]}>
+          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>NOTIFICATIONS</Text>
+
+          {/* Medications group */}
+          <Text style={[styles.subHeader, { color: theme.textMuted }]}>Medications</Text>
+          <GlassCard style={styles.section}>
+            {([
+              { key: 'medications', label: 'Medications', description: 'Medication reminders and alerts' },
+              { key: 'refillReminders', label: 'Refill Reminders', description: 'Alert when medications are running low' },
+              { key: 'doseReminders', label: 'Dose Reminders', description: 'Scheduled medication dose alerts' },
+              { key: 'interactionAlerts', label: 'Interaction Alerts', description: 'Warnings about drug interactions' },
+            ] as const).map((item, i, arr) => (
+              <View key={item.key} style={[styles.toggleRow, i < arr.length - 1 && styles.toggleRowBorder]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.toggleLabel, { color: theme.text }]}>{item.label}</Text>
+                  <Text style={[styles.toggleDesc, { color: theme.textMuted }]}>{item.description}</Text>
+                </View>
+                <Switch
+                  value={notifPrefs[item.key]}
+                  onValueChange={() => toggleNotif(item.key)}
+                  trackColor={{ false: 'rgba(120,120,128,0.16)', true: 'rgba(99,102,241,0.4)' }}
+                  thumbColor={notifPrefs[item.key] ? '#6366F1' : '#f4f3f4'}
+                />
+              </View>
+            ))}
+          </GlassCard>
+        </Animated.View>
+
+        <Animated.View style={stagger[5]}>
+          {/* Appointments group */}
+          <Text style={[styles.subHeader, { color: theme.textMuted }]}>Appointments</Text>
+          <GlassCard style={styles.section}>
+            {([
+              { key: 'appointments', label: 'Appointments', description: 'Appointment reminders' },
+              { key: 'twentyFourHour', label: '24-Hour Reminder', description: 'Reminder 24 hours before appointments' },
+            ] as const).map((item, i, arr) => (
+              <View key={item.key} style={[styles.toggleRow, i < arr.length - 1 && styles.toggleRowBorder]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.toggleLabel, { color: theme.text }]}>{item.label}</Text>
+                  <Text style={[styles.toggleDesc, { color: theme.textMuted }]}>{item.description}</Text>
+                </View>
+                <Switch
+                  value={notifPrefs[item.key]}
+                  onValueChange={() => toggleNotif(item.key)}
+                  trackColor={{ false: 'rgba(120,120,128,0.16)', true: 'rgba(99,102,241,0.4)' }}
+                  thumbColor={notifPrefs[item.key] ? '#6366F1' : '#f4f3f4'}
+                />
+              </View>
+            ))}
+          </GlassCard>
+        </Animated.View>
+
         {/* Sign out */}
-        <Animated.View style={stagger[3]}>
+        <Animated.View style={stagger[6]}>
           <Pressable onPress={signOut}>
             <GlassCard style={{ ...styles.section, borderColor: 'rgba(252,165,165,0.2)' }}>
               <Text style={[styles.signOut, { color: theme.rose }]}>Sign Out</Text>
             </GlassCard>
           </Pressable>
         </Animated.View>
-      </View>
+      </ScrollView>
     </TabFadeWrapper>
   )
 }
@@ -115,4 +196,13 @@ const styles = StyleSheet.create({
   segBtn: { flex: 1, paddingVertical: 8, alignItems: 'center' },
   segLabel: { fontSize: 14, fontWeight: '600' },
   signOut: { fontSize: 16, fontWeight: '600', textAlign: 'center' },
+  editProfileRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  editProfileLabel: { fontSize: 15, fontWeight: '600' },
+  editProfileSub: { fontSize: 12, marginTop: 2 },
+  chevron: { fontSize: 18, fontWeight: '600' },
+  subHeader: { fontSize: 12, fontWeight: '600', marginBottom: 6, marginTop: 4 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  toggleRowBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(150,150,150,0.2)' },
+  toggleLabel: { fontSize: 14, fontWeight: '600' },
+  toggleDesc: { fontSize: 12, marginTop: 2 },
 })
