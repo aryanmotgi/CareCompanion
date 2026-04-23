@@ -12,7 +12,8 @@
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "test:run": "turbo run test:run",
-    "prepare": "husky"
+    "prepare": "husky",
+    "seed:test-users": "npx tsx scripts/seed-test-users.ts"
   },
   "devDependencies": {
     "husky": "^9.1.7",
