@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { StatusBar, ActivityIndicator, View } from 'react-native'
 import { useTheme } from '../src/theme'
+import { TestModeBanner } from '../src/components/TestModeBanner'
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const segments = useSegments()
@@ -43,6 +44,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemedStatusBar />
+      <TestModeBanner />
       <AuthGate>
         <Stack screenOptions={{ headerShown: false }} />
       </AuthGate>
