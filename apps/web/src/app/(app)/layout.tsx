@@ -80,7 +80,7 @@ export default async function AppLayout({
     }
   }
 
-  if (!dbUser) redirect('/login')
+  if (!dbUser) redirect('/login?error=user_not_found')
 
   // HIPAA consent gate — separate query so a pending db:push (hipaaConsent column not yet deployed)
   // doesn't break login. Defaults to allowing through if column doesn't exist yet.

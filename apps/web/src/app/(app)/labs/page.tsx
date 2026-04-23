@@ -16,7 +16,7 @@ async function LabsContent() {
   if (!session?.user?.id) redirect('/login');
 
   const [dbUser] = await db.select({ id: users.id, providerSub: users.providerSub, email: users.email, displayName: users.displayName, isDemo: users.isDemo, createdAt: users.createdAt }).from(users).where(eq(users.email, session.user.email!)).limit(1);
-  if (!dbUser) redirect('/login');
+  if (!dbUser) redirect('/login?error=session');
 
   const labs = await db
     .select()

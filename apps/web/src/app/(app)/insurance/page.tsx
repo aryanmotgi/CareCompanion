@@ -19,7 +19,7 @@ async function InsuranceContent() {
   if (!session?.user?.id) redirect('/login');
 
   const [dbUser] = await db.select({ id: users.id, providerSub: users.providerSub, email: users.email, displayName: users.displayName, isDemo: users.isDemo, createdAt: users.createdAt }).from(users).where(eq(users.email, session.user.email!)).limit(1);
-  if (!dbUser) redirect('/login');
+  if (!dbUser) redirect('/login?error=session');
 
   const [claimsData, insRows] = await Promise.all([
     db.select().from(claims).where(eq(claims.userId, dbUser.id)).orderBy(desc(claims.serviceDate)).catch(() => []),

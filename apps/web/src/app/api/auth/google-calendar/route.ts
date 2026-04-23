@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 
 export async function GET() {
   const { user: dbUser, error } = await getAuthenticatedUser();
-  if (error || !dbUser) redirect('/login');
+  if (error || !dbUser) redirect('/login?error=session');
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ||

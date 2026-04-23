@@ -15,7 +15,7 @@ export default async function UploadPage() {
     .from(users)
     .where(eq(users.email, session.user.email!))
     .limit(1);
-  if (!dbUser) redirect('/login');
+  if (!dbUser) redirect('/login?error=session');
 
   const [profile] = await db
     .select({ id: careProfiles.id, conditions: careProfiles.conditions, allergies: careProfiles.allergies })
