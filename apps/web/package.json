@@ -25,6 +25,7 @@
     "@carecompanion/api": "workspace:*",
     "@carecompanion/types": "workspace:*",
     "@carecompanion/utils": "workspace:*",
+    "@sentry/nextjs": "^10.50.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.37.0",
     "@vercel/analytics": "^2.0.1",
