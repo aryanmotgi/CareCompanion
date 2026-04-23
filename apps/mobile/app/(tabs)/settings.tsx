@@ -2,6 +2,7 @@
 import React, { useState } from 'react'
 import { View, Text, Pressable, StyleSheet, Alert, Switch, Linking, ScrollView } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { useTheme, useThemeOverride, setThemeOverride, ThemeOverride } from '../../src/theme'
@@ -87,7 +88,7 @@ export default function SettingsScreen() {
                   <Text style={[styles.editProfileLabel, { color: theme.text }]}>Edit Profile & Preferences</Text>
                   <Text style={[styles.editProfileSub, { color: theme.textMuted }]}>Update cancer type, treatment phase, and priorities</Text>
                 </View>
-                <Text style={[styles.chevron, { color: theme.textMuted }]}>{'>'}</Text>
+                <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
               </View>
             </GlassCard>
           </Pressable>
