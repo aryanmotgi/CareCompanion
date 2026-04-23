@@ -1,5 +1,8 @@
 // apps/mobile/app/_layout.tsx
+import { initSentry } from '../src/lib/sentry'
 import { useEffect, useState } from 'react'
+
+initSentry()
 import { Stack, useRouter, useSegments } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
