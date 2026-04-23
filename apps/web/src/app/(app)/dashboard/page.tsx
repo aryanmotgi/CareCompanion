@@ -13,7 +13,7 @@ import { ShareHealthCard } from '@/components/ShareHealthCard';
 
 async function DashboardContent() {
   const session = await auth();
-  if (!session?.user?.id) redirect('/login');
+  if (!session?.user?.id) redirect('/login?error=session');
 
   const userEmail = session.user.email
   if (!userEmail) redirect('/login?error=session');

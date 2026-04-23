@@ -8,7 +8,7 @@ import type { Medication, Doctor, Appointment } from '@/lib/types';
 
 export default async function ManualSetupPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect('/login');
+  if (!session?.user?.id) redirect('/login?error=session');
 
   const [dbUser] = await db.select({ id: users.id, providerSub: users.providerSub, email: users.email, displayName: users.displayName, isDemo: users.isDemo, createdAt: users.createdAt }).from(users).where(eq(users.email, session.user.email!)).limit(1);
   if (!dbUser) redirect('/login?error=session');

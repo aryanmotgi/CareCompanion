@@ -129,7 +129,7 @@ export async function POST(req: Request) {
       sub: dbUserId,
       // dbUserId is what auth.ts jwt callback stores for the DB UUID,
       // and session callback sets session.user.id = token.dbUserId.
-      // Without it, session.user.id is undefined → redirect('/login') → redirect loop.
+      // Without it, session.user.id is undefined → redirect('/login?error=session') → redirect loop.
       dbUserId,
       providerSub: cognitoSub,
       email,

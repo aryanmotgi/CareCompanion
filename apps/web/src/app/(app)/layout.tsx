@@ -22,7 +22,7 @@ export default async function AppLayout({
   children: React.ReactNode
 }) {
   const session = await auth()
-  if (!session?.user?.id) redirect('/login')
+  if (!session?.user?.id) redirect('/login?error=session')
 
   // Resolve local DB user by email (stable across provider changes)
   const userEmail = session.user.email ?? ''
