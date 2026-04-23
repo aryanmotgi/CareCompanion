@@ -61,7 +61,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function SettingsPage({ settings: initialSettings, medicationReminders = [], medications = [], isDemo = false }: SettingsPageProps) {
+export function SettingsPage({ settings: initialSettings, medicationReminders = [], medications = [] }: SettingsPageProps) {
   const { showToast } = useToast()
   const csrfToken = useCsrfToken()
   const [settings, setSettings] = useState<UserSettings | null>(initialSettings)

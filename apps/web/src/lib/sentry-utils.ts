@@ -1,4 +1,4 @@
-import type { ErrorEvent, EventHint } from '@sentry/nextjs'
+import type { ErrorEvent } from '@sentry/nextjs'
 
 const PHI_KEYS = [
   'patientName',
@@ -36,7 +36,7 @@ function scrubObject(obj: unknown): unknown {
   return result
 }
 
-export function scrubPHI(event: ErrorEvent, _hint: EventHint): ErrorEvent | null {
+export function scrubPHI(event: ErrorEvent): ErrorEvent | null {
   // Scrub request body
   if (event.request?.data) {
     event.request.data = scrubObject(event.request.data) as typeof event.request.data
