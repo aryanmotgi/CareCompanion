@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server'
-import { Redis } from '@upstash/redis'
+import { jwtVerify } from 'jose'
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-})
+// No Redis — code is a short-lived signed JWT. Verify it and return the session token.
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({})) as { code?: string }
@@ -12,13 +9,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'code is required' }, { status: 400 })
   }
 
-  const key = `mobile-auth:${body.code}`
-  const sessionToken = await redis.get<string>(key)
-  if (!sessionToken) {
+  try {
+    const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!)
+    const { payload } = await jwtVerify(body.code, secret)
+    const sessionToken = payload.t as string | undefined
+    if (!sessionToken) {
+      return NextResponse.json({ error: 'Invalid code' }, { status: 400 })
+    }
+    return NextResponse.json({ sessionToken })
+  } catch {
     return NextResponse.json({ error: 'Code expired or invalid' }, { status: 404 })
   }
-
-  // Single-use: delete immediately
-  await redis.del(key)
-  return NextResponse.json({ sessionToken })
 }

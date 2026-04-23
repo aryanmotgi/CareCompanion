@@ -1,41 +1,41 @@
 import { auth } from '@/lib/auth'
-import { Redis } from '@upstash/redis'
-import { randomBytes } from 'crypto'
-import { cookies } from 'next/headers'
+import { getToken } from 'next-auth/jwt'
+import { SignJWT } from 'jose'
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-})
-
-const SESSION_COOKIE =
-  process.env.NODE_ENV === 'production'
-    ? '__Secure-next-auth.session-token'
-    : 'next-auth.session-token'
+// No Redis — the code is a short-lived signed JWT containing the session token.
+// Exchange endpoint verifies the JWT and returns the session token. Zero storage needed.
 
 export async function GET(req: Request) {
   const session = await auth()
+  const base = new URL(req.url).origin
 
   if (!session?.user?.id) {
-    const base = new URL(req.url).origin
-    return Response.redirect(`${base}/login?callbackUrl=/mobile-callback`, 302)
+    return Response.redirect(`${base}/login?error=mobile_auth`, 302)
   }
 
-  const cookieStore = await cookies()
-  const sessionToken = cookieStore.get(SESSION_COOKIE)?.value
+  // getToken with raw:true handles chunked JWT cookies that cookieStore.get() misses.
+  const rawToken = await getToken({
+    req: req as Parameters<typeof getToken>[0]['req'],
+    secret: process.env.NEXTAUTH_SECRET!,
+    secureCookie: process.env.NODE_ENV === 'production',
+    raw: true,
+  })
 
-  if (!sessionToken) {
-    const base = new URL(req.url).origin
-    return Response.redirect(`${base}/login?callbackUrl=/mobile-callback`, 302)
+  if (!rawToken) {
+    return Response.redirect(`${base}/login?error=mobile_auth`, 302)
   }
 
-  const code = randomBytes(32).toString('hex')
-  await redis.set(`mobile-auth:${code}`, sessionToken, { ex: 60 })
+  // Sign a short-lived JWT (60s) whose payload is the session token.
+  // The exchange endpoint verifies this JWT and returns the session token.
+  const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!)
+  const code = await new SignJWT({ t: rawToken })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('60s')
+    .sign(secret)
 
-  // Use raw Response so we can redirect to a custom URL scheme.
-  // Next.js redirect() validates URLs and rejects non-http(s) schemes.
   return new Response(null, {
     status: 302,
-    headers: { Location: `carecompanion://auth/callback?code=${code}` },
+    headers: { Location: `carecompanion://auth/callback?code=${encodeURIComponent(code)}` },
   })
 }
