@@ -1,12 +1,12 @@
 // apps/mobile/app/(tabs)/index.tsx
-import React, { useEffect, useState, useRef, useCallback } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
-  Dimensions,
   Pressable,
+  ViewStyle,
 } from 'react-native'
 import Animated, {
   useSharedValue,
@@ -23,16 +23,16 @@ import Animated, {
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useRouter, useFocusEffect } from 'expo-router'
-import { Gyroscope } from 'expo-sensors'
+import { useRouter } from 'expo-router'
 import { useTheme } from '../../src/theme'
 import { GlassCard } from '../../src/components/GlassCard'
 import { AmbientOrbs } from '../../src/components/AmbientOrbs'
 import { AnimatedCounter } from '../../src/components/AnimatedCounter'
 import { Drawer } from '../../src/components/Drawer'
 import { syncHealthKitData } from '../../src/services/healthkit'
-
-const { } = Dimensions.get('window')
+import { useGyroParallax } from '../../src/hooks/useGyroParallax'
+import { ShimmerSkeleton } from '../../src/components/ShimmerSkeleton'
+import { TabFadeWrapper } from './_layout'
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -41,8 +41,40 @@ function getGreeting() {
   return 'Good evening'
 }
 
-const CLAMP = 15
-const MAX_DISPLACEMENT = 20
+function AnimatedBorderCard({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+  const theme = useTheme()
+  const reduceMotion = useReducedMotion()
+  const rotation = useSharedValue(0)
+
+  useEffect(() => {
+    if (reduceMotion) return
+    rotation.value = withRepeat(
+      withTiming(360, { duration: 8000, easing: Easing.linear }),
+      -1,
+      false,
+    )
+  }, [rotation, reduceMotion])
+
+  const rotateStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }, { scale: 1.5 }],
+  }))
+
+  return (
+    <View style={[styles.borderCardOuter, style]}>
+      <Animated.View style={[StyleSheet.absoluteFill, styles.borderCardGradientWrap, rotateStyle]}>
+        <LinearGradient
+          colors={[theme.accent, theme.lavender, theme.cyan, theme.accent]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+      <View style={[styles.borderCardInner, { backgroundColor: theme.isDark ? '#0C0E1A' : '#FAFAFA' }]}>
+        {children}
+      </View>
+    </View>
+  )
+}
 
 export default function HomeScreen() {
   const theme = useTheme()
@@ -54,6 +86,14 @@ export default function HomeScreen() {
   const medCount = 3
   const medTaken = 1
   const medRemaining = medCount - medTaken
+
+  // --- Shimmer loading ---
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoaded(true), 400)
+    return () => clearTimeout(t)
+  }, [])
 
   // --- Gradient mesh ---
   const [gradientColors, setGradientColors] = useState<string[]>(theme.gradientA)
@@ -83,29 +123,7 @@ export default function HomeScreen() {
   )
 
   // --- Gyroscope parallax for cards at 0.6x ---
-  const cardGyroX = useSharedValue(0)
-  const cardGyroY = useSharedValue(0)
-  const tiltRef = useRef({ x: 0, y: 0 })
-
-  useFocusEffect(
-    useCallback(() => {
-      if (reduceMotion) return
-      Gyroscope.setUpdateInterval(16)
-      const sub = Gyroscope.addListener(({ x, y }) => {
-        tiltRef.current.x = tiltRef.current.x * 0.85 + y * 0.15
-        tiltRef.current.y = tiltRef.current.y * 0.85 + x * 0.15
-        const cx = Math.max(-CLAMP, Math.min(CLAMP, tiltRef.current.x))
-        const cy = Math.max(-CLAMP, Math.min(CLAMP, tiltRef.current.y))
-        cardGyroX.value = (cx / CLAMP) * MAX_DISPLACEMENT * 0.6
-        cardGyroY.value = (cy / CLAMP) * MAX_DISPLACEMENT * 0.6
-      })
-      return () => sub.remove()
-    }, [reduceMotion, cardGyroX, cardGyroY]),
-  )
-
-  const cardParallaxStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: cardGyroX.value }, { translateY: cardGyroY.value }],
-  }))
+  const { parallaxStyle: cardParallaxStyle } = useGyroParallax(0.6)
 
   // --- Card stagger entrance ---
   const card1Opacity = useSharedValue(0)
@@ -151,113 +169,134 @@ export default function HomeScreen() {
   }, [])
 
   return (
-    <View style={styles.root}>
-      {/* Animated gradient mesh */}
-      <LinearGradient
-        colors={gradientColors as [string, string, ...string[]]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+    <TabFadeWrapper>
+      <View style={styles.root}>
+        {/* Animated gradient mesh */}
+        <LinearGradient
+          colors={gradientColors as [string, string, ...string[]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
 
-      {/* Background orbs — 0.3x parallax */}
-      <AmbientOrbs speedMultiplier={0.3} />
+        {/* Background orbs — 0.3x parallax */}
+        <AmbientOrbs speedMultiplier={0.3} />
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: insets.top + 16, paddingBottom: 120 },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={[styles.greeting, { color: theme.textMuted }]}>
-              {getGreeting().toUpperCase()}
-            </Text>
-            <Text style={[styles.name, { color: theme.text }]}>Aryan</Text>
-          </View>
-          <Pressable onPress={() => setDrawerOpen(true)}>
-            <LinearGradient colors={['#6366F1', '#A78BFA']} style={styles.avatar}>
-              <Text style={styles.avatarText}>A</Text>
-            </LinearGradient>
-          </Pressable>
-        </View>
-
-        {/* Cards at 0.6x parallax */}
-        <Animated.View style={cardParallaxStyle}>
-          {/* Medications card */}
-          <Animated.View style={card1Style}>
-            <GlassCard style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={[styles.cardLabel, { color: theme.textMuted }]}>
-                  TODAY'S MEDICATIONS
-                </Text>
-                <View style={[styles.badge, { backgroundColor: 'rgba(99,102,241,0.2)' }]}>
-                  <AnimatedCounter
-                    value={medRemaining}
-                    style={{ ...styles.badgeText, color: theme.accent }}
-                    suffix=" left"
-                  />
-                </View>
-              </View>
-              <View style={styles.medRow}>
-                <View style={[styles.dot, { backgroundColor: theme.green }]} />
-                <Text style={[styles.medName, { color: theme.text }]}>Tamoxifen 20mg</Text>
-                <Text style={[styles.medTime, { color: theme.textMuted }]}>8:00 AM ✓</Text>
-              </View>
-              <View style={styles.medRow}>
-                <View style={[styles.dot, { backgroundColor: theme.amber }]} />
-                <Text style={[styles.medName, { color: theme.text }]}>Ondansetron 4mg</Text>
-                <Text style={[styles.medTime, { color: theme.textMuted }]}>2:00 PM</Text>
-              </View>
-              <View style={styles.medRow}>
-                <View style={[styles.dot, { backgroundColor: theme.amber }]} />
-                <Text style={[styles.medName, { color: theme.text }]}>Dexamethasone 4mg</Text>
-                <Text style={[styles.medTime, { color: theme.textMuted }]}>8:00 PM</Text>
-              </View>
-            </GlassCard>
-          </Animated.View>
-
-          {/* Appointment card */}
-          <Animated.View style={card2Style}>
-            <GlassCard style={styles.card}>
-              <Text style={[styles.cardLabel, { color: theme.textMuted }]}>NEXT APPOINTMENT</Text>
-              <Text style={[styles.apptName, { color: theme.text }]}>Oncology Follow-up</Text>
-              <Text style={[styles.apptDoctor, { color: theme.textSub }]}>Dr. Sarah Chen</Text>
-              <Text style={[styles.apptTime, { color: theme.lavender }]}>Monday · 10:00 AM</Text>
-              <Text style={[styles.apptLocation, { color: theme.textMuted }]}>
-                UCSF Medical Center · Room 4B
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[
+            styles.content,
+            { paddingTop: insets.top + 16, paddingBottom: 120 },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <View>
+              <Text style={[styles.greeting, { color: theme.textMuted }]}>
+                {getGreeting().toUpperCase()}
               </Text>
-            </GlassCard>
-          </Animated.View>
+              <Text style={[styles.name, { color: theme.text }]}>Aryan</Text>
+            </View>
+            <Pressable onPress={() => setDrawerOpen(true)}>
+              <LinearGradient colors={['#6366F1', '#A78BFA']} style={styles.avatar}>
+                <Text style={styles.avatarText}>A</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
 
-          {/* AI CTA card */}
-          <Animated.View style={card3Style}>
-            <GlassCard onPress={() => router.push('/(tabs)/chat')}>
-              <View style={styles.ctaRow}>
-                <Text style={styles.ctaIcon}>✨</Text>
-                <View style={styles.ctaText}>
-                  <Text style={[styles.ctaTitle, { color: theme.text }]}>Ask your AI companion</Text>
-                  <Text style={[styles.ctaSub, { color: theme.textMuted }]}>
-                    Side effects, dosing questions, what to expect…
+          {/* Cards at 0.6x parallax */}
+          <Animated.View style={cardParallaxStyle}>
+            {/* Medications card */}
+            {!loaded ? (
+              <Animated.View style={card1Style}>
+                <GlassCard style={styles.card}>
+                  <ShimmerSkeleton width="60%" height={12} style={{ marginBottom: 12 }} />
+                  <ShimmerSkeleton width="100%" height={16} style={{ marginBottom: 8 }} />
+                  <ShimmerSkeleton width="100%" height={16} style={{ marginBottom: 8 }} />
+                  <ShimmerSkeleton width="80%" height={16} />
+                </GlassCard>
+              </Animated.View>
+            ) : (
+              <Animated.View style={card1Style}>
+                <GlassCard style={styles.card}>
+                  <View style={styles.cardHeader}>
+                    <Text style={[styles.cardLabel, { color: theme.textMuted }]}>
+                      TODAY'S MEDICATIONS
+                    </Text>
+                    <View style={[styles.badge, { backgroundColor: 'rgba(99,102,241,0.2)' }]}>
+                      <AnimatedCounter
+                        value={medRemaining}
+                        style={{ ...styles.badgeText, color: theme.accent }}
+                        suffix=" left"
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.medRow}>
+                    <View style={[styles.dot, { backgroundColor: theme.green }]} />
+                    <Text style={[styles.medName, { color: theme.text }]}>Tamoxifen 20mg</Text>
+                    <Text style={[styles.medTime, { color: theme.textMuted }]}>8:00 AM ✓</Text>
+                  </View>
+                  <View style={styles.medRow}>
+                    <View style={[styles.dot, { backgroundColor: theme.amber }]} />
+                    <Text style={[styles.medName, { color: theme.text }]}>Ondansetron 4mg</Text>
+                    <Text style={[styles.medTime, { color: theme.textMuted }]}>2:00 PM</Text>
+                  </View>
+                  <View style={styles.medRow}>
+                    <View style={[styles.dot, { backgroundColor: theme.amber }]} />
+                    <Text style={[styles.medName, { color: theme.text }]}>Dexamethasone 4mg</Text>
+                    <Text style={[styles.medTime, { color: theme.textMuted }]}>8:00 PM</Text>
+                  </View>
+                </GlassCard>
+              </Animated.View>
+            )}
+
+            {/* Appointment card */}
+            <Animated.View style={card2Style}>
+              <AnimatedBorderCard>
+                <View style={{ padding: 16 }}>
+                  <Text style={[styles.cardLabel, { color: theme.textMuted }]}>NEXT APPOINTMENT</Text>
+                  <Text style={[styles.apptName, { color: theme.text }]}>Oncology Follow-up</Text>
+                  <Text style={[styles.apptDoctor, { color: theme.textSub }]}>Dr. Sarah Chen</Text>
+                  <Text style={[styles.apptTime, { color: theme.lavender }]}>Monday · 10:00 AM</Text>
+                  <Text style={[styles.apptLocation, { color: theme.textMuted }]}>
+                    UCSF Medical Center · Room 4B
                   </Text>
                 </View>
-              </View>
-            </GlassCard>
-          </Animated.View>
-        </Animated.View>
-      </ScrollView>
+              </AnimatedBorderCard>
+            </Animated.View>
 
-      <Drawer
-        visible={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        userName="Aryan"
-        userRole="Patient"
-      />
-    </View>
+            {/* AI CTA card */}
+            <View style={theme.shadowGlowViolet}>
+              <Animated.View style={card3Style}>
+                <Pressable onPress={() => router.push('/(tabs)/chat')}>
+                  <AnimatedBorderCard>
+                    <View style={{ padding: 16 }}>
+                      <View style={styles.ctaRow}>
+                        <Text style={styles.ctaIcon}>✨</Text>
+                        <View style={styles.ctaText}>
+                          <Text style={[styles.ctaTitle, { color: theme.text }]}>Ask your AI companion</Text>
+                          <Text style={[styles.ctaSub, { color: theme.textMuted }]}>
+                            Side effects, dosing questions, what to expect…
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </AnimatedBorderCard>
+                </Pressable>
+              </Animated.View>
+            </View>
+          </Animated.View>
+        </ScrollView>
+
+        <Drawer
+          visible={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          userName="Aryan"
+          userRole="Patient"
+        />
+      </View>
+    </TabFadeWrapper>
   )
 }
 
@@ -314,4 +353,7 @@ const styles = StyleSheet.create({
   ctaText: { flex: 1 },
   ctaTitle: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
   ctaSub: { fontSize: 13, lineHeight: 18 },
+  borderCardOuter: { borderRadius: 15, overflow: 'hidden', marginBottom: 12 },
+  borderCardGradientWrap: { alignItems: 'center', justifyContent: 'center' },
+  borderCardInner: { margin: 1.5, borderRadius: 14, overflow: 'hidden' },
 })
