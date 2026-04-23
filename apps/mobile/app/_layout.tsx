@@ -1,6 +1,6 @@
 // apps/mobile/app/_layout.tsx
 import { initSentry } from '../src/lib/sentry'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 
 initSentry()
 import { Stack, useRouter, useSegments } from 'expo-router'
@@ -9,6 +9,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { StatusBar, ActivityIndicator, View } from 'react-native'
 import { useTheme } from '../src/theme'
 import { TestModeBanner } from '../src/components/TestModeBanner'
+import { useShakeDetector } from '../src/hooks/useShakeDetector'
+import { BugReportSheet } from '../src/components/BugReportSheet'
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const segments = useSegments()
@@ -44,6 +46,16 @@ function ThemedStatusBar() {
 }
 
 export default function RootLayout() {
+  const segments = useSegments()
+  const [bugReportVisible, setBugReportVisible] = useState(false)
+  const currentScreen = segments.join('/')
+
+  const handleShake = useCallback(() => {
+    setBugReportVisible(true)
+  }, [])
+
+  useShakeDetector(handleShake)
+
   return (
     <SafeAreaProvider>
       <ThemedStatusBar />
@@ -51,6 +63,11 @@ export default function RootLayout() {
       <AuthGate>
         <Stack screenOptions={{ headerShown: false }} />
       </AuthGate>
+      <BugReportSheet
+        visible={bugReportVisible}
+        currentScreen={currentScreen}
+        onClose={() => setBugReportVisible(false)}
+      />
     </SafeAreaProvider>
   )
 }
