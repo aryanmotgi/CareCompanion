@@ -27,6 +27,7 @@ const PUBLIC_PATHS = [
   '/robots.txt',
   '/sitemap.xml',
   '/favicon.ico',
+  '/api/test',               // Test/reset endpoints (gated internally by env + isDemo check)
   '/api/cron',               // Cron jobs (protected by verifyCronRequest internally)
   '/api/notifications/generate', // Notification cron
   '/api/reminders/check',    // Reminder cron
