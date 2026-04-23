@@ -34,9 +34,9 @@ export async function POST() {
   const { user: dbUser, error: authError } = await getAuthenticatedUser()
   if (authError) return authError
 
-  // Only allow demo accounts
-  if (!dbUser!.isDemo) {
-    return apiError('Only available for demo accounts', 403)
+  // Only allow test accounts (identified by email pattern)
+  if (!dbUser!.email?.includes('@test.carecompanionai.org')) {
+    return apiError('Only available for test accounts', 403)
   }
 
   const userId = dbUser!.id

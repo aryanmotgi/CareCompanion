@@ -75,7 +75,7 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
   const [resetting, setResetting] = useState(false)
 
   const isTestMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true'
-  const showTestTools = isDemo && isTestMode
+  const showTestTools = isTestMode
 
   const handleResetTestData = async () => {
     setResetting(true)
