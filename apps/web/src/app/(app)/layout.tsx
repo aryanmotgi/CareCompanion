@@ -7,6 +7,7 @@ import { AppShell } from '@/components/AppShell'
 import { ToastProvider } from '@/components/ToastProvider'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
+import { TestModeBanner } from '@/components/TestModeBanner'
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
 import { CsrfProvider } from '@/components/CsrfProvider'
 import { SessionProvider } from '@/components/providers/SessionProvider'
@@ -113,6 +114,7 @@ export default async function AppLayout({
     <CsrfProvider>
     <ToastProvider>
       <OfflineIndicator />
+      <TestModeBanner />
       <ServiceWorkerRegistration />
       <AppShell
         patientName={profile?.patientName || 'your loved one'}
