@@ -14,6 +14,9 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  useReducedMotion,
+  withRepeat,
+  withTiming,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
@@ -21,6 +24,8 @@ import * as SecureStore from 'expo-secure-store'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../src/theme'
 import { hapticAIMessage } from '../../src/utils/haptics'
+import { useGyroParallax } from '../../src/hooks/useGyroParallax'
+import { TabFadeWrapper } from './_layout'
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanion.app'
 
@@ -84,10 +89,12 @@ function AnimatedDot({ value, color }: { value: ReturnType<typeof useSharedValue
 
 function TypingDots() {
   const theme = useTheme()
+  const reduceMotion = useReducedMotion()
   const dot0 = useSharedValue(0.3)
   const dot1 = useSharedValue(0.3)
   const dot2 = useSharedValue(0.3)
   const dots = [dot0, dot1, dot2]
+  const shimmerX = useSharedValue(-1)
 
   useEffect(() => {
     function animateDots() {
@@ -104,9 +111,31 @@ function TypingDots() {
     return () => clearInterval(interval)
   }, [dot0, dot1, dot2])
 
+  useEffect(() => {
+    if (reduceMotion) return
+    shimmerX.value = withRepeat(
+      withTiming(1, { duration: 1200 }),
+      -1,
+      false,
+    )
+  }, [shimmerX, reduceMotion])
+
+  const shimmerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: shimmerX.value * 60 }],
+    opacity: 0.15,
+  }))
+
   return (
     <View style={[styles.bubbleRow, styles.typingRow]}>
       <View style={[styles.bubble, styles.aiBubble, { backgroundColor: theme.bgCard, borderColor: theme.bgCardBorder, flexDirection: 'row', gap: 4, paddingHorizontal: 14, paddingVertical: 12 }]}>
+        <Animated.View style={[StyleSheet.absoluteFill, shimmerStyle]} pointerEvents="none">
+          <LinearGradient
+            colors={['transparent', theme.lavender, 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
         {dots.map((dot, i) => (
           <AnimatedDot key={i} value={dot} color={theme.lavender} />
         ))}
@@ -115,13 +144,51 @@ function TypingDots() {
   )
 }
 
+const TAB_BAR_HEIGHT = 60
+
+function EmptyState({ color, mutedColor, sparkleStyle }: { color: string; mutedColor: string; sparkleStyle?: object }) {
+  return (
+    <View style={styles.emptyState}>
+      <Animated.View style={sparkleStyle}>
+        <Text style={[styles.emptyIcon]}>✨</Text>
+      </Animated.View>
+      <Text style={[styles.emptyTitle, { color }]}>Start a conversation</Text>
+      <Text style={[styles.emptySubtitle, { color: mutedColor }]}>
+        Ask about your medications, side effects, appointments, or anything else about your care.
+      </Text>
+    </View>
+  )
+}
+
 export default function ChatScreen() {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
+  const reduceMotion = useReducedMotion()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const listRef = useRef<FlatList>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  const headerOpacity = useSharedValue(reduceMotion ? 1 : 0)
+  const headerY = useSharedValue(reduceMotion ? 0 : 12)
+
+  useEffect(() => {
+    if (reduceMotion) return
+    headerOpacity.value = withSpring(1, { damping: 16, stiffness: 120 })
+    headerY.value = withSpring(0, { damping: 16, stiffness: 120 })
+  }, [headerOpacity, headerY, reduceMotion])
+
+  const headerAnim = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+    transform: [{ translateY: headerY.value }],
+  }))
+
+  const { parallaxStyle: emptyParallax } = useGyroParallax(0.5)
+
+  useEffect(() => {
+    return () => { abortRef.current?.abort() }
+  }, [])
 
   async function send() {
     if (!input.trim() || loading) return
@@ -130,6 +197,10 @@ export default function ChatScreen() {
     setMessages(next)
     setInput('')
     setLoading(true)
+
+    const controller = new AbortController()
+    abortRef.current = controller
+
     try {
       const token = await SecureStore.getItemAsync('cc-session-token')
       const res = await fetch(`${API_BASE}/api/chat`, {
@@ -139,6 +210,7 @@ export default function ChatScreen() {
           ...(token ? { Cookie: `authjs.session-token=${token}` } : {}),
         },
         body: JSON.stringify({ messages: next.map(({ role, content }) => ({ role, content })) }),
+        signal: controller.signal,
       })
       const data = await res.json() as { content?: string }
       const reply: Message = {
@@ -148,7 +220,8 @@ export default function ChatScreen() {
       }
       setMessages((prev) => [...prev, reply])
       hapticAIMessage()
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
       setMessages((prev) => [
         ...prev,
         { id: (Date.now() + 1).toString(), role: 'assistant', content: 'Something went wrong. Please try again.' },
@@ -159,67 +232,74 @@ export default function ChatScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.root, { backgroundColor: theme.bg }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
-    >
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 16, borderBottomColor: theme.border }]}>
-        <BlurView intensity={60} tint={theme.isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
-        <Text style={[styles.headerTitle, { color: theme.text }]}>AI Companion</Text>
-        <Text style={[styles.headerSub, { color: theme.textMuted }]}>Always here for you</Text>
-      </View>
-
-      <FlatList
-        ref={listRef}
-        data={messages}
-        keyExtractor={(m) => m.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => <MessageBubble message={item} />}
-        ListFooterComponent={loading ? <TypingDots /> : null}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
-      />
-
-      {/* Input */}
-      <View
-        style={[
-          styles.inputBar,
-          {
-            paddingBottom: insets.bottom + 8,
-            borderTopColor: theme.border,
-            backgroundColor: theme.isDark ? 'rgba(12,14,26,0.95)' : 'rgba(255,255,255,0.95)',
-          },
-        ]}
+    <TabFadeWrapper>
+      <KeyboardAvoidingView
+        style={[styles.root, { backgroundColor: theme.bg }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
       >
-        <BlurView intensity={60} tint={theme.isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
-        <TextInput
+        {/* Header */}
+        <Animated.View style={headerAnim}>
+          <View style={[styles.header, { paddingTop: insets.top + 16, borderBottomColor: theme.border }]}>
+            <BlurView intensity={60} tint={theme.isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+            <Text style={[styles.headerTitle, { color: theme.text }]}>AI Companion</Text>
+            <Text style={[styles.headerSub, { color: theme.textMuted }]}>Always here for you</Text>
+          </View>
+        </Animated.View>
+
+        <FlatList
+          ref={listRef}
+          data={messages}
+          keyExtractor={(m) => m.id}
+          contentContainerStyle={[styles.list, messages.length === 0 && styles.listEmpty]}
+          renderItem={({ item }) => <MessageBubble message={item} />}
+          ListEmptyComponent={!loading ? <EmptyState color={theme.text} mutedColor={theme.textMuted} sparkleStyle={emptyParallax} /> : null}
+          ListFooterComponent={loading ? <TypingDots /> : null}
+          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+        />
+
+        {/* Input */}
+        <View
           style={[
-            styles.input,
+            styles.inputBar,
             {
-              backgroundColor: theme.bgCard,
-              borderColor: theme.bgCardBorder,
-              color: theme.text,
+              paddingBottom: insets.bottom + TAB_BAR_HEIGHT + 8,
+              borderTopColor: theme.border,
+              backgroundColor: theme.isDark ? 'rgba(12,14,26,0.95)' : 'rgba(255,255,255,0.95)',
             },
           ]}
-          value={input}
-          onChangeText={setInput}
-          placeholder="Ask about your care..."
-          placeholderTextColor={theme.textMuted}
-          multiline
-          returnKeyType="send"
-          onSubmitEditing={send}
-        />
-        <Pressable onPress={send} disabled={loading}>
-          <LinearGradient
-            colors={['#6366F1', '#A78BFA']}
-            style={styles.sendBtn}
-          >
-            <Text style={styles.sendIcon}>↑</Text>
-          </LinearGradient>
-        </Pressable>
-      </View>
-    </KeyboardAvoidingView>
+        >
+          <BlurView intensity={60} tint={theme.isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.bgCard,
+                borderColor: theme.bgCardBorder,
+                color: theme.text,
+              },
+            ]}
+            value={input}
+            onChangeText={setInput}
+            placeholder="Ask about your care..."
+            placeholderTextColor={theme.textMuted}
+            multiline
+            returnKeyType="send"
+            onSubmitEditing={send}
+          />
+          <View style={theme.shadowGlowViolet}>
+            <Pressable onPress={send} disabled={loading}>
+              <LinearGradient
+                colors={['#6366F1', '#A78BFA']}
+                style={styles.sendBtn}
+              >
+                <Text style={styles.sendIcon}>↑</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </TabFadeWrapper>
   )
 }
 
@@ -228,7 +308,12 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingBottom: 16, borderBottomWidth: 1, overflow: 'hidden' },
   headerTitle: { fontSize: 20, fontWeight: '700', zIndex: 1 },
   headerSub: { fontSize: 13, zIndex: 1 },
-  list: { padding: 16, gap: 8 },
+  list: { padding: 16, gap: 8, paddingBottom: TAB_BAR_HEIGHT + 16 },
+  listEmpty: { flexGrow: 1, justifyContent: 'center' },
+  emptyState: { alignItems: 'center', paddingHorizontal: 32 },
+  emptyIcon: { fontSize: 40, marginBottom: 16 },
+  emptyTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
+  emptySubtitle: { fontSize: 15, lineHeight: 22, textAlign: 'center' },
   bubbleRow: { maxWidth: '80%' },
   userRow: { alignSelf: 'flex-end' },
   typingRow: { alignSelf: 'flex-start' },
