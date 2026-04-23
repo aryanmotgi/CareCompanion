@@ -113,7 +113,6 @@ function MedRow({ med, onTake, disabled }: { med: Med; onTake: (logId: string, m
 
   function handleTake() {
     if (!canTake || !med.logId) return
-    hapticMedTaken()
     rowOpacity.value = withTiming(0.5, { duration: 300 })
     checkScale.value = withSpring(1, { damping: 8, stiffness: 300 })
     onTake(med.logId, med.id)

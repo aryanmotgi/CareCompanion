@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
+import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '../src/theme'
 import { GlassCard } from '../src/components/GlassCard'
 import { RippleButton } from '../src/components/RippleButton'
@@ -156,9 +157,13 @@ export default function HealthSummaryScreen() {
       const data = await res.json()
       setSummary(data.summary)
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to generate summary',
-      )
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('This is taking longer than expected. Please try again.')
+      } else {
+        setError(
+          err instanceof Error ? err.message : 'Failed to generate summary',
+        )
+      }
     } finally {
       setGenerating(false)
     }
@@ -218,7 +223,7 @@ export default function HealthSummaryScreen() {
         {!generating && error && (
           <GlassCard style={s.stateCard}>
             <View style={s.errorInner}>
-              <Text style={[s.errorEmoji]}>{'!'}</Text>
+              <Ionicons name="alert-circle" size={40} color={t.rose} />
               <Text style={[s.errorText, { color: t.rose }]}>{error}</Text>
               <RippleButton
                 onPress={generateSummary}

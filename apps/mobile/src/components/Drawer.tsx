@@ -113,7 +113,7 @@ export function Drawer({ visible, onClose, userName, userRole = 'Patient' }: Dra
           onPress={() => navigate('/insurance')}
         >
           <Text style={styles.itemIcon}>💳</Text>
-          <Text style={[styles.itemLabel, { color: '#34D399' }]}>Insurance & Claims</Text>
+          <Text style={[styles.itemLabel, { color: theme.green }]}>Insurance & Claims</Text>
         </Pressable>
 
         <View style={{ flex: 1 }} />

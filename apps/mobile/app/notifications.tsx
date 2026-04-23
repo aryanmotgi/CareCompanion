@@ -61,8 +61,7 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
-  useEffect(() => {
-    async function fetchNotifications() {
+  async function fetchNotifications() {
       try {
         const token = await SecureStore.getItemAsync('cc-session-token')
         if (!token) {
@@ -85,12 +84,13 @@ export default function NotificationsScreen() {
         const data = await res.json()
         setNotifications(Array.isArray(data) ? data : data.notifications || [])
       } catch {
-        // API not available — show empty state gracefully
-        setError(false)
+        setError(true)
       } finally {
         setLoading(false)
       }
-    }
+  }
+
+  useEffect(() => {
     fetchNotifications()
   }, [])
 
@@ -121,6 +121,29 @@ export default function NotificationsScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.accent} />
+        </View>
+      ) : error ? (
+        <View style={styles.center}>
+          <Ionicons name="alert-circle" size={48} color={theme.rose} />
+          <Text style={[styles.emptyTitle, { color: theme.text, marginTop: 16 }]}>
+            Could not load notifications
+          </Text>
+          <Pressable
+            onPress={() => {
+              setError(false)
+              setLoading(true)
+              fetchNotifications()
+            }}
+            style={{
+              marginTop: 16,
+              backgroundColor: theme.accent,
+              paddingHorizontal: 20,
+              paddingVertical: 10,
+              borderRadius: 20,
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
+          </Pressable>
         </View>
       ) : notifications.length === 0 ? (
         /* Empty state */

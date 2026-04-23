@@ -32,6 +32,7 @@ export default function EmergencyScreen() {
 
   const [medications, setMedications] = useState<Medication[]>([])
   const [medsLoading, setMedsLoading] = useState(true)
+  const [medsError, setMedsError] = useState(false)
 
   useEffect(() => {
     if (!profile?.careProfileId) {
@@ -41,7 +42,7 @@ export default function EmergencyScreen() {
     apiClient.medications
       .list(profile.careProfileId)
       .then(setMedications)
-      .catch(() => {})
+      .catch(() => { setMedsError(true) })
       .finally(() => setMedsLoading(false))
   }, [profile?.careProfileId])
 
@@ -217,7 +218,9 @@ export default function EmergencyScreen() {
               accessibilityLabel={`Current medications: ${medications.length > 0 ? medications.map((m) => m.name).join(', ') : 'None listed'}`}
             >
               <Text style={[s.sectionLabel, { color: t.textMuted }]}>CURRENT MEDICATIONS</Text>
-              {medications.length === 0 ? (
+              {medsError ? (
+                <Text style={[s.sectionValue, { color: t.rose }]}>Could not load medications</Text>
+              ) : medications.length === 0 ? (
                 <Text style={[s.sectionValue, { color: t.textSub }]}>None listed</Text>
               ) : (
                 medications.map((med) => (
