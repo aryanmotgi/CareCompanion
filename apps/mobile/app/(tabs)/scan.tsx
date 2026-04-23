@@ -1,6 +1,6 @@
 // apps/mobile/app/(tabs)/scan.tsx
-import React, { useState } from 'react'
-import { View, Text, Pressable, StyleSheet, Dimensions } from 'react-native'
+import React, { useState, useRef, useEffect } from 'react'
+import { View, Text, StyleSheet, Dimensions } from 'react-native'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -13,7 +13,11 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../src/theme'
 import { ParticleBurst } from '../../src/components/ParticleBurst'
-import { hapticScanSuccess } from '../../src/utils/haptics'
+import { useStaggerEntrance } from '../../src/hooks/useStaggerEntrance'
+import { useGyroParallax } from '../../src/hooks/useGyroParallax'
+import { RippleButton } from '../../src/components/RippleButton'
+import { TabFadeWrapper } from './_layout'
+import * as Haptics from 'expo-haptics'
 
 const { width } = Dimensions.get('window')
 const SCAN_SIZE = width - 64
@@ -24,9 +28,17 @@ export default function ScanScreen() {
   const reduceMotion = useReducedMotion()
   const [scanning, setScanning] = useState(false)
   const [burstActive, setBurstActive] = useState(false)
+  const scanTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const stagger = useStaggerEntrance(4)
+  const { parallaxStyle: viewportParallax } = useGyroParallax(0.2)
 
   const laserY = useSharedValue(0)
   const laserOpacity = useSharedValue(0)
+
+  useEffect(() => {
+    return () => { if (scanTimer.current) clearTimeout(scanTimer.current) }
+  }, [])
 
   function startScan() {
     setScanning(true)
@@ -40,14 +52,15 @@ export default function ScanScreen() {
         true,
       )
     } else {
-      laserOpacity.value = 1  // Keep laser visible but static
+      laserOpacity.value = 1
     }
 
-    // Simulate scan completing after 3s
-    setTimeout(() => {
+    scanTimer.current = setTimeout(() => {
       setScanning(false)
       laserOpacity.value = withTiming(0, { duration: reduceMotion ? 0 : 200 })
-      hapticScanSuccess()
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      setTimeout(() => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium), 150)
+      setTimeout(() => void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success), 300)
       setBurstActive(true)
     }, 3000)
   }
@@ -58,91 +71,97 @@ export default function ScanScreen() {
   }))
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.bg, paddingTop: insets.top + 16 }]}>
-      <Text style={[styles.title, { color: theme.text }]}>Scan Document</Text>
-      <Text style={[styles.sub, { color: theme.textMuted }]}>
-        Photograph a prescription, lab report, or insurance card
-      </Text>
+    <TabFadeWrapper>
+      <View style={[styles.root, { backgroundColor: theme.bg, paddingTop: insets.top + 16 }]}>
+        <Animated.View style={stagger[0]}>
+          <Text style={[styles.title, { color: theme.text }]}>Scan Document</Text>
+        </Animated.View>
+        <Animated.View style={stagger[1]}>
+          <Text style={[styles.sub, { color: theme.textMuted }]}>
+            Photograph a prescription, lab report, or insurance card
+          </Text>
+        </Animated.View>
 
-      {/* Scan viewport */}
-      <View style={styles.viewportWrapper}>
-        <View
-          style={[
-            styles.viewport,
-            {
-              width: SCAN_SIZE,
-              height: SCAN_SIZE,
-              borderColor: scanning ? theme.accent : theme.border,
-              backgroundColor: scanning ? 'rgba(99,102,241,0.05)' : theme.bgElevated,
-            },
-          ]}
-        >
-          {/* Corner brackets */}
-          {[
-            { top: -1, left: -1, borderTopWidth: 2, borderLeftWidth: 2, borderTopLeftRadius: 4 },
-            { top: -1, right: -1, borderTopWidth: 2, borderRightWidth: 2, borderTopRightRadius: 4 },
-            { bottom: -1, left: -1, borderBottomWidth: 2, borderLeftWidth: 2, borderBottomLeftRadius: 4 },
-            { bottom: -1, right: -1, borderBottomWidth: 2, borderRightWidth: 2, borderBottomRightRadius: 4 },
-          ].map((s, i) => (
-            <View
-              key={i}
-              style={[styles.bracket, { borderColor: theme.accent, width: 20, height: 20 }, s]}
-            />
-          ))}
+        {/* Scan viewport */}
+        <Animated.View style={[styles.viewportWrapper, stagger[2]]}>
+          <View
+            style={[
+              styles.viewport,
+              {
+                width: SCAN_SIZE,
+                height: SCAN_SIZE,
+                borderColor: scanning ? theme.accent : theme.border,
+                backgroundColor: scanning ? 'rgba(99,102,241,0.05)' : theme.bgElevated,
+              },
+            ]}
+          >
+            <Animated.View style={viewportParallax}>
+              {/* Corner brackets */}
+              {[
+                { top: -1, left: -1, borderTopWidth: 2, borderLeftWidth: 2, borderTopLeftRadius: 4 },
+                { top: -1, right: -1, borderTopWidth: 2, borderRightWidth: 2, borderTopRightRadius: 4 },
+                { bottom: -1, left: -1, borderBottomWidth: 2, borderLeftWidth: 2, borderBottomLeftRadius: 4 },
+                { bottom: -1, right: -1, borderBottomWidth: 2, borderRightWidth: 2, borderBottomRightRadius: 4 },
+              ].map((s, i) => (
+                <View
+                  key={i}
+                  style={[styles.bracket, { borderColor: theme.accent, width: 20, height: 20 }, s]}
+                />
+              ))}
 
-          {/* Laser line */}
-          {scanning && (
-            <Animated.View style={[styles.laserWrapper, laserStyle]}>
-              <LinearGradient
-                colors={['transparent', '#6366F1', '#6EE7B7', 'transparent']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.laser}
-              />
+              {/* Laser line */}
+              {scanning && (
+                <Animated.View style={[styles.laserWrapper, laserStyle]}>
+                  <LinearGradient
+                    colors={['transparent', '#6366F1', '#6EE7B7', 'transparent']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.laser}
+                  />
+                </Animated.View>
+              )}
+
+              {/* Idle content */}
+              {!scanning && (
+                <View style={styles.idleContent}>
+                  <Text style={{ fontSize: 48 }}>📄</Text>
+                  <Text style={[styles.idleText, { color: theme.textMuted }]}>
+                    Tap below to start scanning
+                  </Text>
+                </View>
+              )}
+
+              {/* Scanning text */}
+              {scanning && (
+                <View style={styles.scanningLabel}>
+                  <Text style={[styles.scanningText, { color: theme.accent }]}>Scanning…</Text>
+                </View>
+              )}
+
+              {/* Particle burst origin */}
+              <View style={styles.burstOrigin} pointerEvents="none">
+                <ParticleBurst active={burstActive} onComplete={() => setBurstActive(false)} />
+              </View>
             </Animated.View>
-          )}
-
-          {/* Idle content */}
-          {!scanning && (
-            <View style={styles.idleContent}>
-              <Text style={{ fontSize: 48 }}>📄</Text>
-              <Text style={[styles.idleText, { color: theme.textMuted }]}>
-                Tap below to start scanning
-              </Text>
-            </View>
-          )}
-
-          {/* Scanning text */}
-          {scanning && (
-            <View style={styles.scanningLabel}>
-              <Text style={[styles.scanningText, { color: theme.accent }]}>Scanning…</Text>
-            </View>
-          )}
-
-          {/* Particle burst origin */}
-          <View style={styles.burstOrigin} pointerEvents="none">
-            <ParticleBurst active={burstActive} onComplete={() => setBurstActive(false)} />
           </View>
-        </View>
-      </View>
+        </Animated.View>
 
-      {/* Button */}
-      <Pressable onPress={scanning ? undefined : startScan} style={styles.btnWrapper}>
-        <LinearGradient
-          colors={['#6366F1', '#A78BFA']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[styles.btn, scanning && { opacity: 0.6 }]}
-        >
-          <Text style={styles.btnText}>{scanning ? 'Scanning…' : 'Open Camera'}</Text>
-        </LinearGradient>
-      </Pressable>
-    </View>
+        {/* Button */}
+        <Animated.View style={[styles.btnWrapper, stagger[3]]}>
+          <RippleButton
+            onPress={scanning ? undefined : startScan}
+            disabled={scanning}
+          >
+            <Text style={styles.btnText}>{scanning ? 'Scanning...' : 'Open Camera'}</Text>
+          </RippleButton>
+        </Animated.View>
+      </View>
+    </TabFadeWrapper>
   )
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: 'center', paddingHorizontal: 32 },
+  root: { flex: 1, alignItems: 'center', paddingHorizontal: 32, paddingBottom: 100 },
   title: { fontSize: 24, fontWeight: '700', marginBottom: 8, alignSelf: 'flex-start' },
   sub: { fontSize: 14, marginBottom: 40, alignSelf: 'flex-start' },
   viewportWrapper: { alignItems: 'center', marginBottom: 40 },
@@ -163,6 +182,5 @@ const styles = StyleSheet.create({
   scanningText: { fontSize: 14, fontWeight: '600', letterSpacing: 1 },
   burstOrigin: { position: 'absolute', alignSelf: 'center' },
   btnWrapper: { width: '100%' },
-  btn: { borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 })
