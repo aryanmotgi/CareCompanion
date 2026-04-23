@@ -33,9 +33,9 @@ const apiClient = createApiClient({
   getToken: () => SecureStore.getItemAsync('cc-session-token'),
 })
 
-type Message = { id: string; role: 'user' | 'assistant'; content: string }
+type Message = { id: string; role: 'user' | 'assistant'; content: string; isError?: boolean; failedInput?: string }
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({ message, onRetry }: { message: Message; onRetry?: (text: string) => void }) {
   const theme = useTheme()
   const scale = useSharedValue(0.7)
   const ty = useSharedValue(8)
@@ -64,6 +64,32 @@ function MessageBubble({ message }: { message: Message }) {
         >
           <Text style={styles.userText}>{message.content}</Text>
         </LinearGradient>
+      </Animated.View>
+    )
+  }
+
+  if (message.isError && message.failedInput && onRetry) {
+    return (
+      <Animated.View style={[styles.bubbleRow, style]}>
+        <Pressable
+          onPress={() => onRetry(message.failedInput!)}
+          accessibilityRole="button"
+          accessibilityLabel="Message failed. Tap to retry."
+        >
+          <View
+            style={[
+              styles.bubble,
+              styles.aiBubble,
+              {
+                backgroundColor: theme.bgCard,
+                borderColor: theme.rose,
+              },
+            ]}
+          >
+            <Text style={[styles.aiText, { color: theme.text }]}>{message.content}</Text>
+            <Text style={[styles.retryHint, { color: theme.rose }]}>Tap to retry</Text>
+          </View>
+        </Pressable>
       </Animated.View>
     )
   }
@@ -271,6 +297,7 @@ export default function ChatScreen() {
 
   async function sendWithText(text: string) {
     if (!text.trim() || loading) return
+    const originalInput = text
     const msg: Message = { id: Date.now().toString(), role: 'user', content: text }
     const next = [...messages, msg]
     setMessages(next)
@@ -299,11 +326,23 @@ export default function ChatScreen() {
       csrfTokenRef.current = null
       setMessages((prev) => [
         ...prev,
-        { id: (Date.now() + 1).toString(), role: 'assistant', content: 'Something went wrong. Please try again.' },
+        {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: 'Something went wrong. Please try again.',
+          isError: true,
+          failedInput: originalInput,
+        },
       ])
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleRetry(failedText: string) {
+    // Remove the error message before retrying
+    setMessages((prev) => prev.filter((m) => !m.isError))
+    sendWithText(failedText)
   }
 
   async function send() {
@@ -344,7 +383,7 @@ export default function ChatScreen() {
           data={messages}
           keyExtractor={(m) => m.id}
           contentContainerStyle={[styles.list, messages.length === 0 && styles.listEmpty]}
-          renderItem={({ item }) => <MessageBubble message={item} />}
+          renderItem={({ item }) => <MessageBubble message={item} onRetry={handleRetry} />}
           ListEmptyComponent={!loading ? <EmptyState color={theme.text} mutedColor={theme.textMuted} sparkleStyle={emptyParallax} onSuggestionPress={sendSuggestion} /> : null}
           ListFooterComponent={loading ? <TypingDots /> : null}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
@@ -421,6 +460,7 @@ const styles = StyleSheet.create({
   },
   userText: { color: '#fff', fontSize: 15, lineHeight: 22 },
   aiText: { fontSize: 15, lineHeight: 22 },
+  retryHint: { fontSize: 12, fontWeight: '600', marginTop: 6 },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',

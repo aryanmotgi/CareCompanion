@@ -120,7 +120,12 @@ function MedRow({ med, onTake, disabled }: { med: Med; onTake: (logId: string, m
   }
 
   return (
-    <Animated.View style={rowStyle}>
+    <Animated.View
+      style={rowStyle}
+      accessibilityLabel={`${med.name} ${med.dose}, ${med.status === 'taken' ? 'taken' : 'not yet taken'}`}
+      accessibilityRole="button"
+      accessibilityHint={canTake ? 'Double tap to mark as taken' : undefined}
+    >
       <GlassCard style={styles.medCard}>
         <View style={styles.medRow}>
           <BreathingDot status={med.status} />
@@ -165,7 +170,10 @@ function LabRow({ lab }: { lab: Lab }) {
   }, [lab.status])
 
   return (
-    <GlassCard style={styles.labCard}>
+    <GlassCard
+      style={styles.labCard}
+      accessibilityLabel={`${lab.name}: ${lab.value}, ${lab.status}`}
+    >
       <View style={styles.labRow}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.labName, { color: theme.text }]}>{lab.name}</Text>
@@ -198,7 +206,10 @@ function AppointmentRow({ appointment }: { appointment: any }) {
     : ''
 
   return (
-    <GlassCard style={styles.apptCard}>
+    <GlassCard
+      style={styles.apptCard}
+      accessibilityLabel={`${appointment.doctorName || 'Appointment'}, ${dateStr}${timeStr ? ` at ${timeStr}` : ''}`}
+    >
       <View style={styles.apptRow}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.apptDoctor, { color: theme.text }]}>

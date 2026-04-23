@@ -52,6 +52,7 @@ export default function SearchScreen() {
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
+  const [searchError, setSearchError] = useState<'not-ready' | 'generic' | null>(null)
 
   function handleQueryChange(text: string) {
     setQuery(text)
@@ -69,6 +70,7 @@ export default function SearchScreen() {
     if (debouncedQuery.length < 2) {
       setResults([])
       setSearched(false)
+      setSearchError(null)
       return
     }
 
@@ -76,6 +78,7 @@ export default function SearchScreen() {
 
     async function fetchResults() {
       setLoading(true)
+      setSearchError(null)
       try {
         const token = await SecureStore.getItemAsync('cc-session-token')
         const isSecure = API_BASE.startsWith('https://')
@@ -92,10 +95,10 @@ export default function SearchScreen() {
           },
         )
         if (!res.ok) {
-          // endpoint doesn't exist yet — gracefully handle
           if (!cancelled) {
             setResults([])
             setSearched(true)
+            setSearchError(res.status === 404 ? 'not-ready' : 'generic')
           }
           return
         }
@@ -103,11 +106,13 @@ export default function SearchScreen() {
         if (!cancelled) {
           setResults(data.results ?? [])
           setSearched(true)
+          setSearchError(null)
         }
       } catch {
         if (!cancelled) {
           setResults([])
           setSearched(true)
+          setSearchError('generic')
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -185,10 +190,28 @@ export default function SearchScreen() {
         {/* Empty state — no results */}
         {!loading && searched && results.length === 0 && (
           <View style={styles.center}>
-            <Ionicons name="search-outline" size={48} color={theme.textMuted} style={styles.emptyIcon} />
-            <Text style={[styles.emptyText, { color: theme.textMuted }]}>
-              No results for &apos;{debouncedQuery}&apos;
-            </Text>
+            {searchError === 'not-ready' ? (
+              <>
+                <Ionicons name="construct-outline" size={48} color={theme.textMuted} style={styles.emptyIcon} />
+                <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+                  Search is being set up. Check back soon.
+                </Text>
+              </>
+            ) : searchError === 'generic' ? (
+              <>
+                <Ionicons name="alert-circle-outline" size={48} color={theme.textMuted} style={styles.emptyIcon} />
+                <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+                  Something went wrong. Try again.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="search-outline" size={48} color={theme.textMuted} style={styles.emptyIcon} />
+                <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+                  No results for &apos;{debouncedQuery}&apos;
+                </Text>
+              </>
+            )}
           </View>
         )}
 
