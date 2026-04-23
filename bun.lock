@@ -6,6 +6,7 @@
       "name": "carecompanion",
       "dependencies": {
         "bcryptjs": "^3.0.3",
+        "expo-image-picker": "16.0.6",
       },
       "devDependencies": {
         "husky": "^9.1.7",
