@@ -1,12 +1,17 @@
-import PostHog from 'posthog-react-native'
+let PostHog: any = null
+try {
+  PostHog = require('posthog-react-native').default
+} catch {
+  // Native module not available in this build
+}
 
 const POSTHOG_KEY = process.env.EXPO_PUBLIC_POSTHOG_KEY || ''
 const POSTHOG_HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com'
 
-let client: PostHog | null = null
+let client: any = null
 
 export async function initAnalytics() {
-  if (!POSTHOG_KEY) return
+  if (!POSTHOG_KEY || !PostHog) return
   client = new PostHog(POSTHOG_KEY, {
     host: POSTHOG_HOST,
   })
