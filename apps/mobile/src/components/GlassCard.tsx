@@ -8,6 +8,7 @@ import Animated, {
   interpolateColor,
 } from 'react-native-reanimated'
 import { BlurView } from 'expo-blur'
+import * as Haptics from 'expo-haptics'
 import { useTheme } from '../theme'
 
 interface GlassCardProps {
@@ -32,6 +33,7 @@ export function GlassCard({ children, onPress, style }: GlassCardProps) {
   }))
 
   function onPressIn() {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft)
     scale.value = withSpring(0.97, { damping: 20, stiffness: 300 })
     pressed.value = withSpring(1, { damping: 20, stiffness: 300 })
     setBlurIntensity(30)
