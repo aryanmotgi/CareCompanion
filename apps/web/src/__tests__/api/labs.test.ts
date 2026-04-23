@@ -58,7 +58,9 @@ describe('Labs API — /api/records/labs', () => {
     vi.mocked(db.select).mockReturnValueOnce({
       from: vi.fn(() => ({
         where: vi.fn(() => ({
-          orderBy: vi.fn(() => Promise.resolve(mockLabs)),
+          orderBy: vi.fn(() => ({
+            limit: vi.fn(() => Promise.resolve(mockLabs)),
+          })),
         })),
       })),
     } as never)

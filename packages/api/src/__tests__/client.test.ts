@@ -13,7 +13,7 @@ describe('createApiClient', () => {
     const client = createApiClient({ baseUrl: BASE_URL })
     await client.medications.list('profile-1')
     expect(fetch).toHaveBeenCalledWith(
-      `${BASE_URL}/api/medications?careProfileId=profile-1`,
+      `${BASE_URL}/api/records/medications?care_profile_id=profile-1`,
       expect.objectContaining({ method: 'GET' })
     )
   })
