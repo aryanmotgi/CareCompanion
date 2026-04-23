@@ -1,6 +1,6 @@
 // apps/mobile/app/(tabs)/care.tsx
 import React, { useEffect, useRef, useState } from 'react'
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native'
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -12,12 +12,20 @@ import Animated, {
   useReducedMotion,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import * as SecureStore from 'expo-secure-store'
 import { useTheme } from '../../src/theme'
 import { GlassCard } from '../../src/components/GlassCard'
 import { hapticMedTaken, hapticAbnormalLabEntrance } from '../../src/utils/haptics'
 import { useStaggerEntrance } from '../../src/hooks/useStaggerEntrance'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { TabFadeWrapper } from './_layout'
+import { useProfile } from '../../src/context/ProfileContext'
+import { createApiClient } from '@carecompanion/api'
+
+const apiClient = createApiClient({
+  baseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org',
+  getToken: () => SecureStore.getItemAsync('cc-session-token'),
+})
 
 type MedStatus = 'taken' | 'upcoming' | 'overdue'
 
@@ -37,18 +45,6 @@ interface Lab {
   date: string
   status: 'normal' | 'borderline' | 'abnormal'
 }
-
-const MEDS: Med[] = [
-  { id: '1', name: 'Tamoxifen', dose: '20mg', time: '8:00 AM', status: 'taken' },
-  { id: '2', name: 'Ondansetron', dose: '4mg', time: '2:00 PM', status: 'upcoming' },
-  { id: '3', name: 'Dexamethasone', dose: '4mg', time: '8:00 PM', status: 'upcoming' },
-]
-
-const LABS: Lab[] = [
-  { id: '1', name: 'WBC', value: '3.2', range: '4.0–11.0', date: 'Apr 18', status: 'abnormal' },
-  { id: '2', name: 'Hemoglobin', value: '11.4', range: '12.0–16.0', date: 'Apr 18', status: 'borderline' },
-  { id: '3', name: 'Platelets', value: '220', range: '150–400', date: 'Apr 18', status: 'normal' },
-]
 
 function BreathingDot({ status }: { status: MedStatus }) {
   const theme = useTheme()
@@ -173,11 +169,48 @@ function LabRow({ lab }: { lab: Lab }) {
 export default function CareScreen() {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
+  const { profile } = useProfile()
   const [tab, setTab] = useState<'meds' | 'labs'>('meds')
-  const [meds, setMeds] = useState(MEDS)
+  const [meds, setMeds] = useState<Med[]>([])
+  const [labs, setLabs] = useState<Lab[]>([])
+  const [loading, setLoading] = useState(true)
 
   const stagger = useStaggerEntrance(3)
   const { parallaxStyle } = useGyroParallax(0.3)
+
+  useEffect(() => {
+    if (!profile?.careProfileId) return
+    setLoading(true)
+    Promise.all([
+      apiClient.medications.list(profile.careProfileId),
+      apiClient.labResults.list(profile.careProfileId),
+    ]).then(([medsData, labsData]) => {
+      // Map API medications to the Med interface
+      const mappedMeds: Med[] = (medsData as any[]).map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        dose: m.dose || '',
+        time: m.frequency || '',
+        status: 'upcoming' as MedStatus, // Default; real status needs reminderLogs
+      }))
+      setMeds(mappedMeds)
+
+      // Map API labs to the Lab interface
+      const mappedLabs: Lab[] = (labsData as any).labs?.map((l: any) => ({
+        id: l.id,
+        name: l.testName,
+        value: String(l.value),
+        range: l.referenceRange || '',
+        date: l.dateTaken ? new Date(l.dateTaken).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+        status: l.status === 'abnormal' ? 'abnormal' : l.status === 'borderline' ? 'borderline' : 'normal',
+      })) || []
+      setLabs(mappedLabs)
+    }).catch(err => {
+      console.error('Failed to load care data:', err)
+    }).finally(() => {
+      setLoading(false)
+    })
+  }, [profile?.careProfileId])
 
   function takeMed(id: string) {
     setMeds((prev) => prev.map((m) => m.id === id ? { ...m, status: 'taken' as MedStatus } : m))
@@ -215,9 +248,23 @@ export default function CareScreen() {
         <Animated.View style={[stagger[2], { flex: 1 }]}>
           <ScrollView contentContainerStyle={[styles.list, { paddingBottom: 120 }]}>
             <Animated.View style={parallaxStyle}>
-              {tab === 'meds'
-                ? meds.map((m) => <MedRow key={m.id} med={m} onTake={takeMed} />)
-                : LABS.map((l) => <LabRow key={l.id} lab={l} />)}
+              {loading ? (
+                <View style={styles.emptyContainer}>
+                  <ActivityIndicator size="large" color={theme.accent} />
+                </View>
+              ) : tab === 'meds' ? (
+                meds.length > 0
+                  ? meds.map((m) => <MedRow key={m.id} med={m} onTake={takeMed} />)
+                  : <View style={styles.emptyContainer}>
+                      <Text style={[styles.emptyText, { color: theme.textMuted }]}>No medications yet</Text>
+                    </View>
+              ) : (
+                labs.length > 0
+                  ? labs.map((l) => <LabRow key={l.id} lab={l} />)
+                  : <View style={styles.emptyContainer}>
+                      <Text style={[styles.emptyText, { color: theme.textMuted }]}>No lab results yet</Text>
+                    </View>
+              )}
             </Animated.View>
           </ScrollView>
         </Animated.View>
@@ -254,4 +301,6 @@ const styles = StyleSheet.create({
   labRange: { fontSize: 12, marginTop: 2 },
   labValue: { fontSize: 18, fontWeight: '700' },
   labDate: { fontSize: 12, marginTop: 2 },
+  emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48 },
+  emptyText: { fontSize: 15, fontWeight: '500' },
 })
