@@ -12,6 +12,7 @@ interface SettingsPageProps {
   settings: UserSettings | null
   medicationReminders?: MedicationReminder[]
   medications?: Medication[]
+  isDemo?: boolean
 }
 
 function SettingsRow({
@@ -60,7 +61,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function SettingsPage({ settings: initialSettings, medicationReminders = [], medications = [] }: SettingsPageProps) {
+export function SettingsPage({ settings: initialSettings, medicationReminders = [], medications = [], isDemo = false }: SettingsPageProps) {
   const { showToast } = useToast()
   const csrfToken = useCsrfToken()
   const [settings, setSettings] = useState<UserSettings | null>(initialSettings)
@@ -71,6 +72,27 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
   const [exporting, setExporting] = useState(false)
   const [importing, setImporting] = useState(false)
   const [showCsvMenu, setShowCsvMenu] = useState(false)
+  const [resetting, setResetting] = useState(false)
+
+  const isTestMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true'
+  const showTestTools = isDemo && isTestMode
+
+  const handleResetTestData = async () => {
+    setResetting(true)
+    try {
+      const res = await fetch('/api/test/reset', { method: 'POST' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as { error?: string }).error || 'Reset failed')
+      }
+      showToast('Test data reset to initial state', 'success')
+      window.location.reload()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to reset test data', 'error')
+    } finally {
+      setResetting(false)
+    }
+  }
 
   const handleExportCsv = async (type: string) => {
     setShowCsvMenu(false)
@@ -369,6 +391,19 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
         <SettingsRow label="Terms of Service" onClick={() => window.open('/terms', '_blank')} />
         <SettingsRow label="Privacy Policy" onClick={() => window.open('/privacy', '_blank')} />
       </SettingsGroup>
+
+      {showTestTools && (
+        <>
+          <SectionLabel>Test Tools</SectionLabel>
+          <SettingsGroup>
+            <SettingsRow
+              label={resetting ? 'Resetting...' : 'Reset Test Data'}
+              description="Restore this account to the initial seed state (staging only)"
+              onClick={resetting ? undefined : handleResetTestData}
+            />
+          </SettingsGroup>
+        </>
+      )}
 
       <div className="h-8" />
     </div>
