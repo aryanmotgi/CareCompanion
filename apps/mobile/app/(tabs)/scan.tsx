@@ -1,15 +1,8 @@
 // apps/mobile/app/(tabs)/scan.tsx
-import React, { useState, useRef, useEffect } from 'react'
-import { View, Text, StyleSheet, Dimensions } from 'react-native'
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  Easing,
-  useReducedMotion,
-} from 'react-native-reanimated'
-import { LinearGradient } from 'expo-linear-gradient'
+import React, { useState } from 'react'
+import { View, Text, Image, Alert, Linking, StyleSheet, Dimensions } from 'react-native'
+import Animated from 'react-native-reanimated'
+import * as ImagePicker from 'expo-image-picker'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../src/theme'
 import { ParticleBurst } from '../../src/components/ParticleBurst'
@@ -25,48 +18,38 @@ const SCAN_SIZE = width - 64
 export default function ScanScreen() {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
-  const reduceMotion = useReducedMotion()
-  const [scanning, setScanning] = useState(false)
   const [burstActive, setBurstActive] = useState(false)
-  const scanTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [capturedImage, setCapturedImage] = useState<string | null>(null)
 
   const stagger = useStaggerEntrance(4)
   const { parallaxStyle: viewportParallax } = useGyroParallax(0.2)
 
-  const laserY = useSharedValue(0)
-  const laserOpacity = useSharedValue(0)
-
-  useEffect(() => {
-    return () => { if (scanTimer.current) clearTimeout(scanTimer.current) }
-  }, [])
-
-  function startScan() {
-    setScanning(true)
-
-    if (!reduceMotion) {
-      laserOpacity.value = withTiming(1, { duration: 200 })
-      laserY.value = 0
-      laserY.value = withRepeat(
-        withTiming(SCAN_SIZE, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
-        -1,
-        true,
+  async function startScan() {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync()
+    if (status !== 'granted') {
+      Alert.alert(
+        'Camera Access Needed',
+        'CareCompanion needs camera access to scan documents. You can enable it in Settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+        ],
       )
-    } else {
-      laserOpacity.value = 1
+      return
     }
 
-    scanTimer.current = setTimeout(() => {
-      setScanning(false)
-      laserOpacity.value = withTiming(0, { duration: reduceMotion ? 0 : 200 })
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+      allowsEditing: true,
+    })
+
+    if (!result.canceled && result.assets[0]) {
+      setCapturedImage(result.assets[0].uri)
       hapticScanComplete()
       setBurstActive(true)
-    }, 3000)
+    }
   }
-
-  const laserStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: laserY.value }],
-    opacity: laserOpacity.value,
-  }))
 
   return (
     <TabFadeWrapper>
@@ -88,8 +71,8 @@ export default function ScanScreen() {
               {
                 width: SCAN_SIZE,
                 height: SCAN_SIZE,
-                borderColor: scanning ? theme.accent : theme.border,
-                backgroundColor: scanning ? 'rgba(99,102,241,0.05)' : theme.bgElevated,
+                borderColor: theme.border,
+                backgroundColor: theme.bgElevated,
               },
             ]}
           >
@@ -107,34 +90,13 @@ export default function ScanScreen() {
                 />
               ))}
 
-              {/* Laser line */}
-              {scanning && (
-                <Animated.View style={[styles.laserWrapper, laserStyle]}>
-                  <LinearGradient
-                    colors={['transparent', '#6366F1', '#6EE7B7', 'transparent']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.laser}
-                  />
-                </Animated.View>
-              )}
-
               {/* Idle content */}
-              {!scanning && (
-                <View style={styles.idleContent}>
-                  <Text style={{ fontSize: 48 }}>📄</Text>
-                  <Text style={[styles.idleText, { color: theme.textMuted }]}>
-                    Tap below to start scanning
-                  </Text>
-                </View>
-              )}
-
-              {/* Scanning text */}
-              {scanning && (
-                <View style={styles.scanningLabel}>
-                  <Text style={[styles.scanningText, { color: theme.accent }]}>Scanning…</Text>
-                </View>
-              )}
+              <View style={styles.idleContent}>
+                <Text style={{ fontSize: 48 }}>📄</Text>
+                <Text style={[styles.idleText, { color: theme.textMuted }]}>
+                  Tap below to start scanning
+                </Text>
+              </View>
 
               {/* Particle burst origin */}
               <View style={styles.burstOrigin} pointerEvents="none">
@@ -144,13 +106,19 @@ export default function ScanScreen() {
           </View>
         </Animated.View>
 
+        {capturedImage && (
+          <View style={{ marginTop: 16, marginHorizontal: 32, borderRadius: 12, overflow: 'hidden' }}>
+            <Image source={{ uri: capturedImage }} style={{ width: '100%', height: 200, borderRadius: 12 }} />
+            <Text style={{ color: theme.textSub, textAlign: 'center', marginTop: 8, fontSize: 13 }}>
+              Document captured
+            </Text>
+          </View>
+        )}
+
         {/* Button */}
         <Animated.View style={[styles.btnWrapper, stagger[3]]}>
-          <RippleButton
-            onPress={scanning ? undefined : startScan}
-            disabled={scanning}
-          >
-            <Text style={styles.btnText}>{scanning ? 'Scanning...' : 'Open Camera'}</Text>
+          <RippleButton onPress={startScan}>
+            <Text style={styles.btnText}>Open Camera</Text>
           </RippleButton>
         </Animated.View>
       </View>
@@ -172,12 +140,8 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   bracket: { position: 'absolute' },
-  laserWrapper: { position: 'absolute', left: 0, right: 0 },
-  laser: { height: 2, shadowColor: '#6366F1', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 6, elevation: 6 },
   idleContent: { alignItems: 'center', gap: 12 },
   idleText: { fontSize: 14, textAlign: 'center' },
-  scanningLabel: { position: 'absolute', bottom: 16 },
-  scanningText: { fontSize: 14, fontWeight: '600', letterSpacing: 1 },
   burstOrigin: { position: 'absolute', alignSelf: 'center' },
   btnWrapper: { width: '100%' },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
