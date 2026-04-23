@@ -57,7 +57,7 @@ export function BugReportButton() {
         aria-label="Report a bug"
         style={{
           position: 'fixed',
-          bottom: 20,
+          bottom: 80,
           right: 20,
           zIndex: 9998,
           width: 44,
@@ -96,7 +96,7 @@ export function BugReportButton() {
         <div
           style={{
             position: 'fixed',
-            bottom: 74,
+            bottom: 134,
             right: 20,
             zIndex: 9999,
             width: 320,
