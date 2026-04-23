@@ -17,7 +17,7 @@ import { useStaggerEntrance } from '../../src/hooks/useStaggerEntrance'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { RippleButton } from '../../src/components/RippleButton'
 import { TabFadeWrapper } from './_layout'
-import * as Haptics from 'expo-haptics'
+import { hapticScanComplete } from '../../src/utils/haptics'
 
 const { width } = Dimensions.get('window')
 const SCAN_SIZE = width - 64
@@ -58,9 +58,7 @@ export default function ScanScreen() {
     scanTimer.current = setTimeout(() => {
       setScanning(false)
       laserOpacity.value = withTiming(0, { duration: reduceMotion ? 0 : 200 })
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-      setTimeout(() => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium), 150)
-      setTimeout(() => void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success), 300)
+      hapticScanComplete()
       setBurstActive(true)
     }, 3000)
   }

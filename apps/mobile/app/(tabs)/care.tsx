@@ -14,7 +14,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../src/theme'
 import { GlassCard } from '../../src/components/GlassCard'
-import { hapticMedTaken, hapticAbnormalLab } from '../../src/utils/haptics'
+import { hapticMedTaken, hapticAbnormalLabEntrance } from '../../src/utils/haptics'
 import { useStaggerEntrance } from '../../src/hooks/useStaggerEntrance'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { TabFadeWrapper } from './_layout'
@@ -150,7 +150,7 @@ function LabRow({ lab }: { lab: Lab }) {
   useEffect(() => {
     if (lab.status === 'abnormal' && !abnormalFired.current) {
       abnormalFired.current = true
-      hapticAbnormalLab()
+      hapticAbnormalLabEntrance()
     }
   }, [lab.status])
 

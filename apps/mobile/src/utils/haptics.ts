@@ -21,3 +21,21 @@ export function hapticAIMessage(): void {
 export function hapticScanSuccess(): void {
   void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 }
+
+/** Escalating scan complete: light → medium → success */
+export function hapticScanComplete(): void {
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+  setTimeout(() => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium), 150)
+  setTimeout(() => void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success), 300)
+}
+
+/** Double warning pulse for abnormal lab values on entrance */
+export function hapticAbnormalLabEntrance(): void {
+  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
+  setTimeout(() => void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning), 100)
+}
+
+/** Soft landing for card entrance */
+export function hapticCardLand(): void {
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft)
+}
