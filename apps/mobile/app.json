@@ -23,10 +23,7 @@
       },
       "entitlements": {
         "com.apple.developer.healthkit": true,
-        "com.apple.developer.healthkit.background-delivery": true,
-        "com.apple.developer.healthkit.access": [
-          "health-records"
-        ]
+        "com.apple.developer.healthkit.background-delivery": true
       }
     },
     "plugins": [

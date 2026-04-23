@@ -27,6 +27,7 @@ export function Drawer({ visible, onClose, userName, userRole = 'Patient' }: Dra
   const router = useRouter()
   const translateX = useSharedValue(-DRAWER_WIDTH)
   const backdropOpacity = useSharedValue(0)
+  const timers = React.useRef<ReturnType<typeof setTimeout>[]>([])
 
   React.useEffect(() => {
     if (visible) {
@@ -38,6 +39,10 @@ export function Drawer({ visible, onClose, userName, userRole = 'Patient' }: Dra
     }
   }, [visible, translateX, backdropOpacity])
 
+  React.useEffect(() => {
+    return () => { timers.current.forEach(clearTimeout) }
+  }, [])
+
   const drawerStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }))
@@ -47,13 +52,13 @@ export function Drawer({ visible, onClose, userName, userRole = 'Patient' }: Dra
 
   function navigate(path: string) {
     onClose()
-    setTimeout(() => router.push(path as Parameters<typeof router.push>[0]), 250)
+    timers.current.push(setTimeout(() => router.push(path as Parameters<typeof router.push>[0]), 250))
   }
 
   async function signOut() {
     onClose()
     await SecureStore.deleteItemAsync('cc-session-token')
-    setTimeout(() => router.replace('/login'), 250)
+    timers.current.push(setTimeout(() => router.replace('/login'), 250))
   }
 
   if (!visible && backdropOpacity.value === 0) return null
