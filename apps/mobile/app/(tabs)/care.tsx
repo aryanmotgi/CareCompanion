@@ -243,7 +243,10 @@ export default function CareScreen() {
   const { parallaxStyle } = useGyroParallax(0.3)
 
   useEffect(() => {
-    if (!profile?.careProfileId) return
+    if (!profile?.careProfileId) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     Promise.all([
       apiClient.medications.list(profile.careProfileId),

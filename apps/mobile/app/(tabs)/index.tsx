@@ -153,7 +153,7 @@ export default function HomeScreen() {
     })
   }, [])
 
-  const showProfileCard = profilePercent < 100 && !profileDismissed
+  const showProfileCard = !!profile && profilePercent < 100 && !profileDismissed
 
   const handleDismissProfile = () => {
     setProfileDismissed(true)
