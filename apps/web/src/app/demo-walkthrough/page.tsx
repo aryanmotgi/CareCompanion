@@ -30,7 +30,7 @@ function StepCard({ step, title, children }: { step: number; title: string; chil
 export default function DemoWalkthroughPage() {
 
   return (
-    <div className="min-h-dvh bg-[#080A14] page-grid">
+    <div className="min-h-dvh bg-[#080A14]">
       <PublicNav />
       <div className="max-w-3xl mx-auto px-4 sm:px-5 pt-24 pb-8 space-y-6">
 

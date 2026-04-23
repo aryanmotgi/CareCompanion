@@ -12,14 +12,6 @@
   animation: shake 0.5s ease-in-out;
 }
 
-/* ===== Global grid background ===== */
-.page-grid {
-  background-image:
-    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
-  background-size: 72px 72px;
-}
-
 /* ===== DESIGN SYSTEM: Blue & Lavender Care ===== */
 
 :root {

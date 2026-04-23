@@ -29,7 +29,7 @@ export default function AboutPage() {
   const containerRef = useScrollReveal();
 
   return (
-    <div className="min-h-dvh bg-[#080A14] text-[var(--text)] relative overflow-hidden page-grid">
+    <div className="min-h-dvh bg-[#080A14] text-[var(--text)] relative overflow-hidden">
       {/* Background glow orbs */}
       <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
         <div className="absolute -top-40 left-1/4 w-[500px] h-[500px] rounded-full bg-[#6366F1]/[0.06] blur-[120px]" />

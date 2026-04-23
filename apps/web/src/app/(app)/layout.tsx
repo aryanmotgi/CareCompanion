@@ -142,7 +142,7 @@ export default async function AppLayout({
         patientName={profile?.patientName || 'your loved one'}
         patientAge={profile?.patientAge ?? undefined}
         relationship={profile?.relationship ?? undefined}
-        userName={dbUser.displayName || session.user.email || ''}
+        userName={dbUser.displayName || session.user.name || ''}
         notifications={unread}
         profiles={allProfiles}
         activeProfileId={profile?.id || null}

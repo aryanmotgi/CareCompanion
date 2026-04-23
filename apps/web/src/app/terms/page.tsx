@@ -29,7 +29,7 @@ export default function TermsOfService() {
   const containerRef = useScrollReveal();
 
   return (
-    <div className="min-h-dvh bg-[#080A14] text-[var(--text)] relative overflow-hidden page-grid">
+    <div className="min-h-dvh bg-[#080A14] text-[var(--text)] relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
         <div className="absolute -top-40 left-1/3 w-[500px] h-[500px] rounded-full bg-[#A78BFA]/[0.05] blur-[120px]" />
         <div className="absolute top-[70%] -right-32 w-[350px] h-[350px] rounded-full bg-[#6366F1]/[0.04] blur-[100px]" />

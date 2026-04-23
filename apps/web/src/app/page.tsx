@@ -469,7 +469,7 @@ export default function LandingPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#080A14] overflow-x-hidden text-white page-grid">
+    <main className="min-h-screen bg-[#080A14] overflow-x-hidden text-white">
 
       {/* ── Navigation ── */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-[#080A14]/95 backdrop-blur-xl border-b border-white/[0.07]' : 'bg-transparent'}`}>
