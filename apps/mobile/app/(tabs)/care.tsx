@@ -238,6 +238,8 @@ export default function CareScreen() {
   const [labs, setLabs] = useState<Lab[]>([])
   const [appointments, setAppointments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
   const [takingId, setTakingId] = useState<string | null>(null)
 
   const stagger = useStaggerEntrance(3)
@@ -282,10 +284,11 @@ export default function CareScreen() {
       setAppointments(mappedAppts)
     }).catch(err => {
       console.error('Failed to load care data:', err)
+      setError('Failed to load care data')
     }).finally(() => {
       setLoading(false)
     })
-  }, [profile?.careProfileId])
+  }, [profile?.careProfileId, retryCount])
 
   async function markAsTaken(logId: string, medId: string) {
     if (takingId) return // double-tap guard
@@ -328,6 +331,17 @@ export default function CareScreen() {
         </View>
       )
     }
+
+    if (error) return (
+      <GlassCard style={{ padding: 32, alignItems: 'center' }}>
+        <Ionicons name="alert-circle-outline" size={40} color={theme.rose} style={{ marginBottom: 12 }} />
+        <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600', marginBottom: 4 }}>Something went wrong</Text>
+        <Text style={{ color: theme.textMuted, fontSize: 13, marginBottom: 16 }}>{error}</Text>
+        <Pressable onPress={() => { setError(null); setRetryCount(c => c + 1) }} style={{ backgroundColor: theme.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 }}>
+          <Text style={{ color: '#fff', fontWeight: '600' }}>Try Again</Text>
+        </Pressable>
+      </GlassCard>
+    )
 
     switch (tab) {
       case 'meds':

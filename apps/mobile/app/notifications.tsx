@@ -64,13 +64,19 @@ export default function NotificationsScreen() {
   useEffect(() => {
     async function fetchNotifications() {
       try {
-        const token = await SecureStore.getItemAsync('session_token')
+        const token = await SecureStore.getItemAsync('cc-session-token')
         if (!token) {
           setLoading(false)
           return
         }
-        const res = await fetch('/api/notifications', {
-          headers: { Authorization: `Bearer ${token}` },
+        const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
+        const isSecure = baseUrl.startsWith('https://')
+        const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
+        const res = await fetch(`${baseUrl}/api/notifications`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Cookie: `${cookieName}=${token}`,
+          },
         })
         if (!res.ok) {
           setLoading(false)

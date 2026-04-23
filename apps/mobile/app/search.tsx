@@ -15,7 +15,7 @@ import * as SecureStore from 'expo-secure-store'
 import { useTheme } from '../src/theme'
 import { GlassCard } from '../src/components/GlassCard'
 
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanion.app'
+const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
 
 interface SearchResult {
   id: string
@@ -77,11 +77,18 @@ export default function SearchScreen() {
     async function fetchResults() {
       setLoading(true)
       try {
-        const token = await SecureStore.getItemAsync('auth_token')
+        const token = await SecureStore.getItemAsync('cc-session-token')
+        const isSecure = API_BASE.startsWith('https://')
+        const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
         const res = await fetch(
           `${API_BASE}/api/search?q=${encodeURIComponent(debouncedQuery)}`,
           {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            headers: token
+              ? {
+                  Authorization: `Bearer ${token}`,
+                  Cookie: `${cookieName}=${token}`,
+                }
+              : {},
           },
         )
         if (!res.ok) {

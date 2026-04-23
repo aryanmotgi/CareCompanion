@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { useTheme, useThemeOverride, setThemeOverride, ThemeOverride } from '../../src/theme'
+import { useProfile } from '../../src/context/ProfileContext'
 import { GlassCard } from '../../src/components/GlassCard'
 import { LinearGradient } from 'expo-linear-gradient'
 import Animated from 'react-native-reanimated'
@@ -18,6 +19,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const stagger = useStaggerEntrance(8)
+  const { profile } = useProfile()
 
   const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({
     medications: true,
@@ -69,10 +71,10 @@ export default function SettingsScreen() {
           <GlassCard style={styles.section}>
             <View style={styles.profileRow}>
               <LinearGradient colors={['#6366F1', '#A78BFA']} style={styles.avatar}>
-                <Text style={styles.avatarText}>A</Text>
+                <Text style={styles.avatarText}>{(profile?.displayName || 'U')[0].toUpperCase()}</Text>
               </LinearGradient>
               <View>
-                <Text style={[styles.name, { color: theme.text }]}>Aryan</Text>
+                <Text style={[styles.name, { color: theme.text }]}>{profile?.displayName || profile?.patientName || 'User'}</Text>
                 <Text style={[styles.role, { color: theme.textMuted }]}>Patient</Text>
               </View>
             </View>

@@ -143,7 +143,7 @@ export default function HomeScreen() {
     })
   }, [profile?.careProfileId])
 
-  const displayName = profile?.patientName || profile?.displayName || 'there'
+  const displayName = profile?.patientName?.trim() || profile?.displayName?.trim() || 'there'
   const medCount = meds.length
 
   // --- Profile completion tracker ---
