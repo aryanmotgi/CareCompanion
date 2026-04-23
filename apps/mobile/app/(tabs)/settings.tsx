@@ -16,7 +16,7 @@ export default function SettingsScreen() {
   const activeTheme = useThemeOverride()
   const insets = useSafeAreaInsets()
   const router = useRouter()
-  const stagger = useStaggerEntrance(7)
+  const stagger = useStaggerEntrance(8)
 
   const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({
     medications: true,
@@ -169,8 +169,52 @@ export default function SettingsScreen() {
           </GlassCard>
         </Animated.View>
 
+        {/* Test Tools (staging only) */}
+        {process.env.EXPO_PUBLIC_TEST_MODE === 'true' && (
+          <Animated.View style={stagger[6]}>
+            <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>TEST TOOLS</Text>
+            <Pressable
+              onPress={() => {
+                Alert.alert(
+                  'Reset Test Data',
+                  'This will restore your account to the initial seed state. Continue?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Reset',
+                      style: 'destructive',
+                      onPress: async () => {
+                        const token = await SecureStore.getItemAsync('cc-session-token')
+                        if (!token) return
+                        try {
+                          const res = await fetch(
+                            `${process.env.EXPO_PUBLIC_API_URL ?? 'https://carecompanionai.org'}/api/test/reset`,
+                            {
+                              method: 'POST',
+                              headers: { Authorization: `Bearer ${token}` },
+                            }
+                          )
+                          if (!res.ok) throw new Error('Reset failed')
+                          Alert.alert('Done', 'Test data has been reset.')
+                          router.replace('/(tabs)')
+                        } catch {
+                          Alert.alert('Error', 'Failed to reset test data. Please try again.')
+                        }
+                      },
+                    },
+                  ]
+                )
+              }}
+            >
+              <GlassCard style={{ ...styles.section, borderColor: 'rgba(251,191,36,0.3)' }}>
+                <Text style={[styles.signOut, { color: '#f59e0b' }]}>Reset Test Data</Text>
+              </GlassCard>
+            </Pressable>
+          </Animated.View>
+        )}
+
         {/* Sign out */}
-        <Animated.View style={stagger[6]}>
+        <Animated.View style={stagger[7]}>
           <Pressable onPress={signOut}>
             <GlassCard style={{ ...styles.section, borderColor: 'rgba(252,165,165,0.2)' }}>
               <Text style={[styles.signOut, { color: theme.rose }]}>Sign Out</Text>
