@@ -115,7 +115,7 @@ export default function EmergencyScreen() {
   return (
     <View
       style={[s.container, { backgroundColor: t.bg, paddingTop: insets.top }]}
-      accessibilityRole="main"
+      accessibilityRole="summary"
       accessibilityLabel="Emergency medical information card"
     >
       {/* Header bar */}
