@@ -15,6 +15,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../src/theme'
 import { GlassCard } from '../../src/components/GlassCard'
 import { hapticMedTaken, hapticAbnormalLab } from '../../src/utils/haptics'
+import { useStaggerEntrance } from '../../src/hooks/useStaggerEntrance'
+import { useGyroParallax } from '../../src/hooks/useGyroParallax'
+import { TabFadeWrapper } from './_layout'
 
 type MedStatus = 'taken' | 'upcoming' | 'overdue'
 
@@ -122,7 +125,7 @@ function MedRow({ med, onTake }: { med: Med; onTake: (id: string) => void }) {
               style={[
                 styles.checkInner,
                 { borderColor: taken ? theme.accent : theme.border },
-                taken && { backgroundColor: theme.accent },
+                taken && { backgroundColor: theme.accent, ...theme.shadowGlowEmerald },
                 checkStyle,
               ]}
             >
@@ -140,6 +143,10 @@ function LabRow({ lab }: { lab: Lab }) {
   const abnormalFired = useRef(false)
   const valueColor = lab.status === 'normal' ? theme.green : lab.status === 'borderline' ? theme.amber : theme.rose
 
+  const glowStyle = lab.status === 'abnormal' ? theme.shadowGlowRose
+    : lab.status === 'normal' ? theme.shadowGlowCyan
+    : undefined
+
   useEffect(() => {
     if (lab.status === 'abnormal' && !abnormalFired.current) {
       abnormalFired.current = true
@@ -154,7 +161,7 @@ function LabRow({ lab }: { lab: Lab }) {
           <Text style={[styles.labName, { color: theme.text }]}>{lab.name}</Text>
           <Text style={[styles.labRange, { color: theme.textMuted }]}>Ref: {lab.range}</Text>
         </View>
-        <View style={{ alignItems: 'flex-end' }}>
+        <View style={[{ alignItems: 'flex-end' }, glowStyle]}>
           <Text style={[styles.labValue, { color: valueColor }]}>{lab.value}</Text>
           <Text style={[styles.labDate, { color: theme.textMuted }]}>{lab.date}</Text>
         </View>
@@ -169,40 +176,53 @@ export default function CareScreen() {
   const [tab, setTab] = useState<'meds' | 'labs'>('meds')
   const [meds, setMeds] = useState(MEDS)
 
+  const stagger = useStaggerEntrance(3)
+  const { parallaxStyle } = useGyroParallax(0.3)
+
   function takeMed(id: string) {
     setMeds((prev) => prev.map((m) => m.id === id ? { ...m, status: 'taken' as MedStatus } : m))
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.bg }]}>
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Care</Text>
+    <TabFadeWrapper>
+      <View style={[styles.root, { backgroundColor: theme.bg }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+          <Animated.View style={stagger[0]}>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Care</Text>
+          </Animated.View>
 
-        {/* Segment control */}
-        <View style={[styles.segment, { backgroundColor: theme.bgElevated }]}>
-          {(['meds', 'labs'] as const).map((t) => (
-            <Pressable
-              key={t}
-              style={[
-                styles.segBtn,
-                tab === t && { backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 8 },
-              ]}
-              onPress={() => setTab(t)}
-            >
-              <Text style={[styles.segLabel, { color: tab === t ? theme.accentHover : theme.textMuted }]}>
-                {t === 'meds' ? 'Medications' : 'Labs'}
-              </Text>
-            </Pressable>
-          ))}
+          {/* Segment control */}
+          <Animated.View style={stagger[1]}>
+            <View style={[styles.segment, { backgroundColor: theme.bgElevated }]}>
+              {(['meds', 'labs'] as const).map((t) => (
+                <Pressable
+                  key={t}
+                  style={[
+                    styles.segBtn,
+                    tab === t && { backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 8 },
+                  ]}
+                  onPress={() => setTab(t)}
+                >
+                  <Text style={[styles.segLabel, { color: tab === t ? theme.accentHover : theme.textMuted }]}>
+                    {t === 'meds' ? 'Medications' : 'Labs'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </Animated.View>
         </View>
-      </View>
 
-      <ScrollView contentContainerStyle={[styles.list, { paddingBottom: 120 }]}>
-        {tab === 'meds'
-          ? meds.map((m) => <MedRow key={m.id} med={m} onTake={takeMed} />)
-          : LABS.map((l) => <LabRow key={l.id} lab={l} />)}
-      </ScrollView>
-    </View>
+        <Animated.View style={[stagger[2], { flex: 1 }]}>
+          <ScrollView contentContainerStyle={[styles.list, { paddingBottom: 120 }]}>
+            <Animated.View style={parallaxStyle}>
+              {tab === 'meds'
+                ? meds.map((m) => <MedRow key={m.id} med={m} onTake={takeMed} />)
+                : LABS.map((l) => <LabRow key={l.id} lab={l} />)}
+            </Animated.View>
+          </ScrollView>
+        </Animated.View>
+      </View>
+    </TabFadeWrapper>
   )
 }
 
