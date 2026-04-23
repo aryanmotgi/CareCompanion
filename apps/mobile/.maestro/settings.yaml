@@ -1,0 +1,7 @@
+appId: com.carecompanion.app
+---
+- launchApp
+- runFlow: login.yaml
+- tapOn: "Settings"
+- assertVisible: "Notifications"
+- assertVisible: "Sign Out"
