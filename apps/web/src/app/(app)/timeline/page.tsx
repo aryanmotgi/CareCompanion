@@ -52,10 +52,10 @@ async function TimelineData() {
   if (!profile) redirect('/setup');
 
   const [meds, appts, labs, symptoms] = await Promise.all([
-    db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).orderBy(desc(medications.createdAt)),
-    db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(desc(appointments.dateTime)),
-    db.select().from(labResults).where(eq(labResults.userId, dbUser.id)).orderBy(desc(labResults.dateTaken)),
-    db.select().from(symptomEntries).where(eq(symptomEntries.userId, dbUser.id)).orderBy(desc(symptomEntries.date)),
+    db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).orderBy(desc(medications.createdAt)).catch(() => []),
+    db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(desc(appointments.dateTime)).catch(() => []),
+    db.select().from(labResults).where(eq(labResults.userId, dbUser.id)).orderBy(desc(labResults.dateTaken)).catch(() => []),
+    db.select().from(symptomEntries).where(eq(symptomEntries.userId, dbUser.id)).orderBy(desc(symptomEntries.date)).catch(() => []),
   ]);
 
   return (

@@ -18,8 +18,8 @@ async function ProfileContent() {
   if (!profile) redirect('/setup');
 
   const [docs, labs] = await Promise.all([
-    db.select().from(doctors).where(eq(doctors.careProfileId, profile.id)),
-    db.select().from(labResults).where(eq(labResults.userId, dbUser.id)).orderBy(desc(labResults.dateTaken)).limit(50),
+    db.select().from(doctors).where(eq(doctors.careProfileId, profile.id)).catch(() => []),
+    db.select().from(labResults).where(eq(labResults.userId, dbUser.id)).orderBy(desc(labResults.dateTaken)).limit(50).catch(() => []),
   ]);
 
   return (

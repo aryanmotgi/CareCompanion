@@ -15,14 +15,15 @@ export default async function EmergencyPage() {
   const [profile] = await db.select().from(careProfiles).where(eq(careProfiles.userId, dbUser.id)).limit(1);
   if (!profile) redirect('/setup');
 
-  const [meds, docs, [ins]] = await Promise.all([
+  const [meds, docs, insRows] = await Promise.all([
     db.select({ name: medications.name, dose: medications.dose, frequency: medications.frequency })
-      .from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))),
+      .from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).catch(() => []),
     db.select({ name: doctors.name, specialty: doctors.specialty, phone: doctors.phone })
-      .from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))),
+      .from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))).catch(() => []),
     db.select({ provider: insurance.provider, memberId: insurance.memberId, groupNumber: insurance.groupNumber })
-      .from(insurance).where(eq(insurance.userId, dbUser.id)).limit(1),
+      .from(insurance).where(eq(insurance.userId, dbUser.id)).limit(1).catch(() => []),
   ]);
+  const [ins] = insRows;
 
   return (
     <EmergencyCard

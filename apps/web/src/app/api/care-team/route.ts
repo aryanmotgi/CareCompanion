@@ -25,17 +25,20 @@ export async function GET() {
   const [members, invites, activity] = await Promise.all([
     db.select().from(careTeamMembers)
       .where(eq(careTeamMembers.careProfileId, profileId))
-      .orderBy(asc(careTeamMembers.createdAt)),
+      .orderBy(asc(careTeamMembers.createdAt))
+      .catch(() => []),
     db.select().from(careTeamInvites)
       .where(and(
         eq(careTeamInvites.careProfileId, profileId),
         eq(careTeamInvites.status, 'pending')
       ))
-      .orderBy(desc(careTeamInvites.createdAt)),
+      .orderBy(desc(careTeamInvites.createdAt))
+      .catch(() => []),
     db.select().from(careTeamActivity)
       .where(eq(careTeamActivity.careProfileId, profileId))
       .orderBy(desc(careTeamActivity.createdAt))
-      .limit(20),
+      .limit(20)
+      .catch(() => []),
   ]);
 
   // Enrich members with user info from local users table

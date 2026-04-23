@@ -38,15 +38,15 @@ async function postHandler(req: Request) {
   if (!profile) return Response.json({ error: 'No care profile found' }, { status: 400 });
 
   const [meds, docs, appts, labs, [ins],, priorAuthsData, memoriesData, symptoms] = await Promise.all([
-    db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))),
-    db.select().from(doctors).where(eq(doctors.careProfileId, profile.id)),
-    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)).orderBy(desc(appointments.dateTime)).limit(10),
-    db.select().from(labResults).where(eq(labResults.userId, dbUser!.id)).orderBy(desc(labResults.dateTaken)).limit(25),
-    db.select().from(insurance).where(eq(insurance.userId, dbUser!.id)).limit(1),
-    db.select().from(claims).where(eq(claims.userId, dbUser!.id)).orderBy(desc(claims.createdAt)).limit(10),
-    db.select().from(priorAuths).where(eq(priorAuths.userId, dbUser!.id)),
-    db.select({ fact: memories.fact, category: memories.category }).from(memories).where(eq(memories.userId, dbUser!.id)).orderBy(desc(memories.lastReferenced)).limit(30),
-    db.select().from(symptomEntries).where(eq(symptomEntries.userId, dbUser!.id)).orderBy(desc(symptomEntries.date)).limit(14),
+    db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).catch(() => []),
+    db.select().from(doctors).where(eq(doctors.careProfileId, profile.id)).catch(() => []),
+    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)).orderBy(desc(appointments.dateTime)).limit(10).catch(() => []),
+    db.select().from(labResults).where(eq(labResults.userId, dbUser!.id)).orderBy(desc(labResults.dateTaken)).limit(25).catch(() => []),
+    db.select().from(insurance).where(eq(insurance.userId, dbUser!.id)).limit(1).catch(() => []),
+    db.select().from(claims).where(eq(claims.userId, dbUser!.id)).orderBy(desc(claims.createdAt)).limit(10).catch(() => []),
+    db.select().from(priorAuths).where(eq(priorAuths.userId, dbUser!.id)).catch(() => []),
+    db.select({ fact: memories.fact, category: memories.category }).from(memories).where(eq(memories.userId, dbUser!.id)).orderBy(desc(memories.lastReferenced)).limit(30).catch(() => []),
+    db.select().from(symptomEntries).where(eq(symptomEntries.userId, dbUser!.id)).orderBy(desc(symptomEntries.date)).limit(14).catch(() => []),
   ]);
 
   const abnormalLabs = labs.filter((l) => l.isAbnormal);

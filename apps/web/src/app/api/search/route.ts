@@ -38,6 +38,7 @@ export async function GET(req: Request) {
               ilike(medications.name, searchPattern),
             ))
             .limit(5)
+            .catch(() => [])
         : [],
       profileId
         ? db.select({ id: appointments.id, doctorName: appointments.doctorName, specialty: appointments.specialty, dateTime: appointments.dateTime, location: appointments.location })
@@ -51,6 +52,7 @@ export async function GET(req: Request) {
               ),
             ))
             .limit(5)
+            .catch(() => [])
         : [],
       db.select({ id: labResults.id, testName: labResults.testName, value: labResults.value, unit: labResults.unit, dateTaken: labResults.dateTaken, isAbnormal: labResults.isAbnormal })
         .from(labResults)
@@ -58,7 +60,8 @@ export async function GET(req: Request) {
           eq(labResults.userId, user!.id),
           ilike(labResults.testName, searchPattern),
         ))
-        .limit(5),
+        .limit(5)
+        .catch(() => []),
       profileId
         ? db.select({ id: documents.id, documentType: documents.documentType, summary: documents.summary, createdAt: documents.createdAt })
             .from(documents)
@@ -70,6 +73,7 @@ export async function GET(req: Request) {
               ),
             ))
             .limit(5)
+            .catch(() => [])
         : [],
       db.select({ id: symptomEntries.id, notes: symptomEntries.notes, symptoms: symptomEntries.symptoms, createdAt: symptomEntries.createdAt })
         .from(symptomEntries)
@@ -77,7 +81,8 @@ export async function GET(req: Request) {
           eq(symptomEntries.userId, user!.id),
           ilike(symptomEntries.notes, searchPattern),
         ))
-        .limit(5),
+        .limit(5)
+        .catch(() => []),
     ])
 
     const results = [

@@ -21,10 +21,11 @@ async function InsuranceContent() {
   const [dbUser] = await db.select({ id: users.id, providerSub: users.providerSub, email: users.email, displayName: users.displayName, isDemo: users.isDemo, createdAt: users.createdAt }).from(users).where(eq(users.email, session.user.email!)).limit(1);
   if (!dbUser) redirect('/login');
 
-  const [claimsData, [ins]] = await Promise.all([
-    db.select().from(claims).where(eq(claims.userId, dbUser.id)).orderBy(desc(claims.serviceDate)),
-    db.select().from(insurance).where(eq(insurance.userId, dbUser.id)).limit(1),
+  const [claimsData, insRows] = await Promise.all([
+    db.select().from(claims).where(eq(claims.userId, dbUser.id)).orderBy(desc(claims.serviceDate)).catch(() => []),
+    db.select().from(insurance).where(eq(insurance.userId, dbUser.id)).limit(1).catch(() => []),
   ]);
+  const [ins] = insRows;
 
   return (
     <InsuranceView

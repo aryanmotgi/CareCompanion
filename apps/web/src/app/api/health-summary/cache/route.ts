@@ -71,10 +71,10 @@ async function generateAndCache(userId: string) {
   if (!profile) return ApiErrors.notFound('Care profile')
 
   const [meds, appts, labs, notifs] = await Promise.all([
-    db.select().from(medications).where(eq(medications.careProfileId, profile.id)),
-    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)),
-    db.select().from(labResults).where(eq(labResults.userId, userId)).orderBy(desc(labResults.dateTaken)).limit(20),
-    db.select().from(notifications).where(and(eq(notifications.userId, userId), eq(notifications.isRead, false))).limit(5),
+    db.select().from(medications).where(eq(medications.careProfileId, profile.id)).catch(() => []),
+    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)).catch(() => []),
+    db.select().from(labResults).where(eq(labResults.userId, userId)).orderBy(desc(labResults.dateTaken)).limit(20).catch(() => []),
+    db.select().from(notifications).where(and(eq(notifications.userId, userId), eq(notifications.isRead, false))).limit(5).catch(() => []),
   ])
 
   const healthScore = calculateHealthScore(meds, labs, appts)

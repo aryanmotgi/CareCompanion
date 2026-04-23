@@ -30,11 +30,11 @@ export async function GET(req: Request) {
     if (!profile) return ApiErrors.notFound('Care profile')
 
     const [meds, docs, appts, labs, claimsData] = await Promise.all([
-      db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).orderBy(asc(medications.name)),
-      db.select().from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))).orderBy(asc(doctors.name)),
-      db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(asc(appointments.dateTime)),
-      db.select().from(labResults).where(eq(labResults.userId, dbUser!.id)).orderBy(desc(labResults.dateTaken)).limit(30),
-      db.select().from(claims).where(eq(claims.userId, dbUser!.id)).orderBy(desc(claims.serviceDate)).limit(20),
+      db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).orderBy(asc(medications.name)).catch(() => []),
+      db.select().from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))).orderBy(asc(doctors.name)).catch(() => []),
+      db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(asc(appointments.dateTime)).catch(() => []),
+      db.select().from(labResults).where(eq(labResults.userId, dbUser!.id)).orderBy(desc(labResults.dateTaken)).limit(30).catch(() => []),
+      db.select().from(claims).where(eq(claims.userId, dbUser!.id)).orderBy(desc(claims.serviceDate)).limit(20).catch(() => []),
     ])
 
     const now = new Date()

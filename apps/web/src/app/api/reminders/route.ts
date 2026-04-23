@@ -31,10 +31,10 @@ export async function GET() {
     todayStart.setHours(0, 0, 0, 0);
 
     const [reminders, todayLogs] = await Promise.all([
-      db.select().from(medicationReminders).where(eq(medicationReminders.userId, dbUser!.id)).orderBy(asc(medicationReminders.createdAt)),
+      db.select().from(medicationReminders).where(eq(medicationReminders.userId, dbUser!.id)).orderBy(asc(medicationReminders.createdAt)).catch(() => []),
       db.select().from(reminderLogs).where(
         and(eq(reminderLogs.userId, dbUser!.id), gte(reminderLogs.scheduledTime, todayStart))
-      ).orderBy(asc(reminderLogs.scheduledTime)),
+      ).orderBy(asc(reminderLogs.scheduledTime)).catch(() => []),
     ]);
 
     return apiSuccess({ reminders, todayLogs });

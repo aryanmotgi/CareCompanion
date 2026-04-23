@@ -53,16 +53,18 @@ async function handler(req: Request) {
 
   // Gather all data
   const [meds, labs, recentMemories] = await Promise.all([
-    db.select().from(medications).where(eq(medications.careProfileId, profile.id)),
+    db.select().from(medications).where(eq(medications.careProfileId, profile.id)).catch(() => []),
     db.select().from(labResults)
       .where(eq(labResults.userId, dbUser!.id))
       .orderBy(desc(labResults.dateTaken))
-      .limit(15),
+      .limit(15)
+      .catch(() => []),
     db.select({ fact: memories.fact, category: memories.category })
       .from(memories)
       .where(eq(memories.userId, dbUser!.id))
       .orderBy(desc(memories.lastReferenced))
-      .limit(20),
+      .limit(20)
+      .catch(() => []),
   ]);
 
   const relevantMemories = recentMemories.map((m) => m.fact).join('\n- ');

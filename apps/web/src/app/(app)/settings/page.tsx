@@ -29,9 +29,9 @@ async function SettingsContent() {
   }
 
   const [reminders, meds] = await Promise.all([
-    db.select().from(medicationReminders).where(eq(medicationReminders.userId, dbUser.id)).orderBy(desc(medicationReminders.createdAt)),
+    db.select().from(medicationReminders).where(eq(medicationReminders.userId, dbUser.id)).orderBy(desc(medicationReminders.createdAt)).catch(() => []),
     profile
-      ? db.select().from(medications).where(eq(medications.careProfileId, profile.id))
+      ? db.select().from(medications).where(eq(medications.careProfileId, profile.id)).catch(() => [])
       : Promise.resolve([]),
   ]);
 

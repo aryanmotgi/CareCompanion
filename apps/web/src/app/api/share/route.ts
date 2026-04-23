@@ -35,9 +35,9 @@ async function buildShareData(type: string, profileId: string) {
     default: {
       const [profile] = await db.select().from(careProfiles).where(eq(careProfiles.id, profileId)).limit(1);
       const [meds, appts, docs] = await Promise.all([
-        db.select().from(medications).where(and(eq(medications.careProfileId, profileId), isNull(medications.deletedAt))),
-        db.select().from(appointments).where(and(eq(appointments.careProfileId, profileId), isNull(appointments.deletedAt))).limit(10),
-        db.select().from(doctors).where(and(eq(doctors.careProfileId, profileId), isNull(doctors.deletedAt))),
+        db.select().from(medications).where(and(eq(medications.careProfileId, profileId), isNull(medications.deletedAt))).catch(() => []),
+        db.select().from(appointments).where(and(eq(appointments.careProfileId, profileId), isNull(appointments.deletedAt))).limit(10).catch(() => []),
+        db.select().from(doctors).where(and(eq(doctors.careProfileId, profileId), isNull(doctors.deletedAt))).catch(() => []),
       ]);
       return {
         patient: {

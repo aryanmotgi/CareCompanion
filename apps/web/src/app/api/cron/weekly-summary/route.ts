@@ -63,14 +63,16 @@ export async function GET(req: Request) {
             gte(symptomEntries.createdAt, sevenDaysAgo),
           ))
           .orderBy(desc(symptomEntries.date))
-          .limit(14),
+          .limit(14)
+          .catch(() => []),
 
         db.select().from(reminderLogs)
           .where(and(
             eq(reminderLogs.userId, profile.userId),
             gte(reminderLogs.scheduledTime, sevenDaysAgo),
           ))
-          .limit(50),
+          .limit(50)
+          .catch(() => []),
 
         db.select({
           doctorName: appointments.doctorName,
@@ -85,7 +87,8 @@ export async function GET(req: Request) {
             lte(appointments.dateTime, sevenDaysAhead),
           ))
           .orderBy(appointments.dateTime)
-          .limit(5),
+          .limit(5)
+          .catch(() => []),
 
         db.select({
           testName: labResults.testName,
@@ -99,7 +102,8 @@ export async function GET(req: Request) {
             gte(labResults.createdAt, sevenDaysAgo),
           ))
           .orderBy(desc(labResults.dateTaken))
-          .limit(10),
+          .limit(10)
+          .catch(() => []),
       ]);
 
       // Build adherence stats

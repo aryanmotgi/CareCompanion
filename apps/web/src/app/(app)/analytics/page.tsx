@@ -22,15 +22,15 @@ export default async function AnalyticsPage() {
   const thirtyDaysAgoDate = thirtyDaysAgo.toISOString().split('T')[0];
 
   const [labs, symptoms, logs, meds, claimsData] = await Promise.all([
-    db.select().from(labResults).where(eq(labResults.userId, dbUser.id)).orderBy(asc(labResults.dateTaken)),
+    db.select().from(labResults).where(eq(labResults.userId, dbUser.id)).orderBy(asc(labResults.dateTaken)).catch(() => []),
     db.select().from(symptomEntries)
       .where(eq(symptomEntries.userId, dbUser.id))
-      .orderBy(asc(symptomEntries.date)),
+      .orderBy(asc(symptomEntries.date)).catch(() => []),
     db.select().from(reminderLogs)
       .where(and(eq(reminderLogs.userId, dbUser.id), gte(reminderLogs.createdAt, thirtyDaysAgo)))
-      .orderBy(asc(reminderLogs.createdAt)),
-    db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))),
-    db.select().from(claims).where(eq(claims.userId, dbUser.id)).orderBy(desc(claims.createdAt)).limit(20),
+      .orderBy(asc(reminderLogs.createdAt)).catch(() => []),
+    db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).catch(() => []),
+    db.select().from(claims).where(eq(claims.userId, dbUser.id)).orderBy(desc(claims.createdAt)).limit(20).catch(() => []),
   ]);
 
   const filteredSymptoms = symptoms.filter(s => s.date && s.date >= thirtyDaysAgoDate);

@@ -17,11 +17,11 @@ export default async function CalendarPage() {
   if (!profile) redirect('/setup');
 
   const [appts, meds] = await Promise.all([
-    db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(asc(appointments.dateTime)),
+    db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(asc(appointments.dateTime)).catch(() => []),
     db
       .select({ name: medications.name, refillDate: medications.refillDate })
       .from(medications)
-      .where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))),
+      .where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).catch(() => []),
   ]);
 
   const medsWithRefill = meds.filter(m => m.refillDate !== null);

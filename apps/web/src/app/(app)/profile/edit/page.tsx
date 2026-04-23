@@ -16,9 +16,9 @@ export default async function ProfileEditPage() {
   if (!profile) redirect('/setup');
 
   const [meds, docs, appts] = await Promise.all([
-    db.select().from(medications).where(eq(medications.careProfileId, profile.id)),
-    db.select().from(doctors).where(eq(doctors.careProfileId, profile.id)),
-    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)),
+    db.select().from(medications).where(eq(medications.careProfileId, profile.id)).catch(() => []),
+    db.select().from(doctors).where(eq(doctors.careProfileId, profile.id)).catch(() => []),
+    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)).catch(() => []),
   ]);
 
   return (

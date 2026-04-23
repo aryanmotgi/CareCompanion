@@ -32,13 +32,13 @@ export async function GET(req: Request) {
     const profileId = profile?.id
 
     const [medsData, apptsData, docsData, doctorsData, labsData, claimsData, notifsData] = await Promise.all([
-      profileId ? db.select().from(medications).where(and(eq(medications.careProfileId, profileId), isNull(medications.deletedAt))) : [],
-      profileId ? db.select().from(appointments).where(and(eq(appointments.careProfileId, profileId), isNull(appointments.deletedAt))) : [],
-      profileId ? db.select().from(documents).where(eq(documents.careProfileId, profileId)) : [],
-      profileId ? db.select().from(doctors).where(eq(doctors.careProfileId, profileId)) : [],
-      db.select().from(labResults).where(eq(labResults.userId, user!.id)),
-      db.select().from(claims).where(eq(claims.userId, user!.id)),
-      db.select().from(notifications).where(eq(notifications.userId, user!.id)),
+      profileId ? db.select().from(medications).where(and(eq(medications.careProfileId, profileId), isNull(medications.deletedAt))).catch(() => []) : [],
+      profileId ? db.select().from(appointments).where(and(eq(appointments.careProfileId, profileId), isNull(appointments.deletedAt))).catch(() => []) : [],
+      profileId ? db.select().from(documents).where(eq(documents.careProfileId, profileId)).catch(() => []) : [],
+      profileId ? db.select().from(doctors).where(eq(doctors.careProfileId, profileId)).catch(() => []) : [],
+      db.select().from(labResults).where(eq(labResults.userId, user!.id)).catch(() => []),
+      db.select().from(claims).where(eq(claims.userId, user!.id)).catch(() => []),
+      db.select().from(notifications).where(eq(notifications.userId, user!.id)).catch(() => []),
     ])
 
     const exportData = {
