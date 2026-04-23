@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { PublicNav } from '@/components/PublicNav';
 import { ResetConfirmForm } from '@/components/ResetConfirmForm';
 
@@ -24,7 +25,9 @@ export default function ResetConfirmPage() {
           <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Set New Password</h1>
           <p className="text-sm text-white/40">Enter your new password below.</p>
         </div>
-        <ResetConfirmForm />
+        <Suspense fallback={<div className="text-center text-white/30 text-sm">Loading...</div>}>
+          <ResetConfirmForm />
+        </Suspense>
       </div>
 
       <style>{`
