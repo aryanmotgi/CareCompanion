@@ -1,29 +1,25 @@
 // apps/mobile/app/(tabs)/settings.tsx
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import { View, Text, Pressable, StyleSheet, Alert } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
-import { useTheme, setThemeOverride, ThemeOverride, THEME_KEY } from '../../src/theme'
+import { useTheme, useThemeOverride, setThemeOverride, ThemeOverride } from '../../src/theme'
 import { GlassCard } from '../../src/components/GlassCard'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { LinearGradient } from 'expo-linear-gradient'
+import Animated from 'react-native-reanimated'
+import { useStaggerEntrance } from '../../src/hooks/useStaggerEntrance'
+import { TabFadeWrapper } from './_layout'
 
 export default function SettingsScreen() {
   const theme = useTheme()
+  const activeTheme = useThemeOverride()
   const insets = useSafeAreaInsets()
   const router = useRouter()
-  const [activeTheme, setActiveTheme] = useState<ThemeOverride>('system')
+  const stagger = useStaggerEntrance(4)
 
-  useEffect(() => {
-    AsyncStorage.getItem(THEME_KEY).then((v) => {
-      if (v === 'dark' || v === 'light' || v === 'system') setActiveTheme(v)
-    })
-  }, [])
-
-  async function changeTheme(value: ThemeOverride) {
-    setActiveTheme(value)
-    await setThemeOverride(value)
+  function changeTheme(value: ThemeOverride) {
+    void setThemeOverride(value)
   }
 
   async function signOut() {
@@ -41,50 +37,67 @@ export default function SettingsScreen() {
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.bg, paddingTop: insets.top + 16 }]}>
-      <Text style={[styles.title, { color: theme.text }]}>Settings</Text>
+    <TabFadeWrapper>
+      <View style={[styles.root, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 70 }]}>
+        <LinearGradient
+          colors={theme.gradientAMuted as [string, string, ...string[]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
 
-      {/* Profile card */}
-      <GlassCard style={styles.section}>
-        <View style={styles.profileRow}>
-          <LinearGradient colors={['#6366F1', '#A78BFA']} style={styles.avatar}>
-            <Text style={styles.avatarText}>A</Text>
-          </LinearGradient>
-          <View>
-            <Text style={[styles.name, { color: theme.text }]}>Aryan</Text>
-            <Text style={[styles.role, { color: theme.textMuted }]}>Patient</Text>
-          </View>
-        </View>
-      </GlassCard>
+        <Animated.View style={stagger[0]}>
+          <Text style={[styles.title, { color: theme.text }]}>Settings</Text>
+        </Animated.View>
 
-      {/* Appearance */}
-      <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>APPEARANCE</Text>
-      <GlassCard style={styles.section}>
-        <View style={[styles.segmentRow, { backgroundColor: theme.bgElevated }]}>
-          {(['light', 'dark', 'system'] as ThemeOverride[]).map((t) => (
-            <Pressable
-              key={t}
-              style={[
-                styles.segBtn,
-                activeTheme === t && { backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 8 },
-              ]}
-              onPress={() => changeTheme(t)}
-            >
-              <Text style={[styles.segLabel, { color: activeTheme === t ? theme.accentHover : theme.textMuted }]}>
-                {t.charAt(0).toUpperCase() + t.slice(1)}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </GlassCard>
+        {/* Profile card */}
+        <Animated.View style={stagger[1]}>
+          <GlassCard style={styles.section}>
+            <View style={styles.profileRow}>
+              <LinearGradient colors={['#6366F1', '#A78BFA']} style={styles.avatar}>
+                <Text style={styles.avatarText}>A</Text>
+              </LinearGradient>
+              <View>
+                <Text style={[styles.name, { color: theme.text }]}>Aryan</Text>
+                <Text style={[styles.role, { color: theme.textMuted }]}>Patient</Text>
+              </View>
+            </View>
+          </GlassCard>
+        </Animated.View>
 
-      {/* Sign out */}
-      <Pressable onPress={signOut}>
-        <GlassCard style={{ ...styles.section, borderColor: 'rgba(252,165,165,0.2)' }}>
-          <Text style={[styles.signOut, { color: theme.rose }]}>Sign Out</Text>
-        </GlassCard>
-      </Pressable>
-    </View>
+        {/* Appearance */}
+        <Animated.View style={stagger[2]}>
+          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>APPEARANCE</Text>
+          <GlassCard style={styles.section}>
+            <View style={[styles.segmentRow, { backgroundColor: theme.bgElevated }]}>
+              {(['light', 'dark', 'system'] as ThemeOverride[]).map((t) => (
+                <Pressable
+                  key={t}
+                  style={[
+                    styles.segBtn,
+                    activeTheme === t && { backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 8 },
+                  ]}
+                  onPress={() => changeTheme(t)}
+                >
+                  <Text style={[styles.segLabel, { color: activeTheme === t ? theme.accentHover : theme.textMuted }]}>
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </GlassCard>
+        </Animated.View>
+
+        {/* Sign out */}
+        <Animated.View style={stagger[3]}>
+          <Pressable onPress={signOut}>
+            <GlassCard style={{ ...styles.section, borderColor: 'rgba(252,165,165,0.2)' }}>
+              <Text style={[styles.signOut, { color: theme.rose }]}>Sign Out</Text>
+            </GlassCard>
+          </Pressable>
+        </Animated.View>
+      </View>
+    </TabFadeWrapper>
   )
 }
 
