@@ -31,6 +31,7 @@ type MedStatus = 'taken' | 'upcoming' | 'overdue'
 
 interface Med {
   id: string
+  logId?: string
   name: string
   dose: string
   time: string
@@ -89,7 +90,7 @@ function BreathingDot({ status }: { status: MedStatus }) {
   )
 }
 
-function MedRow({ med, onTake }: { med: Med; onTake: (id: string) => void }) {
+function MedRow({ med, onTake, disabled }: { med: Med; onTake: (logId: string, medId: string) => void; disabled?: boolean }) {
   const theme = useTheme()
   const taken = med.status === 'taken'
   const rowOpacity = useSharedValue(taken ? 0.5 : 1)
@@ -98,11 +99,14 @@ function MedRow({ med, onTake }: { med: Med; onTake: (id: string) => void }) {
   const rowStyle = useAnimatedStyle(() => ({ opacity: rowOpacity.value }))
   const checkStyle = useAnimatedStyle(() => ({ transform: [{ scale: checkScale.value }] }))
 
+  const canTake = !taken && !disabled && !!med.logId
+
   function handleTake() {
+    if (!canTake || !med.logId) return
     hapticMedTaken()
     rowOpacity.value = withTiming(0.5, { duration: 300 })
     checkScale.value = withSpring(1, { damping: 8, stiffness: 300 })
-    onTake(med.id)
+    onTake(med.logId, med.id)
   }
 
   return (
@@ -116,7 +120,7 @@ function MedRow({ med, onTake }: { med: Med; onTake: (id: string) => void }) {
             </Text>
             <Text style={[styles.medTime, { color: theme.textMuted }]}>{med.time}</Text>
           </View>
-          <Pressable onPress={taken ? undefined : handleTake} style={styles.checkBtn}>
+          <Pressable onPress={canTake ? handleTake : undefined} style={[styles.checkBtn, disabled && { opacity: 0.4 }]}>
             <Animated.View
               style={[
                 styles.checkInner,
@@ -169,11 +173,12 @@ function LabRow({ lab }: { lab: Lab }) {
 export default function CareScreen() {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
-  const { profile } = useProfile()
+  const { profile, csrfToken } = useProfile()
   const [tab, setTab] = useState<'meds' | 'labs'>('meds')
   const [meds, setMeds] = useState<Med[]>([])
   const [labs, setLabs] = useState<Lab[]>([])
   const [loading, setLoading] = useState(true)
+  const [takingId, setTakingId] = useState<string | null>(null)
 
   const stagger = useStaggerEntrance(3)
   const { parallaxStyle } = useGyroParallax(0.3)
@@ -188,10 +193,11 @@ export default function CareScreen() {
       // Map API medications to the Med interface
       const mappedMeds: Med[] = (medsData as any[]).map((m: any) => ({
         id: m.id,
+        logId: m.logId || m.reminderLogId || undefined,
         name: m.name,
         dose: m.dose || '',
         time: m.frequency || '',
-        status: 'upcoming' as MedStatus, // Default; real status needs reminderLogs
+        status: (m.status === 'taken' || m.status === 'overdue' ? m.status : 'upcoming') as MedStatus,
       }))
       setMeds(mappedMeds)
 
@@ -212,8 +218,37 @@ export default function CareScreen() {
     })
   }, [profile?.careProfileId])
 
-  function takeMed(id: string) {
-    setMeds((prev) => prev.map((m) => m.id === id ? { ...m, status: 'taken' as MedStatus } : m))
+  async function markAsTaken(logId: string, medId: string) {
+    if (takingId) return // double-tap guard
+    setTakingId(medId)
+
+    try {
+      const token = await SecureStore.getItemAsync('cc-session-token')
+      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
+      const isSecure = baseUrl.startsWith('https://')
+      const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
+
+      const res = await fetch(`${baseUrl}/api/reminders/respond`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken || '',
+          'Cookie': `${cookieName}=${token}; cc-csrf-token=${csrfToken}`,
+        },
+        body: JSON.stringify({ log_id: logId, status: 'taken' }),
+      })
+
+      if (res.ok) {
+        setMeds(prev => prev.map(m =>
+          m.id === medId ? { ...m, status: 'taken' as MedStatus } : m
+        ))
+        hapticMedTaken()
+      }
+    } catch (err) {
+      console.error('Failed to mark as taken:', err)
+    } finally {
+      setTakingId(null)
+    }
   }
 
   return (
@@ -254,7 +289,7 @@ export default function CareScreen() {
                 </View>
               ) : tab === 'meds' ? (
                 meds.length > 0
-                  ? meds.map((m) => <MedRow key={m.id} med={m} onTake={takeMed} />)
+                  ? meds.map((m) => <MedRow key={m.id} med={m} onTake={markAsTaken} disabled={takingId === m.id} />)
                   : <View style={styles.emptyContainer}>
                       <Text style={[styles.emptyText, { color: theme.textMuted }]}>No medications yet</Text>
                     </View>
