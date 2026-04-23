@@ -1,5 +1,6 @@
 // apps/mobile/app/_layout.tsx
 import { initSentry } from '../src/lib/sentry'
+import { initAnalytics } from '../src/lib/analytics'
 import { useEffect, useState, useCallback } from 'react'
 
 initSentry()
@@ -49,6 +50,10 @@ export default function RootLayout() {
   const segments = useSegments()
   const [bugReportVisible, setBugReportVisible] = useState(false)
   const currentScreen = segments.join('/')
+
+  useEffect(() => {
+    void initAnalytics()
+  }, [])
 
   const handleShake = useCallback(() => {
     setBugReportVisible(true)
