@@ -2,16 +2,21 @@
 import React from 'react'
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { Tabs } from 'expo-router'
+import { useFocusEffect } from 'expo-router'
 
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withRepeat,
+  withTiming,
 } from 'react-native-reanimated'
+import { useReducedMotion } from 'react-native-reanimated'
 import { BlurView } from 'expo-blur'
 import * as Haptics from 'expo-haptics'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../src/theme'
+import { NoiseOverlay } from '../../src/components/NoiseOverlay'
 
 const TABS = [
   { name: 'index', label: 'Home', icon: '⌂' },
@@ -47,8 +52,6 @@ function TabIcon({ icon, active }: { icon: string; active: boolean }) {
         animStyle,
         styles.iconWrapper,
         active && {
-          backgroundColor: 'rgba(99,102,241,0.15)',
-          borderRadius: 10,
           shadowColor: '#6366F1',
           shadowOffset: { width: 0, height: 0 },
           shadowOpacity: 0.6,
@@ -61,6 +64,49 @@ function TabIcon({ icon, active }: { icon: string; active: boolean }) {
         {icon}
       </Text>
     </Animated.View>
+  )
+}
+
+function GlowDot({ active }: { active: boolean }) {
+  const theme = useTheme()
+  const reduceMotion = useReducedMotion()
+  const opacity = useSharedValue(active ? 1 : 0)
+  const pulse = useSharedValue(0.4)
+
+  React.useEffect(() => {
+    if (active) {
+      opacity.value = withSpring(1, { damping: 16, stiffness: 120 })
+      if (!reduceMotion) {
+        pulse.value = withRepeat(
+          withTiming(1, { duration: 2000 }),
+          -1,
+          true,
+        )
+      } else {
+        pulse.value = 1
+      }
+    } else {
+      opacity.value = withTiming(0, { duration: 150 })
+    }
+  }, [active, opacity, pulse, reduceMotion])
+
+  const dotStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value * (0.4 + pulse.value * 0.6),
+  }))
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width: 4,
+          height: 4,
+          borderRadius: 2,
+          backgroundColor: theme.accent,
+          marginTop: 3,
+        },
+        dotStyle,
+      ]}
+    />
   )
 }
 
@@ -112,6 +158,7 @@ function CustomTabBar({ state, navigation }: any) {
               }}
             >
               <TabIcon icon={tab.icon} active={active} />
+              <GlowDot active={active} />
               <Text
                 style={[
                   styles.label,
@@ -131,18 +178,38 @@ function CustomTabBar({ state, navigation }: any) {
   )
 }
 
+export function TabFadeWrapper({ children }: { children: React.ReactNode }) {
+  const reduceMotion = useReducedMotion()
+  const opacity = useSharedValue(reduceMotion ? 1 : 0.6)
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (reduceMotion) return
+      opacity.value = 0.6
+      opacity.value = withSpring(1, { damping: 16, stiffness: 120 })
+    }, [opacity, reduceMotion]),
+  )
+
+  const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.value }))
+
+  return <Animated.View style={[{ flex: 1 }, fadeStyle]}>{children}</Animated.View>
+}
+
 export default function TabLayout() {
   return (
-    <Tabs
-      tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
-    >
-      <Tabs.Screen name="index" />
-      <Tabs.Screen name="chat" />
-      <Tabs.Screen name="care" />
-      <Tabs.Screen name="scan" />
-      <Tabs.Screen name="settings" />
-    </Tabs>
+    <View style={{ flex: 1 }}>
+      <NoiseOverlay />
+      <Tabs
+        tabBar={(props) => <CustomTabBar {...props} />}
+        screenOptions={{ headerShown: false }}
+      >
+        <Tabs.Screen name="index" />
+        <Tabs.Screen name="chat" />
+        <Tabs.Screen name="care" />
+        <Tabs.Screen name="scan" />
+        <Tabs.Screen name="settings" />
+      </Tabs>
+    </View>
   )
 }
 
