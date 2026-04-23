@@ -8,6 +8,7 @@ import { ToastProvider } from '@/components/ToastProvider'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { TestModeBanner } from '@/components/TestModeBanner'
+import { BugReportButton } from '@/components/BugReportButton'
 import { ChecklistVersionNotice } from '@/components/ChecklistVersionNotice'
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
 import { CsrfProvider } from '@/components/CsrfProvider'
@@ -116,6 +117,7 @@ export default async function AppLayout({
     <ToastProvider>
       <OfflineIndicator />
       <TestModeBanner />
+      <BugReportButton />
       <ChecklistVersionNotice />
       <ServiceWorkerRegistration />
       <AppShell
