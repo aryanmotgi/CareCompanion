@@ -33,6 +33,8 @@ import { syncHealthKitData } from '../../src/services/healthkit'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { ShimmerSkeleton } from '../../src/components/ShimmerSkeleton'
 import { TabFadeWrapper } from './_layout'
+import { useProfile } from '../../src/context/ProfileContext'
+import { apiClient } from '../../src/services/api'
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -83,9 +85,30 @@ export default function HomeScreen() {
   const router = useRouter()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
-  const medCount = 3
-  const medTaken = 1
-  const medRemaining = medCount - medTaken
+  // --- Real data from API ---
+  const { profile, loading: profileLoading } = useProfile()
+  const [meds, setMeds] = useState<any[]>([])
+  const [appointments, setAppointments] = useState<any[]>([])
+  const [dataLoading, setDataLoading] = useState(true)
+
+  useEffect(() => {
+    if (!profile?.careProfileId) return
+    setDataLoading(true)
+    Promise.all([
+      apiClient.medications.list(profile.careProfileId),
+      apiClient.appointments.list(profile.careProfileId),
+    ]).then(([medsData, apptsData]) => {
+      setMeds((medsData as any[]) || [])
+      setAppointments((apptsData as any[]) || [])
+    }).catch(err => {
+      console.error('Failed to load home data:', err)
+    }).finally(() => {
+      setDataLoading(false)
+    })
+  }, [profile?.careProfileId])
+
+  const displayName = profile?.patientName || profile?.displayName || 'there'
+  const medCount = meds.length
 
   // --- Shimmer loading ---
   const [loaded, setLoaded] = useState(false)
@@ -196,11 +219,11 @@ export default function HomeScreen() {
               <Text style={[styles.greeting, { color: theme.textMuted }]}>
                 {getGreeting().toUpperCase()}
               </Text>
-              <Text style={[styles.name, { color: theme.text }]}>Aryan</Text>
+              <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
             </View>
             <Pressable onPress={() => setDrawerOpen(true)}>
               <LinearGradient colors={['#6366F1', '#A78BFA']} style={styles.avatar}>
-                <Text style={styles.avatarText}>A</Text>
+                <Text style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</Text>
               </LinearGradient>
             </Pressable>
           </View>
@@ -208,7 +231,7 @@ export default function HomeScreen() {
           {/* Cards at 0.6x parallax */}
           <Animated.View style={cardParallaxStyle}>
             {/* Medications card */}
-            {!loaded ? (
+            {!loaded || dataLoading ? (
               <Animated.View style={card1Style}>
                 <GlassCard style={styles.card}>
                   <ShimmerSkeleton width="60%" height={12} style={{ marginBottom: 12 }} />
@@ -226,44 +249,77 @@ export default function HomeScreen() {
                     </Text>
                     <View style={[styles.badge, { backgroundColor: 'rgba(99,102,241,0.2)' }]}>
                       <AnimatedCounter
-                        value={medRemaining}
+                        value={medCount}
                         style={{ ...styles.badgeText, color: theme.accent }}
-                        suffix=" left"
+                        suffix={medCount === 1 ? ' med' : ' meds'}
                       />
                     </View>
                   </View>
-                  <View style={styles.medRow}>
-                    <View style={[styles.dot, { backgroundColor: theme.green }]} />
-                    <Text style={[styles.medName, { color: theme.text }]}>Tamoxifen 20mg</Text>
-                    <Text style={[styles.medTime, { color: theme.textMuted }]}>8:00 AM ✓</Text>
-                  </View>
-                  <View style={styles.medRow}>
-                    <View style={[styles.dot, { backgroundColor: theme.amber }]} />
-                    <Text style={[styles.medName, { color: theme.text }]}>Ondansetron 4mg</Text>
-                    <Text style={[styles.medTime, { color: theme.textMuted }]}>2:00 PM</Text>
-                  </View>
-                  <View style={styles.medRow}>
-                    <View style={[styles.dot, { backgroundColor: theme.amber }]} />
-                    <Text style={[styles.medName, { color: theme.text }]}>Dexamethasone 4mg</Text>
-                    <Text style={[styles.medTime, { color: theme.textMuted }]}>8:00 PM</Text>
-                  </View>
+                  {meds.length === 0 ? (
+                    <Text style={[styles.medName, { color: theme.textMuted }]}>No medications yet</Text>
+                  ) : (
+                    meds.map((med) => (
+                      <View key={med.id} style={styles.medRow}>
+                        <View style={[styles.dot, { backgroundColor: theme.amber }]} />
+                        <Text style={[styles.medName, { color: theme.text }]}>
+                          {med.name}{med.dose ? ` ${med.dose}` : ''}
+                        </Text>
+                        <Text style={[styles.medTime, { color: theme.textMuted }]}>
+                          {med.frequency || ''}
+                        </Text>
+                      </View>
+                    ))
+                  )}
                 </GlassCard>
               </Animated.View>
             )}
 
             {/* Appointment card */}
             <Animated.View style={card2Style}>
-              <AnimatedBorderCard>
-                <View style={{ padding: 16 }}>
-                  <Text style={[styles.cardLabel, { color: theme.textMuted }]}>NEXT APPOINTMENT</Text>
-                  <Text style={[styles.apptName, { color: theme.text }]}>Oncology Follow-up</Text>
-                  <Text style={[styles.apptDoctor, { color: theme.textSub }]}>Dr. Sarah Chen</Text>
-                  <Text style={[styles.apptTime, { color: theme.lavender }]}>Monday · 10:00 AM</Text>
-                  <Text style={[styles.apptLocation, { color: theme.textMuted }]}>
-                    UCSF Medical Center · Room 4B
-                  </Text>
-                </View>
-              </AnimatedBorderCard>
+              {dataLoading ? (
+                <AnimatedBorderCard>
+                  <View style={{ padding: 16 }}>
+                    <ShimmerSkeleton width="50%" height={12} style={{ marginBottom: 12 }} />
+                    <ShimmerSkeleton width="80%" height={16} style={{ marginBottom: 8 }} />
+                    <ShimmerSkeleton width="60%" height={14} style={{ marginBottom: 8 }} />
+                    <ShimmerSkeleton width="70%" height={14} />
+                  </View>
+                </AnimatedBorderCard>
+              ) : (() => {
+                const nextAppt = appointments
+                  .filter((a) => a.dateTime)
+                  .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
+                  .find((a) => new Date(a.dateTime).getTime() >= Date.now()) || appointments[0]
+                return (
+                  <AnimatedBorderCard>
+                    <View style={{ padding: 16 }}>
+                      <Text style={[styles.cardLabel, { color: theme.textMuted }]}>NEXT APPOINTMENT</Text>
+                      {!nextAppt ? (
+                        <Text style={[styles.apptName, { color: theme.textMuted }]}>No upcoming appointments</Text>
+                      ) : (
+                        <>
+                          <Text style={[styles.apptName, { color: theme.text }]}>
+                            {nextAppt.purpose || nextAppt.specialty || 'Appointment'}
+                          </Text>
+                          {nextAppt.doctorName ? (
+                            <Text style={[styles.apptDoctor, { color: theme.textSub }]}>{nextAppt.doctorName}</Text>
+                          ) : null}
+                          {nextAppt.dateTime ? (
+                            <Text style={[styles.apptTime, { color: theme.lavender }]}>
+                              {new Date(nextAppt.dateTime).toLocaleDateString(undefined, { weekday: 'long' })} · {new Date(nextAppt.dateTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                            </Text>
+                          ) : null}
+                          {nextAppt.location ? (
+                            <Text style={[styles.apptLocation, { color: theme.textMuted }]}>
+                              {nextAppt.location}
+                            </Text>
+                          ) : null}
+                        </>
+                      )}
+                    </View>
+                  </AnimatedBorderCard>
+                )
+              })()}
             </Animated.View>
 
             {/* AI CTA card */}
@@ -292,7 +348,7 @@ export default function HomeScreen() {
         <Drawer
           visible={drawerOpen}
           onClose={() => setDrawerOpen(false)}
-          userName="Aryan"
+          userName={displayName}
           userRole="Patient"
         />
       </View>
