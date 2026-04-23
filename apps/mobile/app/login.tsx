@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
 import { useRouter } from 'expo-router'
 import { signInWithCredentials } from '../src/services/auth'
+import { RippleButton } from '../src/components/RippleButton'
 
 export default function LoginScreen() {
   const router = useRouter()
@@ -112,22 +113,11 @@ export default function LoginScreen() {
             onSubmitEditing={handleSignIn}
           />
 
-          <Pressable
-            style={[styles.signInBtn, loading && { opacity: 0.6 }]}
-            onPress={handleSignIn}
-            disabled={loading}
-          >
-            <LinearGradient
-              colors={['#6366F1', '#A78BFA']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.signInGradient}
-            >
-              <Text style={styles.signInText}>
-                {loading ? 'Signing in…' : 'Sign In'}
-              </Text>
-            </LinearGradient>
-          </Pressable>
+          <RippleButton onPress={handleSignIn} disabled={loading}>
+            <Text style={styles.signInText}>
+              {loading ? 'Signing in…' : 'Sign In'}
+            </Text>
+          </RippleButton>
 
           <Pressable onPress={() => router.replace('/signup')}>
             <Text style={styles.createAccountText}>
@@ -205,12 +195,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     color: '#EDE9FE',
     fontSize: 15,
-  },
-  signInBtn: { borderRadius: 12, overflow: 'hidden' },
-  signInGradient: {
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   signInText: { fontSize: 15, fontWeight: '700', color: '#fff' },
   createAccountText: {

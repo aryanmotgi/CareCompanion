@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
 import { useRouter } from 'expo-router'
 import { signInWithCredentials } from '../src/services/auth'
+import { RippleButton } from '../src/components/RippleButton'
 
 export default function SignupScreen() {
   const router = useRouter()
@@ -89,8 +90,14 @@ export default function SignupScreen() {
       }
 
       // Auto-login after registration
-      await signInWithCredentials(email.trim().toLowerCase(), password)
-      router.replace('/(tabs)')
+      try {
+        await signInWithCredentials(email.trim().toLowerCase(), password)
+        router.replace('/(tabs)')
+      } catch {
+        // Registration succeeded but auto-login failed — send to login screen
+        Alert.alert('Account Created', 'Please sign in with your new account.')
+        router.replace('/login')
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Sign-up failed'
       Alert.alert('Sign Up Failed', msg)
@@ -182,22 +189,11 @@ export default function SignupScreen() {
             </Text>
           </Pressable>
 
-          <Pressable
-            style={[styles.signInBtn, loading && { opacity: 0.6 }]}
-            onPress={handleSignup}
-            disabled={loading}
-          >
-            <LinearGradient
-              colors={['#6366F1', '#A78BFA']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.signInGradient}
-            >
-              <Text style={styles.signInText}>
-                {loading ? 'Creating account…' : 'Create Account'}
-              </Text>
-            </LinearGradient>
-          </Pressable>
+          <RippleButton onPress={handleSignup} disabled={loading}>
+            <Text style={styles.signInText}>
+              {loading ? 'Creating account…' : 'Create Account'}
+            </Text>
+          </RippleButton>
 
           <Pressable onPress={() => router.replace('/login')}>
             <Text style={styles.linkText}>
@@ -303,12 +299,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     color: 'rgba(255,255,255,0.35)',
-  },
-  signInBtn: { borderRadius: 12, overflow: 'hidden' },
-  signInGradient: {
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   signInText: { fontSize: 15, fontWeight: '700', color: '#fff' },
   linkText: {
