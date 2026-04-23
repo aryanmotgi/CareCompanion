@@ -77,6 +77,7 @@ export function initSentry() {
     dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
     environment: __DEV__ ? 'development' : 'production',
     tracesSampleRate: 0.1,
-    beforeSend: scrubPHI,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    beforeSend: scrubPHI as any,
   })
 }
