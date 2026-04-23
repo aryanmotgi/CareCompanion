@@ -7,9 +7,8 @@ let client: PostHog | null = null
 
 export async function initAnalytics() {
   if (!POSTHOG_KEY) return
-  client = await PostHog.initAsync(POSTHOG_KEY, {
+  client = new PostHog(POSTHOG_KEY, {
     host: POSTHOG_HOST,
-    enableSessionReplay: false,
   })
 }
 

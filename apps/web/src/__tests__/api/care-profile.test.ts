@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { NextResponse } from 'next/server'
 
 vi.mock('@/lib/api-helpers', () => ({
   getAuthenticatedUser: vi.fn(() =>
@@ -76,7 +77,7 @@ describe('Care Profile API — /api/records/profile', () => {
     const { getAuthenticatedUser } = await import('@/lib/api-helpers')
     vi.mocked(getAuthenticatedUser).mockResolvedValueOnce({
       user: null,
-      error: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
+      error: NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 }),
     })
 
     const { GET } = await import('@/app/api/records/profile/route')
@@ -130,7 +131,7 @@ describe('Me API — /api/me (care profile summary)', () => {
     const { getAuthenticatedUser } = await import('@/lib/api-helpers')
     vi.mocked(getAuthenticatedUser).mockResolvedValueOnce({
       user: null,
-      error: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
+      error: NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 }),
     })
 
     const { GET } = await import('@/app/api/me/route')

@@ -100,7 +100,7 @@ export function BugReportSheet({ visible, currentScreen, onClose }: BugReportShe
         <Animated.View
           style={[
             styles.sheet,
-            { backgroundColor: theme.card ?? '#fff', transform: [{ translateY: slideAnim }] },
+            { backgroundColor: theme.bgCard, transform: [{ translateY: slideAnim }] },
           ]}
         >
           <View style={styles.handle} />
@@ -128,7 +128,7 @@ export function BugReportSheet({ visible, currentScreen, onClose }: BugReportShe
                   {
                     color: theme.text,
                     borderColor: theme.border ?? '#e2e8f0',
-                    backgroundColor: theme.inputBg ?? '#f8fafc',
+                    backgroundColor: theme.bgElevated,
                   },
                 ]}
                 textAlignVertical="top"

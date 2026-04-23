@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { NextResponse } from 'next/server'
 
 // Mock the auth helper at the layer actually used by the route
 vi.mock('@/lib/api-helpers', () => ({
@@ -80,7 +81,7 @@ describe('Medications API — /api/records/medications', () => {
     const { getAuthenticatedUser } = await import('@/lib/api-helpers')
     vi.mocked(getAuthenticatedUser).mockResolvedValueOnce({
       user: null,
-      error: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }),
+      error: NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 }),
     })
 
     const { GET } = await import('@/app/api/records/medications/route')
