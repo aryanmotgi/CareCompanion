@@ -26,6 +26,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '../../src/theme'
 import { GlassCard } from '../../src/components/GlassCard'
 import { AmbientOrbs } from '../../src/components/AmbientOrbs'
@@ -270,11 +271,19 @@ export default function HomeScreen() {
               </Text>
               <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
             </View>
-            <Pressable onPress={() => setDrawerOpen(true)}>
-              <LinearGradient colors={['#6366F1', '#A78BFA']} style={styles.avatar}>
-                <Text style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</Text>
-              </LinearGradient>
-            </Pressable>
+            <View style={styles.headerRight}>
+              <Pressable onPress={() => router.push('/search')} hitSlop={8} style={styles.bellButton}>
+                <Ionicons name="search-outline" size={22} color={theme.text} />
+              </Pressable>
+              <Pressable onPress={() => router.push('/notifications')} style={styles.bellButton}>
+                <Ionicons name="notifications-outline" size={22} color={theme.text} />
+              </Pressable>
+              <Pressable onPress={() => setDrawerOpen(true)}>
+                <LinearGradient colors={['#6366F1', '#A78BFA']} style={styles.avatar}>
+                  <Text style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</Text>
+                </LinearGradient>
+              </Pressable>
+            </View>
           </View>
 
           {/* Cards at 0.6x parallax */}
@@ -453,6 +462,19 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' },
   name: { fontSize: 22, fontWeight: '700', marginTop: 2 },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  bellButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(99,102,241,0.1)',
+  },
   avatar: {
     width: 40,
     height: 40,
