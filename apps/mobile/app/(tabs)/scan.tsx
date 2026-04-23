@@ -12,7 +12,14 @@ import {
   TouchableOpacity,
 } from 'react-native'
 import Animated from 'react-native-reanimated'
-import * as ImagePicker from 'expo-image-picker'
+// Lazy import — expo-image-picker requires a native build with the module included.
+// Importing at the top level crashes if the native module isn't in the current dev build.
+let ImagePicker: typeof import('expo-image-picker') | null = null
+try {
+  ImagePicker = require('expo-image-picker')
+} catch {
+  // Native module not available in this build
+}
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '../../src/theme'
@@ -35,6 +42,10 @@ export default function ScanScreen() {
   const stagger = useStaggerEntrance(5)
 
   async function startScan() {
+    if (!ImagePicker) {
+      Alert.alert('Camera Not Available', 'A new app build is required to enable camera scanning. Please rebuild with EAS.')
+      return
+    }
     const { status } = await ImagePicker.requestCameraPermissionsAsync()
     if (status !== 'granted') {
       Alert.alert(
