@@ -28,6 +28,15 @@ const apiClient = createApiClient({
 })
 
 type MedStatus = 'taken' | 'upcoming' | 'overdue'
+type CareTab = 'meds' | 'appts' | 'labs' | 'journal' | 'team'
+
+const TAB_CONFIG: { key: CareTab; label: string }[] = [
+  { key: 'meds', label: 'Meds' },
+  { key: 'appts', label: 'Appts' },
+  { key: 'labs', label: 'Labs' },
+  { key: 'journal', label: 'Journal' },
+  { key: 'team', label: 'Team' },
+]
 
 interface Med {
   id: string
@@ -170,13 +179,63 @@ function LabRow({ lab }: { lab: Lab }) {
   )
 }
 
+function AppointmentRow({ appointment }: { appointment: any }) {
+  const theme = useTheme()
+
+  const dateStr = appointment.date
+    ? new Date(appointment.date).toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      })
+    : ''
+  const timeStr = appointment.date
+    ? new Date(appointment.date).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : ''
+
+  return (
+    <GlassCard style={styles.apptCard}>
+      <View style={styles.apptRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.apptDoctor, { color: theme.text }]}>
+            {appointment.doctorName || 'Doctor'}
+          </Text>
+          {appointment.specialty ? (
+            <Text style={[styles.apptSpecialty, { color: theme.accentHover }]}>
+              {appointment.specialty}
+            </Text>
+          ) : null}
+          {appointment.location ? (
+            <Text style={[styles.apptDetail, { color: theme.textMuted }]}>
+              {appointment.location}
+            </Text>
+          ) : null}
+          {appointment.purpose || appointment.notes ? (
+            <Text style={[styles.apptDetail, { color: theme.textMuted }]} numberOfLines={2}>
+              {appointment.purpose || appointment.notes}
+            </Text>
+          ) : null}
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={[styles.apptDate, { color: theme.accent }]}>{dateStr}</Text>
+          <Text style={[styles.apptTime, { color: theme.textMuted }]}>{timeStr}</Text>
+        </View>
+      </View>
+    </GlassCard>
+  )
+}
+
 export default function CareScreen() {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
   const { profile, csrfToken } = useProfile()
-  const [tab, setTab] = useState<'meds' | 'labs'>('meds')
+  const [tab, setTab] = useState<CareTab>('meds')
   const [meds, setMeds] = useState<Med[]>([])
   const [labs, setLabs] = useState<Lab[]>([])
+  const [appointments, setAppointments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [takingId, setTakingId] = useState<string | null>(null)
 
@@ -189,7 +248,8 @@ export default function CareScreen() {
     Promise.all([
       apiClient.medications.list(profile.careProfileId),
       apiClient.labResults.list(profile.careProfileId),
-    ]).then(([medsData, labsData]) => {
+      apiClient.appointments.list(profile.careProfileId).catch(() => []),
+    ]).then(([medsData, labsData, apptsData]) => {
       // Map API medications to the Med interface
       const mappedMeds: Med[] = (medsData as any[]).map((m: any) => ({
         id: m.id,
@@ -211,6 +271,11 @@ export default function CareScreen() {
         status: l.status === 'abnormal' ? 'abnormal' : l.status === 'borderline' ? 'borderline' : 'normal',
       })) || []
       setLabs(mappedLabs)
+
+      // Map API appointments, sorted by date
+      const mappedAppts = (Array.isArray(apptsData) ? apptsData : [])
+        .sort((a: any, b: any) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime())
+      setAppointments(mappedAppts)
     }).catch(err => {
       console.error('Failed to load care data:', err)
     }).finally(() => {
@@ -251,6 +316,67 @@ export default function CareScreen() {
     }
   }
 
+  function renderTabContent() {
+    if (loading) {
+      return (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={theme.accent} />
+        </View>
+      )
+    }
+
+    switch (tab) {
+      case 'meds':
+        return meds.length > 0
+          ? meds.map((m) => <MedRow key={m.id} med={m} onTake={markAsTaken} disabled={takingId === m.id} />)
+          : (
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>No medications yet</Text>
+            </View>
+          )
+
+      case 'appts':
+        return appointments.length > 0
+          ? appointments.map((a: any, i: number) => <AppointmentRow key={a.id || i} appointment={a} />)
+          : (
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>No appointments scheduled</Text>
+              <Text style={[styles.emptyCta, { color: theme.accent }]}>Add an appointment</Text>
+            </View>
+          )
+
+      case 'labs':
+        return labs.length > 0
+          ? labs.map((l) => <LabRow key={l.id} lab={l} />)
+          : (
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>No lab results yet</Text>
+            </View>
+          )
+
+      case 'journal':
+        return (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyEmoji]}>📝</Text>
+            <Text style={[styles.emptyText, { color: theme.textMuted }]}>How are you feeling today?</Text>
+            <Text style={[styles.emptyCta, { color: '#fbbf24' }]}>Start your first entry</Text>
+          </View>
+        )
+
+      case 'team':
+        return (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyEmoji]}>👥</Text>
+            <Text style={[styles.emptyText, { color: theme.textMuted }]}>No care team members yet</Text>
+            <Text style={[styles.emptyCta, { color: '#a78bfa' }]}>Add your doctor</Text>
+          </View>
+        )
+
+      default:
+        return null
+    }
+  }
+
   return (
     <TabFadeWrapper>
       <View style={[styles.root, { backgroundColor: theme.bg }]}>
@@ -261,45 +387,39 @@ export default function CareScreen() {
 
           {/* Segment control */}
           <Animated.View style={stagger[1]}>
-            <View style={[styles.segment, { backgroundColor: theme.bgElevated }]}>
-              {(['meds', 'labs'] as const).map((t) => (
-                <Pressable
-                  key={t}
-                  style={[
-                    styles.segBtn,
-                    tab === t && { backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 8 },
-                  ]}
-                  onPress={() => setTab(t)}
-                >
-                  <Text style={[styles.segLabel, { color: tab === t ? theme.accentHover : theme.textMuted }]}>
-                    {t === 'meds' ? 'Medications' : 'Labs'}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              bounces={false}
+              contentContainerStyle={styles.segmentScroll}
+            >
+              <View style={[styles.segment, { backgroundColor: theme.bgElevated }]}>
+                {TAB_CONFIG.map(({ key, label }) => (
+                  <Pressable
+                    key={key}
+                    style={[
+                      styles.segBtn,
+                      tab === key && { backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 8 },
+                    ]}
+                    onPress={() => setTab(key)}
+                  >
+                    <Text style={[
+                      styles.segLabel,
+                      { color: tab === key ? theme.accentHover : theme.textMuted },
+                    ]}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
           </Animated.View>
         </View>
 
         <Animated.View style={[stagger[2], { flex: 1 }]}>
           <ScrollView contentContainerStyle={[styles.list, { paddingBottom: 120 }]}>
             <Animated.View style={parallaxStyle}>
-              {loading ? (
-                <View style={styles.emptyContainer}>
-                  <ActivityIndicator size="large" color={theme.accent} />
-                </View>
-              ) : tab === 'meds' ? (
-                meds.length > 0
-                  ? meds.map((m) => <MedRow key={m.id} med={m} onTake={markAsTaken} disabled={takingId === m.id} />)
-                  : <View style={styles.emptyContainer}>
-                      <Text style={[styles.emptyText, { color: theme.textMuted }]}>No medications yet</Text>
-                    </View>
-              ) : (
-                labs.length > 0
-                  ? labs.map((l) => <LabRow key={l.id} lab={l} />)
-                  : <View style={styles.emptyContainer}>
-                      <Text style={[styles.emptyText, { color: theme.textMuted }]}>No lab results yet</Text>
-                    </View>
-              )}
+              {renderTabContent()}
             </Animated.View>
           </ScrollView>
         </Animated.View>
@@ -312,9 +432,10 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   header: { paddingHorizontal: 20, paddingBottom: 16 },
   headerTitle: { fontSize: 24, fontWeight: '700', marginBottom: 16 },
-  segment: { flexDirection: 'row', borderRadius: 10, padding: 3 },
-  segBtn: { flex: 1, paddingVertical: 8, alignItems: 'center' },
-  segLabel: { fontSize: 14, fontWeight: '600' },
+  segmentScroll: { flexGrow: 1 },
+  segment: { flexDirection: 'row', borderRadius: 10, padding: 3, flex: 1, minWidth: '100%' },
+  segBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', minWidth: 56 },
+  segLabel: { fontSize: 12, fontWeight: '600' },
   list: { paddingHorizontal: 16, paddingTop: 8 },
   medCard: { marginBottom: 10 },
   medRow: { flexDirection: 'row', alignItems: 'center' },
@@ -336,6 +457,15 @@ const styles = StyleSheet.create({
   labRange: { fontSize: 12, marginTop: 2 },
   labValue: { fontSize: 18, fontWeight: '700' },
   labDate: { fontSize: 12, marginTop: 2 },
+  apptCard: { marginBottom: 10 },
+  apptRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  apptDoctor: { fontSize: 15, fontWeight: '600' },
+  apptSpecialty: { fontSize: 13, fontWeight: '500', marginTop: 2 },
+  apptDetail: { fontSize: 12, marginTop: 2 },
+  apptDate: { fontSize: 13, fontWeight: '600' },
+  apptTime: { fontSize: 12, marginTop: 2 },
   emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48 },
+  emptyEmoji: { fontSize: 36, marginBottom: 12 },
   emptyText: { fontSize: 15, fontWeight: '500' },
+  emptyCta: { fontSize: 14, fontWeight: '600', marginTop: 8 },
 })
