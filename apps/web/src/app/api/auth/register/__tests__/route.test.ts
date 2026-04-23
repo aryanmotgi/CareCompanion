@@ -17,8 +17,8 @@ vi.mock('@/lib/db/schema', () => ({
 vi.mock('drizzle-orm', () => ({
   eq: vi.fn((...args: unknown[]) => args),
 }))
-vi.mock('@carecompanion/utils', () => {
-  const { z } = require('zod')
+vi.mock('@carecompanion/utils', async () => {
+  const { z } = await import('zod')
   return {
     registerSchema: z.object({
       email: z.string().email('Valid email required'),
