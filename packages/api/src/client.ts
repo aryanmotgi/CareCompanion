@@ -50,6 +50,20 @@ export function createApiClient(config: ApiClientConfig) {
       list: (careProfileId: string) =>
         apiFetch(config, `/api/records/appointments?care_profile_id=${careProfileId}`, { method: 'GET' }) as Promise<Appointment[]>,
     },
+    timeline: {
+      list: (profileId: string, days = 7) =>
+        apiFetch(config, `/api/timeline?profileId=${profileId}&days=${days}`, { method: 'GET' }) as Promise<{
+          ok: true
+          data: Array<{
+            id: string
+            type: 'medication' | 'appointment' | 'lab' | 'refill'
+            title: string
+            subtitle: string | null
+            timestamp: string
+            meta?: Record<string, unknown>
+          }>
+        }>,
+    },
     healthkit: {
       sync: (records: HealthKitRecord[]) =>
         apiFetch(config, '/api/healthkit/sync', {
@@ -78,6 +92,8 @@ export function createApiClient(config: ApiClientConfig) {
         treatmentPhase: string | null
         allergies: string | null
         conditions: string | null
+        role: string
+        caregiverForName: string | null
       }>,
     csrfToken: () =>
       apiFetch(config, '/api/csrf-token', { method: 'GET' }) as Promise<{ csrfToken: string }>,
