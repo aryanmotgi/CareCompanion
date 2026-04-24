@@ -12,29 +12,63 @@
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		96905EF65AED1B983A6B3ABC /* libPods-CareCompanion.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-CareCompanion.a */; };
+		A8854A1AA65D4131933A0009 /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A7CAD126CEF41FFB610D441 /* noop-file.swift */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		D26F33D5B2FC48F481B5DAFB /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD29B3E544744B4C9B3D5F49 /* noop-file.swift */; };
-		FD8D93103DB8BF5BB19BFDF3 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 4CE1875627948C20D332DFB8 /* PrivacyInfo.xcprivacy */; };
+		E6DE57BA092CAECA9115F33C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EB62C0D5ECFBEB008F9368A6 /* PrivacyInfo.xcprivacy */; };
+		CC000001000000000000001A /* EmergencyWidgetBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000001000000000000001B /* EmergencyWidgetBridge.swift */; };
+		CC000001000000000000002A /* EmergencyWidgetBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = CC000001000000000000002B /* EmergencyWidgetBridge.m */; };
+		CC000002000000000000001A /* CareCompanionWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000002000000000000001B /* CareCompanionWidget.swift */; };
+		CC000003000000000000001A /* CareCompanionWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = CC000003000000000000001B /* CareCompanionWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		CC000004000000000000001A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CC000005000000000000001A;
+			remoteInfo = CareCompanionWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		CC000006000000000000001A /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				CC000003000000000000001A /* CareCompanionWidgetExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		0A7CAD126CEF41FFB610D441 /* noop-file.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = "noop-file.swift"; path = "CareCompanion/noop-file.swift"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* CareCompanion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CareCompanion.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = CareCompanion/AppDelegate.h; sourceTree = "<group>"; };
 		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = CareCompanion/AppDelegate.mm; sourceTree = "<group>"; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = CareCompanion/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = CareCompanion/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = CareCompanion/main.m; sourceTree = "<group>"; };
-		3C04A9DD89F04EC18E450DED /* CareCompanion-Bridging-Header.h */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; name = "CareCompanion-Bridging-Header.h"; path = "CareCompanion/CareCompanion-Bridging-Header.h"; sourceTree = "<group>"; };
-		4CE1875627948C20D332DFB8 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = CareCompanion/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		58EEBF8E8E6FB1BC6CAF49B5 /* libPods-CareCompanion.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-CareCompanion.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		60EAC5CAD6CF49DB9D479850 /* CareCompanion-Bridging-Header.h */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; name = "CareCompanion-Bridging-Header.h"; path = "CareCompanion/CareCompanion-Bridging-Header.h"; sourceTree = "<group>"; };
 		6C2E3173556A471DD304B334 /* Pods-CareCompanion.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CareCompanion.debug.xcconfig"; path = "Target Support Files/Pods-CareCompanion/Pods-CareCompanion.debug.xcconfig"; sourceTree = "<group>"; };
 		7A4D352CD337FB3A3BF06240 /* Pods-CareCompanion.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CareCompanion.release.xcconfig"; path = "Target Support Files/Pods-CareCompanion/Pods-CareCompanion.release.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = CareCompanion/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		EB62C0D5ECFBEB008F9368A6 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = CareCompanion/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-CareCompanion/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		FD29B3E544744B4C9B3D5F49 /* noop-file.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = "noop-file.swift"; path = "CareCompanion/noop-file.swift"; sourceTree = "<group>"; };
+		CC000001000000000000001B /* EmergencyWidgetBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmergencyWidgetBridge.swift; path = CareCompanion/EmergencyWidgetBridge.swift; sourceTree = "<group>"; };
+		CC000001000000000000002B /* EmergencyWidgetBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EmergencyWidgetBridge.m; path = CareCompanion/EmergencyWidgetBridge.m; sourceTree = "<group>"; };
+		CC000002000000000000001B /* CareCompanionWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareCompanionWidget.swift; sourceTree = "<group>"; };
+		CC000002000000000000002B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		CC000002000000000000003B /* CareCompanionWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CareCompanionWidget.entitlements; sourceTree = "<group>"; };
+		CC000003000000000000001B /* CareCompanionWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CareCompanionWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -43,6 +77,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				96905EF65AED1B983A6B3ABC /* libPods-CareCompanion.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC000007000000000000001A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -59,9 +100,11 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				13B07FB71A68108700A75B9A /* main.m */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				FD29B3E544744B4C9B3D5F49 /* noop-file.swift */,
-				3C04A9DD89F04EC18E450DED /* CareCompanion-Bridging-Header.h */,
-				4CE1875627948C20D332DFB8 /* PrivacyInfo.xcprivacy */,
+				0A7CAD126CEF41FFB610D441 /* noop-file.swift */,
+				60EAC5CAD6CF49DB9D479850 /* CareCompanion-Bridging-Header.h */,
+				EB62C0D5ECFBEB008F9368A6 /* PrivacyInfo.xcprivacy */,
+				CC000001000000000000001B /* EmergencyWidgetBridge.swift */,
+				CC000001000000000000002B /* EmergencyWidgetBridge.m */,
 			);
 			name = CareCompanion;
 			sourceTree = "<group>";
@@ -86,6 +129,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07FAE1A68108700A75B9A /* CareCompanion */,
+				CC000008000000000000001A /* CareCompanionWidget */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
@@ -101,6 +145,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* CareCompanion.app */,
+				CC000003000000000000001B /* CareCompanionWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -139,6 +184,16 @@
 			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
+		CC000008000000000000001A /* CareCompanionWidget */ = {
+			isa = PBXGroup;
+			children = (
+				CC000002000000000000001B /* CareCompanionWidget.swift */,
+				CC000002000000000000002B /* Info.plist */,
+				CC000002000000000000003B /* CareCompanionWidget.entitlements */,
+			);
+			path = CareCompanionWidget;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -147,22 +202,41 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "CareCompanion" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				32253FD2359F13B635DB4EA6 /* [Expo] Configure project */,
+				2F26E0BBA19074CFA0A02177 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				B42E7B240C366C9FB6DCC402 /* [CP] Embed Pods Frameworks */,
+				E36258EB675210F9A8892699 /* [CP] Embed Pods Frameworks */,
+				CC000006000000000000001A /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				CC000009000000000000001A /* PBXTargetDependency */,
 			);
 			name = CareCompanion;
 			productName = CareCompanion;
 			productReference = 13B07F961A680F5B00A75B9A /* CareCompanion.app */;
 			productType = "com.apple.product-type.application";
+		};
+		CC000005000000000000001A /* CareCompanionWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CC00000A000000000000001A /* Build configuration list for PBXNativeTarget "CareCompanionWidgetExtension" */;
+			buildPhases = (
+				CC00000B000000000000001A /* Sources */,
+				CC000007000000000000001A /* Frameworks */,
+				CC00000C000000000000001A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CareCompanionWidgetExtension;
+			productName = CareCompanionWidgetExtension;
+			productReference = CC000003000000000000001B /* CareCompanionWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -174,6 +248,10 @@
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1250;
+						DevelopmentTeam = "GMYH45T96K";
+						ProvisioningStyle = Automatic;
+					};
+					CC000005000000000000001A = {
 						DevelopmentTeam = "GMYH45T96K";
 						ProvisioningStyle = Automatic;
 					};
@@ -193,6 +271,7 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* CareCompanion */,
+				CC000005000000000000001A /* CareCompanionWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -205,7 +284,14 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				FD8D93103DB8BF5BB19BFDF3 /* PrivacyInfo.xcprivacy in Resources */,
+				E6DE57BA092CAECA9115F33C /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC00000C000000000000001A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -249,7 +335,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		32253FD2359F13B635DB4EA6 /* [Expo] Configure project */ = {
+		2F26E0BBA19074CFA0A02177 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -310,7 +396,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-CareCompanion/Pods-CareCompanion-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		B42E7B240C366C9FB6DCC402 /* [CP] Embed Pods Frameworks */ = {
+		E36258EB675210F9A8892699 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -338,11 +424,29 @@
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,
-				D26F33D5B2FC48F481B5DAFB /* noop-file.swift in Sources */,
+				A8854A1AA65D4131933A0009 /* noop-file.swift in Sources */,
+				CC000001000000000000001A /* EmergencyWidgetBridge.swift in Sources */,
+				CC000001000000000000002A /* EmergencyWidgetBridge.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC00000B000000000000001A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CC000002000000000000001A /* CareCompanionWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		CC000009000000000000001A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CC000005000000000000001A /* CareCompanionWidgetExtension */;
+			targetProxy = CC000004000000000000001A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
@@ -378,6 +482,7 @@
 				DEVELOPMENT_TEAM = "GMYH45T96K";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 			};
 			name = Debug;
 		};
@@ -408,6 +513,7 @@
 				DEVELOPMENT_TEAM = "GMYH45T96K";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 			};
 			name = Release;
 		};
@@ -529,6 +635,53 @@
 			};
 			name = Release;
 		};
+		CC00000D000000000000001A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = CareCompanionWidget/CareCompanionWidget.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "GMYH45T96K";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CareCompanionWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.aryanmotgi.carecompanion.dev.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		CC00000E000000000000001A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = CareCompanionWidget/CareCompanionWidget.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "GMYH45T96K";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CareCompanionWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.aryanmotgi.carecompanion.dev.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -546,6 +699,15 @@
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
 				83CBBA211A601CBA00E9B192 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CC00000A000000000000001A /* Build configuration list for PBXNativeTarget "CareCompanionWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CC00000D000000000000001A /* Debug */,
+				CC00000E000000000000001A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
