@@ -8,7 +8,7 @@ interface ApiClientConfig {
 async function apiFetch(
   config: ApiClientConfig,
   path: string,
-  options: RequestInit = {}
+  options: RequestInit & { signal?: AbortSignal } = {}
 ): Promise<unknown> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -25,7 +25,7 @@ async function apiFetch(
     }
   }
 
-  const res = await fetch(`${config.baseUrl}${path}`, { ...options, headers })
+  const res = await fetch(`${config.baseUrl}${path}`, { ...options, headers, signal: options.signal })
 
   if (!res.ok) {
     throw new Error(`API error ${res.status}: ${await res.text()}`)
