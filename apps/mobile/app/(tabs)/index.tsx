@@ -37,7 +37,6 @@ import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { ShimmerSkeleton } from '../../src/components/ShimmerSkeleton'
 import { TabFadeWrapper } from './_layout'
 import { useProfile } from '../../src/context/ProfileContext'
-import { apiClient } from '../../src/services/api'
 
 interface Profile {
   patientName?: string
@@ -119,7 +118,7 @@ export default function HomeScreen() {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   // --- Real data from API ---
-  const { profile, loading: profileLoading } = useProfile()
+  const { profile, loading: profileLoading, apiClient } = useProfile()
   const [meds, setMeds] = useState<any[]>([])
   const [appointments, setAppointments] = useState<any[]>([])
   const [dataLoading, setDataLoading] = useState(true)
@@ -455,7 +454,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, overflow: 'hidden' },
   scroll: { flex: 1 },
   content: { paddingHorizontal: 20 },
   header: {

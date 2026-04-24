@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
+import Constants from 'expo-constants'
 import { useTheme, useThemeOverride, setThemeOverride, ThemeOverride } from '../../src/theme'
 import { useProfile } from '../../src/context/ProfileContext'
 import { GlassCard } from '../../src/components/GlassCard'
@@ -13,12 +14,15 @@ import Animated from 'react-native-reanimated'
 import { useStaggerEntrance } from '../../src/hooks/useStaggerEntrance'
 import { TabFadeWrapper } from './_layout'
 
+const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
+const BUILD_NUMBER = Constants.expoConfig?.ios?.buildNumber ?? Constants.expoConfig?.android?.versionCode?.toString() ?? '1'
+
 export default function SettingsScreen() {
   const theme = useTheme()
   const activeTheme = useThemeOverride()
   const insets = useSafeAreaInsets()
   const router = useRouter()
-  const stagger = useStaggerEntrance(8)
+  const stagger = useStaggerEntrance(12)
   const { profile } = useProfile()
 
   const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({
@@ -50,6 +54,37 @@ export default function SettingsScreen() {
         },
       },
     ])
+  }
+
+  function deleteAccount() {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all associated data. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const token = await SecureStore.getItemAsync('cc-session-token')
+              if (!token) return
+              const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
+              const res = await fetch(`${baseUrl}/api/auth/delete-account`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+              })
+              if (!res.ok) throw new Error('Delete failed')
+              await SecureStore.deleteItemAsync('cc-session-token')
+              await SecureStore.deleteItemAsync('cc-profile')
+              router.replace('/login')
+            } catch {
+              Alert.alert('Error', 'Failed to delete account. Please try again or contact support.')
+            }
+          },
+        },
+      ],
+    )
   }
 
   return (
@@ -124,7 +159,7 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>NOTIFICATIONS</Text>
 
           {/* Medications group */}
-          <Text style={[styles.subHeader, { color: theme.textMuted }]}>Medications</Text>
+          <Text style={[styles.subHeader, { color: theme.textMuted }]}>Medication Alerts</Text>
           <View style={styles.section}>
             {([
               { key: 'medications', label: 'Medications', description: 'Medication reminders and alerts' },
@@ -174,9 +209,57 @@ export default function SettingsScreen() {
           </View>
         </Animated.View>
 
+        {/* About */}
+        <Animated.View style={stagger[6]}>
+          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>ABOUT</Text>
+          <View style={styles.section}>
+            <View style={styles.aboutRow}>
+              <Text style={[styles.aboutLabel, { color: theme.text }]}>App Version</Text>
+              <Text style={[styles.aboutValue, { color: theme.textMuted }]}>{APP_VERSION} ({BUILD_NUMBER})</Text>
+            </View>
+          </View>
+        </Animated.View>
+
+        {/* Legal & Support */}
+        <Animated.View style={stagger[7]}>
+          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>LEGAL & SUPPORT</Text>
+          <View style={styles.section}>
+            <Pressable style={styles.linkRow} onPress={() => Linking.openURL('https://carecompanionai.org/privacy')}>
+              <Ionicons name="shield-checkmark-outline" size={18} color={theme.textMuted} />
+              <Text style={[styles.linkLabel, { color: theme.text }]}>Privacy Policy</Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
+            </Pressable>
+            <View style={styles.toggleRowBorder} />
+            <Pressable style={styles.linkRow} onPress={() => Linking.openURL('https://carecompanionai.org/terms')}>
+              <Ionicons name="document-text-outline" size={18} color={theme.textMuted} />
+              <Text style={[styles.linkLabel, { color: theme.text }]}>Terms of Service</Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
+            </Pressable>
+            <View style={styles.toggleRowBorder} />
+            <Pressable style={styles.linkRow} onPress={() => Linking.openURL('mailto:support@carecompanionai.org')}>
+              <Ionicons name="help-circle-outline" size={18} color={theme.textMuted} />
+              <Text style={[styles.linkLabel, { color: theme.text }]}>Help & Support</Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
+            </Pressable>
+          </View>
+        </Animated.View>
+
+        {/* Delete Account */}
+        <Animated.View style={stagger[8]}>
+          <Pressable onPress={deleteAccount}>
+            <View style={styles.section}>
+              <View style={styles.linkRow}>
+                <Ionicons name="trash-outline" size={18} color={theme.rose} />
+                <Text style={[styles.linkLabel, { color: theme.rose }]}>Delete Account</Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.rose} />
+              </View>
+            </View>
+          </Pressable>
+        </Animated.View>
+
         {/* Test Tools (staging only) */}
         {process.env.EXPO_PUBLIC_TEST_MODE === 'true' && (
-          <Animated.View style={stagger[6]}>
+          <Animated.View style={stagger[9]}>
             <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>TEST TOOLS</Text>
             <Pressable
               onPress={() => {
@@ -219,7 +302,7 @@ export default function SettingsScreen() {
         )}
 
         {/* Sign out */}
-        <Animated.View style={stagger[7]}>
+        <Animated.View style={stagger[10]}>
           <Pressable onPress={signOut}>
             <View style={styles.section}>
               <Text style={[styles.signOut, { color: theme.rose }]}>Sign Out</Text>
@@ -250,8 +333,13 @@ const styles = StyleSheet.create({
   editProfileSub: { fontSize: 12, marginTop: 2 },
   chevron: { fontSize: 18, fontWeight: '600' },
   subHeader: { fontSize: 12, fontWeight: '600', marginBottom: 6, marginTop: 4 },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingRight: 12 },
   toggleRowBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(150,150,150,0.2)' },
   toggleLabel: { fontSize: 14, fontWeight: '600' },
   toggleDesc: { fontSize: 12, marginTop: 2 },
+  aboutRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 },
+  aboutLabel: { fontSize: 14, fontWeight: '600' },
+  aboutValue: { fontSize: 14 },
+  linkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
+  linkLabel: { flex: 1, fontSize: 14, fontWeight: '600' },
 })

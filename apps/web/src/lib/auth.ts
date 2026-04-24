@@ -1,5 +1,7 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
+import Apple from 'next-auth/providers/apple'
+import Google from 'next-auth/providers/google'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
@@ -10,6 +12,14 @@ const loginLimiter = rateLimit({ interval: 15 * 60 * 1000, maxRequests: 5 })
 
 export const { handlers, signIn, auth } = NextAuth({
   providers: [
+    Apple({
+      clientId: process.env.APPLE_CLIENT_ID!,
+      clientSecret: process.env.APPLE_CLIENT_SECRET!,
+    }),
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
     Credentials({
       credentials: {
         email: { label: 'Email', type: 'email' },
@@ -35,12 +45,41 @@ export const { handlers, signIn, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account, profile }) {
       if (user) {
-        // Initial sign-in: user.id is the DB UUID from authorize()
-        token.dbUserId = user.id
-        token.displayName = user.name ?? user.email ?? ''
-        token.isDemo = false
+        if (account?.provider === 'apple' || account?.provider === 'google') {
+          // Social sign-in: find or create user in our database
+          const socialEmail = (user.email ?? profile?.email ?? '').toLowerCase().trim()
+          if (!socialEmail) {
+            throw new Error('No email provided by social provider')
+          }
+
+          let dbUser = await db.query.users.findFirst({
+            where: eq(users.email, socialEmail),
+          })
+
+          if (!dbUser) {
+            // Create a new user from social sign-in
+            const [newUser] = await db
+              .insert(users)
+              .values({
+                email: socialEmail,
+                displayName: user.name ?? socialEmail,
+                providerSub: account.providerAccountId,
+              })
+              .returning({ id: users.id, displayName: users.displayName })
+            dbUser = { ...newUser, email: socialEmail }
+          }
+
+          token.dbUserId = dbUser.id
+          token.displayName = dbUser.displayName ?? user.name ?? socialEmail
+          token.isDemo = false
+        } else {
+          // Credentials sign-in: user.id is the DB UUID from authorize()
+          token.dbUserId = user.id
+          token.displayName = user.name ?? user.email ?? ''
+          token.isDemo = false
+        }
       }
       return token
     },

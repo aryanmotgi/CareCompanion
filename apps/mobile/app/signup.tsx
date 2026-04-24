@@ -21,6 +21,8 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
 import { useRouter } from 'expo-router'
 import { signInWithCredentials } from '../src/services/auth'
+import { signInWithApple, isAppleSignInAvailable } from '../src/services/apple-auth'
+import { signInWithGoogle } from '../src/services/google-auth'
 import { RippleButton } from '../src/components/RippleButton'
 
 export default function SignupScreen() {
@@ -31,6 +33,42 @@ export default function SignupScreen() {
   const [displayName, setDisplayName] = useState('')
   const [consent, setConsent] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [socialLoading, setSocialLoading] = useState<'apple' | 'google' | null>(null)
+  const [appleAvailable, setAppleAvailable] = useState(false)
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      isAppleSignInAvailable().then(setAppleAvailable)
+    }
+  }, [])
+
+  async function handleAppleSignIn() {
+    try {
+      setSocialLoading('apple')
+      await signInWithApple()
+      router.replace('/(tabs)')
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Apple Sign-In failed'
+      if (msg !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert('Apple Sign-In Failed', msg)
+      }
+    } finally {
+      setSocialLoading(null)
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    try {
+      setSocialLoading('google')
+      await signInWithGoogle()
+      router.replace('/(tabs)')
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Google Sign-In failed'
+      Alert.alert('Google Sign-In Failed', msg)
+    } finally {
+      setSocialLoading(null)
+    }
+  }
 
   const logoOpacity = useSharedValue(0)
   const logoY = useSharedValue(20)
@@ -135,6 +173,38 @@ export default function SignupScreen() {
           />
 
           <Text style={styles.heading}>Sign Up</Text>
+
+          {/* Social sign-up buttons */}
+          {appleAvailable && (
+            <Pressable
+              style={styles.appleButton}
+              onPress={handleAppleSignIn}
+              disabled={socialLoading !== null || loading}
+            >
+              <Text style={styles.appleIcon}>{'\uF8FF'}</Text>
+              <Text style={styles.appleButtonText}>
+                {socialLoading === 'apple' ? 'Signing up...' : 'Continue with Apple'}
+              </Text>
+            </Pressable>
+          )}
+
+          <Pressable
+            style={styles.googleButton}
+            onPress={handleGoogleSignIn}
+            disabled={socialLoading !== null || loading}
+          >
+            <Text style={styles.googleIcon}>G</Text>
+            <Text style={styles.googleButtonText}>
+              {socialLoading === 'google' ? 'Signing up...' : 'Continue with Google'}
+            </Text>
+          </Pressable>
+
+          {/* Divider */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
           <TextInput
             style={styles.input}
@@ -309,5 +379,60 @@ const styles = StyleSheet.create({
   linkHighlight: {
     color: 'rgba(167,139,250,0.7)',
     textDecorationLine: 'underline',
+  },
+  appleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  appleIcon: {
+    fontSize: 18,
+    color: '#000000',
+    fontWeight: '600',
+  },
+  appleButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#000000',
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  googleIcon: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#4285F4',
+  },
+  googleButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F1F1F',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  dividerText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.25)',
+    fontWeight: '500',
   },
 })

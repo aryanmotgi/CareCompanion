@@ -29,6 +29,7 @@ interface ProfileContextValue {
   error: Error | null
   csrfToken: string | null
   refetch: () => Promise<void>
+  apiClient: ReturnType<typeof createApiClient>
 }
 
 const ProfileContext = createContext<ProfileContextValue>({
@@ -37,6 +38,7 @@ const ProfileContext = createContext<ProfileContextValue>({
   error: null,
   csrfToken: null,
   refetch: async () => {},
+  apiClient,
 })
 
 export function useProfile() {
@@ -98,7 +100,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   }, [fetchProfile])
 
   return (
-    <ProfileContext.Provider value={{ profile, loading, error, csrfToken, refetch: fetchProfile }}>
+    <ProfileContext.Provider value={{ profile, loading, error, csrfToken, refetch: fetchProfile, apiClient }}>
       {children}
     </ProfileContext.Provider>
   )

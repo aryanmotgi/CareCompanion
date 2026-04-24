@@ -21,12 +21,6 @@ import { useStaggerEntrance } from '../../src/hooks/useStaggerEntrance'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { TabFadeWrapper } from './_layout'
 import { useProfile } from '../../src/context/ProfileContext'
-import { createApiClient } from '@carecompanion/api'
-
-const apiClient = createApiClient({
-  baseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org',
-  getToken: () => SecureStore.getItemAsync('cc-session-token'),
-})
 
 type MedStatus = 'taken' | 'upcoming' | 'overdue'
 type CareTab = 'meds' | 'appts' | 'labs' | 'journal' | 'team'
@@ -240,7 +234,7 @@ function AppointmentRow({ appointment }: { appointment: any }) {
 export default function CareScreen() {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
-  const { profile, csrfToken } = useProfile()
+  const { profile, csrfToken, apiClient } = useProfile()
   const [tab, setTab] = useState<CareTab>('meds')
   const [meds, setMeds] = useState<Med[]>([])
   const [labs, setLabs] = useState<Lab[]>([])

@@ -94,7 +94,7 @@ Deferred work from gstack plan reviews. One item per section. Priority: P1 (bloc
 
 ---
 
-## [P1] Set up vitest + Playwright for testing
+## ~~[P1] Set up vitest + Playwright for testing~~ DONE
 
 **What:** Install `vitest`, `@testing-library/react`, and `playwright`. Add basic config files. Write the tests specified in the eng review test plan.
 
@@ -112,9 +112,45 @@ Deferred work from gstack plan reviews. One item per section. Priority: P1 (bloc
 
 ---
 
+---
+
+## [P2] Mark-as-taken when no reminderLog exists
+
+**What:** When a medication has no `reminderLog` for today (user added med manually, never set up a reminder), `logId` is `undefined`. Disable the check button with "No reminder set" label instead of silently doing nothing.
+
+**Why:** Manually added medications are a real caregiving scenario. Silent no-op on tap is confusing.
+
+**Pros:** Closes the full mark-as-taken loop. Users understand why the button isn't working.
+
+**Cons:** Full fix requires `POST /api/reminders/create-and-respond` (new endpoint). Phase 1 handles via disabled button.
+
+**Context:** From /plan-eng-review, mobile parity sprint. Phase 1 disables the button when `logId` is missing.
+
+**Effort:** S (human: ~2h / CC: ~15 min)
+**Priority:** P2 — after Phase 1 ships
+**Depends on:** Mobile parity Phase 1 (care.tsx wired with real data)
+
+---
+
+## [P3] AbortController signal threading in apiFetch
+
+**What:** Thread `signal?: AbortSignal` through `apiFetch()` in `packages/api/src/client.ts`, pass it to the underlying `fetch()` call.
+
+**Why:** Proper cancellation for all API calls. Prevents state updates on unmounted components across future screens.
+
+**Context:** From /plan-eng-review, mobile parity sprint. Current workaround: `Promise.race` timeout.
+
+**Effort:** S (human: ~30 min / CC: ~5 min)
+**Priority:** P3 — nice-to-have DX improvement
+**Depends on:** Nothing
+
+---
+
 ## Deferred from Plan Reviews
 
 | Item | Source | Status |
 |------|--------|--------|
 | Magic link at rate limit | Launch funnel CEO review | Deferred indefinitely — users motivated enough to hit 15 msgs/hr will sign up normally |
 | Medications schema (Phase 2) | Launch funnel CEO review | Deferred to Phase 2 when med tracking is a feature |
+| Offline caching + network banner | Mobile parity CEO review | Phase 3 — needs React Query or AsyncStorage cache layer first |
+| Aurora 503 retry handling | Mobile parity CEO review | Phase 3 — retry-after with backoff when cold-start 503s during API calls |

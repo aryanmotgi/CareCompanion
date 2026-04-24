@@ -20,7 +20,7 @@ export default function SignupPage() {
 
       <PublicNav />
 
-      <div className="relative w-full max-w-sm" style={{ animation: 'loginFadeUp 0.6s ease both' }}>
+      <div className="relative z-10 w-full max-w-sm pt-20" style={{ animation: 'loginFadeUp 0.6s ease both' }}>
 
         {/* Logo + headline */}
         <div className="text-center mb-8" style={{ animation: 'loginFadeUp 0.6s ease 0.05s both' }}>

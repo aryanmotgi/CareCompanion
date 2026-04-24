@@ -20,18 +20,12 @@ import Animated, {
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
-import * as SecureStore from 'expo-secure-store'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../src/theme'
 import { hapticAIMessage } from '../../src/utils/haptics'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { TabFadeWrapper } from './_layout'
-import { createApiClient } from '@carecompanion/api'
-
-const apiClient = createApiClient({
-  baseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org',
-  getToken: () => SecureStore.getItemAsync('cc-session-token'),
-})
+import { useProfile } from '../../src/context/ProfileContext'
 
 type Message = { id: string; role: 'user' | 'assistant'; content: string; isError?: boolean; failedInput?: string }
 
@@ -260,6 +254,7 @@ export default function ChatScreen() {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
   const reduceMotion = useReducedMotion()
+  const { apiClient } = useProfile()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
