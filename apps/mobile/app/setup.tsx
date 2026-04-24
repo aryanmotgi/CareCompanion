@@ -103,7 +103,9 @@ export default function SetupScreen() {
     width: `${progressWidth.value}%`,
   }))
 
-  const currentValue = step.type === 'chips' ? selectedChip : textValue
+  const currentValue = step.type === 'chips'
+    ? (selectedChip === 'Other' ? textValue || null : selectedChip)
+    : textValue
 
   async function handleNext() {
     const val = currentValue?.trim()
@@ -224,27 +226,47 @@ export default function SetupScreen() {
             style={styles.inputArea}
           >
             {step.type === 'chips' ? (
-              <View style={styles.chipGrid}>
-                {step.options?.map((option) => {
-                  const selected = selectedChip === option
-                  return (
-                    <Pressable
-                      key={option}
-                      onPress={() => setSelectedChip(selected ? null : option)}
-                      style={[
-                        styles.chip,
-                        selected && styles.chipSelected,
-                      ]}
-                    >
-                      <Text style={[
-                        styles.chipText,
-                        selected && styles.chipTextSelected,
-                      ]}>
-                        {option}
-                      </Text>
-                    </Pressable>
-                  )
-                })}
+              <View>
+                <View style={styles.chipGrid}>
+                  {step.options?.map((option) => {
+                    const selected = selectedChip === option
+                    return (
+                      <Pressable
+                        key={option}
+                        onPress={() => {
+                          if (option === 'Other') {
+                            setSelectedChip(selected ? null : option)
+                          } else {
+                            setSelectedChip(selected ? null : option)
+                            setTextValue('')
+                          }
+                        }}
+                        style={[
+                          styles.chip,
+                          selected && styles.chipSelected,
+                        ]}
+                      >
+                        <Text style={[
+                          styles.chipText,
+                          selected && styles.chipTextSelected,
+                        ]}>
+                          {option}
+                        </Text>
+                      </Pressable>
+                    )
+                  })}
+                </View>
+                {selectedChip === 'Other' && (
+                  <TextInput
+                    style={[styles.textInput, { marginTop: 16 }]}
+                    placeholder="Type your answer..."
+                    placeholderTextColor="rgba(255,255,255,0.25)"
+                    value={textValue}
+                    onChangeText={setTextValue}
+                    autoFocus={false}
+                    returnKeyType="done"
+                  />
+                )}
               </View>
             ) : (
               <TextInput
