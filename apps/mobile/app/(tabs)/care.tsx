@@ -254,9 +254,9 @@ export default function CareScreen() {
     }
     setLoading(true)
     Promise.all([
-      apiClient.medications.list(profile.careProfileId),
-      apiClient.labResults.list(profile.careProfileId),
-      apiClient.appointments.list(profile.careProfileId).catch(() => []),
+      apiClient.medications.list(profile.careProfileId).catch((e: any) => { console.error('[Care] meds error:', e?.message); return [] }),
+      apiClient.labResults.list(profile.careProfileId).catch((e: any) => { console.error('[Care] labs error:', e?.message); return { labs: [] } }),
+      apiClient.appointments.list(profile.careProfileId).catch((e: any) => { console.error('[Care] appts error:', e?.message); return [] }),
     ]).then(([medsData, labsData, apptsData]) => {
       // Map API medications to the Med interface
       const mappedMeds: Med[] = (medsData as any[]).map((m: any) => ({
@@ -285,8 +285,8 @@ export default function CareScreen() {
         .sort((a: any, b: any) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime())
       setAppointments(mappedAppts)
     }).catch(err => {
-      // Fail silently in dev — setError shows the retry card to the user
-      setError('Failed to load care data')
+      console.error('[Care] Failed to load:', err?.message || err)
+      setError(`Failed to load care data: ${err?.message || 'Unknown error'}`)
     }).finally(() => {
       setLoading(false)
     })
