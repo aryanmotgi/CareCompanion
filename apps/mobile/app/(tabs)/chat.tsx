@@ -192,24 +192,40 @@ function SuggestionCard({
   onPress: () => void
 }) {
   const theme = useTheme()
+  const rotation = useSharedValue(0)
+
+  useEffect(() => {
+    rotation.value = withRepeat(
+      withTiming(360, { duration: 8000 }),
+      -1,
+      false,
+    )
+  }, [rotation])
+
+  const rotateStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }, { scale: 1.5 }],
+  }))
+
   return (
     <Pressable onPress={onPress} style={styles.suggestionCard}>
-      <View
-        style={[
-          styles.suggestionCardInner,
-          {
-            backgroundColor: theme.bgCard,
-            borderColor: theme.bgCardBorder,
-          },
-        ]}
-      >
-        <Ionicons name={icon} size={22} color={color} style={{ marginBottom: 8 }} />
-        <Text style={[styles.suggestionTitle, { color: theme.text }]} numberOfLines={2}>
-          {title}
-        </Text>
-        <Text style={[styles.suggestionSubtitle, { color: theme.textMuted }]} numberOfLines={2}>
-          {subtitle}
-        </Text>
+      <View style={{ borderRadius: 14, overflow: 'hidden' }}>
+        <Animated.View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }, rotateStyle]}>
+          <LinearGradient
+            colors={[color, theme.lavender, theme.cyan, color]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
+        <View style={[styles.suggestionCardInner, { backgroundColor: theme.isDark ? '#0C0E1A' : '#FAFAFA', margin: 1.5, borderRadius: 12.5, borderWidth: 0 }]}>
+          <Ionicons name={icon} size={22} color={color} style={{ marginBottom: 8 }} />
+          <Text style={[styles.suggestionTitle, { color: theme.text }]} numberOfLines={2}>
+            {title}
+          </Text>
+          <Text style={[styles.suggestionSubtitle, { color: theme.textMuted }]} numberOfLines={2}>
+            {subtitle}
+          </Text>
+        </View>
       </View>
     </Pressable>
   )
@@ -319,13 +335,15 @@ export default function ChatScreen() {
       hapticAIMessage()
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
+      const errMsg = err instanceof Error ? err.message : String(err)
+      console.error('[Chat] Error:', errMsg)
       csrfTokenRef.current = null
       setMessages((prev) => [
         ...prev,
         {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: 'Something went wrong. Please try again.',
+          content: `Error: ${errMsg}`,
           isError: true,
           failedInput: originalInput,
         },
