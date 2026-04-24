@@ -593,7 +593,7 @@ export function DashboardView({
           )}
         </div>
       ) : (
-        <div className="space-y-3" data-tour="dashboard-cards">
+        <div className="space-y-3 card-stagger" data-tour="dashboard-cards">
           {cards.map((card, i) => (
             <PriorityCard
               key={card.id}

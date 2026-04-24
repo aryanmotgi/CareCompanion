@@ -30,7 +30,7 @@ export function Button({ variant = 'primary', loading = false, children, classNa
     onClick?.(e)
   }, [onClick])
 
-  const base = 'inline-flex items-center justify-center rounded-xl font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg)] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] px-6 py-3 relative overflow-hidden';
+  const base = 'inline-flex items-center justify-center rounded-xl font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg)] disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] px-6 py-3 relative overflow-hidden btn-press';
 
   const variants = {
     primary: 'bg-[#6366F1] text-white hover:bg-[#818CF8] hover:shadow-lg hover:shadow-indigo-500/20 focus:ring-indigo-500/30',

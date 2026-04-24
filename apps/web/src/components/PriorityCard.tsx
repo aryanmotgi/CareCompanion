@@ -89,7 +89,7 @@ export function PriorityCard({
     return (
       <Link href={href}>
         <div
-          className={`${s.bg} border ${s.border} rounded-xl p-4 animate-press shimmer-btn`}
+          className={`${s.bg} border ${s.border} rounded-xl p-4 animate-press shimmer-btn card-hover-glow`}
           style={animStyle}
         >
           {content}
@@ -107,7 +107,7 @@ export function PriorityCard({
           expanded={expanded}
           onToggle={onToggle}
           expandedContent={expandedContent}
-          className={`${s.bg} animate-press`}
+          className={`${s.bg} animate-press card-hover-glow`}
           style={animStyle}
         >
           {content}
@@ -120,7 +120,7 @@ export function PriorityCard({
   return (
     <div className={isUrgent ? 'gradient-border-spin' : ''}>
       <div
-        className={`${s.bg} border ${s.border} rounded-xl p-4 animate-press`}
+        className={`${s.bg} border ${s.border} rounded-xl p-4 animate-press card-hover-glow`}
         style={animStyle}
       >
         {content}
