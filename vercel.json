@@ -23,6 +23,10 @@
     {
       "path": "/api/cron/weekly-summary",
       "schedule": "0 8 * * 0"
+    },
+    {
+      "path": "/api/cron/radar",
+      "schedule": "0 6 * * *"
     }
   ]
 }
