@@ -124,10 +124,10 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     insRows,
     activeCycleRows,
   ] = await Promise.all([
-    profile?.id ? db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).limit(50).catch(() => []) : Promise.resolve([]),
+    profile?.id ? db.select({ id: medications.id, careProfileId: medications.careProfileId, name: medications.name, dose: medications.dose, frequency: medications.frequency, prescribingDoctor: medications.prescribingDoctor, refillDate: medications.refillDate, notes: medications.notes, createdAt: medications.createdAt }).from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).limit(50).catch(() => []) as Promise<any[]> : Promise.resolve([]),
     profile?.id ? db.select().from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))).limit(50).catch(() => []) : Promise.resolve([]),
-    profile?.id ? db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).limit(50).catch(() => []) : Promise.resolve([]),
-    db.select().from(labResults).where(eq(labResults.userId, dbUser!.id)).orderBy(desc(labResults.dateTaken)).limit(20).catch(() => []),
+    profile?.id ? db.select({ id: appointments.id, careProfileId: appointments.careProfileId, doctorName: appointments.doctorName, specialty: appointments.specialty, dateTime: appointments.dateTime, location: appointments.location, purpose: appointments.purpose, createdAt: appointments.createdAt }).from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).limit(50).catch(() => []) as Promise<any[]> : Promise.resolve([]),
+    db.select({ id: labResults.id, testName: labResults.testName, value: labResults.value, unit: labResults.unit, referenceRange: labResults.referenceRange, dateTaken: labResults.dateTaken }).from(labResults).where(eq(labResults.userId, dbUser!.id)).orderBy(desc(labResults.dateTaken)).limit(20).catch(() => []) as Promise<any[]>,
     db.select().from(notifications).where(and(eq(notifications.userId, dbUser!.id), eq(notifications.isRead, false))).limit(10).catch(() => []),
     db.select().from(claims).where(and(eq(claims.userId, dbUser!.id), eq(claims.status, 'denied'))).limit(5).catch(() => []),
     db.select().from(priorAuths).where(eq(priorAuths.userId, dbUser!.id)).limit(50).catch(() => []),
@@ -136,7 +136,7 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     loadConversationSummaries(dbUser!.id).catch(() => []),
     db.select().from(symptomEntries).where(eq(symptomEntries.userId, dbUser!.id)).orderBy(desc(symptomEntries.date)).limit(14).catch(() => []),
     db.select().from(insurance).where(eq(insurance.userId, dbUser!.id)).limit(1).catch(() => []),
-    profile?.id ? db.select().from(treatmentCycles).where(and(eq(treatmentCycles.careProfileId, profile.id), eq(treatmentCycles.isActive, true))).limit(1).catch(() => []) : Promise.resolve([]),
+    Promise.resolve([]), // treatmentCycles query disabled until migration is run
   ]);
   const [ins] = insRows;
   const [activeCycle] = activeCycleRows;
