@@ -305,7 +305,7 @@ export default function HomeScreen() {
 
           {/* Cards at 0.6x parallax */}
           <Animated.View style={cardParallaxStyle}>
-            {/* Medications card */}
+            {/* Medications card — only show when user has meds */}
             {!loaded || dataLoading ? (
               <Animated.View style={card1Style}>
                 <GlassCard style={styles.card}>
@@ -315,41 +315,70 @@ export default function HomeScreen() {
                   <ShimmerSkeleton width="80%" height={16} />
                 </GlassCard>
               </Animated.View>
-            ) : (
+            ) : meds.length > 0 ? (
               <Animated.View style={card1Style}>
                 <GlassCard style={styles.card}>
                   <View style={styles.cardHeader}>
                     <Text style={[styles.cardLabel, { color: theme.textMuted }]}>
                       TODAY'S MEDICATIONS
                     </Text>
-                    {medCount > 0 && (
-                      <View style={[styles.badge, { backgroundColor: 'rgba(99,102,241,0.2)' }]}>
-                        <AnimatedCounter
-                          value={medCount}
-                          style={{ ...styles.badgeText, color: theme.accent }}
-                          suffix={medCount === 1 ? ' med' : ' meds'}
-                        />
-                      </View>
-                    )}
+                    <View style={[styles.badge, { backgroundColor: 'rgba(99,102,241,0.2)' }]}>
+                      <AnimatedCounter
+                        value={medCount}
+                        style={{ ...styles.badgeText, color: theme.accent }}
+                        suffix={medCount === 1 ? ' med' : ' meds'}
+                      />
+                    </View>
                   </View>
-                  {meds.length === 0 ? (
-                    <Pressable onPress={() => router.push('/setup' as any)} style={{ alignItems: 'center', paddingVertical: 12 }}>
-                      <Ionicons name="heart-circle-outline" size={28} color="rgba(99,102,241,0.4)" style={{ marginBottom: 6 }} />
-                      <Text style={{ color: theme.textMuted, fontSize: 13, textAlign: 'center' }}>Connect Health Records to auto-import{'\n'}or add medications manually</Text>
+                  {meds.map((med) => (
+                    <View key={med.id} style={styles.medRow}>
+                      <View style={[styles.dot, { backgroundColor: theme.amber }]} />
+                      <Text style={[styles.medName, { color: theme.text }]}>
+                        {med.name}{med.dose ? ` ${med.dose}` : ''}
+                      </Text>
+                      <Text style={[styles.medTime, { color: theme.textMuted }]}>
+                        {med.frequency || ''}
+                      </Text>
+                    </View>
+                  ))}
+                </GlassCard>
+              </Animated.View>
+            ) : (
+              /* Welcome section when no data */
+              <Animated.View style={card1Style}>
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', fontWeight: '600', marginBottom: 12 }}>
+                    GET STARTED
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <Pressable
+                      onPress={() => router.push('/(tabs)/chat')}
+                      style={{ flex: 1, backgroundColor: 'rgba(99,102,241,0.12)', borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(99,102,241,0.15)' }}
+                    >
+                      <Ionicons name="chatbubble-outline" size={22} color="#A78BFA" style={{ marginBottom: 6 }} />
+                      <Text style={{ color: theme.text, fontSize: 12, fontWeight: '600' }}>Talk to AI</Text>
                     </Pressable>
-                  ) : (
-                    meds.map((med) => (
-                      <View key={med.id} style={styles.medRow}>
-                        <View style={[styles.dot, { backgroundColor: theme.amber }]} />
-                        <Text style={[styles.medName, { color: theme.text }]}>
-                          {med.name}{med.dose ? ` ${med.dose}` : ''}
-                        </Text>
-                        <Text style={[styles.medTime, { color: theme.textMuted }]}>
-                          {med.frequency || ''}
-                        </Text>
-                      </View>
-                    ))
-                  )}
+                    <Pressable
+                      onPress={() => router.push('/(tabs)/scan')}
+                      style={{ flex: 1, backgroundColor: 'rgba(103,232,249,0.08)', borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(103,232,249,0.12)' }}
+                    >
+                      <Ionicons name="scan-outline" size={22} color="#67E8F9" style={{ marginBottom: 6 }} />
+                      <Text style={{ color: theme.text, fontSize: 12, fontWeight: '600' }}>Scan Doc</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => router.push('/setup' as any)}
+                      style={{ flex: 1, backgroundColor: 'rgba(110,231,183,0.08)', borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(110,231,183,0.12)' }}
+                    >
+                      <Ionicons name="heart-outline" size={22} color="#6EE7B7" style={{ marginBottom: 6 }} />
+                      <Text style={{ color: theme.text, fontSize: 12, fontWeight: '600' }}>Connect</Text>
+                    </Pressable>
+                  </View>
+                </View>
+                <GlassCard style={{ padding: 14 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>DID YOU KNOW</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, lineHeight: 19 }}>
+                    Keeping a digital record of your medications and lab results helps your care team make better decisions. Start by connecting your health records or talking to your AI companion.
+                  </Text>
                 </GlassCard>
               </Animated.View>
             )}
