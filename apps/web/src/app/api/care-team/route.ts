@@ -1,7 +1,7 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { db } from '@/lib/db';
 import { careTeamMembers, careTeamInvites, careTeamActivity, users } from '@/lib/db/schema';
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
 // GET — list team members and pending invites for the user's care profile
 export async function GET() {
@@ -41,21 +41,24 @@ export async function GET() {
       .catch(() => []),
   ]);
 
-  // Enrich members with user info from local users table
-  const enrichedMembers = await Promise.all(
-    members.map(async (m) => {
-      const [userData] = await db
-        .select({ email: users.email, displayName: users.displayName })
+  // Enrich members with user info — single batch query instead of N+1
+  const memberUserIds = members.map((m) => m.userId);
+  const userDataList = memberUserIds.length > 0
+    ? await db
+        .select({ id: users.id, email: users.email, displayName: users.displayName })
         .from(users)
-        .where(eq(users.id, m.userId))
-        .limit(1);
-      return {
-        ...m,
-        email: userData?.email || null,
-        display_name: userData?.displayName || userData?.email?.split('@')[0] || 'Unknown',
-      };
-    })
-  );
+        .where(inArray(users.id, memberUserIds))
+    : [];
+  const userDataMap = new Map(userDataList.map((u) => [u.id, u]));
+
+  const enrichedMembers = members.map((m) => {
+    const userData = userDataMap.get(m.userId);
+    return {
+      ...m,
+      email: userData?.email || null,
+      display_name: userData?.displayName || userData?.email?.split('@')[0] || 'Unknown',
+    };
+  });
 
   return Response.json({
     members: enrichedMembers,

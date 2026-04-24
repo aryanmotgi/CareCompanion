@@ -25,11 +25,3 @@ export function trackEvent(event: string, properties?: Record<string, string | n
   posthog.capture(event, properties)
 }
 
-export const events = {
-  onboardingCompleted: () => trackEvent('onboarding_completed'),
-  medicationAdded: () => trackEvent('medication_added'),
-  labViewed: () => trackEvent('lab_viewed'),
-  chatMessageSent: () => trackEvent('chat_message_sent'),
-  settingsChanged: (setting: string) => trackEvent('settings_changed', { setting }),
-  bugReportSubmitted: () => trackEvent('bug_report_submitted'),
-}

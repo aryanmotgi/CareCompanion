@@ -58,3 +58,4 @@ apps/mobile/dist/
 
 # Superpowers (AI tooling scratch space)
 .superpowers/
+.claude/worktrees/

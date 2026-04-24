@@ -23,8 +23,7 @@ export function MedicationsView({ medications: initial, profileId }: Medications
   const [saving, setSaving] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null);
   const [removing, setRemoving] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [interactionWarning, setInteractionWarning] = useState<{ interactions: any[]; medName: string } | null>(null);
+  const [interactionWarning, setInteractionWarning] = useState<{ interactions: { drug1: string; drug2: string; severity: 'critical' | 'major' | 'moderate' | 'minor'; description: string }[]; medName: string } | null>(null);
   const [editingRefill, setEditingRefill] = useState<string | null>(null); // medication id
   const [refillDate, setRefillDate] = useState('');
   const [savingRefill, setSavingRefill] = useState(false);

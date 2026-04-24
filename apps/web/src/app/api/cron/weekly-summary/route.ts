@@ -18,7 +18,7 @@ import {
   careProfiles, symptomEntries, reminderLogs,
   appointments, labResults, sharedLinks, notifications, pushSubscriptions,
 } from '@/lib/db/schema';
-import { eq, and, gte, lte, desc } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, inArray } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { sendPushNotification } from '@/lib/push';
 import { logger } from '@/lib/logger';
@@ -49,6 +49,19 @@ export async function GET(req: Request) {
     .where(eq(careProfiles.onboardingCompleted, true));
 
   if (profiles.length === 0) return Response.json({ message: 'No profiles', summaries: 0 });
+
+  // Batch-fetch all push subscriptions upfront (avoids N+1 inside the loop)
+  const profileUserIds = profiles.map((p) => p.userId);
+  const allPushSubs = profileUserIds.length > 0
+    ? await db.select().from(pushSubscriptions)
+        .where(inArray(pushSubscriptions.userId, profileUserIds))
+    : [];
+  const pushSubsByUser = new Map<string, typeof allPushSubs>();
+  for (const sub of allPushSubs) {
+    const existing = pushSubsByUser.get(sub.userId) || [];
+    existing.push(sub);
+    pushSubsByUser.set(sub.userId, existing);
+  }
 
   let generated = 0;
   const errors: string[] = [];
@@ -185,10 +198,8 @@ Keep it to 3 paragraphs max. Warm, real, human.`,
         isRead: false,
       });
 
-      // Send push notification (fire and forget)
-      const subs = await db.select().from(pushSubscriptions)
-        .where(eq(pushSubscriptions.userId, profile.userId))
-        .limit(5);
+      // Send push notification (fire and forget) — subs pre-fetched above
+      const subs = (pushSubsByUser.get(profile.userId) || []).slice(0, 5);
 
       for (const sub of subs) {
         sendPushNotification(

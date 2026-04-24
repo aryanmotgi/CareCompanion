@@ -30,6 +30,17 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  // Gate: require E2E_AUTH_SECRET header to prevent unauthorized session minting.
+  // Without this, anyone who knows an email in the DB could mint a valid session.
+  const e2eSecret = process.env.E2E_AUTH_SECRET
+  if (!e2eSecret) {
+    return NextResponse.json({ error: 'E2E_AUTH_SECRET not configured' }, { status: 500 })
+  }
+  const providedSecret = req.headers.get('x-e2e-secret')
+  if (providedSecret !== e2eSecret) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
   // Rate limit: 20 requests per minute per IP
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1'
   const { success } = await limiter.check(`e2e-signin:${ip}`)

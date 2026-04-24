@@ -1,11 +1,11 @@
 /**
  * Memory conflict resolution.
  * When a user corrects a fact, the old memory should be superseded, not duplicated.
- * Also handles confidence decay for old unreferenced memories.
+ * When a user corrects a fact, the old memory should be superseded, not duplicated.
  */
 import { db } from '@/lib/db'
 import { memories } from '@/lib/db/schema'
-import { eq, and, lt, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import type { Memory } from './types'
 
 /**
@@ -106,40 +106,3 @@ function extractEntities(text: string): string[] {
   return entities
 }
 
-/**
- * Apply confidence decay to old unreferenced memories.
- * Memories not referenced in 90+ days get downgraded.
- * Run from a cron job.
- */
-export async function decayOldMemories(): Promise<number> {
-  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
-  const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000)
-
-  // Downgrade high → medium for memories not referenced in 90 days
-  const decayed = await db
-    .update(memories)
-    .set({ confidence: 'medium' })
-    .where(
-      and(
-        eq(memories.confidence, 'high'),
-        lt(memories.lastReferenced, ninetyDaysAgo),
-        sql`${memories.fact} not ilike '%[SUPERSEDED%'`
-      )
-    )
-    .returning({ id: memories.id })
-
-  // Downgrade medium → low for memories not referenced in 180 days
-  const furtherDecayed = await db
-    .update(memories)
-    .set({ confidence: 'low' })
-    .where(
-      and(
-        eq(memories.confidence, 'medium'),
-        lt(memories.lastReferenced, sixMonthsAgo),
-        sql`${memories.fact} not ilike '%[SUPERSEDED%'`
-      )
-    )
-    .returning({ id: memories.id })
-
-  return decayed.length + furtherDecayed.length
-}

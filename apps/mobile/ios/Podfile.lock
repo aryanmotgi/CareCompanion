@@ -220,6 +220,8 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - ExpoAppleAuthentication (7.1.3):
+    - ExpoModulesCore
   - ExpoAsset (11.0.5):
     - ExpoModulesCore
   - ExpoBlur (14.0.3):
@@ -228,7 +230,7 @@ PODS:
     - ExpoModulesCore
     - ZXingObjC/OneD
     - ZXingObjC/PDF417
-  - ExpoCrypto (13.0.2):
+  - ExpoCrypto (14.0.2):
     - ExpoModulesCore
   - ExpoFileSystem (18.0.12):
     - ExpoModulesCore
@@ -243,6 +245,8 @@ PODS:
   - ExpoKeepAwake (14.0.3):
     - ExpoModulesCore
   - ExpoLinearGradient (14.0.2):
+    - ExpoModulesCore
+  - ExpoLinking (7.0.5):
     - ExpoModulesCore
   - ExpoModulesCore (2.2.3):
     - DoubleConversion
@@ -1937,7 +1941,7 @@ DEPENDENCIES:
   - "boost (from `../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/third-party-podspecs/boost.podspec`)"
   - "DoubleConversion (from `../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/third-party-podspecs/DoubleConversion.podspec`)"
   - "EASClient (from `../../../node_modules/.bun/expo-eas-client@0.13.3/node_modules/expo-eas-client/ios`)"
-  - "EXConstants (from `../../../node_modules/.bun/expo-constants@17.0.8+9166f6408e7218a3/node_modules/expo-constants/ios`)"
+  - "EXConstants (from `../../../node_modules/.bun/expo-constants@17.0.8+9a1a613f606ebb7a/node_modules/expo-constants/ios`)"
   - "EXImageLoader (from `../../../node_modules/.bun/expo-image-loader@5.0.0+9a1a613f606ebb7a/node_modules/expo-image-loader/ios`)"
   - "EXJSONUtils (from `../../../node_modules/.bun/expo-json-utils@0.14.0/node_modules/expo-json-utils/ios`)"
   - "EXManifests (from `../../../node_modules/.bun/expo-manifests@0.15.8+9a1a613f606ebb7a/node_modules/expo-manifests/ios`)"
@@ -1946,17 +1950,19 @@ DEPENDENCIES:
   - "expo-dev-launcher (from `../../../node_modules/.bun/expo-dev-launcher@5.0.35+9a1a613f606ebb7a/node_modules/expo-dev-launcher`)"
   - "expo-dev-menu (from `../../../node_modules/.bun/expo-dev-menu@6.0.25+9a1a613f606ebb7a/node_modules/expo-dev-menu`)"
   - "expo-dev-menu-interface (from `../../../node_modules/.bun/expo-dev-menu-interface@1.9.3+9a1a613f606ebb7a/node_modules/expo-dev-menu-interface/ios`)"
+  - "ExpoAppleAuthentication (from `../../../node_modules/.bun/expo-apple-authentication@7.1.3+9a1a613f606ebb7a/node_modules/expo-apple-authentication/ios`)"
   - "ExpoAsset (from `../../../node_modules/.bun/expo-asset@11.0.5+9a1a613f606ebb7a/node_modules/expo-asset/ios`)"
   - "ExpoBlur (from `../../../node_modules/.bun/expo-blur@14.0.3+9a1a613f606ebb7a/node_modules/expo-blur/ios`)"
   - "ExpoCamera (from `../../../node_modules/.bun/expo-camera@16.0.18+9a1a613f606ebb7a/node_modules/expo-camera/ios`)"
-  - "ExpoCrypto (from `../../../node_modules/.bun/expo-crypto@13.0.2+9a1a613f606ebb7a/node_modules/expo-crypto/ios`)"
+  - "ExpoCrypto (from `../../../node_modules/.bun/expo-crypto@14.0.2+9a1a613f606ebb7a/node_modules/expo-crypto/ios`)"
   - "ExpoFileSystem (from `../../../node_modules/.bun/expo-file-system@18.0.12+9166f6408e7218a3/node_modules/expo-file-system/ios`)"
   - "ExpoFont (from `../../../node_modules/.bun/expo-font@13.0.4+541c8e18387bd8d5/node_modules/expo-font/ios`)"
   - "ExpoHaptics (from `../../../node_modules/.bun/expo-haptics@14.0.1+9a1a613f606ebb7a/node_modules/expo-haptics/ios`)"
-  - "ExpoHead (from `../../../node_modules/.bun/expo-router@4.0.22+49224582d89b8d35/node_modules/expo-router/ios`)"
+  - "ExpoHead (from `../../../node_modules/.bun/expo-router@4.0.22+353005dd12205310/node_modules/expo-router/ios`)"
   - "ExpoImagePicker (from `../../../node_modules/.bun/expo-image-picker@16.0.6+9a1a613f606ebb7a/node_modules/expo-image-picker/ios`)"
   - "ExpoKeepAwake (from `../../../node_modules/.bun/expo-keep-awake@14.0.3+541c8e18387bd8d5/node_modules/expo-keep-awake/ios`)"
   - "ExpoLinearGradient (from `../../../node_modules/.bun/expo-linear-gradient@14.0.2+9a1a613f606ebb7a/node_modules/expo-linear-gradient/ios`)"
+  - "ExpoLinking (from `../../../node_modules/.bun/expo-linking@7.0.5+9a1a613f606ebb7a/node_modules/expo-linking/ios`)"
   - "ExpoModulesCore (from `../../../node_modules/.bun/expo-modules-core@2.2.3/node_modules/expo-modules-core`)"
   - "ExpoSecureStore (from `../../../node_modules/.bun/expo-secure-store@13.0.2+9a1a613f606ebb7a/node_modules/expo-secure-store/ios`)"
   - "ExpoSensors (from `../../../node_modules/.bun/expo-sensors@14.0.2+9a1a613f606ebb7a/node_modules/expo-sensors/ios`)"
@@ -2046,7 +2052,7 @@ EXTERNAL SOURCES:
   EASClient:
     :path: "../../../node_modules/.bun/expo-eas-client@0.13.3/node_modules/expo-eas-client/ios"
   EXConstants:
-    :path: "../../../node_modules/.bun/expo-constants@17.0.8+9166f6408e7218a3/node_modules/expo-constants/ios"
+    :path: "../../../node_modules/.bun/expo-constants@17.0.8+9a1a613f606ebb7a/node_modules/expo-constants/ios"
   EXImageLoader:
     :path: "../../../node_modules/.bun/expo-image-loader@5.0.0+9a1a613f606ebb7a/node_modules/expo-image-loader/ios"
   EXJSONUtils:
@@ -2063,6 +2069,8 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/.bun/expo-dev-menu@6.0.25+9a1a613f606ebb7a/node_modules/expo-dev-menu"
   expo-dev-menu-interface:
     :path: "../../../node_modules/.bun/expo-dev-menu-interface@1.9.3+9a1a613f606ebb7a/node_modules/expo-dev-menu-interface/ios"
+  ExpoAppleAuthentication:
+    :path: "../../../node_modules/.bun/expo-apple-authentication@7.1.3+9a1a613f606ebb7a/node_modules/expo-apple-authentication/ios"
   ExpoAsset:
     :path: "../../../node_modules/.bun/expo-asset@11.0.5+9a1a613f606ebb7a/node_modules/expo-asset/ios"
   ExpoBlur:
@@ -2070,7 +2078,7 @@ EXTERNAL SOURCES:
   ExpoCamera:
     :path: "../../../node_modules/.bun/expo-camera@16.0.18+9a1a613f606ebb7a/node_modules/expo-camera/ios"
   ExpoCrypto:
-    :path: "../../../node_modules/.bun/expo-crypto@13.0.2+9a1a613f606ebb7a/node_modules/expo-crypto/ios"
+    :path: "../../../node_modules/.bun/expo-crypto@14.0.2+9a1a613f606ebb7a/node_modules/expo-crypto/ios"
   ExpoFileSystem:
     :path: "../../../node_modules/.bun/expo-file-system@18.0.12+9166f6408e7218a3/node_modules/expo-file-system/ios"
   ExpoFont:
@@ -2078,13 +2086,15 @@ EXTERNAL SOURCES:
   ExpoHaptics:
     :path: "../../../node_modules/.bun/expo-haptics@14.0.1+9a1a613f606ebb7a/node_modules/expo-haptics/ios"
   ExpoHead:
-    :path: "../../../node_modules/.bun/expo-router@4.0.22+49224582d89b8d35/node_modules/expo-router/ios"
+    :path: "../../../node_modules/.bun/expo-router@4.0.22+353005dd12205310/node_modules/expo-router/ios"
   ExpoImagePicker:
     :path: "../../../node_modules/.bun/expo-image-picker@16.0.6+9a1a613f606ebb7a/node_modules/expo-image-picker/ios"
   ExpoKeepAwake:
     :path: "../../../node_modules/.bun/expo-keep-awake@14.0.3+541c8e18387bd8d5/node_modules/expo-keep-awake/ios"
   ExpoLinearGradient:
     :path: "../../../node_modules/.bun/expo-linear-gradient@14.0.2+9a1a613f606ebb7a/node_modules/expo-linear-gradient/ios"
+  ExpoLinking:
+    :path: "../../../node_modules/.bun/expo-linking@7.0.5+9a1a613f606ebb7a/node_modules/expo-linking/ios"
   ExpoModulesCore:
     :path: "../../../node_modules/.bun/expo-modules-core@2.2.3/node_modules/expo-modules-core"
   ExpoSecureStore:
@@ -2244,10 +2254,11 @@ SPEC CHECKSUMS:
   expo-dev-launcher: b512a0a91c4041777e58d1a93084050237fd6d87
   expo-dev-menu: d34f066794ef41204014801057aaf11fd7d19f6a
   expo-dev-menu-interface: 00dc42302a72722fdecec3fa048de84a9133bcc4
+  ExpoAppleAuthentication: 52631ed9dcb71c65712a447bbb9a5667bb8fcf0c
   ExpoAsset: 48386d40d53a8c1738929b3ed509bcad595b5516
   ExpoBlur: 392c1207f71d0ecf22371621c1fbd44ba84d9742
   ExpoCamera: 0a3e78de7b1ca8c438ee6784fa6f22c5b1b36966
-  ExpoCrypto: c5c052d5f9f668c21975cb4caf072cec23c823fa
+  ExpoCrypto: e97e864c8d7b9ce4a000bca45dddb93544a1b2b4
   ExpoFileSystem: 42d363d3b96f9afab980dcef60d5657a4443c655
   ExpoFont: f354e926f8feae5e831ec8087f36652b44a0b188
   ExpoHaptics: 8d199b2f33245ea85289ff6c954c7ee7c00a5b5d
@@ -2255,6 +2266,7 @@ SPEC CHECKSUMS:
   ExpoImagePicker: 24e5ba8da111f74519b1e6dc556e0b438b2b8464
   ExpoKeepAwake: b0171a73665bfcefcfcc311742a72a956e6aa680
   ExpoLinearGradient: 35ebd83b16f80b3add053a2fd68cc328ed927f60
+  ExpoLinking: 8d12bee174ba0cdf31239706578e29e74a417402
   ExpoModulesCore: 15f60d00e33ca0cea27147543877ca6e70c42ef5
   ExpoSecureStore: 6506992a9f53c94ea716c54d4a63144965945c2c
   ExpoSensors: 02a52ddab1e3a8a1438258c3d87d1ee5f721743a

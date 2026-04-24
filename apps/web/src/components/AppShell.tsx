@@ -12,7 +12,7 @@ import { ProfileSwitcher } from './ProfileSwitcher'
 import { DemoBanner } from './DemoBanner'
 import { signOut } from 'next-auth/react'
 import Link from 'next/link'
-import type { CareProfile } from '@/lib/types'
+import type { CareProfile, Notification } from '@/lib/types'
 
 interface AppShellProps {
   children: React.ReactNode
@@ -20,8 +20,7 @@ interface AppShellProps {
   patientAge?: number | null
   relationship?: string
   userName: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  notifications: any[]
+  notifications: Notification[]
   profiles?: CareProfile[]
   activeProfileId?: string | null
   isDemo?: boolean
@@ -163,7 +162,7 @@ export function AppShell({
               <GlobalSearch />
               <NotificationBell
                 initialNotifications={notifications}
-                initialCount={notifications.filter((n: { is_read: boolean }) => !n.is_read).length}
+                initialCount={notifications.filter((n) => !n.isRead).length}
               />
               <button
                 ref={menuButtonRef}

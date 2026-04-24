@@ -67,66 +67,6 @@ export function encryptToken(plaintext: string): string {
   return `${ENCRYPTED_PREFIX}${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
 }
 
-/**
- * Decrypt a token encrypted by encryptToken.
- * Throws if the ciphertext has been tampered with (GCM auth tag mismatch).
- */
-function decryptToken(encrypted: string): string {
-  if (!encrypted.startsWith(ENCRYPTED_PREFIX)) {
-    throw new Error('Value is not an encrypted token (missing prefix)');
-  }
-
-  const payload = encrypted.slice(ENCRYPTED_PREFIX.length);
-  const parts = payload.split(':');
-  if (parts.length !== 3) {
-    throw new Error('Malformed encrypted token — expected iv:authTag:ciphertext');
-  }
-
-  const [ivHex, authTagHex, ciphertextHex] = parts;
-  const key = getEncryptionKey();
-  if (!key) {
-    throw new Error('Cannot decrypt: TOKEN_ENCRYPTION_KEY is not set');
-  }
-  const iv = Buffer.from(ivHex, 'hex');
-  const authTag = Buffer.from(authTagHex, 'hex');
-  const ciphertext = Buffer.from(ciphertextHex, 'hex');
-
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-  decipher.setAuthTag(authTag);
-
-  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
-}
-
-/**
- * Safely decrypt a token, falling back to plaintext for legacy unencrypted values.
- * Use this on reads during the migration window so existing connections keep working.
- * Once all rows are encrypted, this can be simplified to just decryptToken.
- */
-export function safeDecryptToken(value: string | null | undefined): string | null {
-  if (!value) return null;
-
-  // If it's already marked as encrypted, try to decrypt — but fall back to null
-  // on failure (e.g. key rotation, corrupted ciphertext) so the caller can
-  // fetch a fresh token instead of crashing the entire flow.
-  if (value.startsWith(ENCRYPTED_PREFIX)) {
-    try {
-      return decryptToken(value);
-    } catch (err) {
-      console.error(
-        '[token-encryption] Failed to decrypt stored token — will fetch a new one.',
-        err instanceof Error ? err.message : err
-      );
-      return null;
-    }
-  }
-
-  // Legacy plaintext token — return as-is
-  // Log a warning so we can track migration progress
-  if (process.env.NODE_ENV === 'production') {
-    console.warn('[token-encryption] Decrypting legacy plaintext token — DB migration needed');
-  }
-  return value;
-}
 
 // ─── OAuth State Signing ───────────────────────────────────────────────────────
 

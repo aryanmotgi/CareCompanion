@@ -7,7 +7,9 @@ import { AnimatedNumber } from './AnimatedNumber'
 import { AlertInsights } from './AlertInsights'
 import { NudgeManager } from './NudgeManager'
 import { ProfileCompleteness } from './ProfileCompleteness'
+import { MorningSummaryCard } from './MorningSummaryCard'
 import { AppealGenerator } from './AppealGenerator'
+import { CheckinCard } from './CheckinCard'
 import { parseLabValue } from '@/lib/lab-parsing'
 import type { Medication, Appointment, LabResult, Claim } from '@/lib/types'
 
@@ -91,6 +93,32 @@ export function DashboardView({
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+
+  // Compute next appointment for MorningSummaryCard
+  const nextAppointment = useMemo(() => {
+    const now = new Date()
+    const upcoming = appointments
+      .filter(a => a.dateTime && new Date(a.dateTime).getTime() > now.getTime())
+      .sort((a, b) => new Date(a.dateTime!).getTime() - new Date(b.dateTime!).getTime())
+    if (upcoming.length === 0) return null
+    const appt = upcoming[0]
+    const apptDate = new Date(appt.dateTime!)
+    const diffMs = apptDate.getTime() - now.getTime()
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+    let when: string
+    if (diffDays === 0) {
+      when = diffHours <= 1 ? 'in <1hr' : `in ${diffHours}hrs`
+    } else if (diffDays === 1) {
+      when = 'tomorrow'
+    } else {
+      when = `in ${diffDays} days`
+    }
+    return { doctor: appt.doctorName || 'Doctor', when }
+  }, [appointments])
+
+  // Count today's scheduled medications
+  const todayMedCount = medications.filter(m => !m.deletedAt).length
 
   // Map priority keys to card ID prefixes for matching
   const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
@@ -375,6 +403,10 @@ export function DashboardView({
   return (
     <>
     <div className="px-4 sm:px-5 py-5 sm:py-6">
+      <MorningSummaryCard
+        medicationCount={todayMedCount}
+        nextAppointment={nextAppointment}
+      />
       <div className="mb-1 text-[var(--text-secondary)] text-xs tracking-wider">{greeting}</div>
       <h2 className="text-fluid-xl font-bold mb-2 animate-greeting">
         {actionCount > 0 ? (
@@ -450,6 +482,9 @@ export function DashboardView({
           profileCreatedAt={profileCreatedAt}
         />
       )}
+
+      {/* Daily Check-in Card */}
+      {profileId && <CheckinCard careProfileId={profileId} />}
 
       {/* Profile Completeness Indicator */}
       <ProfileCompleteness

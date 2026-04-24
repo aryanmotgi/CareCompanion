@@ -17,6 +17,7 @@ function makeProfile(id: string, name: string): CareProfile {
     patientName: name,
     patientAge: 70,
     relationship: 'parent',
+    role: 'self',
     createdAt: new Date(),
   }
 }

@@ -8,6 +8,7 @@ const baseProfile: CareProfile = {
   patientName: 'Sarah Johnson',
   patientAge: 72,
   relationship: 'mother',
+  role: 'caregiver',
   createdAt: new Date('2026-01-01'),
 }
 

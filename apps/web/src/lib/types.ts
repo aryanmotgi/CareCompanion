@@ -55,51 +55,6 @@ export interface Appointment {
   createdAt: Date | null;
 }
 
-export interface Document {
-  id: string;
-  careProfileId: string;
-  type: string | null;
-  documentType?: string | null;
-  description: string | null;
-  summary?: string | null;
-  documentDate: string | null;
-  deletedAt?: Date | null;
-  createdAt: Date | null;
-}
-
-export interface Message {
-  id: string;
-  userId: string;
-  role: 'user' | 'assistant';
-  content: string;
-  createdAt: Date | null;
-}
-
-export interface ConnectedApp {
-  id: string;
-  userId: string;
-  source: string;
-  accessToken: string | null;
-  refreshToken: string | null;
-  expiresAt: Date | null;
-  lastSynced: Date | null;
-  metadata: unknown;
-  createdAt: Date | null;
-}
-
-export interface Insurance {
-  id: string;
-  userId: string;
-  provider: string;
-  memberId: string | null;
-  groupNumber: string | null;
-  deductibleLimit: string | null;
-  deductibleUsed: string | null;
-  oopLimit: string | null;
-  oopUsed: string | null;
-  planYear: number | null;
-  createdAt: Date | null;
-}
 
 export interface Claim {
   id: string;
@@ -220,16 +175,6 @@ export interface AppointmentForm {
   purpose: string;
 }
 
-export interface SetupFormData {
-  patient_name: string;
-  patient_age: string;
-  relationship: string;
-  conditions: string;
-  allergies: string;
-  medications: MedicationForm[];
-  doctors: DoctorForm[];
-  appointments: AppointmentForm[];
-}
 
 export interface NotificationCategoryPrefs {
   medications?: { enabled: boolean; refill_reminders: boolean; dose_reminders: boolean; interaction_alerts: boolean }
@@ -288,13 +233,6 @@ export interface CareTeamActivity {
   createdAt: Date | null;
 }
 
-export interface UserPreferences {
-  id: string;
-  userId: string;
-  activeProfileId: string | null;
-  createdAt: Date | null;
-  updatedAt: Date | null;
-}
 
 export interface MedicationReminder {
   id: string;

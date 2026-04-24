@@ -32,19 +32,3 @@ function escapeICS(text: string): string {
   })
 }
 
-export function downloadICS(
-  title: string,
-  start: Date,
-  location?: string,
-  description?: string
-) {
-  const end = new Date(start.getTime() + 60 * 60 * 1000) // 1 hour default
-  const ics = generateICS(title, start, end, location, description)
-  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${title.replace(/[^a-zA-Z0-9]/g, '-')}.ics`
-  a.click()
-  URL.revokeObjectURL(url)
-}

@@ -4,31 +4,6 @@
  * Real patient data is never used here.
  */
 
-export const TEST_USERS = [
-  {
-    email: 'tester1@test.carecompanionai.org',
-    displayName: 'Test User One',
-  },
-  {
-    email: 'tester2@test.carecompanionai.org',
-    displayName: 'Test User Two',
-  },
-  {
-    email: 'tester3@test.carecompanionai.org',
-    displayName: 'Test User Three',
-  },
-  {
-    email: 'tester4@test.carecompanionai.org',
-    displayName: 'Test User Four',
-  },
-]
-
-export function getTestPassword(): string {
-  const pw = process.env.QA_TEST_PASSWORD
-  if (!pw) throw new Error('QA_TEST_PASSWORD environment variable is not set')
-  return pw
-}
-
 export const SEED_CARE_PROFILE = {
   patientName: 'Alex Test-Patient',
   patientAge: 52,
