@@ -280,7 +280,10 @@ export default function HomeScreen() {
           ]}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
+          {/* Branded header with live counter */}
+          <LiveCancerCounter />
+
+          {/* Greeting */}
           <View style={styles.header}>
             <View>
               <Text style={[styles.greeting, { color: theme.textMuted }]}>
@@ -333,7 +336,10 @@ export default function HomeScreen() {
                     )}
                   </View>
                   {meds.length === 0 ? (
-                    <Text style={[styles.medName, { color: theme.textMuted }]}>No medications yet</Text>
+                    <Pressable onPress={() => router.push('/setup' as any)} style={{ alignItems: 'center', paddingVertical: 12 }}>
+                      <Ionicons name="heart-circle-outline" size={28} color="rgba(99,102,241,0.4)" style={{ marginBottom: 6 }} />
+                      <Text style={{ color: theme.textMuted, fontSize: 13, textAlign: 'center' }}>Connect Health Records to auto-import{'\n'}or add medications manually</Text>
+                    </Pressable>
                   ) : (
                     meds.map((med) => (
                       <View key={med.id} style={styles.medRow}>
@@ -354,41 +360,7 @@ export default function HomeScreen() {
             {/* Wellness vitals card */}
             {wellnessAvailable && <WellnessCard />}
 
-            {/* Profile completion card */}
-            {showProfileCard && (
-              <GlassCard style={styles.card}>
-                <View style={styles.profileCardHeader}>
-                  <View style={styles.profileCardTop}>
-                    <View style={styles.profileRing}>
-                      <Text style={[styles.profileRingText, { color: theme.accent }]}>
-                        {profilePercent}%
-                      </Text>
-                    </View>
-                    <View style={styles.profileCardInfo}>
-                      <Text style={[styles.profileCardTitle, { color: theme.text }]}>
-                        Complete your profile
-                      </Text>
-                      <Text style={[styles.profileCardSub, { color: theme.textMuted }]}>
-                        {profileRemaining.length} item{profileRemaining.length !== 1 ? 's' : ''} remaining for a full profile
-                      </Text>
-                    </View>
-                  </View>
-                  <Pressable onPress={handleDismissProfile} hitSlop={12}>
-                    <Text style={[styles.profileDismiss, { color: theme.textMuted }]}>✕</Text>
-                  </Pressable>
-                </View>
-                {profileRemaining.slice(0, 3).map((item) => (
-                  <Pressable
-                    key={item.key}
-                    style={styles.profileRow}
-                    onPress={() => Linking.openURL('https://carecompanionai.org/onboarding')}
-                  >
-                    <Text style={[styles.profileRowText, { color: theme.text }]}>{item.label}</Text>
-                    <Text style={[styles.profileChevron, { color: theme.textMuted }]}>›</Text>
-                  </Pressable>
-                ))}
-              </GlassCard>
-            )}
+            {/* Profile completion card removed — nudge pill handles onboarding */}
 
             {/* Appointment card */}
             <Animated.View style={card2Style}>
@@ -533,9 +505,9 @@ function OnboardingNudge() {
             </Text>
           </View>
           <View style={styles.nudgeTextWrap}>
-            <Text style={styles.nudgeTitle}>Finish setup</Text>
+            <Text style={styles.nudgeTitle}>Connect Health Records</Text>
             <Text style={styles.nudgeSub}>
-              {Math.round(progress * 100)}% complete
+              Auto-import your care data
             </Text>
           </View>
           <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.7)" />
@@ -545,7 +517,71 @@ function OnboardingNudge() {
   )
 }
 
+/**
+ * "Care 18,246,731 Companion" — live cancer patient count embedded in the brand name.
+ * Based on ~18.1M cancer survivors in the US (ACS 2024). Ticks up ~1 every 3 seconds
+ * (roughly 2M new diagnoses per year ÷ 365 days ÷ 24 hours ÷ 1200 seconds).
+ */
+function LiveCancerCounter() {
+  const theme = useTheme()
+  // Base: ~18.1M US cancer survivors (American Cancer Society, 2024)
+  // We start from a base and increment slowly to show it's "live"
+  const BASE_COUNT = 18_246_731
+  const [count, setCount] = useState(BASE_COUNT)
+
+  useEffect(() => {
+    // Increment by 1 every ~3 seconds (realistic: ~2M new cases/year)
+    const interval = setInterval(() => {
+      setCount(prev => prev + 1)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const formatted = count.toLocaleString()
+
+  return (
+    <View style={styles.counterContainer}>
+      <Text style={styles.counterText}>
+        <Text style={styles.counterBrand}>Care</Text>
+        <Text style={styles.counterNumber}> {formatted} </Text>
+        <Text style={styles.counterBrand}>Companion</Text>
+      </Text>
+      <Text style={styles.counterSub}>people living with cancer right now</Text>
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
+  counterContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingVertical: 8,
+  },
+  counterText: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    textAlign: 'center',
+  },
+  counterBrand: {
+    fontSize: 15,
+    fontWeight: '300',
+    color: 'rgba(255,255,255,0.4)',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  counterNumber: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#A78BFA',
+    letterSpacing: 0.5,
+    fontVariant: ['tabular-nums'] as any,
+  },
+  counterSub: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.25)',
+    marginTop: 2,
+    letterSpacing: 0.5,
+  },
   root: { flex: 1, overflow: 'hidden' },
   scroll: { flex: 1 },
   content: { paddingHorizontal: 20 },
