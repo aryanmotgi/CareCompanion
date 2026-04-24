@@ -48,3 +48,13 @@ apps/web/.turbo/
 packages/*/.turbo/
 # EAS CLI auto-generated monorepo files (regenerated on each build)
 app.json
+
+# Python
+__pycache__/
+*.pyc
+
+# Mobile build output
+apps/mobile/dist/
+
+# Superpowers (AI tooling scratch space)
+.superpowers/
