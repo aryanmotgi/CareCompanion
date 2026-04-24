@@ -136,9 +136,11 @@ export default function HomeScreen() {
     Promise.all([
       apiClient.medications.list(profile.careProfileId),
       apiClient.appointments.list(profile.careProfileId),
-    ]).then(([medsData, apptsData]) => {
-      setMeds((medsData as any[]) || [])
-      setAppointments((apptsData as any[]) || [])
+    ]).then(([medsRaw, apptsRaw]) => {
+      const medsData = Array.isArray(medsRaw) ? medsRaw : ((medsRaw as any)?.data ?? [])
+      const apptsData = Array.isArray(apptsRaw) ? apptsRaw : ((apptsRaw as any)?.data ?? [])
+      setMeds(medsData)
+      setAppointments(apptsData)
     }).catch(() => {
       // API may not be deployed yet or user not authenticated — fail silently
       // Data stays empty, empty states will render
