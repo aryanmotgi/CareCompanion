@@ -1,11 +1,10 @@
 // apps/mobile/src/components/GlassCard.tsx
-import React, { useState } from 'react'
+import React from 'react'
 import { Pressable, StyleSheet, ViewStyle } from 'react-native'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  interpolateColor,
 } from 'react-native-reanimated'
 import { BlurView } from 'expo-blur'
 import * as Haptics from 'expo-haptics'
@@ -20,8 +19,6 @@ interface GlassCardProps {
 export function GlassCard({ children, onPress, style }: GlassCardProps) {
   const theme = useTheme()
   const scale = useSharedValue(1)
-  const pressed = useSharedValue(0)
-  const [blurIntensity, setBlurIntensity] = useState(20)
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -30,14 +27,10 @@ export function GlassCard({ children, onPress, style }: GlassCardProps) {
   function onPressIn() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft)
     scale.value = withSpring(0.97, { damping: 20, stiffness: 300 })
-    pressed.value = withSpring(1, { damping: 20, stiffness: 300 })
-    setBlurIntensity(30)
   }
 
   function onPressOut() {
     scale.value = withSpring(1, { damping: 15, stiffness: 200 })
-    pressed.value = withSpring(0, { damping: 15, stiffness: 200 })
-    setBlurIntensity(20)
   }
 
   return (
@@ -45,15 +38,16 @@ export function GlassCard({ children, onPress, style }: GlassCardProps) {
       <Animated.View
         style={[
           styles.card,
-          theme.shadowCard,
-          { backgroundColor: theme.bgCard },
+          theme.isDark
+            ? { backgroundColor: 'transparent' }
+            : { ...theme.shadowCard, backgroundColor: theme.bgCard },
           animatedStyle,
           style,
         ]}
       >
         {!theme.isDark && (
           <BlurView
-            intensity={blurIntensity}
+            intensity={20}
             tint="light"
             style={StyleSheet.absoluteFill}
           />
@@ -67,7 +61,6 @@ export function GlassCard({ children, onPress, style }: GlassCardProps) {
 const styles = StyleSheet.create({
   card: {
     borderRadius: 14,
-    borderWidth: 0,
     overflow: 'hidden',
     padding: 16,
   },
