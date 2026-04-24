@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
 
   let streak = 0;
   const now = new Date();
-  let expectedDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const expectedDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   for (const row of recentCheckins) {
     const checkinDate = new Date(row.checkedInAt);

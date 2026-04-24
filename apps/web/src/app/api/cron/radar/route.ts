@@ -25,8 +25,9 @@ import {
   reminderLogs,
   pushSubscriptions,
   careTeamActivityLog,
+  users,
 } from '@/lib/db/schema';
-import { eq, and, gte, lt, sql, desc, inArray, isNull, or } from 'drizzle-orm';
+import { eq, and, gte, lt, lte, sql, desc, inArray, isNull, or } from 'drizzle-orm';
 import { sendPushNotification } from '@/lib/push';
 import { logger } from '@/lib/logger';
 

@@ -2,7 +2,7 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { streamText, stepCountIs, type UIMessage } from 'ai';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { db } from '@/lib/db';
-import { careProfiles, medications, doctors, appointments, labResults, notifications, claims, priorAuths, fsaHsa, symptomEntries, insurance, messages, treatmentCycles } from '@/lib/db/schema';
+import { careProfiles, medications, doctors, appointments, labResults, notifications, claims, priorAuths, fsaHsa, symptomEntries, insurance, messages } from '@/lib/db/schema';
 import { eq, desc, and, isNull } from 'drizzle-orm';
 import { buildSystemPrompt } from '@/lib/system-prompt';
 import { buildTools } from '@/lib/tools';
@@ -124,10 +124,10 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     insRows,
     activeCycleRows,
   ] = await Promise.all([
-    profile?.id ? db.select({ id: medications.id, careProfileId: medications.careProfileId, name: medications.name, dose: medications.dose, frequency: medications.frequency, prescribingDoctor: medications.prescribingDoctor, refillDate: medications.refillDate, notes: medications.notes, createdAt: medications.createdAt }).from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).limit(50).catch(() => []) as Promise<any[]> : Promise.resolve([]),
+    profile?.id ? db.select({ id: medications.id, careProfileId: medications.careProfileId, name: medications.name, dose: medications.dose, frequency: medications.frequency, prescribingDoctor: medications.prescribingDoctor, refillDate: medications.refillDate, notes: medications.notes, createdAt: medications.createdAt }).from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).limit(50).catch(() => []) as Promise<unknown[]> : Promise.resolve([]),
     profile?.id ? db.select().from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))).limit(50).catch(() => []) : Promise.resolve([]),
-    profile?.id ? db.select({ id: appointments.id, careProfileId: appointments.careProfileId, doctorName: appointments.doctorName, specialty: appointments.specialty, dateTime: appointments.dateTime, location: appointments.location, purpose: appointments.purpose, createdAt: appointments.createdAt }).from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).limit(50).catch(() => []) as Promise<any[]> : Promise.resolve([]),
-    db.select({ id: labResults.id, testName: labResults.testName, value: labResults.value, unit: labResults.unit, referenceRange: labResults.referenceRange, dateTaken: labResults.dateTaken }).from(labResults).where(eq(labResults.userId, dbUser!.id)).orderBy(desc(labResults.dateTaken)).limit(20).catch(() => []) as Promise<any[]>,
+    profile?.id ? db.select({ id: appointments.id, careProfileId: appointments.careProfileId, doctorName: appointments.doctorName, specialty: appointments.specialty, dateTime: appointments.dateTime, location: appointments.location, purpose: appointments.purpose, createdAt: appointments.createdAt }).from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).limit(50).catch(() => []) as Promise<unknown[]> : Promise.resolve([]),
+    db.select({ id: labResults.id, testName: labResults.testName, value: labResults.value, unit: labResults.unit, referenceRange: labResults.referenceRange, dateTaken: labResults.dateTaken }).from(labResults).where(eq(labResults.userId, dbUser!.id)).orderBy(desc(labResults.dateTaken)).limit(20).catch(() => []) as Promise<unknown[]>,
     db.select().from(notifications).where(and(eq(notifications.userId, dbUser!.id), eq(notifications.isRead, false))).limit(10).catch(() => []),
     db.select().from(claims).where(and(eq(claims.userId, dbUser!.id), eq(claims.status, 'denied'))).limit(5).catch(() => []),
     db.select().from(priorAuths).where(eq(priorAuths.userId, dbUser!.id)).limit(50).catch(() => []),
