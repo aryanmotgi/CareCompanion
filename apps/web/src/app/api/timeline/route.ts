@@ -11,7 +11,7 @@ import {
   careProfiles,
   symptomEntries,
 } from '@/lib/db/schema'
-import { eq, and, gte, lte, isNull, desc } from 'drizzle-orm'
+import { eq, and, gte, isNull, desc } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,10 +60,6 @@ export async function GET(req: Request) {
     const from = url.searchParams.get('from')
       ? new Date(url.searchParams.get('from')!)
       : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
-    const to = url.searchParams.get('to')
-      ? new Date(url.searchParams.get('to')!)
-      : new Date()
-
     // Query all sources in parallel — each wrapped in catch for graceful degradation
     const [medsData, apptsData, labsData, checkinsData, insightsData, cyclesData, symptomsData] =
       await Promise.all([

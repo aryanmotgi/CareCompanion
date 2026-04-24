@@ -15,7 +15,7 @@ import { eq, and, gte, desc, isNull } from 'drizzle-orm'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request) {
-  const { user, error } = await getAuthenticatedUser()
+  const { error } = await getAuthenticatedUser()
   if (error) return error
 
   const url = new URL(req.url)

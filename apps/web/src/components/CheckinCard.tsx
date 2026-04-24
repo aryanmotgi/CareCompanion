@@ -3,6 +3,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { CheckinModal } from './CheckinModal'
 
+interface CheckinData {
+  id: string
+  mood: number
+  pain: number
+  energy: string
+  sleep: string
+  notes?: string | null
+  checkedInAt: string
+}
+
 interface CheckinCardProps {
   careProfileId: string
 }
@@ -17,7 +27,7 @@ const MOOD_EMOJI: Record<number, string> = {
 
 export function CheckinCard({ careProfileId }: CheckinCardProps) {
   const [modalOpen, setModalOpen] = useState(false)
-  const [checkin, setCheckin] = useState<any>(null)
+  const [checkin, setCheckin] = useState<CheckinData | null>(null)
   const [streak, setStreak] = useState(0)
   const [loading, setLoading] = useState(true)
 
@@ -39,10 +49,11 @@ export function CheckinCard({ careProfileId }: CheckinCardProps) {
     fetchStatus()
   }, [fetchStatus])
 
-  function handleComplete(newCheckin: any, newStreak: number) {
-    setCheckin(newCheckin)
+  function handleComplete(newCheckin: CheckinData | null, newStreak: number) {
+    if (newCheckin) setCheckin(newCheckin)
     setStreak(newStreak)
     setModalOpen(false)
+    fetchStatus()
   }
 
   if (loading) return null

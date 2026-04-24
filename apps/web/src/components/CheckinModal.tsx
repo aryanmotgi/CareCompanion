@@ -8,7 +8,7 @@ interface CheckinModalProps {
   careProfileId: string
   isOpen: boolean
   onClose: () => void
-  onComplete: (checkin: any, streak: number) => void
+  onComplete: (checkin: { id: string; mood: number; pain: number; energy: string; sleep: string; notes?: string | null; checkedInAt: string } | null, streak: number) => void
 }
 
 const MOOD_EMOJIS = [
