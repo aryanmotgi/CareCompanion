@@ -257,9 +257,14 @@ export default function CareScreen() {
       apiClient.medications.list(profile.careProfileId).catch((e: any) => { console.error('[Care] meds error:', e?.message); return [] }),
       apiClient.labResults.list(profile.careProfileId).catch((e: any) => { console.error('[Care] labs error:', e?.message); return { labs: [] } }),
       apiClient.appointments.list(profile.careProfileId).catch((e: any) => { console.error('[Care] appts error:', e?.message); return [] }),
-    ]).then(([medsData, labsData, apptsData]) => {
+    ]).then(([medsRaw, labsRaw, apptsRaw]) => {
+      // Unwrap { ok, data } API response format
+      const medsData = Array.isArray(medsRaw) ? medsRaw : ((medsRaw as any)?.data ?? [])
+      const labsData = Array.isArray(labsRaw) ? labsRaw : ((labsRaw as any)?.data ?? (labsRaw as any)?.labs ?? labsRaw)
+      const apptsData = Array.isArray(apptsRaw) ? apptsRaw : ((apptsRaw as any)?.data ?? [])
+
       // Map API medications to the Med interface
-      const mappedMeds: Med[] = (medsData as any[]).map((m: any) => ({
+      const mappedMeds: Med[] = (Array.isArray(medsData) ? medsData : []).map((m: any) => ({
         id: m.id,
         logId: m.logId || m.reminderLogId || undefined,
         name: m.name,
@@ -270,7 +275,8 @@ export default function CareScreen() {
       setMeds(mappedMeds)
 
       // Map API labs to the Lab interface
-      const mappedLabs: Lab[] = (labsData as any).labs?.map((l: any) => ({
+      const labsList = Array.isArray(labsData) ? labsData : ((labsData as any)?.labs ?? [])
+      const mappedLabs: Lab[] = labsList.map((l: any) => ({
         id: l.id,
         name: l.testName,
         value: String(l.value),
