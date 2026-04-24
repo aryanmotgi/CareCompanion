@@ -77,6 +77,15 @@ const STEPS: StepConfig[] = [
     type: 'text',
     placeholder: 'e.g. Methotrexate 15mg',
   },
+  {
+    key: 'healthkit',
+    icon: 'heart-circle-outline',
+    emoji: '🏥',
+    title: 'Connect your health records',
+    subtitle: 'Sync medications, labs, and conditions from Apple Health for smarter care insights',
+    type: 'chips',
+    options: ['Connect Now', 'Maybe Later'],
+  },
 ]
 
 export default function SetupScreen() {
@@ -109,6 +118,22 @@ export default function SetupScreen() {
 
   async function handleNext() {
     const val = currentValue?.trim()
+
+    // HealthKit step — navigate to consent flow
+    if (step.key === 'healthkit') {
+      if (val === 'Connect Now') {
+        router.push('/health-consent')
+      }
+      // Whether they chose "Connect Now" or "Maybe Later", advance
+      if (isLastStep) {
+        router.back()
+      } else {
+        setCurrentStep(prev => prev + 1)
+        setSelectedChip(null)
+        setTextValue('')
+      }
+      return
+    }
 
     if (val) {
       setSaving(true)
