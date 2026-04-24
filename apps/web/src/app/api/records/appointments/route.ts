@@ -137,7 +137,16 @@ export async function GET(req: Request) {
   if (!profile) return apiError('Forbidden', 403);
 
   const appts = await db
-    .select()
+    .select({
+      id: appointments.id,
+      careProfileId: appointments.careProfileId,
+      doctorName: appointments.doctorName,
+      specialty: appointments.specialty,
+      dateTime: appointments.dateTime,
+      location: appointments.location,
+      purpose: appointments.purpose,
+      createdAt: appointments.createdAt,
+    })
     .from(appointments)
     .where(and(eq(appointments.careProfileId, profileId), isNull(appointments.deletedAt)))
     .orderBy(desc(appointments.dateTime));
