@@ -17,6 +17,7 @@ import { createApiClient } from '@carecompanion/api'
 import { useProfile } from '../src/context/ProfileContext'
 import { GlassCard } from '../src/components/GlassCard'
 import { useTheme } from '../src/theme'
+import { syncEmergencyWidget } from '../src/services/emergencyWidget'
 import type { Medication } from '@carecompanion/types'
 
 const apiClient = createApiClient({
@@ -45,6 +46,13 @@ export default function EmergencyScreen() {
       .catch(() => { setMedsError(true) })
       .finally(() => setMedsLoading(false))
   }, [profile?.careProfileId])
+
+  // Sync emergency data to iOS widget whenever profile or medications change
+  useEffect(() => {
+    if (!profileLoading && !medsLoading) {
+      syncEmergencyWidget(profile, medications)
+    }
+  }, [profile, medications, profileLoading, medsLoading])
 
   const patientName = profile?.patientName || profile?.displayName || 'Unknown'
   const allergies = profile?.allergies || null

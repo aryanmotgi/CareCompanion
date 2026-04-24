@@ -23,7 +23,10 @@
       },
       "entitlements": {
         "com.apple.developer.healthkit": true,
-        "com.apple.developer.healthkit.background-delivery": true
+        "com.apple.developer.healthkit.background-delivery": true,
+        "com.apple.security.application-groups": [
+          "group.com.aryanmotgi.carecompanion"
+        ]
       }
     },
     "plugins": [
