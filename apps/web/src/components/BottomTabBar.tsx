@@ -39,7 +39,7 @@ const TABS = [
   },
   {
     label: 'Care',
-    href: '/care',
+    href: '/care-hub',
     icon: (active: boolean) => (
       <svg width="24" height="24" fill={active ? 'url(#careGrad)' : 'none'} stroke={active ? 'none' : '#4B5568'} strokeWidth="1.75" viewBox="0 0 24 24">
         <defs>
@@ -91,6 +91,7 @@ export function BottomTabBar() {
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard'
+    if (href === '/care-hub') return pathname.startsWith('/care-hub') || pathname.startsWith('/care')
     return pathname.startsWith(href)
   }
 
