@@ -13,7 +13,7 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "bundleIdentifier": "com.carecompanion.app",
+      "bundleIdentifier": "com.aryanmotgi.carecompanion.dev",
       "deploymentTarget": "16.0",
       "supportsTablet": false,
       "infoPlist": {

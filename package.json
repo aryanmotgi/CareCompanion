@@ -13,11 +13,13 @@
     "lint": "turbo run lint",
     "test:run": "turbo run test:run",
     "prepare": "husky",
-    "seed:test-users": "npx tsx scripts/seed-test-users.ts"
+    "seed:test-users": "cd apps/web && bun scripts/seed-test-users.ts"
   },
   "devDependencies": {
+    "dotenv": "^17.4.2",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
+    "tsx": "^4.21.0",
     "turbo": "^2.0.0",
     "typescript": "^5"
   },

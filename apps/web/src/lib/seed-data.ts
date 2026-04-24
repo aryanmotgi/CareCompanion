@@ -105,14 +105,14 @@ export const SEED_APPOINTMENTS = [
     doctorName: 'Dr. Test Oncologist',
     specialty: 'Medical Oncology',
     dateTime: new Date('2026-05-05T10:00:00Z'),
-    location: 'Test Cancer Center — Clinic 1',
+    location: 'Test Cancer Center Clinic 1',
     purpose: 'Oncology follow-up (TEST DATA)',
   },
   {
     doctorName: 'Test Lab Services',
     specialty: 'Laboratory',
     dateTime: new Date('2026-05-12T08:00:00Z'),
-    location: 'Test Cancer Center — Lab',
+    location: 'Test Cancer Center Lab',
     purpose: 'Pre-chemo bloodwork (TEST DATA)',
   },
 ]
