@@ -501,26 +501,15 @@ function OnboardingNudge() {
   const progress = onboarding.completedCount / onboarding.totalCount
   const nextStep = onboarding.steps.find(s => !s.completed)
 
-  const stepRoutes: Record<string, string> = {
-    medications: '/(tabs)/chat',
-    insurance: '/(tabs)/scan',
-    careTeam: '/(tabs)/settings',
-    cancerType: '/(tabs)/settings',
-    treatmentPhase: '/(tabs)/settings',
-    firstChat: '/(tabs)/chat',
-    healthSummary: '/(tabs)/chat',
-  }
-
   return (
     <Animated.View style={[styles.nudgeContainer, pillStyle]}>
-      <Pressable onPress={() => setExpanded(!expanded)}>
+      <Pressable onPress={() => router.push('/setup' as any)}>
         <LinearGradient
           colors={['rgba(99,102,241,0.9)', 'rgba(167,139,250,0.9)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.nudgePill}
         >
-          {/* Progress ring */}
           <View style={styles.nudgeRing}>
             <Text style={styles.nudgeRingText}>
               {onboarding.completedCount}/{onboarding.totalCount}
@@ -532,44 +521,9 @@ function OnboardingNudge() {
               {Math.round(progress * 100)}% complete
             </Text>
           </View>
-          <Ionicons
-            name={expanded ? 'chevron-down' : 'chevron-up'}
-            size={16}
-            color="rgba(255,255,255,0.7)"
-          />
+          <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.7)" />
         </LinearGradient>
       </Pressable>
-
-      {/* Expanded panel */}
-      <Animated.View style={[styles.nudgeExpanded, expandedStyle]}>
-        {expanded && nextStep && (
-          <View style={styles.nudgePanel}>
-            <Text style={[styles.nudgeStepTitle, { color: theme.text }]}>
-              Next: {nextStep.title}
-            </Text>
-            <Text style={[styles.nudgeStepDesc, { color: theme.textMuted }]}>
-              {nextStep.description}
-            </Text>
-            <Pressable
-              style={styles.nudgeAction}
-              onPress={() => {
-                setExpanded(false)
-                const route = stepRoutes[nextStep.key] || '/(tabs)/care'
-                router.push(route as any)
-              }}
-            >
-              <Text style={styles.nudgeActionText}>Start</Text>
-              <Ionicons name="arrow-forward" size={14} color="#fff" />
-            </Pressable>
-            <Pressable
-              onPress={() => setDismissed(true)}
-              style={styles.nudgeDismiss}
-            >
-              <Text style={{ color: theme.textMuted, fontSize: 12 }}>Dismiss</Text>
-            </Pressable>
-          </View>
-        )}
-      </Animated.View>
     </Animated.View>
   )
 }
