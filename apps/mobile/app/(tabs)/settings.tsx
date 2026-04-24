@@ -1,6 +1,6 @@
 // apps/mobile/app/(tabs)/settings.tsx
 import React, { useState } from 'react'
-import { View, Text, Pressable, StyleSheet, Alert, Switch, Linking, ScrollView } from 'react-native'
+import { View, Text, TextInput, Pressable, StyleSheet, Alert, Switch, Linking, ScrollView } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
@@ -23,7 +23,55 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const stagger = useStaggerEntrance(12)
-  const { profile } = useProfile()
+  const { profile, apiClient, csrfToken, refetch } = useProfile()
+
+  const [selectedRole, setSelectedRole] = useState<'patient' | 'caregiver'>(
+    (profile?.role as 'patient' | 'caregiver') || 'patient'
+  )
+  const [caregiverName, setCaregiverName] = useState(profile?.caregiverForName || '')
+  const [roleSaving, setRoleSaving] = useState(false)
+
+  // Sync local state when profile loads/changes
+  React.useEffect(() => {
+    if (profile) {
+      setSelectedRole((profile.role as 'patient' | 'caregiver') || 'patient')
+      setCaregiverName(profile.caregiverForName || '')
+    }
+  }, [profile?.role, profile?.caregiverForName])
+
+  async function saveRole() {
+    if (selectedRole === 'caregiver' && !caregiverName.trim()) {
+      Alert.alert('Name Required', 'Please enter the name of the person you are caring for.')
+      return
+    }
+    setRoleSaving(true)
+    try {
+      const token = await SecureStore.getItemAsync('cc-session-token')
+      if (!token) return
+      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
+      const isSecure = baseUrl.startsWith('https://')
+      const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
+      const res = await fetch(`${baseUrl}/api/records/profile`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `${cookieName}=${token}; cc-csrf-token=${csrfToken}`,
+          'x-csrf-token': csrfToken || '',
+        },
+        body: JSON.stringify({
+          role: selectedRole,
+          caregiver_for_name: selectedRole === 'caregiver' ? caregiverName.trim() : null,
+        }),
+      })
+      if (!res.ok) throw new Error('Save failed')
+      await refetch()
+      Alert.alert('Saved', 'Your role has been updated.')
+    } catch {
+      Alert.alert('Error', 'Failed to save role. Please try again.')
+    } finally {
+      setRoleSaving(false)
+    }
+  }
 
   const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({
     medications: true,
@@ -110,14 +158,72 @@ export default function SettingsScreen() {
               </LinearGradient>
               <View>
                 <Text style={[styles.name, { color: theme.text }]}>{profile?.displayName || profile?.patientName || 'User'}</Text>
-                <Text style={[styles.role, { color: theme.textMuted }]}>Patient</Text>
+                <Text style={[styles.role, { color: theme.textMuted }]}>
+                  {profile?.role === 'caregiver'
+                    ? `Caregiver${profile?.caregiverForName ? ` for ${profile.caregiverForName}` : ''}`
+                    : 'Patient'}
+                </Text>
               </View>
             </View>
           </View>
         </Animated.View>
 
-        {/* Edit Profile & Preferences */}
+        {/* Role */}
         <Animated.View style={stagger[2]}>
+          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>ROLE</Text>
+          <View style={styles.section}>
+            <View style={[styles.segmentRow, { backgroundColor: theme.bgElevated }]}>
+              <Pressable
+                style={[
+                  styles.segBtn,
+                  selectedRole === 'patient' && { backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 8 },
+                ]}
+                onPress={() => setSelectedRole('patient')}
+              >
+                <Text style={[styles.segLabel, { color: selectedRole === 'patient' ? theme.accentHover : theme.textMuted }]}>
+                  I am the patient
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.segBtn,
+                  selectedRole === 'caregiver' && { backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 8 },
+                ]}
+                onPress={() => setSelectedRole('caregiver')}
+              >
+                <Text style={[styles.segLabel, { color: selectedRole === 'caregiver' ? theme.accentHover : theme.textMuted }]}>
+                  I am a caregiver
+                </Text>
+              </Pressable>
+            </View>
+            {selectedRole === 'caregiver' && (
+              <TextInput
+                style={[
+                  styles.caregiverInput,
+                  {
+                    backgroundColor: theme.bgCard,
+                    borderColor: theme.bgCardBorder,
+                    color: theme.text,
+                  },
+                ]}
+                value={caregiverName}
+                onChangeText={setCaregiverName}
+                placeholder="Who are you caring for? (e.g. Mom, Dad, Sarah)"
+                placeholderTextColor={theme.textMuted}
+              />
+            )}
+            <Pressable
+              style={[styles.saveRoleBtn, { backgroundColor: theme.accent, opacity: roleSaving ? 0.6 : 1 }]}
+              onPress={saveRole}
+              disabled={roleSaving}
+            >
+              <Text style={styles.saveRoleBtnText}>{roleSaving ? 'Saving...' : 'Save Role'}</Text>
+            </Pressable>
+          </View>
+        </Animated.View>
+
+        {/* Edit Profile & Preferences */}
+        <Animated.View style={stagger[3]}>
           <Pressable onPress={() => Linking.openURL('https://carecompanionai.org/onboarding')}>
             <View style={styles.section}>
               <View style={styles.editProfileRow}>
@@ -132,7 +238,7 @@ export default function SettingsScreen() {
         </Animated.View>
 
         {/* Appearance */}
-        <Animated.View style={stagger[3]}>
+        <Animated.View style={stagger[4]}>
           <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>APPEARANCE</Text>
           <View style={styles.section}>
             <View style={[styles.segmentRow, { backgroundColor: theme.bgElevated }]}>
@@ -155,7 +261,7 @@ export default function SettingsScreen() {
         </Animated.View>
 
         {/* Notifications */}
-        <Animated.View style={stagger[4]}>
+        <Animated.View style={stagger[5]}>
           <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>NOTIFICATIONS</Text>
 
           {/* Medications group */}
@@ -184,7 +290,7 @@ export default function SettingsScreen() {
           </View>
         </Animated.View>
 
-        <Animated.View style={stagger[5]}>
+        <Animated.View style={stagger[6]}>
           {/* Appointments group */}
           <Text style={[styles.subHeader, { color: theme.textMuted }]}>Appointments</Text>
           <View style={styles.section}>
@@ -210,7 +316,7 @@ export default function SettingsScreen() {
         </Animated.View>
 
         {/* About */}
-        <Animated.View style={stagger[6]}>
+        <Animated.View style={stagger[7]}>
           <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>ABOUT</Text>
           <View style={styles.section}>
             <View style={styles.aboutRow}>
@@ -221,7 +327,7 @@ export default function SettingsScreen() {
         </Animated.View>
 
         {/* Legal & Support */}
-        <Animated.View style={stagger[7]}>
+        <Animated.View style={stagger[8]}>
           <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>LEGAL & SUPPORT</Text>
           <View style={styles.section}>
             <Pressable style={styles.linkRow} onPress={() => Linking.openURL('https://carecompanionai.org/privacy')}>
@@ -245,7 +351,7 @@ export default function SettingsScreen() {
         </Animated.View>
 
         {/* Delete Account */}
-        <Animated.View style={stagger[8]}>
+        <Animated.View style={stagger[9]}>
           <Pressable onPress={deleteAccount}>
             <View style={styles.section}>
               <View style={styles.linkRow}>
@@ -259,7 +365,7 @@ export default function SettingsScreen() {
 
         {/* Test Tools (staging only) */}
         {process.env.EXPO_PUBLIC_TEST_MODE === 'true' && (
-          <Animated.View style={stagger[9]}>
+          <Animated.View style={stagger[10]}>
             <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>TEST TOOLS</Text>
             <Pressable
               onPress={() => {
@@ -302,7 +408,7 @@ export default function SettingsScreen() {
         )}
 
         {/* Sign out */}
-        <Animated.View style={stagger[10]}>
+        <Animated.View style={stagger[11]}>
           <Pressable onPress={signOut}>
             <View style={styles.section}>
               <Text style={[styles.signOut, { color: theme.rose }]}>Sign Out</Text>
@@ -342,4 +448,22 @@ const styles = StyleSheet.create({
   aboutValue: { fontSize: 14 },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
   linkLabel: { flex: 1, fontSize: 14, fontWeight: '600' },
+  caregiverInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 15,
+    marginTop: 12,
+  },
+  saveRoleBtn: {
+    marginTop: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  saveRoleBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 })

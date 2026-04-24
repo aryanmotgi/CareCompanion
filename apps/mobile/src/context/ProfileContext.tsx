@@ -21,6 +21,8 @@ export interface Profile {
   treatmentPhase: string | null
   allergies: string | null
   conditions: string | null
+  role: string
+  caregiverForName: string | null
 }
 
 interface ProfileContextValue {

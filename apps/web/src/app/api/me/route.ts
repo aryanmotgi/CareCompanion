@@ -25,5 +25,7 @@ export async function GET() {
     treatmentPhase: profile?.treatmentPhase ?? null,
     allergies: profile?.allergies ?? null,
     conditions: profile?.conditions ?? null,
+    role: profile?.role ?? 'patient',
+    caregiverForName: profile?.caregiverForName ?? null,
   })
 }
