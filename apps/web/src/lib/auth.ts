@@ -54,11 +54,17 @@ export const { handlers, signIn, auth } = NextAuth({
             throw new Error('No email provided by social provider')
           }
 
-          let dbUser = await db.query.users.findFirst({
+          const existingUser = await db.query.users.findFirst({
             where: eq(users.email, socialEmail),
           })
 
-          if (!dbUser) {
+          let dbUserId: string
+          let dbDisplayName: string | null
+
+          if (existingUser) {
+            dbUserId = existingUser.id
+            dbDisplayName = existingUser.displayName
+          } else {
             // Create a new user from social sign-in
             const [newUser] = await db
               .insert(users)
@@ -68,11 +74,12 @@ export const { handlers, signIn, auth } = NextAuth({
                 providerSub: account.providerAccountId,
               })
               .returning({ id: users.id, displayName: users.displayName })
-            dbUser = { ...newUser, email: socialEmail }
+            dbUserId = newUser.id
+            dbDisplayName = newUser.displayName
           }
 
-          token.dbUserId = dbUser.id
-          token.displayName = dbUser.displayName ?? user.name ?? socialEmail
+          token.dbUserId = dbUserId
+          token.displayName = dbDisplayName ?? user.name ?? socialEmail
           token.isDemo = false
         } else {
           // Credentials sign-in: user.id is the DB UUID from authorize()
