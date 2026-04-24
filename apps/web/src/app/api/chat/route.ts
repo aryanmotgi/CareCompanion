@@ -2,7 +2,7 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { streamText, stepCountIs, type UIMessage } from 'ai';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { db } from '@/lib/db';
-import { careProfiles, medications, doctors, appointments, labResults, notifications, claims, priorAuths, fsaHsa, symptomEntries, insurance, messages } from '@/lib/db/schema';
+import { careProfiles, medications, doctors, appointments, labResults, notifications, claims, priorAuths, fsaHsa, symptomEntries, insurance, messages, treatmentCycles } from '@/lib/db/schema';
 import { eq, desc, and, isNull } from 'drizzle-orm';
 import { buildSystemPrompt } from '@/lib/system-prompt';
 import { buildTools } from '@/lib/tools';
@@ -108,7 +108,7 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     .where(eq(careProfiles.userId, dbUser!.id))
     .limit(1);
 
-  // Fetch all data in parallel — including memories
+  // Fetch all data in parallel — including memories and treatment cycle
   const [
     meds,
     docs,
@@ -122,6 +122,7 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     conversationSummariesData,
     symptoms,
     insRows,
+    activeCycleRows,
   ] = await Promise.all([
     profile?.id ? db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).limit(50).catch(() => []) : Promise.resolve([]),
     profile?.id ? db.select().from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))).limit(50).catch(() => []) : Promise.resolve([]),
@@ -135,8 +136,10 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     loadConversationSummaries(dbUser!.id).catch(() => []),
     db.select().from(symptomEntries).where(eq(symptomEntries.userId, dbUser!.id)).orderBy(desc(symptomEntries.date)).limit(14).catch(() => []),
     db.select().from(insurance).where(eq(insurance.userId, dbUser!.id)).limit(1).catch(() => []),
+    profile?.id ? db.select().from(treatmentCycles).where(and(eq(treatmentCycles.careProfileId, profile.id), eq(treatmentCycles.isActive, true))).limit(1).catch(() => []) : Promise.resolve([]),
   ]);
   const [ins] = insRows;
+  const [activeCycle] = activeCycleRows;
 
   // Save the user message
   const lastMessage = msgs[msgs.length - 1];
@@ -193,7 +196,7 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
       meds,
       docs,
       appts,
-      { labResults: labs, notifications: notifs, claims: claimsData, priorAuths: priorAuthsData, fsaHsa: fsaHsaData, memories: memoriesData, conversationSummaries: conversationSummariesData, symptoms }
+      { labResults: labs, notifications: notifs, claims: claimsData, priorAuths: priorAuthsData, fsaHsa: fsaHsaData, memories: memoriesData, conversationSummaries: conversationSummariesData, symptoms, treatmentCycle: activeCycle || null }
     )),
   ]);
 

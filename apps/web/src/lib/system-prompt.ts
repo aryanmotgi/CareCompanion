@@ -1,4 +1,4 @@
-import type { CareProfile, Medication, Doctor, Appointment, LabResult, Claim, Notification, PriorAuth, FsaHsa, Memory, ConversationSummary, SymptomEntry } from './types';
+import type { CareProfile, Medication, Doctor, Appointment, LabResult, Claim, Notification, PriorAuth, FsaHsa, Memory, ConversationSummary, SymptomEntry, TreatmentCycle } from './types';
 
 const BASE_PROMPT = `You are CareCompanion, a warm and caring AI assistant built specifically for cancer patients and their family caregivers navigating the cancer journey.
 
@@ -97,6 +97,7 @@ export function buildSystemPrompt(
     memories?: Memory[] | null;
     conversationSummaries?: ConversationSummary[] | null;
     symptoms?: SymptomEntry[] | null;
+    treatmentCycle?: TreatmentCycle | null;
   }
 ): string {
   if (!profile) {
@@ -122,6 +123,17 @@ export function buildSystemPrompt(
   }
   if (profile.conditions) context += `Conditions: ${profile.conditions}\n`;
   if (profile.allergies) context += `Allergies: ${profile.allergies}\n`;
+
+  // Caregiver mode context
+  if (profile.role === 'caregiver' && profile.caregiverForName) {
+    context += `\n=== CAREGIVER MODE ===\n`;
+    context += `The user is a caregiver for ${profile.caregiverForName}. Adapt your tone to address caregiver concerns.\n`;
+    context += `- Address the user as a caregiver, not the patient\n`;
+    context += `- When discussing symptoms, medications, or treatments, refer to "${profile.caregiverForName}" as the patient\n`;
+    context += `- Proactively check in on the caregiver's wellbeing — caregiving is exhausting\n`;
+    context += `- Offer practical tips for managing care responsibilities\n`;
+  }
+
   if (profile.onboardingPriorities && profile.onboardingPriorities.length > 0) {
     const priorityLabels: Record<string, string> = {
       side_effects: 'tracking side effects',
@@ -150,6 +162,29 @@ export function buildSystemPrompt(
     context += `"I see you're managing ${profile.cancerType}. How are you doing today? I'm here to help with anything related to your care."\n`;
   } else {
     context += `"How are you doing today? Tell me about yourself or the person you're caring for — what type of cancer, where you are in treatment, and how things have been going."\n`;
+  }
+
+  // Treatment cycle context — injected when an active cycle exists
+  if (extras?.treatmentCycle) {
+    const tc = extras.treatmentCycle;
+    const startDate = new Date(tc.startDate + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffMs = today.getTime() - startDate.getTime();
+    const dayOfCycle = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+    const daysRemaining = Math.max(0, tc.cycleLengthDays - dayOfCycle);
+
+    context += `\n=== ACTIVE TREATMENT CYCLE ===\n`;
+    context += `Patient is on Day ${dayOfCycle} of Cycle ${tc.cycleNumber}`;
+    if (tc.regimenName) context += ` (${tc.regimenName})`;
+    context += `. Cycle started ${tc.startDate}, ${tc.cycleLengthDays}-day cycle.\n`;
+    context += `Days remaining in cycle: ${daysRemaining}\n`;
+    context += `\nCycle-aware guidance:\n`;
+    context += `- Days 1-2: Infusion/treatment day and immediate aftermath. Watch for acute reactions.\n`;
+    context += `- Days 3-5: Nausea and fatigue typically peak. Anti-nausea meds are critical.\n`;
+    context += `- Days 7-14: Nadir period — blood counts at their lowest. Watch for fever (>100.4°F), signs of infection, unusual bleeding, or severe fatigue.\n`;
+    context += `- Days 14-21: Recovery phase — counts rebounding, energy returning.\n`;
+    context += `Reference the patient's current cycle day when discussing symptoms, side effects, or what to expect next.\n`;
   }
 
   if (medications && medications.length > 0) {

@@ -42,6 +42,8 @@ export const careProfiles = pgTable('care_profiles', {
   onboardingPriorities: text('onboarding_priorities').array().default(sql`'{}'`),
   emergencyContactName: text('emergency_contact_name'),
   emergencyContactPhone: text('emergency_contact_phone'),
+  role: text('role').notNull().default('patient'),
+  caregiverForName: text('caregiver_for_name'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
@@ -404,7 +406,21 @@ export const healthSummaries = pgTable('health_summaries', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
-// ── Community (anonymous caregiver forum) ─────────────────────────────────────
+// ── Treatment Cycles ─────────────────────────────────────────────────────────
+export const treatmentCycles = pgTable('treatment_cycles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  careProfileId: uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
+  cycleNumber: integer('cycle_number').notNull(),
+  startDate: date('start_date').notNull(),
+  cycleLengthDays: integer('cycle_length_days').notNull().default(21),
+  regimenName: text('regimen_name'),
+  notes: text('notes'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
+// ── Community (anonymous caregiver forum) ─────────────────────────────────
 export const communityPosts = pgTable('community_posts', {
   id: uuid('id').primaryKey().defaultRandom(),
   // userId stored internally for moderation only — never exposed publicly

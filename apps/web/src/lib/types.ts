@@ -13,6 +13,8 @@ export interface CareProfile {
   allergies?: string | null;
   onboardingPriorities?: string[] | null;
   onboardingCompleted?: boolean | null;
+  role: string;
+  caregiverForName?: string | null;
   createdAt: Date | null;
 }
 
@@ -182,6 +184,19 @@ export interface ConversationSummary {
   topics: string[] | null;
   messageCount: number | null;
   createdAt: Date | null;
+}
+
+export interface TreatmentCycle {
+  id: string;
+  careProfileId: string;
+  cycleNumber: number;
+  startDate: string;
+  cycleLengthDays: number;
+  regimenName: string | null;
+  notes: string | null;
+  isActive: boolean;
+  createdAt: Date | null;
+  updatedAt: Date | null;
 }
 
 // Form types for setup wizard
