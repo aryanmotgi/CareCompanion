@@ -5,25 +5,33 @@ import {
   medications,
   appointments,
   labResults,
-  medicationReminders,
+  wellnessCheckins,
+  symptomInsights,
+  treatmentCycles,
   careProfiles,
+  symptomEntries,
 } from '@/lib/db/schema'
-import { eq, and, gte, lte, isNull, asc } from 'drizzle-orm'
+import { eq, and, gte, lte, isNull, desc } from 'drizzle-orm'
+
+export const dynamic = 'force-dynamic'
 
 export interface TimelineItem {
   id: string
-  type: 'medication' | 'appointment' | 'lab' | 'refill'
+  type: 'medication' | 'appointment' | 'lab' | 'symptom' | 'checkin' | 'insight' | 'cycle'
+  date: string
   title: string
-  subtitle: string | null
-  timestamp: string
-  meta?: Record<string, unknown>
+  subtitle?: string | null
+  severity?: 'info' | 'watch' | 'alert' | 'positive' | null
+  isMilestone?: boolean
+  data?: Record<string, unknown>
 }
 
 /**
- * GET /api/timeline?profileId=X&days=7
+ * GET /api/timeline?profileId=X&from=ISO&to=ISO
  *
- * Returns a unified, time-sorted array of upcoming care events:
- * medications, appointments, lab results, and refill warnings.
+ * Returns a unified, time-sorted array of events from 5+ tables:
+ * medications, appointments, labResults, wellnessCheckins, symptomInsights,
+ * treatmentCycles, and symptomEntries.
  */
 export async function GET(req: Request) {
   try {
@@ -32,8 +40,6 @@ export async function GET(req: Request) {
 
     const url = new URL(req.url)
     const profileId = url.searchParams.get('profileId')
-    const daysParam = url.searchParams.get('days')
-    const days = Math.min(Math.max(parseInt(daysParam || '7', 10) || 7, 1), 30)
 
     if (!profileId) {
       return apiError('profileId query parameter is required', 400)
@@ -50,163 +56,286 @@ export async function GET(req: Request) {
       return apiError('Profile not found or access denied', 404)
     }
 
-    const now = new Date()
-    const rangeEnd = new Date(now.getTime() + days * 24 * 60 * 60 * 1000)
+    // Date range — default last 90 days
+    const from = url.searchParams.get('from')
+      ? new Date(url.searchParams.get('from')!)
+      : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+    const to = url.searchParams.get('to')
+      ? new Date(url.searchParams.get('to')!)
+      : new Date()
 
-    // Fetch all data sources in parallel
-    const [medsData, apptsData, labsData, remindersData] = await Promise.all([
-      // Active medications (no scheduled_time column — we generate timeline items from reminders)
-      db
-        .select()
-        .from(medications)
-        .where(
-          and(
-            eq(medications.careProfileId, profileId),
-            isNull(medications.deletedAt),
-          ),
-        )
-        .catch(() => []),
+    // Query all sources in parallel — each wrapped in catch for graceful degradation
+    const [medsData, apptsData, labsData, checkinsData, insightsData, cyclesData, symptomsData] =
+      await Promise.all([
+        db
+          .select()
+          .from(medications)
+          .where(
+            and(
+              eq(medications.careProfileId, profileId),
+              isNull(medications.deletedAt),
+            ),
+          )
+          .catch(() => []),
 
-      // Upcoming appointments within range
-      db
-        .select()
-        .from(appointments)
-        .where(
-          and(
-            eq(appointments.careProfileId, profileId),
-            isNull(appointments.deletedAt),
-            gte(appointments.dateTime, now),
-            lte(appointments.dateTime, rangeEnd),
-          ),
-        )
-        .orderBy(asc(appointments.dateTime))
-        .catch(() => []),
+        db
+          .select()
+          .from(appointments)
+          .where(
+            and(
+              eq(appointments.careProfileId, profileId),
+              isNull(appointments.deletedAt),
+            ),
+          )
+          .catch(() => []),
 
-      // Lab results with recent dates (show labs taken in the range)
-      db
-        .select()
-        .from(labResults)
-        .where(
-          and(
-            eq(labResults.userId, dbUser!.id),
-            isNull(labResults.deletedAt),
-          ),
-        )
-        .orderBy(asc(labResults.dateTaken))
-        .catch(() => []),
+        db
+          .select()
+          .from(labResults)
+          .where(
+            and(
+              eq(labResults.userId, dbUser!.id),
+              isNull(labResults.deletedAt),
+            ),
+          )
+          .catch(() => []),
 
-      // Medication reminders for generating daily timeline items
-      db
-        .select()
-        .from(medicationReminders)
-        .where(
-          and(
-            eq(medicationReminders.userId, dbUser!.id),
-            eq(medicationReminders.isActive, true),
-          ),
-        )
-        .catch(() => []),
-    ])
+        db
+          .select()
+          .from(wellnessCheckins)
+          .where(
+            and(
+              eq(wellnessCheckins.careProfileId, profileId),
+              gte(wellnessCheckins.checkedInAt, from),
+            ),
+          )
+          .orderBy(desc(wellnessCheckins.checkedInAt))
+          .catch(() => []),
+
+        db
+          .select()
+          .from(symptomInsights)
+          .where(
+            and(
+              eq(symptomInsights.careProfileId, profileId),
+              gte(symptomInsights.createdAt, from),
+            ),
+          )
+          .orderBy(desc(symptomInsights.createdAt))
+          .catch(() => []),
+
+        db
+          .select()
+          .from(treatmentCycles)
+          .where(eq(treatmentCycles.careProfileId, profileId))
+          .catch(() => []),
+
+        db
+          .select()
+          .from(symptomEntries)
+          .where(
+            and(
+              eq(symptomEntries.userId, dbUser!.id),
+              gte(symptomEntries.date, from.toISOString().slice(0, 10)),
+            ),
+          )
+          .orderBy(desc(symptomEntries.date))
+          .catch(() => []),
+      ])
 
     const timeline: TimelineItem[] = []
 
-    // --- Medication reminder items ---
-    // Generate timeline items from active reminders for today
-    const todayDayName = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][now.getDay()]
+    // --- Medications ---
+    for (const med of medsData) {
+      const dateStr = med.createdAt
+        ? new Date(med.createdAt).toISOString()
+        : null
+      if (!dateStr) continue
 
-    for (const reminder of remindersData) {
-      // Only show reminders for today's day of week
-      if (!reminder.daysOfWeek.includes(todayDayName)) continue
-
-      const med = medsData.find((m) => m.id === reminder.medicationId)
-
-      for (const timeStr of reminder.reminderTimes) {
-        // Parse time string (e.g., "08:00", "14:30")
-        const [hours, minutes] = timeStr.split(':').map(Number)
-        if (isNaN(hours) || isNaN(minutes)) continue
-
-        const scheduledTime = new Date(now)
-        scheduledTime.setHours(hours, minutes, 0, 0)
-
-        timeline.push({
-          id: `med-${reminder.id}-${timeStr}`,
-          type: 'medication',
-          title: reminder.medicationName,
-          subtitle: reminder.dose || med?.dose || null,
-          timestamp: scheduledTime.toISOString(),
-          meta: {
-            medicationId: reminder.medicationId,
-            reminderId: reminder.id,
-            frequency: med?.frequency || null,
-          },
-        })
-      }
-    }
-
-    // --- Appointment items ---
-    for (const appt of apptsData) {
-      if (!appt.dateTime) continue
       timeline.push({
-        id: `appt-${appt.id}`,
-        type: 'appointment',
-        title: appt.purpose || appt.specialty || 'Appointment',
-        subtitle: appt.doctorName || null,
-        timestamp: new Date(appt.dateTime).toISOString(),
-        meta: {
-          location: appt.location,
-          specialty: appt.specialty,
+        id: `med-${med.id}`,
+        type: 'medication',
+        date: dateStr,
+        title: med.name,
+        subtitle: med.dose ? `${med.dose}${med.frequency ? ` — ${med.frequency}` : ''}` : 'Medication started',
+        data: {
+          dose: med.dose,
+          frequency: med.frequency,
+          prescribingDoctor: med.prescribingDoctor,
+          refillDate: med.refillDate,
+          pharmacyPhone: med.pharmacyPhone,
         },
       })
     }
 
-    // --- Lab result items ---
+    // --- Appointments ---
+    for (const appt of apptsData) {
+      const dateStr = appt.dateTime
+        ? new Date(appt.dateTime).toISOString()
+        : appt.createdAt
+          ? new Date(appt.createdAt).toISOString()
+          : null
+      if (!dateStr) continue
+
+      timeline.push({
+        id: `appt-${appt.id}`,
+        type: 'appointment',
+        date: dateStr,
+        title: appt.purpose || appt.specialty || 'Appointment',
+        subtitle: appt.doctorName ? `Dr. ${appt.doctorName}` : null,
+        data: {
+          doctorName: appt.doctorName,
+          specialty: appt.specialty,
+          location: appt.location,
+        },
+      })
+    }
+
+    // --- Lab results ---
     for (const lab of labsData) {
-      if (!lab.dateTaken) continue
-      const labDate = new Date(lab.dateTaken)
-      // Show labs from today forward within the range
-      if (labDate >= new Date(now.toDateString()) && labDate <= rangeEnd) {
-        timeline.push({
-          id: `lab-${lab.id}`,
-          type: 'lab',
-          title: lab.testName,
-          subtitle: lab.value ? `${lab.value}${lab.unit ? ` ${lab.unit}` : ''}` : 'Pending',
-          timestamp: labDate.toISOString(),
-          meta: {
-            referenceRange: lab.referenceRange,
-            isAbnormal: lab.isAbnormal,
-            source: lab.source,
-          },
-        })
-      }
+      const dateStr = lab.dateTaken
+        ? new Date(lab.dateTaken).toISOString()
+        : lab.createdAt
+          ? new Date(lab.createdAt).toISOString()
+          : null
+      if (!dateStr) continue
+
+      timeline.push({
+        id: `lab-${lab.id}`,
+        type: 'lab',
+        date: dateStr,
+        title: lab.testName,
+        subtitle: lab.value
+          ? `${lab.value}${lab.unit ? ` ${lab.unit}` : ''}`
+          : 'Pending',
+        severity: lab.isAbnormal ? 'alert' : null,
+        data: {
+          value: lab.value,
+          unit: lab.unit,
+          referenceRange: lab.referenceRange,
+          isAbnormal: lab.isAbnormal,
+          source: lab.source,
+        },
+      })
     }
 
-    // --- Refill predictions ---
-    // Check medications with refill dates approaching (within 3 days)
-    const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
+    // --- Wellness check-ins ---
+    for (const checkin of checkinsData) {
+      const dateStr = checkin.checkedInAt
+        ? new Date(checkin.checkedInAt).toISOString()
+        : null
+      if (!dateStr) continue
 
-    for (const med of medsData) {
-      if (!med.refillDate) continue
-      const refillDate = new Date(med.refillDate)
-      if (refillDate >= now && refillDate <= threeDaysFromNow) {
-        timeline.push({
-          id: `refill-${med.id}`,
-          type: 'refill',
-          title: `Refill ${med.name}`,
-          subtitle: med.pharmacyPhone
-            ? `Call pharmacy: ${med.pharmacyPhone}`
-            : 'Time to request a refill',
-          timestamp: refillDate.toISOString(),
-          meta: {
-            medicationId: med.id,
-            pharmacyPhone: med.pharmacyPhone,
-          },
-        })
+      const moodDescriptions: Record<number, string> = {
+        1: 'Very low',
+        2: 'Low',
+        3: 'Okay',
+        4: 'Good',
+        5: 'Great',
       }
+
+      timeline.push({
+        id: `checkin-${checkin.id}`,
+        type: 'checkin',
+        date: dateStr,
+        title: 'Wellness Check-in',
+        subtitle: `Mood: ${moodDescriptions[checkin.mood] || checkin.mood}/5 — Pain: ${checkin.pain}/10`,
+        severity: checkin.pain >= 7 ? 'alert' : checkin.mood >= 4 ? 'positive' : 'info',
+        data: {
+          mood: checkin.mood,
+          pain: checkin.pain,
+          energy: checkin.energy,
+          sleep: checkin.sleep,
+          notes: checkin.notes,
+        },
+      })
     }
 
-    // Sort by timestamp ascending
+    // --- Symptom insights ---
+    for (const insight of insightsData) {
+      const dateStr = insight.createdAt
+        ? new Date(insight.createdAt).toISOString()
+        : null
+      if (!dateStr) continue
+
+      timeline.push({
+        id: `insight-${insight.id}`,
+        type: 'insight',
+        date: dateStr,
+        title: insight.title,
+        subtitle: insight.body.length > 100 ? insight.body.slice(0, 100) + '...' : insight.body,
+        severity: insight.severity as 'info' | 'watch' | 'alert',
+        isMilestone: insight.type === 'milestone',
+        data: {
+          body: insight.body,
+          insightType: insight.type,
+          status: insight.status,
+          data: insight.data,
+        },
+      })
+    }
+
+    // --- Treatment cycles (milestones) ---
+    for (const cycle of cyclesData) {
+      const dateStr = cycle.startDate
+        ? new Date(cycle.startDate).toISOString()
+        : null
+      if (!dateStr) continue
+
+      timeline.push({
+        id: `cycle-${cycle.id}`,
+        type: 'cycle',
+        date: dateStr,
+        title: `Cycle ${cycle.cycleNumber}${cycle.regimenName ? ` — ${cycle.regimenName}` : ''}`,
+        subtitle: `${cycle.cycleLengthDays}-day cycle${cycle.isActive ? ' (active)' : ''}`,
+        isMilestone: true,
+        data: {
+          cycleNumber: cycle.cycleNumber,
+          regimenName: cycle.regimenName,
+          cycleLengthDays: cycle.cycleLengthDays,
+          isActive: cycle.isActive,
+          notes: cycle.notes,
+        },
+      })
+    }
+
+    // --- Symptom entries ---
+    for (const entry of symptomsData) {
+      const dateStr = entry.date
+        ? new Date(entry.date).toISOString()
+        : entry.createdAt
+          ? new Date(entry.createdAt).toISOString()
+          : null
+      if (!dateStr) continue
+
+      const symptomList = entry.symptoms || []
+      timeline.push({
+        id: `symptom-${entry.id}`,
+        type: 'symptom',
+        date: dateStr,
+        title: symptomList.length > 0
+          ? symptomList.slice(0, 3).join(', ')
+          : 'Symptom Entry',
+        subtitle: entry.notes
+          ? entry.notes.slice(0, 80) + (entry.notes.length > 80 ? '...' : '')
+          : entry.painLevel != null
+            ? `Pain: ${entry.painLevel}/10`
+            : 'Symptom check-in',
+        severity: entry.painLevel != null && entry.painLevel >= 7 ? 'alert' : 'info',
+        data: {
+          painLevel: entry.painLevel,
+          mood: entry.mood,
+          sleepQuality: entry.sleepQuality,
+          energy: entry.energy,
+          symptoms: symptomList,
+          notes: entry.notes,
+        },
+      })
+    }
+
+    // Sort by date descending
     timeline.sort(
-      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     )
 
     return apiSuccess(timeline)
