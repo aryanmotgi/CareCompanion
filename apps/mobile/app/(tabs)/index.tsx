@@ -514,7 +514,7 @@ function OnboardingNudge() {
   if (onboarding.isComplete || dismissed) return null
 
   const progress = onboarding.completedCount / onboarding.totalCount
-  const nextStep = onboarding.steps.find(s => !s.completed)
+  const nextStep = onboarding.steps.find(s => !(s as any).completed)
 
   return (
     <Animated.View style={[styles.nudgeContainer, pillStyle]}>

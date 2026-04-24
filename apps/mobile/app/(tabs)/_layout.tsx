@@ -203,8 +203,7 @@ export default function TabLayout() {
         <NoiseOverlay />
         <Tabs
           tabBar={(props) => <CustomTabBar {...props} />}
-          screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }}
-          sceneContainerStyle={{ backgroundColor: theme.bg }}
+          screenOptions={{ headerShown: false, ...(({ contentStyle: { backgroundColor: theme.bg }, sceneContainerStyle: { backgroundColor: theme.bg } }) as any) }}
         >
           <Tabs.Screen name="index" />
           <Tabs.Screen name="chat" />

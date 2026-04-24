@@ -218,7 +218,7 @@ function SuggestionCard({
           />
         </Animated.View>
         <View style={[styles.suggestionCardInner, { backgroundColor: theme.isDark ? '#0C0E1A' : '#FAFAFA', margin: 1.5, borderRadius: 12.5, borderWidth: 0 }]}>
-          <Ionicons name={icon} size={22} color={color} style={{ marginBottom: 8 }} />
+          <Ionicons name={icon as any} size={22} color={color} style={{ marginBottom: 8 }} />
           <Text style={[styles.suggestionTitle, { color: theme.text }]} numberOfLines={2}>
             {title}
           </Text>
