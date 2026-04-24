@@ -41,7 +41,18 @@ interface StepConfig {
   placeholder?: string
 }
 
-const STEPS: StepConfig[] = [
+// Step 1 is always HealthKit. Manual steps only show if user skips HealthKit.
+const HEALTHKIT_STEP: StepConfig = {
+  key: 'healthkit',
+  icon: 'heart-circle-outline',
+  emoji: '🏥',
+  title: 'Connect your health records',
+  subtitle: 'Automatically import your medications, lab results, conditions, and doctors from Apple Health. One tap, everything synced.',
+  type: 'chips',
+  options: ['Connect Now', 'Enter Manually'],
+}
+
+const MANUAL_STEPS: StepConfig[] = [
   {
     key: 'cancerType',
     icon: 'heart-outline',
@@ -77,36 +88,32 @@ const STEPS: StepConfig[] = [
     type: 'text',
     placeholder: 'e.g. Methotrexate 15mg',
   },
-  {
-    key: 'healthkit',
-    icon: 'heart-circle-outline',
-    emoji: '🏥',
-    title: 'Connect your health records',
-    subtitle: 'Sync medications, labs, and conditions from Apple Health for smarter care insights',
-    type: 'chips',
-    options: ['Connect Now', 'Maybe Later'],
-  },
 ]
 
 export default function SetupScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { profile, apiClient, csrfToken, refetch } = useProfile()
-  const [currentStep, setCurrentStep] = useState(0)
+  const [mode, setMode] = useState<'healthkit' | 'manual'>('healthkit')
+  const [manualStep, setManualStep] = useState(0)
   const [selectedChip, setSelectedChip] = useState<string | null>(null)
   const [textValue, setTextValue] = useState('')
   const [saving, setSaving] = useState(false)
   const progressWidth = useSharedValue(0)
 
+  const isHealthKitStep = mode === 'healthkit'
+  const STEPS = isHealthKitStep ? [HEALTHKIT_STEP] : MANUAL_STEPS
+  const currentStep = isHealthKitStep ? 0 : manualStep
   const step = STEPS[currentStep]
-  const isLastStep = currentStep === STEPS.length - 1
+  const totalSteps = isHealthKitStep ? 1 : MANUAL_STEPS.length
+  const isLastStep = isHealthKitStep || manualStep === MANUAL_STEPS.length - 1
 
   useEffect(() => {
-    progressWidth.value = withTiming(((currentStep + 1) / STEPS.length) * 100, {
+    progressWidth.value = withTiming(((currentStep + 1) / totalSteps) * 100, {
       duration: 500,
       easing: Easing.out(Easing.cubic),
     })
-  }, [currentStep, progressWidth])
+  }, [currentStep, totalSteps, progressWidth])
 
   const progressStyle = useAnimatedStyle(() => ({
     width: `${progressWidth.value}%`,
@@ -119,19 +126,16 @@ export default function SetupScreen() {
   async function handleNext() {
     const val = currentValue?.trim()
 
-    // HealthKit step — navigate to consent flow
+    // HealthKit step
     if (step.key === 'healthkit') {
       if (val === 'Connect Now') {
-        router.push('/health-consent')
+        router.push('/health-consent' as any)
+        return
       }
-      // Whether they chose "Connect Now" or "Maybe Later", advance
-      if (isLastStep) {
-        router.back()
-      } else {
-        setCurrentStep(prev => prev + 1)
-        setSelectedChip(null)
-        setTextValue('')
-      }
+      // "Enter Manually" — switch to manual mode
+      setMode('manual')
+      setSelectedChip(null)
+      setTextValue('')
       return
     }
 
@@ -172,7 +176,7 @@ export default function SetupScreen() {
     if (isLastStep) {
       router.back()
     } else {
-      setCurrentStep(prev => prev + 1)
+      setManualStep(prev => prev + 1)
       setSelectedChip(null)
       setTextValue('')
     }
@@ -199,7 +203,7 @@ export default function SetupScreen() {
           </BlurView>
         </Pressable>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerStep}>Step {currentStep + 1} of {STEPS.length}</Text>
+          <Text style={styles.headerStep}>{isHealthKitStep ? 'Get Started' : `Step ${manualStep + 1} of ${MANUAL_STEPS.length}`}</Text>
         </View>
         <View style={{ width: 36 }} />
       </View>
