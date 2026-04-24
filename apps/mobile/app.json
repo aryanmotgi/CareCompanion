@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0C0E1A"
     },
     "ios": {
       "bundleIdentifier": "com.aryanmotgi.carecompanion.dev",
