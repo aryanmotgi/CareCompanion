@@ -24,7 +24,7 @@
       "entitlements": {
         "com.apple.developer.healthkit": true,
         "com.apple.developer.healthkit.background-delivery": true
-      }
+      },
     },
     "plugins": [
       "expo-router",
@@ -46,6 +46,7 @@
     "experiments": {
       "typedRoutes": true
     },
+    "runtimeVersion": "1.0.0",
     "android": {
       "permissions": [
         "android.permission.CAMERA",
@@ -61,6 +62,9 @@
         "projectId": "845c42cd-33e6-42d0-8189-59131144999f"
       }
     },
-    "owner": "aryan1008"
+    "owner": "aryan1008",
+    "updates": {
+      "url": "https://u.expo.dev/845c42cd-33e6-42d0-8189-59131144999f"
+    }
   }
 }
