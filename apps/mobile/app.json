@@ -41,7 +41,8 @@
           "photosPermission": "CareCompanion accesses your photos to upload medical documents.",
           "cameraPermission": "CareCompanion uses the camera to scan medical documents."
         }
-      ]
+      ],
+      "@sentry/react-native/expo"
     ],
     "experiments": {
       "typedRoutes": true
