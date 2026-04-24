@@ -44,6 +44,8 @@ export const careProfiles = pgTable('care_profiles', {
   emergencyContactPhone: text('emergency_contact_phone'),
   role: text('role').notNull().default('patient'),
   caregiverForName: text('caregiver_for_name'),
+  checkinStreak: integer('checkin_streak').notNull().default(0),
+  lastRadarRunAt: timestamp('last_radar_run_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
@@ -268,6 +270,8 @@ export const careTeamMembers = pgTable('care_team_members', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   role: text('role').notNull().default('viewer'),
   invitedBy: uuid('invited_by').references(() => users.id, { onDelete: 'set null' }),
+  gratitudeNudgeCount: integer('gratitude_nudge_count').notNull().default(0),
+  lastGratitudeNudgeAt: timestamp('last_gratitude_nudge_at', { withTimezone: true }),
   joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
@@ -455,5 +459,56 @@ export const communityUpvotes = pgTable('community_upvotes', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   targetId: uuid('target_id').notNull(), // postId or replyId
   targetType: text('target_type').notNull(), // 'post' | 'reply'
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+// ── Wellness Check-ins ────────────────────────────────────────────────────────
+export const wellnessCheckins = pgTable('wellness_checkins', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  careProfileId: uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
+  reportedByUserId: uuid('reported_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  mood: integer('mood').notNull(), // 1-5
+  pain: integer('pain').notNull(), // 0-10
+  energy: text('energy').notNull(), // 'low' | 'medium' | 'high'
+  sleep: text('sleep').notNull(), // 'bad' | 'ok' | 'good'
+  notes: text('notes'),
+  checkedInAt: timestamp('checked_in_at', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
+// ── Symptom Insights ──────────────────────────────────────────────────────────
+export const symptomInsights = pgTable('symptom_insights', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  careProfileId: uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(), // 'trend' | 'correlation' | 'anomaly' | 'milestone'
+  severity: text('severity').notNull(), // 'info' | 'watch' | 'alert'
+  status: text('status').notNull().default('active'), // 'active' | 'read' | 'dismissed' | 'archived'
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  data: jsonb('data'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+})
+
+// ── Notification Deliveries ───────────────────────────────────────────────────
+export const notificationDeliveries = pgTable('notification_deliveries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  careProfileId: uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
+  category: text('category').notNull(), // 'clinical' | 'emotional' | 'caregiver_awareness' | 'caregiver_selfcare' | 'threshold_alert'
+  title: text('title').notNull(),
+  sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+// ── Care Team Activity Log ────────────────────────────────────────────────────
+export const careTeamActivityLog = pgTable('care_team_activity_log', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  careProfileId: uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  action: text('action').notNull(), // 'logged_meds' | 'completed_checkin' | 'viewed_summary' | 'shared_link' | 'exported_pdf'
+  metadata: jsonb('metadata'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
