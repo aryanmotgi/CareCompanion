@@ -502,13 +502,13 @@ function OnboardingNudge() {
   const nextStep = onboarding.steps.find(s => !s.completed)
 
   const stepRoutes: Record<string, string> = {
-    medications: '/(tabs)/care',
+    medications: '/(tabs)/chat',
     insurance: '/(tabs)/scan',
     careTeam: '/(tabs)/settings',
     cancerType: '/(tabs)/settings',
     treatmentPhase: '/(tabs)/settings',
     firstChat: '/(tabs)/chat',
-    healthSummary: '/health-summary',
+    healthSummary: '/(tabs)/chat',
   }
 
   return (
