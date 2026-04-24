@@ -33,6 +33,8 @@ import { AmbientOrbs } from '../../src/components/AmbientOrbs'
 import { AnimatedCounter } from '../../src/components/AnimatedCounter'
 import { Drawer } from '../../src/components/Drawer'
 import { syncHealthKitData } from '../../src/services/healthkit'
+import { WellnessCard } from '../../src/components/WellnessCard'
+import { requestWellnessPermissions } from '../../src/services/healthkit-vitals'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { ShimmerSkeleton } from '../../src/components/ShimmerSkeleton'
 import { TabFadeWrapper } from './_layout'
@@ -147,6 +149,16 @@ export default function HomeScreen() {
 
   const displayName = profile?.patientName?.trim() || profile?.displayName?.trim() || 'there'
   const medCount = meds.length
+
+  // --- Wellness vitals (HealthKit steps/heart rate/sleep) ---
+  const [wellnessAvailable, setWellnessAvailable] = useState(false)
+
+  useEffect(() => {
+    // Request wellness permissions; show card only if granted
+    requestWellnessPermissions().then((granted) => {
+      setWellnessAvailable(granted)
+    })
+  }, [])
 
   // --- Profile completion tracker ---
   const { percent: profilePercent, remaining: profileRemaining } = computeCompletion(profile as Profile | null)
@@ -338,6 +350,9 @@ export default function HomeScreen() {
                 </GlassCard>
               </Animated.View>
             )}
+
+            {/* Wellness vitals card */}
+            {wellnessAvailable && <WellnessCard />}
 
             {/* Profile completion card */}
             {showProfileCard && (
