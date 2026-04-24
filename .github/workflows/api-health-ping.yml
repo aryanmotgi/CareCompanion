@@ -1,0 +1,114 @@
+name: API Health Ping
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  health-ping:
+    name: API Health Ping
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Check 1 — Site liveness
+        id: liveness
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/liveness.json -w '%{http_code}' \
+            --max-time 5 \
+            https://carecompanionai.org/api/e2e/signin 2>/dev/null || echo "000")
+          BODY=$(cat /tmp/liveness.json 2>/dev/null | head -c 500 || echo "no response")
+          echo "status=$HTTP_CODE" >> $GITHUB_OUTPUT
+          echo "body=$BODY" >> $GITHUB_OUTPUT
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Site liveness check failed: HTTP $HTTP_CODE"
+            echo "failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "failed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check 2 — Auth + DB reachable
+        id: auth
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/auth.json -w '%{http_code}' \
+            -D /tmp/auth-headers.txt \
+            --max-time 45 \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            -H 'x-e2e-secret: ${{ secrets.E2E_AUTH_SECRET }}' \
+            -d '{"email":"${{ secrets.E2E_MONITOR_EMAIL }}"}' \
+            https://carecompanionai.org/api/e2e/signin 2>/dev/null || echo "000")
+          BODY=$(cat /tmp/auth.json 2>/dev/null | head -c 500 || echo "no response")
+          echo "status=$HTTP_CODE" >> $GITHUB_OUTPUT
+          echo "body=$BODY" >> $GITHUB_OUTPUT
+
+          # Extract session cookie for Check 3
+          COOKIE=$(grep -i 'set-cookie' /tmp/auth-headers.txt 2>/dev/null | head -1 | sed 's/set-cookie: //i' | cut -d';' -f1 || echo "")
+          echo "cookie=$COOKIE" >> $GITHUB_OUTPUT
+
+          if [ "$HTTP_CODE" = "401" ] && [ "${{ steps.liveness.outputs.failed }}" = "false" ]; then
+            echo "::warning::Auth returned 401 but site is live — possible E2E_AUTH_SECRET mismatch"
+            echo "secret_mismatch=true" >> $GITHUB_OUTPUT
+            echo "failed=true" >> $GITHUB_OUTPUT
+          elif [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Auth check failed: HTTP $HTTP_CODE"
+            echo "secret_mismatch=false" >> $GITHUB_OUTPUT
+            echo "failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "secret_mismatch=false" >> $GITHUB_OUTPUT
+            echo "failed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check 3 — Session cookie valid
+        id: session
+        if: steps.auth.outputs.failed != 'true'
+        run: |
+          COOKIE="${{ steps.auth.outputs.cookie }}"
+          if [ -z "$COOKIE" ]; then
+            echo "::error::No session cookie received from auth check"
+            echo "failed=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          HTTP_CODE=$(curl -s -o /tmp/session.json -w '%{http_code}' \
+            --max-time 10 \
+            -H "Cookie: $COOKIE" \
+            https://carecompanionai.org/api/e2e/signin 2>/dev/null || echo "000")
+          echo "status=$HTTP_CODE" >> $GITHUB_OUTPUT
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Session validation failed: HTTP $HTTP_CODE"
+            echo "failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "failed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send failure alert
+        if: steps.liveness.outputs.failed == 'true' || steps.auth.outputs.failed == 'true' || steps.session.outputs.failed == 'true'
+        uses: dawidd6/action-send-mail@2cea9617b09d79a095af21254fbcb7ae95903dde # v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.ALERT_EMAIL_USERNAME }}
+          password: ${{ secrets.ALERT_EMAIL_PASSWORD }}
+          subject: "🚨 CareCompanion Health Ping Failed"
+          to: ${{ secrets.ALERT_EMAIL_TO }}
+          from: CareCompanion Alerts <${{ secrets.ALERT_EMAIL_USERNAME }}>
+          body: |
+            CareCompanion API health ping detected a failure.
+
+            Check 1 (Site liveness): ${{ steps.liveness.outputs.failed == 'true' && 'FAILED' || 'OK' }} — HTTP ${{ steps.liveness.outputs.status }}
+            Check 2 (Auth + DB): ${{ steps.auth.outputs.failed == 'true' && 'FAILED' || 'OK' }} — HTTP ${{ steps.auth.outputs.status }}
+            Check 3 (Session valid): ${{ steps.session.outputs.failed == 'true' && 'FAILED' || 'SKIPPED/OK' }}
+
+            ${{ steps.auth.outputs.secret_mismatch == 'true' && '⚠️ Possible secret mismatch — verify E2E_AUTH_SECRET is consistent between GitHub Secrets and Vercel environment variables.' || '' }}
+
+            Response bodies:
+            Liveness: ${{ steps.liveness.outputs.body }}
+            Auth: ${{ steps.auth.outputs.body }}
+
+            Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Fail job if any check failed
+        if: steps.liveness.outputs.failed == 'true' || steps.auth.outputs.failed == 'true' || steps.session.outputs.failed == 'true'
+        run: exit 1
