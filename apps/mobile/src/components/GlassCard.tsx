@@ -51,11 +51,13 @@ export function GlassCard({ children, onPress, style }: GlassCardProps) {
           style,
         ]}
       >
-        <BlurView
-          intensity={blurIntensity}
-          tint={theme.isDark ? 'dark' : 'light'}
-          style={StyleSheet.absoluteFill}
-        />
+        {!theme.isDark && (
+          <BlurView
+            intensity={blurIntensity}
+            tint="light"
+            style={StyleSheet.absoluteFill}
+          />
+        )}
         {children}
       </Animated.View>
     </Pressable>
