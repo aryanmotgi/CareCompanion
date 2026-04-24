@@ -94,11 +94,11 @@ export function AmbientOrbs({ speedMultiplier = 0.3 }: AmbientOrbsProps) {
         style={[
           styles.orb,
           {
-            width: width * 0.8,
-            height: width * 0.8,
-            top: -width * 0.2,
-            left: -width * 0.2,
-            backgroundColor: 'rgba(99,102,241,0.12)',
+            width: width * 0.7,
+            height: width * 0.7,
+            top: -width * 0.15,
+            left: -width * 0.25,
+            backgroundColor: 'rgba(99,102,241,0.06)',
           },
           orb1Style,
         ]}

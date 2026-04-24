@@ -116,6 +116,14 @@ export function Drawer({ visible, onClose, userName, userRole = 'Patient' }: Dra
           <Text style={[styles.itemLabel, { color: theme.green }]}>Insurance & Claims</Text>
         </Pressable>
 
+        <Pressable
+          style={[styles.item, { backgroundColor: 'rgba(99,102,241,0.08)' }]}
+          onPress={() => navigate('/(tabs)/settings')}
+        >
+          <Text style={styles.itemIcon}>⚙️</Text>
+          <Text style={[styles.itemLabel, { color: theme.text }]}>Settings</Text>
+        </Pressable>
+
         <View style={{ flex: 1 }} />
 
         <Pressable style={styles.item} onPress={() => void signOut()}>

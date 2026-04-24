@@ -25,7 +25,6 @@ const TABS = [
   { name: 'chat', label: 'Chat', icon: 'chatbubble-outline', iconActive: 'chatbubble' },
   { name: 'care', label: 'Care', icon: 'heart-outline', iconActive: 'heart' },
   { name: 'scan', label: 'Scan', icon: 'scan-outline', iconActive: 'scan' },
-  { name: 'settings', label: 'Settings', icon: 'settings-outline', iconActive: 'settings' },
 ]
 
 function TabIcon({ icon, iconActive, active }: { icon: string; iconActive: string; active: boolean }) {
@@ -209,7 +208,7 @@ export default function TabLayout() {
           <Tabs.Screen name="chat" />
           <Tabs.Screen name="care" />
           <Tabs.Screen name="scan" />
-          <Tabs.Screen name="settings" />
+          <Tabs.Screen name="settings" options={{ href: null }} />
         </Tabs>
       </View>
     </ProfileProvider>
