@@ -1,8 +1,13 @@
 PODS:
   - boost (1.84.0)
   - DoubleConversion (1.1.6)
+  - EASClient (0.13.3):
+    - ExpoModulesCore
   - EXConstants (17.0.8):
     - ExpoModulesCore
+  - EXImageLoader (5.0.0):
+    - ExpoModulesCore
+    - React-Core
   - EXJSONUtils (0.14.0)
   - EXManifests (0.15.8):
     - ExpoModulesCore
@@ -233,6 +238,8 @@ PODS:
     - ExpoModulesCore
   - ExpoHead (4.0.22):
     - ExpoModulesCore
+  - ExpoImagePicker (16.0.6):
+    - ExpoModulesCore
   - ExpoKeepAwake (14.0.3):
     - ExpoModulesCore
   - ExpoLinearGradient (14.0.2):
@@ -266,6 +273,34 @@ PODS:
     - ExpoModulesCore
   - ExpoWebBrowser (13.0.3):
     - ExpoModulesCore
+  - EXStructuredHeaders (4.0.0)
+  - EXUpdates (0.27.5):
+    - DoubleConversion
+    - EASClient
+    - EXManifests
+    - ExpoModulesCore
+    - EXStructuredHeaders
+    - EXUpdatesInterface
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.01.01.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - ReachabilitySwift
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - EXUpdatesInterface (1.0.0):
     - ExpoModulesCore
   - FBLazyVector (0.76.5)
@@ -296,6 +331,7 @@ PODS:
     - FBLazyVector (= 0.76.5)
     - RCTRequired (= 0.76.5)
     - React-Core (= 0.76.5)
+  - ReachabilitySwift (5.2.4)
   - React (0.76.5):
     - React-Core (= 0.76.5)
     - React-Core/DevSupport (= 0.76.5)
@@ -1900,7 +1936,9 @@ PODS:
 DEPENDENCIES:
   - "boost (from `../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/third-party-podspecs/boost.podspec`)"
   - "DoubleConversion (from `../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/third-party-podspecs/DoubleConversion.podspec`)"
+  - "EASClient (from `../../../node_modules/.bun/expo-eas-client@0.13.3/node_modules/expo-eas-client/ios`)"
   - "EXConstants (from `../../../node_modules/.bun/expo-constants@17.0.8+9166f6408e7218a3/node_modules/expo-constants/ios`)"
+  - "EXImageLoader (from `../../../node_modules/.bun/expo-image-loader@5.0.0+9a1a613f606ebb7a/node_modules/expo-image-loader/ios`)"
   - "EXJSONUtils (from `../../../node_modules/.bun/expo-json-utils@0.14.0/node_modules/expo-json-utils/ios`)"
   - "EXManifests (from `../../../node_modules/.bun/expo-manifests@0.15.8+9a1a613f606ebb7a/node_modules/expo-manifests/ios`)"
   - "Expo (from `../../../node_modules/.bun/expo@52.0.49+9a1a613f606ebb7a/node_modules/expo`)"
@@ -1916,12 +1954,15 @@ DEPENDENCIES:
   - "ExpoFont (from `../../../node_modules/.bun/expo-font@13.0.4+541c8e18387bd8d5/node_modules/expo-font/ios`)"
   - "ExpoHaptics (from `../../../node_modules/.bun/expo-haptics@14.0.1+9a1a613f606ebb7a/node_modules/expo-haptics/ios`)"
   - "ExpoHead (from `../../../node_modules/.bun/expo-router@4.0.22+49224582d89b8d35/node_modules/expo-router/ios`)"
+  - "ExpoImagePicker (from `../../../node_modules/.bun/expo-image-picker@16.0.6+9a1a613f606ebb7a/node_modules/expo-image-picker/ios`)"
   - "ExpoKeepAwake (from `../../../node_modules/.bun/expo-keep-awake@14.0.3+541c8e18387bd8d5/node_modules/expo-keep-awake/ios`)"
   - "ExpoLinearGradient (from `../../../node_modules/.bun/expo-linear-gradient@14.0.2+9a1a613f606ebb7a/node_modules/expo-linear-gradient/ios`)"
   - "ExpoModulesCore (from `../../../node_modules/.bun/expo-modules-core@2.2.3/node_modules/expo-modules-core`)"
   - "ExpoSecureStore (from `../../../node_modules/.bun/expo-secure-store@13.0.2+9a1a613f606ebb7a/node_modules/expo-secure-store/ios`)"
   - "ExpoSensors (from `../../../node_modules/.bun/expo-sensors@14.0.2+9a1a613f606ebb7a/node_modules/expo-sensors/ios`)"
   - "ExpoWebBrowser (from `../../../node_modules/.bun/expo-web-browser@13.0.3+9a1a613f606ebb7a/node_modules/expo-web-browser/ios`)"
+  - "EXStructuredHeaders (from `../../../node_modules/.bun/expo-structured-headers@4.0.0/node_modules/expo-structured-headers/ios`)"
+  - "EXUpdates (from `../../../node_modules/.bun/expo-updates@0.27.5+9a1a613f606ebb7a/node_modules/expo-updates/ios`)"
   - "EXUpdatesInterface (from `../../../node_modules/.bun/expo-updates-interface@1.0.0+9a1a613f606ebb7a/node_modules/expo-updates-interface/ios`)"
   - "FBLazyVector (from `../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/Libraries/FBLazyVector`)"
   - "fmt (from `../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/third-party-podspecs/fmt.podspec`)"
@@ -1993,6 +2034,7 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - ReachabilitySwift
     - SocketRocket
     - ZXingObjC
 
@@ -2001,8 +2043,12 @@ EXTERNAL SOURCES:
     :podspec: "../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/third-party-podspecs/boost.podspec"
   DoubleConversion:
     :podspec: "../../../node_modules/.bun/react-native@0.76.5+ce75121d18e1be17/node_modules/react-native/third-party-podspecs/DoubleConversion.podspec"
+  EASClient:
+    :path: "../../../node_modules/.bun/expo-eas-client@0.13.3/node_modules/expo-eas-client/ios"
   EXConstants:
     :path: "../../../node_modules/.bun/expo-constants@17.0.8+9166f6408e7218a3/node_modules/expo-constants/ios"
+  EXImageLoader:
+    :path: "../../../node_modules/.bun/expo-image-loader@5.0.0+9a1a613f606ebb7a/node_modules/expo-image-loader/ios"
   EXJSONUtils:
     :path: "../../../node_modules/.bun/expo-json-utils@0.14.0/node_modules/expo-json-utils/ios"
   EXManifests:
@@ -2033,6 +2079,8 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/.bun/expo-haptics@14.0.1+9a1a613f606ebb7a/node_modules/expo-haptics/ios"
   ExpoHead:
     :path: "../../../node_modules/.bun/expo-router@4.0.22+49224582d89b8d35/node_modules/expo-router/ios"
+  ExpoImagePicker:
+    :path: "../../../node_modules/.bun/expo-image-picker@16.0.6+9a1a613f606ebb7a/node_modules/expo-image-picker/ios"
   ExpoKeepAwake:
     :path: "../../../node_modules/.bun/expo-keep-awake@14.0.3+541c8e18387bd8d5/node_modules/expo-keep-awake/ios"
   ExpoLinearGradient:
@@ -2045,6 +2093,10 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/.bun/expo-sensors@14.0.2+9a1a613f606ebb7a/node_modules/expo-sensors/ios"
   ExpoWebBrowser:
     :path: "../../../node_modules/.bun/expo-web-browser@13.0.3+9a1a613f606ebb7a/node_modules/expo-web-browser/ios"
+  EXStructuredHeaders:
+    :path: "../../../node_modules/.bun/expo-structured-headers@4.0.0/node_modules/expo-structured-headers/ios"
+  EXUpdates:
+    :path: "../../../node_modules/.bun/expo-updates@0.27.5+9a1a613f606ebb7a/node_modules/expo-updates/ios"
   EXUpdatesInterface:
     :path: "../../../node_modules/.bun/expo-updates-interface@1.0.0+9a1a613f606ebb7a/node_modules/expo-updates-interface/ios"
   FBLazyVector:
@@ -2182,7 +2234,9 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   boost: 1dca942403ed9342f98334bf4c3621f011aa7946
   DoubleConversion: f16ae600a246532c4020132d54af21d0ddb2a385
+  EASClient: 88b5fd19d0787186a0c7e6ba76deb2d4f96395ce
   EXConstants: fcfc75800824ac2d5c592b5bc74130bad17b146b
+  EXImageLoader: e5da974e25b13585c196b658a440720c075482d5
   EXJSONUtils: 01fc7492b66c234e395dcffdd5f53439c5c29c93
   EXManifests: a19d50504b8826546a4782770317bc83fffec87d
   Expo: 4bb70893882e6382b41d1e910d7226c6a1b85f0a
@@ -2198,12 +2252,15 @@ SPEC CHECKSUMS:
   ExpoFont: f354e926f8feae5e831ec8087f36652b44a0b188
   ExpoHaptics: 8d199b2f33245ea85289ff6c954c7ee7c00a5b5d
   ExpoHead: 2a14db58219c0a506e4a409ea83f884eab23f555
+  ExpoImagePicker: 24e5ba8da111f74519b1e6dc556e0b438b2b8464
   ExpoKeepAwake: b0171a73665bfcefcfcc311742a72a956e6aa680
   ExpoLinearGradient: 35ebd83b16f80b3add053a2fd68cc328ed927f60
   ExpoModulesCore: 15f60d00e33ca0cea27147543877ca6e70c42ef5
   ExpoSecureStore: 6506992a9f53c94ea716c54d4a63144965945c2c
   ExpoSensors: 02a52ddab1e3a8a1438258c3d87d1ee5f721743a
   ExpoWebBrowser: cf10afe886891ab495877dada977fe6c269614a4
+  EXStructuredHeaders: 09c70347b282e3d2507e25fb4c747b1b885f87f6
+  EXUpdates: 7483f5d63c87133a8b666048b4a460f1fae23a64
   EXUpdatesInterface: 7c977640bdd8b85833c19e3959ba46145c5719db
   FBLazyVector: 1bf99bb46c6af9a2712592e707347315f23947aa
   fmt: 10c6e61f4be25dc963c36bd73fc7b1705fe975be
@@ -2213,6 +2270,7 @@ SPEC CHECKSUMS:
   RCTDeprecation: fb7d408617e25d7f537940000d766d60149c5fea
   RCTRequired: 9aaf0ffcc1f41f0c671af863970ef25c422a9920
   RCTTypeSafety: e9a6e7d48184646eb0610295b74c0dd02768cbb2
+  ReachabilitySwift: 32793e867593cfc1177f5d16491e3a197d2fccda
   React: fffb3cf1b0d7aee03c4eb4952b2d58783615e9fa
   React-callinvoker: 3c6ecc0315d42924e01b3ddc25cf2e49d33da169
   React-Core: 1a5ddefb00dd72644171dd39bb4bbcd7849c70f0
@@ -2273,6 +2331,6 @@ SPEC CHECKSUMS:
   Yoga: fcc198acd4a55599b3468cfb6ebc526baff5f06e
   ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 
-PODFILE CHECKSUM: c14a90973cdc7373d243695d32e11bff72fcadb4
+PODFILE CHECKSUM: 95f6f209ef99097b4fe28144b52344e962b3b3eb
 
 COCOAPODS: 1.16.2

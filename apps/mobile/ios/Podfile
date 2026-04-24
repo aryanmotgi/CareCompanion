@@ -52,31 +52,6 @@ target 'CareCompanion' do
       :ccache_enabled => podfile_properties['apple.ccacheEnabled'] == 'true',
     )
 
-    # Force iOS 16.0 minimum for pods that use CxxStdlib (Swift/C++ interop).
-    # react-native-nitro-modules uses C++/Swift interop requiring iOS 16.0+, but
-    # its podspec inherits min_ios_version_supported (15.1) from React Native.
-    installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |cfg|
-        current = cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
-        if current && current.to_f < 16.0
-          cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
-        end
-      end
-    end
-
-    # Force Swift 5 language mode for pods that haven't been updated for Swift 6.
-    # expo-dev-menu@5.x uses closure syntax that Swift 6 (Xcode 26) rejects.
-    # Match by prefix so all subspec targets are covered.
-    swift5_pod_prefixes = %w[EXDevMenu expo-dev-menu]
-    installer.pods_project.targets.each do |target|
-      if swift5_pod_prefixes.any? { |prefix| target.name.start_with?(prefix) }
-        target.build_configurations.each do |cfg|
-          cfg.build_settings['SWIFT_VERSION'] = '5'
-        end
-      end
-    end
-
-
     # This is necessary for Xcode 14, because it signs resource bundles by default
     # when building for devices.
     installer.target_installation_results.pod_target_installation_results
