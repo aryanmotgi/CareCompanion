@@ -9,6 +9,7 @@ test.describe('Production 24/7 Monitor', () => {
 
   test.beforeEach(async ({ page, context }) => {
     const email = process.env.E2E_MONITOR_EMAIL!
+    const e2eSecret = process.env.E2E_AUTH_SECRET!
 
     // Clear all cookies before each test to prevent stale session tokens from
     // a previous test causing ERR_TOO_MANY_REDIRECTS (stale JWT + redirect loop).
@@ -19,16 +20,16 @@ test.describe('Production 24/7 Monitor', () => {
     // This means the browser itself handles Set-Cookie, including Secure cookies.
     await page.goto('/login')
     const result = await page.evaluate(
-      async ({ email }: { email: string }) => {
+      async ({ email, secret }: { email: string; secret: string }) => {
         const res = await fetch('/api/e2e/signin', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-e2e-secret': secret },
           body: JSON.stringify({ email }),
           credentials: 'include',
         })
         return { ok: res.ok, status: res.status, body: await res.text() }
       },
-      { email }
+      { email, secret: e2eSecret }
     )
 
     if (!result.ok) {
@@ -100,5 +101,102 @@ test.describe('Production 24/7 Monitor', () => {
       const chatInput = page.locator('textarea, input[type="text"]').first()
       await expect(chatInput).toBeVisible({ timeout: 10000 })
     }
+  })
+
+  test('medications data renders on care page', async ({ page }) => {
+    try {
+      await page.goto('/care', { waitUntil: 'domcontentloaded', timeout: 20000 })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      if (!msg.includes('ERR_ABORTED')) throw e
+    }
+    await expect(page).not.toHaveURL(/.*\/login/, { timeout: 10000 })
+    if (page.url().includes('/care')) {
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
+      const medContent = page.locator('h3, h4, [class*="medication"], [class*="med-"]').first()
+      await expect(medContent).toBeVisible({ timeout: 10000 })
+    }
+  })
+
+  test('AI chat responds to a message', async ({ page }) => {
+    try {
+      await page.goto('/chat', { waitUntil: 'domcontentloaded', timeout: 20000 })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      if (!msg.includes('ERR_ABORTED')) throw e
+    }
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {})
+    const onChat = page.url().includes('/chat')
+    if (!onChat) return
+
+    const chatInput = page.locator('textarea, input[type="text"]').first()
+    await expect(chatInput).toBeVisible({ timeout: 10000 })
+    await chatInput.fill('hello')
+    await chatInput.press('Enter')
+
+    const assistantMessage = page.locator('[data-role="assistant"], .assistant-message, [class*="assistant"]').first()
+    await expect(assistantMessage).toBeVisible({ timeout: 30000 })
+  })
+
+  test('page load performance budgets', async ({ page }) => {
+    const MAX_LOAD_TIME_MS = 8000
+    const pages = ['/dashboard', '/care', '/chat']
+    for (const path of pages) {
+      const start = Date.now()
+      try {
+        await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 20000 })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        if (!msg.includes('ERR_ABORTED')) throw e
+      }
+      const elapsed = Date.now() - start
+      expect(elapsed, `${path} took ${elapsed}ms (budget: ${MAX_LOAD_TIME_MS}ms)`).toBeLessThan(MAX_LOAD_TIME_MS)
+    }
+  })
+
+  test('no unexpected console errors during navigation', async ({ page }) => {
+    const errors: string[] = []
+    const IGNORE_PATTERNS = [
+      /third-party cookie/i,
+      /favicon\.ico/,
+      /ERR_BLOCKED_BY_CLIENT/,
+      /Download the React DevTools/,
+      /Warning: ReactDOM/,
+      /hydration/i,
+      /vercel-insights/,
+      /vercel-analytics/,
+    ]
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        const text = msg.text()
+        const isNoise = IGNORE_PATTERNS.some((p) => p.test(text))
+        if (!isNoise) errors.push(text)
+      }
+    })
+    for (const path of ['/dashboard', '/care', '/chat']) {
+      try {
+        await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 20000 })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        if (!msg.includes('ERR_ABORTED')) throw e
+      }
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {})
+    }
+    expect(errors, `Unexpected console errors:\n${errors.join('\n')}`).toHaveLength(0)
+  })
+
+  test('notifications exist (cron health check)', async ({ page }) => {
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded', timeout: 20000 })
+    await expect(page).not.toHaveURL(/.*\/login/, { timeout: 15000 })
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
+
+    // The NotificationBell renders in the header — look for the bell button
+    const bell = page.locator('button').filter({ has: page.locator('svg') }).first()
+    await expect(bell).toBeVisible({ timeout: 10000 })
+    await bell.click()
+
+    // After clicking, a notification dropdown/list should appear with at least one item
+    const notificationItem = page.locator('a, li, div').filter({ hasText: /refill|appointment|lab|update|reminder/i }).first()
+    await expect(notificationItem).toBeVisible({ timeout: 5000 })
   })
 })
