@@ -137,7 +137,8 @@ function CustomTabBar({ state, navigation }: any) {
       />
       <View style={styles.tabBarInner}>
         {state.routes.map((route: { key: string; name: string }, index: number) => {
-          const tab = TABS.find((t) => t.name === route.name) ?? TABS[0]
+          const tab = TABS.find((t) => t.name === route.name)
+          if (!tab) return null // Skip hidden tabs (like settings)
           const active = state.index === index
 
           return (
