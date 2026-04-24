@@ -171,7 +171,6 @@ function LabRow({ lab }: { lab: Lab }) {
   return (
     <GlassCard
       style={styles.labCard}
-      accessibilityLabel={`${lab.name}: ${lab.value}, ${lab.status}`}
     >
       <View style={styles.labRow}>
         <View style={{ flex: 1 }}>
@@ -207,7 +206,6 @@ function AppointmentRow({ appointment }: { appointment: any }) {
   return (
     <GlassCard
       style={styles.apptCard}
-      accessibilityLabel={`${appointment.doctorName || 'Appointment'}, ${dateStr}${timeStr ? ` at ${timeStr}` : ''}`}
     >
       <View style={styles.apptRow}>
         <View style={{ flex: 1 }}>

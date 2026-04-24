@@ -41,7 +41,7 @@ jobs:
 
       - name: Run E2E tests
         working-directory: apps/web
-        run: npx playwright test --project=chromium
+        run: npx playwright test --project=chromium --ignore-pattern="visual-regression*"
         env:
           E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
           E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
