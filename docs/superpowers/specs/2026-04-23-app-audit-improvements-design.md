@@ -6,7 +6,7 @@
 
 ## Summary
 
-21 issues found across 9 screens (5 mobile tabs + 4 web pages). Two P0 blockers, two P1 high-priority bugs, ten P2 improvements, and seven P3 polish items.
+21 issues found across 9 screens (5 mobile tabs + 4 web pages). Two P0 blockers, three P1 high-priority bugs, nine P2 improvements, and seven P3 polish items.
 
 ---
 
@@ -17,14 +17,14 @@
 - **Screen:** Care tab (all sub-tabs: Meds, Appts, Labs, Journal, Team)
 - **Symptom:** Error screen with "Something went wrong — Failed to load care data" and a "Try Again" button
 - **Impact:** The core feature of a caregiver app doesn't load. Users can't manage medications, appointments, labs, or care team.
-- **Action:** Investigate API response. Check auth token forwarding, profile ID, and API endpoint availability. Fix the root cause.
+- **Action:** Investigate API response. Check auth token forwarding, profile ID, and API endpoint availability. Note: `care.tsx` creates its own `apiClient` instance (line 26) via `createApiClient` from `@carecompanion/api`, separate from the shared client in `services/api.ts` used by the home screen. Compare auth token handling between the two. Fix the root cause.
 
 ### 2. Signup page — logo overlaps nav link
 - **Platform:** Web
 - **Screen:** /signup
 - **Symptom:** Heart logo icon positioned over the "Contact" navigation link
 - **Impact:** Users can't click "Contact" on the signup page. Looks broken.
-- **Action:** Fix z-index or positioning of the logo element on the signup page. The login page handles this correctly (logo is below the nav), so the signup page layout differs.
+- **Action:** Fix z-index or positioning of the logo element on the signup page. Both pages use the same `PublicNav` component, so the overlap may be caused by content height pushing the logo into the nav at certain viewport sizes. Test at multiple breakpoints.
 
 ---
 
@@ -35,7 +35,7 @@
 - **Screen:** Home tab
 - **Symptom:** A dark panel with a "<" chevron peeks out from the right edge of the screen
 - **Impact:** Users will try to swipe/tap it and get confused. Looks unfinished.
-- **Action:** Either hide the drawer trigger completely, or make it intentional with proper swipe-to-open behavior.
+- **Action:** Investigate source — the Drawer component slides from the left, not right. This right-edge artifact may be from React Navigation's edge-swipe shadow, an Expo Router gesture handler, or the AmbientOrbs component. Identify the source, then hide it or make it intentional.
 
 ### 4. app.json userInterfaceStyle set to "light"
 - **Platform:** Mobile
@@ -97,19 +97,20 @@
 - **Impact:** Redundant and confusing — user reads "Medications" twice in a row
 - **Action:** Rename the section header to "Medication Alerts" or remove the duplicate.
 
-### 12. Settings missing essential items
+### 12. Settings missing essential items — PROMOTED TO P1
 - **Platform:** Mobile
 - **Screen:** Settings tab
 - **Symptom:** No app version, no Help/Support link, no Privacy Policy link, no Terms of Service link, no Delete Account option
-- **Impact:** App Store requirement (delete account), legal requirement (privacy links), user expectation (help/version)
+- **Impact:** App Store rejection risk (delete account is required), legal requirement (privacy links), user expectation (help/version). Blocks App Store submission.
 - **Action:** Add: App version, Help & Support, Privacy Policy, Terms of Service, Delete Account, About section.
+- **Note:** Promoted from P2 to P1 — missing Delete Account will cause App Store rejection.
 
 ### 13. No password requirements shown on signup
 - **Platform:** Web
 - **Screen:** /signup
-- **Symptom:** Password field has no hint about requirements (length, special chars, etc.)
-- **Impact:** Users fail on submit and don't know why. Creates friction in signup flow.
-- **Action:** Show password requirements below the field (e.g., "At least 8 characters, one number").
+- **Symptom:** Password strength bar exists but requirements are not shown upfront before the user starts typing
+- **Impact:** Users don't know what's expected until they start typing and see the strength indicator. Creates uncertainty.
+- **Action:** Show password requirements visibly before typing begins (e.g., "At least 8 characters"). The existing strength bar activates on keyup but the initial state gives no guidance.
 
 ### 14. No inline form validation
 - **Platform:** Web
@@ -162,7 +163,8 @@
 - **Platform:** Both
 - **Screen:** /login, /signup, mobile login
 - **Symptom:** Only email/password authentication available
-- **Action:** Add Apple Sign-In (required for App Store if you offer any third-party login) and Google Sign-In. Reduces signup friction significantly.
+- **Action:** Add Apple Sign-In and Google Sign-In. Reduces signup friction significantly.
+- **Note:** Apple Sign-In becomes P0 if any third-party login (Google, Facebook) is added before it — Apple requires it when other social logins are present.
 
 ---
 
@@ -195,7 +197,7 @@ The following screens were not reviewed in this audit and should be covered in a
 
 | Phase | Issues | Focus |
 |-------|--------|-------|
-| **Phase 1: Unblock** | #1, #2, #3, #4 | Fix P0/P1 — make the app functional |
-| **Phase 2: Core UX** | #5, #6, #7, #8, #9, #12, #13, #14 | Fix the most visible P2 issues |
+| **Phase 1: Unblock** | #1, #2, #3, #4, #12 | Fix P0/P1 — make the app functional + App Store requirements |
+| **Phase 2: Core UX** | #5, #6, #7, #8, #9, #13, #14 | Fix the most visible P2 issues |
 | **Phase 3: Polish** | #10, #11, #15, #16, #17, #18, #19, #20 | Visual refinement |
 | **Phase 4: Features** | #21 | Social login (larger effort, App Store requirement) |
