@@ -68,7 +68,7 @@ export default function SettingsScreen() {
 
         {/* Profile card */}
         <Animated.View style={stagger[1]}>
-          <GlassCard style={styles.section}>
+          <View style={styles.section}>
             <View style={styles.profileRow}>
               <LinearGradient colors={['#6366F1', '#A78BFA']} style={styles.avatar}>
                 <Text style={styles.avatarText}>{(profile?.displayName || 'U')[0].toUpperCase()}</Text>
@@ -78,13 +78,13 @@ export default function SettingsScreen() {
                 <Text style={[styles.role, { color: theme.textMuted }]}>Patient</Text>
               </View>
             </View>
-          </GlassCard>
+          </View>
         </Animated.View>
 
         {/* Edit Profile & Preferences */}
         <Animated.View style={stagger[2]}>
           <Pressable onPress={() => Linking.openURL('https://carecompanionai.org/onboarding')}>
-            <GlassCard style={styles.section}>
+            <View style={styles.section}>
               <View style={styles.editProfileRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.editProfileLabel, { color: theme.text }]}>Edit Profile & Preferences</Text>
@@ -92,14 +92,14 @@ export default function SettingsScreen() {
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
               </View>
-            </GlassCard>
+            </View>
           </Pressable>
         </Animated.View>
 
         {/* Appearance */}
         <Animated.View style={stagger[3]}>
           <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>APPEARANCE</Text>
-          <GlassCard style={styles.section}>
+          <View style={styles.section}>
             <View style={[styles.segmentRow, { backgroundColor: theme.bgElevated }]}>
               {(['light', 'dark', 'system'] as ThemeOverride[]).map((t) => (
                 <Pressable
@@ -116,7 +116,7 @@ export default function SettingsScreen() {
                 </Pressable>
               ))}
             </View>
-          </GlassCard>
+          </View>
         </Animated.View>
 
         {/* Notifications */}
@@ -125,7 +125,7 @@ export default function SettingsScreen() {
 
           {/* Medications group */}
           <Text style={[styles.subHeader, { color: theme.textMuted }]}>Medications</Text>
-          <GlassCard style={styles.section}>
+          <View style={styles.section}>
             {([
               { key: 'medications', label: 'Medications', description: 'Medication reminders and alerts' },
               { key: 'refillReminders', label: 'Refill Reminders', description: 'Alert when medications are running low' },
@@ -146,13 +146,13 @@ export default function SettingsScreen() {
                 />
               </View>
             ))}
-          </GlassCard>
+          </View>
         </Animated.View>
 
         <Animated.View style={stagger[5]}>
           {/* Appointments group */}
           <Text style={[styles.subHeader, { color: theme.textMuted }]}>Appointments</Text>
-          <GlassCard style={styles.section}>
+          <View style={styles.section}>
             {([
               { key: 'appointments', label: 'Appointments', description: 'Appointment reminders' },
               { key: 'twentyFourHour', label: '24-Hour Reminder', description: 'Reminder 24 hours before appointments' },
@@ -171,7 +171,7 @@ export default function SettingsScreen() {
                 />
               </View>
             ))}
-          </GlassCard>
+          </View>
         </Animated.View>
 
         {/* Test Tools (staging only) */}
@@ -211,9 +211,9 @@ export default function SettingsScreen() {
                 )
               }}
             >
-              <GlassCard style={{ ...styles.section, borderColor: 'rgba(251,191,36,0.3)' }}>
+              <View style={styles.section}>
                 <Text style={[styles.signOut, { color: '#f59e0b' }]}>Reset Test Data</Text>
-              </GlassCard>
+              </View>
             </Pressable>
           </Animated.View>
         )}
@@ -221,9 +221,9 @@ export default function SettingsScreen() {
         {/* Sign out */}
         <Animated.View style={stagger[7]}>
           <Pressable onPress={signOut}>
-            <GlassCard style={{ ...styles.section, borderColor: 'rgba(252,165,165,0.2)' }}>
+            <View style={styles.section}>
               <Text style={[styles.signOut, { color: theme.rose }]}>Sign Out</Text>
-            </GlassCard>
+            </View>
           </Pressable>
         </Animated.View>
       </ScrollView>
