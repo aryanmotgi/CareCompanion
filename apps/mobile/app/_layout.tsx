@@ -61,12 +61,14 @@ export default function RootLayout() {
 
   useShakeDetector(handleShake)
 
+  const theme = useTheme()
+
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={{ backgroundColor: theme.bg }}>
       <ThemedStatusBar />
       <TestModeBanner />
       <AuthGate>
-        <Stack screenOptions={{ headerShown: false }} />
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }} />
       </AuthGate>
       <BugReportSheet
         visible={bugReportVisible}
