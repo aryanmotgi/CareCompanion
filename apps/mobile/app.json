@@ -34,6 +34,13 @@
         {
           "cameraPermission": "CareCompanion uses the camera to scan medical documents."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "CareCompanion accesses your photos to upload medical documents.",
+          "cameraPermission": "CareCompanion uses the camera to scan medical documents."
+        }
       ]
     ],
     "experiments": {
