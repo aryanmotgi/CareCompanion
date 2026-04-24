@@ -254,9 +254,9 @@ export default function CareScreen() {
     }
     setLoading(true)
     Promise.all([
-      apiClient.medications.list(profile.careProfileId).catch((e: any) => { console.error('[Care] meds error:', e?.message); return [] }),
-      apiClient.labResults.list(profile.careProfileId).catch((e: any) => { console.error('[Care] labs error:', e?.message); return { labs: [] } }),
-      apiClient.appointments.list(profile.careProfileId).catch((e: any) => { console.error('[Care] appts error:', e?.message); return [] }),
+      apiClient.medications.list(profile.careProfileId).catch(() => []),
+      apiClient.labResults.list(profile.careProfileId).catch(() => ({ labs: [] })),
+      apiClient.appointments.list(profile.careProfileId).catch(() => []),
     ]).then(([medsRaw, labsRaw, apptsRaw]) => {
       // Unwrap { ok, data } API response format
       const medsData = Array.isArray(medsRaw) ? medsRaw : ((medsRaw as any)?.data ?? [])
