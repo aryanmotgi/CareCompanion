@@ -28,8 +28,15 @@ export async function ensureCsrfToken(): Promise<string> {
 
 export async function validateCsrf(req: Request): Promise<{ valid: boolean; error?: NextResponse }> {
   const cookieStore = await cookies()
-  const cookieToken = cookieStore.get(CSRF_COOKIE)?.value
+  let cookieToken = cookieStore.get(CSRF_COOKIE)?.value
   const headerToken = req.headers.get(CSRF_HEADER)
+
+  // Fallback: parse CSRF token from raw Cookie header (mobile apps send cookies manually)
+  if (!cookieToken) {
+    const rawCookie = req.headers.get('cookie') || ''
+    const match = rawCookie.match(new RegExp(`${CSRF_COOKIE}=([^;]+)`))
+    if (match) cookieToken = match[1]
+  }
 
   if (!cookieToken || !headerToken || cookieToken !== headerToken) {
     return {
