@@ -136,8 +136,9 @@ export default function HomeScreen() {
     ]).then(([medsData, apptsData]) => {
       setMeds((medsData as any[]) || [])
       setAppointments((apptsData as any[]) || [])
-    }).catch(err => {
-      console.error('Failed to load home data:', err)
+    }).catch(() => {
+      // API may not be deployed yet or user not authenticated — fail silently
+      // Data stays empty, empty states will render
     }).finally(() => {
       setDataLoading(false)
     })

@@ -291,7 +291,7 @@ export default function CareScreen() {
         .sort((a: any, b: any) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime())
       setAppointments(mappedAppts)
     }).catch(err => {
-      console.error('Failed to load care data:', err)
+      // Fail silently in dev — setError shows the retry card to the user
       setError('Failed to load care data')
     }).finally(() => {
       setLoading(false)
@@ -325,7 +325,7 @@ export default function CareScreen() {
         hapticMedTaken()
       }
     } catch (err) {
-      console.error('Failed to mark as taken:', err)
+      // Silent fail — user sees no status change which signals the action didn't work
     } finally {
       setTakingId(null)
     }
