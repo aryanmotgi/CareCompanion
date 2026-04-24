@@ -280,9 +280,6 @@ export default function HomeScreen() {
           ]}
           showsVerticalScrollIndicator={false}
         >
-          {/* Branded header with live counter */}
-          <LiveCancerCounter />
-
           {/* Greeting */}
           <View style={styles.header}>
             <View>
