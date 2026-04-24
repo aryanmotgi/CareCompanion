@@ -25,11 +25,6 @@ export function GlassCard({ children, onPress, style }: GlassCardProps) {
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-    borderColor: interpolateColor(
-      pressed.value,
-      [0, 1],
-      [theme.bgCardBorder, theme.borderHover],
-    ),
   }))
 
   function onPressIn() {
@@ -51,7 +46,7 @@ export function GlassCard({ children, onPress, style }: GlassCardProps) {
         style={[
           styles.card,
           theme.shadowCard,
-          { backgroundColor: theme.bgCard, borderColor: theme.bgCardBorder },
+          { backgroundColor: theme.bgCard },
           animatedStyle,
           style,
         ]}
@@ -70,7 +65,7 @@ export function GlassCard({ children, onPress, style }: GlassCardProps) {
 const styles = StyleSheet.create({
   card: {
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 0,
     overflow: 'hidden',
     padding: 16,
   },
