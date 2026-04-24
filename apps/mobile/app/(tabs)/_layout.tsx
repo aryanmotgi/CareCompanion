@@ -196,13 +196,15 @@ export function TabFadeWrapper({ children }: { children: React.ReactNode }) {
 }
 
 export default function TabLayout() {
+  const theme = useTheme()
   return (
     <ProfileProvider>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: theme.bg }}>
         <NoiseOverlay />
         <Tabs
           tabBar={(props) => <CustomTabBar {...props} />}
-          screenOptions={{ headerShown: false }}
+          screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }}
+          sceneContainerStyle={{ backgroundColor: theme.bg }}
         >
           <Tabs.Screen name="index" />
           <Tabs.Screen name="chat" />
