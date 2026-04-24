@@ -166,7 +166,7 @@ export default function SetupScreen() {
             placeholderTextColor="rgba(255,255,255,0.3)"
             value={value}
             onChangeText={setValue}
-            autoFocus
+            autoFocus={false}
             returnKeyType={isLastStep ? 'done' : 'next'}
             onSubmitEditing={handleNext}
           />
