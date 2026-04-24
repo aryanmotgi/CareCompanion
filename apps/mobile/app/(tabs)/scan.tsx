@@ -77,7 +77,7 @@ export default function ScanScreen() {
       <View style={[styles.root, { backgroundColor: theme.bg, paddingTop: insets.top + 16 }]}>
         {/* Header */}
         <Animated.View style={stagger[0]}>
-          <Text style={[styles.title, { color: theme.text }]}>Documents</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Scan</Text>
         </Animated.View>
         <Animated.View style={stagger[1]}>
           <Text style={[styles.sub, { color: theme.textMuted }]}>

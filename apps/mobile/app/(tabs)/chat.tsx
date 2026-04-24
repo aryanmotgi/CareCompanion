@@ -20,6 +20,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
+import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../../src/theme'
 import { hapticAIMessage } from '../../src/utils/haptics'
@@ -171,10 +172,10 @@ function TypingDots() {
 const TAB_BAR_HEIGHT = 60
 
 const SUGGESTIONS = [
-  { icon: '📊', title: 'What should I expect this chemo cycle?', subtitle: 'Side effects, timing, what to watch for', color: '#f472b6' },
-  { icon: '🔬', title: 'Explain my tumor markers', subtitle: 'CEA, CA-125, PSA trends explained', color: '#2dd4bf' },
-  { icon: '📅', title: 'Prep for oncology appointment', subtitle: 'Questions to ask your oncologist', color: '#60a5fa' },
-  { icon: '✨', title: 'Help me understand my treatment plan', subtitle: 'Plain-language explanations', color: '#c084fc' },
+  { icon: 'fitness-outline' as const, title: 'Chemo side effects', subtitle: 'Side effects, timing, what to watch for', color: '#f472b6' },
+  { icon: 'flask-outline' as const, title: 'Tumor markers', subtitle: 'CEA, CA-125, PSA trends explained', color: '#2dd4bf' },
+  { icon: 'calendar-outline' as const, title: 'Appointment prep', subtitle: 'Questions to ask your oncologist', color: '#60a5fa' },
+  { icon: 'book-outline' as const, title: 'Understanding results', subtitle: 'Plain-language explanations', color: '#c084fc' },
 ]
 
 function SuggestionCard({
@@ -202,7 +203,7 @@ function SuggestionCard({
           },
         ]}
       >
-        <Text style={[styles.suggestionIcon, { color }]}>{icon}</Text>
+        <Ionicons name={icon} size={22} color={color} style={{ marginBottom: 8 }} />
         <Text style={[styles.suggestionTitle, { color: theme.text }]} numberOfLines={2}>
           {title}
         </Text>

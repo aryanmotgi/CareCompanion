@@ -310,13 +310,15 @@ export default function HomeScreen() {
                     <Text style={[styles.cardLabel, { color: theme.textMuted }]}>
                       TODAY'S MEDICATIONS
                     </Text>
-                    <View style={[styles.badge, { backgroundColor: 'rgba(99,102,241,0.2)' }]}>
-                      <AnimatedCounter
-                        value={medCount}
-                        style={{ ...styles.badgeText, color: theme.accent }}
-                        suffix={medCount === 1 ? ' med' : ' meds'}
-                      />
-                    </View>
+                    {medCount > 0 && (
+                      <View style={[styles.badge, { backgroundColor: 'rgba(99,102,241,0.2)' }]}>
+                        <AnimatedCounter
+                          value={medCount}
+                          style={{ ...styles.badgeText, color: theme.accent }}
+                          suffix={medCount === 1 ? ' med' : ' meds'}
+                        />
+                      </View>
+                    )}
                   </View>
                   {meds.length === 0 ? (
                     <Text style={[styles.medName, { color: theme.textMuted }]}>No medications yet</Text>
