@@ -27,7 +27,7 @@ import {
   careTeamActivityLog,
   users,
 } from '@/lib/db/schema';
-import { eq, and, gte, lt, lte, sql, desc, inArray, isNull, or } from 'drizzle-orm';
+import { eq, and, gte, lt, sql, desc, inArray, isNull, or } from 'drizzle-orm';
 import { sendPushNotification } from '@/lib/push';
 import { logger } from '@/lib/logger';
 
@@ -412,5 +412,95 @@ COMPUTED TRENDS:
     }
   }
 
-  return Response.json({ processed, skipped, errors, insights_generated: insightsGenerated });
+  // ── Gratitude Nudge Check ──────────────────────────────────────────────────
+  // For each processed profile, check if any caregiver has been active 30+ consecutive
+  // days and hasn't received a gratitude nudge recently. If so, send a nudge to the PATIENT.
+  let gratitudeNudgesSent = 0;
+
+  for (const profile of profiles) {
+    try {
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      // Get care team members for this profile
+      const members = await db.select().from(careTeamMembers)
+        .where(eq(careTeamMembers.careProfileId, profile.id))
+        .catch(() => []);
+
+      for (const member of members) {
+        // Skip if nudge was sent less than 30 days ago
+        if (member.lastGratitudeNudgeAt && new Date(member.lastGratitudeNudgeAt) > thirtyDaysAgo) {
+          continue;
+        }
+
+        // Check if caregiver has activity for 30+ consecutive days
+        // Query all activity in the last 30 days, grouped by date
+        const activityDays = await db
+          .select({
+            activityDate: sql<string>`DATE(${careTeamActivityLog.createdAt})`,
+          })
+          .from(careTeamActivityLog)
+          .where(and(
+            eq(careTeamActivityLog.userId, member.userId),
+            eq(careTeamActivityLog.careProfileId, profile.id),
+            gte(careTeamActivityLog.createdAt, thirtyDaysAgo),
+          ))
+          .groupBy(sql`DATE(${careTeamActivityLog.createdAt})`)
+          .catch(() => []);
+
+        // Need at least 30 unique days of activity
+        if (activityDays.length < 30) continue;
+
+        // Look up the caregiver's name
+        const [caregiverUser] = await db
+          .select({ displayName: users.displayName, email: users.email })
+          .from(users)
+          .where(eq(users.id, member.userId))
+          .limit(1)
+          .catch(() => []);
+
+        const caregiverName = caregiverUser?.displayName || caregiverUser?.email || 'Your caregiver';
+
+        // Send push notification to the PATIENT (profile owner)
+        const patientSubs = (pushSubsByUser.get(profile.userId) || []).slice(0, 3);
+        for (const sub of patientSubs) {
+          sendPushNotification(
+            { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+            {
+              title: `${caregiverName} has been checking in every day`,
+              body: `${caregiverName} has been checking in on you every day for a month. Want to send them a note?`,
+              url: '/care-team',
+            },
+          ).catch(() => { /* expired subscription */ });
+        }
+
+        // Update gratitude nudge tracking
+        await db.update(careTeamMembers)
+          .set({
+            gratitudeNudgeCount: sql`${careTeamMembers.gratitudeNudgeCount} + 1`,
+            lastGratitudeNudgeAt: now,
+          })
+          .where(eq(careTeamMembers.id, member.id));
+
+        gratitudeNudgesSent++;
+        logger.info('gratitude_nudge_sent', {
+          userId: profile.userId,
+          caregiverId: member.userId,
+          careProfileId: profile.id,
+        });
+      }
+    } catch (err) {
+      logger.error('gratitude_nudge_failed', {
+        userId: profile.userId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return Response.json({
+    processed,
+    skipped,
+    errors,
+    insights_generated: insightsGenerated,
+    gratitude_nudges_sent: gratitudeNudgesSent,
+  });
 }

@@ -5,10 +5,23 @@
  */
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { db } from '@/lib/db'
-import { careProfiles, medications, doctors, appointments, labResults, claims } from '@/lib/db/schema'
-import { eq, asc, desc, and, isNull } from 'drizzle-orm'
+import {
+  careProfiles,
+  medications,
+  doctors,
+  appointments,
+  labResults,
+  claims,
+  wellnessCheckins,
+  symptomInsights,
+  reminderLogs,
+} from '@/lib/db/schema'
+import { eq, asc, desc, and, gte, isNull } from 'drizzle-orm'
 import { ApiErrors } from '@/lib/api-response'
 import { rateLimit } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
+
+export const maxDuration = 60
 
 const limiter = rateLimit({ interval: 60000, maxRequests: 5 })
 
@@ -21,21 +34,66 @@ export async function GET(req: Request) {
     const { user: dbUser, error } = await getAuthenticatedUser()
     if (error) return error
 
-    const [profile] = await db
-      .select()
-      .from(careProfiles)
-      .where(eq(careProfiles.userId, dbUser!.id))
-      .limit(1)
+    const url = new URL(req.url)
+    const careProfileId = url.searchParams.get('careProfileId')
+    const days = Math.min(parseInt(url.searchParams.get('days') || '30', 10), 90)
+    const sinceDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+
+    // If careProfileId is provided, use it; otherwise fall back to user's profile
+    let profileQuery
+    if (careProfileId) {
+      profileQuery = db.select().from(careProfiles)
+        .where(and(eq(careProfiles.id, careProfileId), eq(careProfiles.userId, dbUser!.id)))
+        .limit(1)
+    } else {
+      profileQuery = db.select().from(careProfiles)
+        .where(eq(careProfiles.userId, dbUser!.id))
+        .limit(1)
+    }
+
+    const [profile] = await profileQuery
 
     if (!profile) return ApiErrors.notFound('Care profile')
 
-    const [meds, docs, appts, labs, claimsData] = await Promise.all([
+    const [meds, docs, appts, labs, claimsData, checkins, insights, reminders] = await Promise.all([
       db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).orderBy(asc(medications.name)).catch(() => []),
       db.select().from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))).orderBy(asc(doctors.name)).catch(() => []),
       db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(asc(appointments.dateTime)).catch(() => []),
       db.select().from(labResults).where(eq(labResults.userId, dbUser!.id)).orderBy(desc(labResults.dateTaken)).limit(30).catch(() => []),
       db.select().from(claims).where(eq(claims.userId, dbUser!.id)).orderBy(desc(claims.serviceDate)).limit(20).catch(() => []),
+      db.select().from(wellnessCheckins)
+        .where(and(eq(wellnessCheckins.careProfileId, profile.id), gte(wellnessCheckins.checkedInAt, sinceDate)))
+        .orderBy(desc(wellnessCheckins.checkedInAt)).limit(100).catch(() => []),
+      db.select().from(symptomInsights)
+        .where(and(eq(symptomInsights.careProfileId, profile.id), gte(symptomInsights.createdAt, sinceDate)))
+        .orderBy(desc(symptomInsights.createdAt)).limit(20).catch(() => []),
+      db.select().from(reminderLogs)
+        .where(and(eq(reminderLogs.userId, dbUser!.id), gte(reminderLogs.scheduledTime, sinceDate)))
+        .limit(200).catch(() => []),
     ])
+
+    // Compute medication adherence
+    const totalReminders = reminders.length
+    const takenReminders = reminders.filter(r => r.status === 'taken').length
+    const adherenceRate = totalReminders > 0 ? Math.round((takenReminders / totalReminders) * 100) : null
+
+    // Compute symptom averages
+    const avgPain = checkins.length > 0
+      ? (checkins.reduce((s, c) => s + c.pain, 0) / checkins.length).toFixed(1)
+      : null
+    const avgMood = checkins.length > 0
+      ? (checkins.reduce((s, c) => s + c.mood, 0) / checkins.length).toFixed(1)
+      : null
+
+    // Energy & sleep breakdowns
+    const energyCounts = { low: 0, med: 0, high: 0 }
+    for (const c of checkins) {
+      if (c.energy in energyCounts) energyCounts[c.energy as keyof typeof energyCounts]++
+    }
+    const sleepCounts = { bad: 0, ok: 0, good: 0 }
+    for (const c of checkins) {
+      if (c.sleep in sleepCounts) sleepCounts[c.sleep as keyof typeof sleepCounts]++
+    }
 
     const now = new Date()
     const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -170,6 +228,48 @@ export async function GET(req: Request) {
     </tbody>
   </table>` : ''}
 
+  ${checkins.length > 0 ? `
+  <h2>Symptom Trends (Last ${days} Days — ${checkins.length} check-ins)</h2>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:10px 0 16px;">
+    <div style="background:#f8f7ff;border:1px solid #e5e7eb;border-radius:8px;padding:10px;text-align:center;">
+      <div style="font-size:22px;font-weight:700;color:#6366F1;">${avgPain ?? 'N/A'}</div>
+      <div style="font-size:10px;color:#888;text-transform:uppercase;">Avg Pain (0-10)</div>
+    </div>
+    <div style="background:#f8f7ff;border:1px solid #e5e7eb;border-radius:8px;padding:10px;text-align:center;">
+      <div style="font-size:22px;font-weight:700;color:#6366F1;">${avgMood ?? 'N/A'}</div>
+      <div style="font-size:10px;color:#888;text-transform:uppercase;">Avg Mood (1-5)</div>
+    </div>
+    <div style="background:#f8f7ff;border:1px solid #e5e7eb;border-radius:8px;padding:10px;text-align:center;">
+      <div style="font-size:22px;font-weight:700;color:#6366F1;">${adherenceRate !== null ? adherenceRate + '%' : 'N/A'}</div>
+      <div style="font-size:10px;color:#888;text-transform:uppercase;">Med Adherence</div>
+    </div>
+    <div style="background:#f8f7ff;border:1px solid #e5e7eb;border-radius:8px;padding:10px;text-align:center;">
+      <div style="font-size:22px;font-weight:700;color:#6366F1;">${profile.checkinStreak ?? 0}</div>
+      <div style="font-size:10px;color:#888;text-transform:uppercase;">Day Streak</div>
+    </div>
+  </div>
+  <p style="font-size:12px;color:#555;margin-bottom:4px;">
+    <strong>Energy:</strong> Low ${energyCounts.low}x, Med ${energyCounts.med}x, High ${energyCounts.high}x &middot;
+    <strong>Sleep:</strong> Bad ${sleepCounts.bad}x, OK ${sleepCounts.ok}x, Good ${sleepCounts.good}x
+  </p>
+  <table>
+    <thead><tr><th>Date</th><th>Mood</th><th>Pain</th><th>Energy</th><th>Sleep</th><th>Notes</th></tr></thead>
+    <tbody>
+      ${checkins.slice(0, 14).map(c => {
+        const d = new Date(c.checkedInAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        return `<tr><td>${d}</td><td>${c.mood}/5</td><td>${c.pain}/10</td><td>${c.energy}</td><td>${c.sleep}</td><td>${c.notes || '—'}</td></tr>`
+      }).join('')}
+    </tbody>
+  </table>
+  ` : ''}
+
+  ${insights.length > 0 ? `
+  <h2>AI Insights</h2>
+  <ul style="padding-left:18px;">
+    ${insights.map(i => `<li style="margin:6px 0;"><strong>${i.title}</strong> <span style="font-size:10px;font-weight:600;color:${i.severity === 'alert' ? '#dc2626' : i.severity === 'watch' ? '#d97706' : '#6366F1'};">[${i.severity}]</span><br/>${i.body}</li>`).join('')}
+  </ul>
+  ` : ''}
+
   ${profile.emergencyContactName ? `
   <h2>Emergency Contact</h2>
   <p style="font-size: 14px;">${profile.emergencyContactName}${profile.emergencyContactPhone ? ` — ${profile.emergencyContactPhone}` : ''}</p>
@@ -183,6 +283,8 @@ export async function GET(req: Request) {
 </body>
 </html>`
 
+    logger.info('pdf_export_generated', { userId: dbUser!.id, careProfileId: profile.id, days, checkins: checkins.length })
+
     return new Response(html, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
@@ -190,7 +292,7 @@ export async function GET(req: Request) {
       },
     })
   } catch (error) {
-    console.error('[export-pdf] Error:', error)
+    logger.error('pdf_export_failed', { error: error instanceof Error ? error.message : String(error) })
     return ApiErrors.internal()
   }
 }

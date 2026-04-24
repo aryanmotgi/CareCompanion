@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { MilestoneCelebration, type Milestone } from './MilestoneCelebration'
+import { VoiceCheckin } from './VoiceCheckin'
 
 interface CheckinModalProps {
   careProfileId: string
@@ -28,6 +30,8 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [milestone, setMilestone] = useState<Milestone | null>(null)
+  const [voiceHighlight, setVoiceHighlight] = useState<Record<string, boolean>>({})
 
   if (!isOpen) return null
 
@@ -59,11 +63,62 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
         return
       }
 
+      // Check if response includes a milestone
+      if (data.data?.milestone) {
+        setMilestone(data.data.milestone)
+        setIsSubmitting(false)
+        return
+      }
+
       onComplete(data.data?.checkin, data.data?.streak ?? 0)
     } catch {
       setError('Network error. Please try again.')
       setIsSubmitting(false)
     }
+  }
+
+  function handleVoiceExtracted(fields: {
+    mood: number | null
+    pain: number | null
+    energy: string | null
+    sleep: string | null
+  }) {
+    const highlights: Record<string, boolean> = {}
+    if (fields.mood !== null) {
+      setMood(fields.mood)
+    } else {
+      highlights.mood = true
+    }
+    if (fields.pain !== null) {
+      setPain(fields.pain)
+    } else {
+      highlights.pain = true
+    }
+    if (fields.energy !== null) {
+      setEnergy(fields.energy)
+    } else {
+      highlights.energy = true
+    }
+    if (fields.sleep !== null) {
+      setSleep(fields.sleep)
+    } else {
+      highlights.sleep = true
+    }
+    setVoiceHighlight(highlights)
+  }
+
+  function handleMilestoneClose() {
+    const currentMilestone = milestone
+    setMilestone(null)
+    // After closing milestone, complete the check-in flow
+    if (currentMilestone) {
+      onComplete(null, 0)
+    }
+  }
+
+  // Show milestone celebration overlay instead of the check-in form
+  if (milestone) {
+    return <MilestoneCelebration milestone={milestone} onClose={handleMilestoneClose} />
   }
 
   return (
@@ -89,8 +144,10 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
         <p className="text-xs text-[var(--text-muted)] mb-5">Quick daily check-in &middot; under 60 seconds</p>
 
         {/* Mood */}
-        <div className="mb-5">
-          <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 block">Mood</label>
+        <div className={`mb-5 ${voiceHighlight.mood ? 'rounded-xl ring-2 ring-amber-400/50 p-2 -m-2' : ''}`}>
+          <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 block">
+            Mood {voiceHighlight.mood && <span className="text-amber-400 normal-case">(needs input)</span>}
+          </label>
           <div className="flex gap-2 justify-between">
             {MOOD_EMOJIS.map(({ value, emoji }) => (
               <button
@@ -109,9 +166,9 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
         </div>
 
         {/* Pain slider */}
-        <div className="mb-5">
+        <div className={`mb-5 ${voiceHighlight.pain ? 'rounded-xl ring-2 ring-amber-400/50 p-2 -m-2' : ''}`}>
           <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 block">
-            Pain level
+            Pain level {voiceHighlight.pain && <span className="text-amber-400 normal-case">(needs input)</span>}
           </label>
           <div className="flex items-center gap-3">
             <span className="text-3xl font-bold text-[var(--text)] tabular-nums w-10 text-center">{pain}</span>
@@ -136,8 +193,10 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
         </div>
 
         {/* Energy */}
-        <div className="mb-5">
-          <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 block">Energy</label>
+        <div className={`mb-5 ${voiceHighlight.energy ? 'rounded-xl ring-2 ring-amber-400/50 p-2 -m-2' : ''}`}>
+          <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 block">
+            Energy {voiceHighlight.energy && <span className="text-amber-400 normal-case">(needs input)</span>}
+          </label>
           <div className="flex gap-2">
             {ENERGY_OPTIONS.map((opt) => (
               <button
@@ -156,8 +215,10 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
         </div>
 
         {/* Sleep */}
-        <div className="mb-5">
-          <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 block">Sleep</label>
+        <div className={`mb-5 ${voiceHighlight.sleep ? 'rounded-xl ring-2 ring-amber-400/50 p-2 -m-2' : ''}`}>
+          <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 block">
+            Sleep {voiceHighlight.sleep && <span className="text-amber-400 normal-case">(needs input)</span>}
+          </label>
           <div className="flex gap-2">
             {SLEEP_OPTIONS.map((opt) => (
               <button
@@ -203,13 +264,10 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
           >
             {isSubmitting ? 'Saving...' : 'Done \u2713'}
           </button>
-          <button
-            type="button"
-            className="w-11 h-11 rounded-xl border border-[var(--border)] bg-white/[0.04] flex items-center justify-center text-lg hover:bg-white/[0.08] transition-colors"
-            title="Voice check-in (coming soon)"
-          >
-            🎤
-          </button>
+          <VoiceCheckin
+            onExtracted={handleVoiceExtracted}
+            onError={(msg) => setError(msg)}
+          />
         </div>
       </div>
     </div>
