@@ -62,7 +62,7 @@ export interface Theme {
 const dark: Theme = {
   bg: '#0C0E1A',
   bgWarm: '#10122B',
-  bgCard: 'rgba(167,139,250,0.06)',
+  bgCard: 'rgba(167,139,250,0.03)',
   bgCardBorder: 'rgba(167,139,250,0.06)',
   bgElevated: 'rgba(167,139,250,0.10)',
   accent: '#6366F1',
