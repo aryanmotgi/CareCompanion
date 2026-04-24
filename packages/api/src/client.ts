@@ -136,9 +136,11 @@ export function createApiClient(config: ApiClientConfig) {
 
         // The chat route returns a streaming response — read full stream and extract text
         const text = await res.text()
+        console.log('[Chat API] Raw response (first 500 chars):', text.slice(0, 500))
         const lines = text.split('\n').filter(Boolean)
         let content = ''
         for (const line of lines) {
+          // AI SDK v3 format: 0:"text chunk"
           if (line.startsWith('0:')) {
             try {
               content += JSON.parse(line.slice(2))
@@ -146,6 +148,29 @@ export function createApiClient(config: ApiClientConfig) {
               // skip non-JSON lines
             }
           }
+          // AI SDK v4+ data stream format: text chunks in d: lines or plain text
+          else if (line.startsWith('d:')) {
+            try {
+              const parsed = JSON.parse(line.slice(2))
+              if (typeof parsed === 'string') content += parsed
+              else if (parsed?.type === 'text-delta') content += parsed.textDelta || ''
+            } catch {}
+          }
+          // Vercel AI SDK v6 format: data stream protocol
+          else if (line.startsWith('2:')) {
+            try {
+              const arr = JSON.parse(line.slice(2))
+              if (Array.isArray(arr)) {
+                for (const item of arr) {
+                  if (item?.type === 'text-delta') content += item.textDelta || ''
+                }
+              }
+            } catch {}
+          }
+        }
+        // Fallback: if no protocol lines matched, try reading as plain text
+        if (!content && text && !text.includes('\n')) {
+          content = text
         }
         return { content: content || null }
       },
