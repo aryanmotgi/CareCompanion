@@ -8,6 +8,7 @@ import {
   date,
   timestamp,
   jsonb,
+  primaryKey,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
@@ -24,6 +25,7 @@ export const users = pgTable('users', {
   hipaaConsentVersion: text('hipaa_consent_version'),
   resetNonce: text('reset_nonce'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  role: text('role'),  // 'caregiver' | 'patient' | 'self' — null for pre-feature users
 })
 
 // ── Care Profiles ─────────────────────────────────────────────────────────────
@@ -47,6 +49,9 @@ export const careProfiles = pgTable('care_profiles', {
   checkinStreak: integer('checkin_streak').notNull().default(0),
   lastRadarRunAt: timestamp('last_radar_run_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  caregivingExperience: text('caregiving_experience'), // 'first_time' | 'some_experience' | 'experienced'
+  primaryConcern: text('primary_concern'),             // 'medications' | 'lab_results' | 'coordinating_care' | 'emotional_support'
+  fieldOverrides: jsonb('field_overrides'),            // { cancerType: true, stage: true, ... } — FHIR sync skips true fields
 })
 
 // ── Conversations ─────────────────────────────────────────────────────────────
@@ -522,5 +527,34 @@ export const careTeamActivityLog = pgTable('care_team_activity_log', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   action: text('action').notNull(), // 'logged_meds' | 'completed_checkin' | 'viewed_summary' | 'shared_link' | 'exported_pdf'
   metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+// ── Care Groups ───────────────────────────────────────────────────────────────
+export const careGroups = pgTable('care_groups', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  passwordHash: text('password_hash').notNull(),
+  createdBy: uuid('created_by').notNull().references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+export const careGroupMembers = pgTable('care_group_members', {
+  careGroupId: uuid('care_group_id').notNull().references(() => careGroups.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  role: text('role').notNull(),  // 'owner' | 'member'
+  joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.careGroupId, t.userId] }),
+}))
+
+export const careGroupInvites = pgTable('care_group_invites', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  careGroupId: uuid('care_group_id').notNull().references(() => careGroups.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),
+  createdBy: uuid('created_by').notNull().references(() => users.id),
+  usedBy: uuid('used_by').references(() => users.id),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
