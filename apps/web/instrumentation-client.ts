@@ -9,3 +9,5 @@ Sentry.init({
   replaysOnErrorSampleRate: 0,
   beforeSend: scrubPHI,
 })
+
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart

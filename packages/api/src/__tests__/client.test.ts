@@ -18,7 +18,7 @@ describe('createApiClient', () => {
     )
   })
 
-  it('attaches token as cookie when getToken is provided', async () => {
+  it('attaches token as Bearer Authorization header when getToken is provided', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }))
     const client = createApiClient({
       baseUrl: BASE_URL,
@@ -29,7 +29,7 @@ describe('createApiClient', () => {
       expect.any(String),
       expect.objectContaining({
         headers: expect.objectContaining({
-          Cookie: '__Secure-authjs.session-token=test-session-token',
+          Authorization: 'Bearer test-session-token',
         }),
       })
     )
