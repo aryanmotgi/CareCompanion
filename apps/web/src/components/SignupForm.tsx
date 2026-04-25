@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { registerSchema } from '@carecompanion/utils'
+import { RoleSelector } from '@/components/RoleSelector'
+
+type Role = 'caregiver' | 'patient' | 'self'
 
 function FloatingInput({
   id, label, type = 'text', value, onChange, autoComplete, required, minLength,
@@ -137,10 +140,18 @@ export function SignupForm() {
   const [consent, setConsent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>()
+  const [role, setRole] = useState<Role | null>(null)
+  const [roleError, setRoleError] = useState('')
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(undefined)
+
+    if (!role) {
+      setRoleError('Please select your role to continue')
+      return
+    }
+    setRoleError('')
 
     if (password !== confirmPassword) {
       setError('Passwords do not match.')
@@ -174,6 +185,7 @@ export function SignupForm() {
           password: parsed.data.password,
           displayName: parsed.data.displayName,
           hipaaConsent: true,
+          role,
         }),
       })
 
@@ -226,6 +238,8 @@ export function SignupForm() {
           <p className="text-xs font-medium uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>
             Create account
           </p>
+
+          <RoleSelector value={role} onChange={setRole} error={roleError} />
 
           <FloatingInput id="signup-name" label="Display name" value={displayName} onChange={setDisplayName} autoComplete="name" required />
           <FloatingInput id="signup-email" label="Email address" type="email" value={email} onChange={setEmail} autoComplete="email" required />
