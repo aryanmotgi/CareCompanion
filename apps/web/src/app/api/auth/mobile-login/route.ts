@@ -34,9 +34,9 @@ export async function POST(req: Request) {
       token: {
         sub: user.id,
         id: user.id,
-        email: user.email,
-        name: user.displayName ?? user.email,
-      },
+        email: user.email ?? '',
+        name: user.displayName ?? user.email ?? '',
+      } as Parameters<typeof encode>[0]['token'],
       secret,
     })
 
