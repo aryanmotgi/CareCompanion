@@ -57,6 +57,35 @@ font-weight: 600
 
 **Disabled button:** `opacity: 0.4`, `cursor: not-allowed`
 
+## Component: Wizard Progress Bar
+
+Used in `CaregiverWizard` and `PatientWizard`.
+
+```
+Step 3 of 6                          ← text-secondary, left-aligned
+[████████████████░░░░░░░░░░░░░░░░]   ← segmented bar
+ ↑ completed: accent (#7c3aed)
+               ↑ current: accent at 60% opacity
+                          ↑ upcoming: surface-border rgba(255,255,255,0.12)
+```
+
+- Bar height: `4px`
+- Segment gap: `gap-1` (4px)
+- Segment border-radius: `2px`
+- Completed segment fill animation: `200ms ease`, left-to-right
+- Completed segments: `cursor: pointer`, lighten 10% on hover
+- Future segments: non-interactive
+
+## Component: QR Countdown
+
+Used on Care Group screen after group creation.
+
+- Timer format: `M:SS` (e.g. `9:42`)
+- Timer color: `text-secondary` → transitions to `#ef4444` (red) in the last 60 seconds
+- On expiry: QR image blurs (`filter: blur(4px)`), overlay shows "Code expired — tap to refresh"
+- Overlay background: `rgba(0,0,0,0.6)`, tap target covers entire QR panel
+- Regeneration: instant (no loading state — optimistic UI, generate new token in background)
+
 ## Patterns to Avoid
 
 - Purple/violet gradient backgrounds (reserved for buttons only)

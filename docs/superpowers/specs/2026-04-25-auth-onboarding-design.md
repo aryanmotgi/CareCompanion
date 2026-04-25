@@ -85,8 +85,18 @@ Either person signs up first and creates a Care Group. The second person signs u
 **Invite flow (after creating or joining — caregiver path):**
 > "Invite your patient to connect their Apple Health records."
 
-- **Share via SMS** — pre-filled message: "I'm using CareCompanion to help manage your care. Tap this link to connect: [link]"
-- **Copy link**
+- **Show QR** — displayed on screen for in-person scanning
+- **Share** — iOS/Android native share sheet (iMessage, WhatsApp, email, etc.)
+- **Copy link** — copies the deep link URL to clipboard
+
+**QR code expiry:**
+The QR code displayed on the Care Group screen expires after **10 minutes** from generation. A countdown timer is shown below the QR: "Expires in 9:42". When the timer reaches 0:
+- QR code blurs/fades to indicate it is no longer valid
+- Overlay text: "Code expired"
+- Single tap on the QR area regenerates a new code instantly client-side (calls `POST /api/care-group/invite` and renders the new QR without a page reload)
+- The countdown resets to 10:00
+
+Note: the 10-minute QR expiry is display-only and separate from the invite token's 7-day server-side expiry. The token itself remains valid for 7 days once redeemed; the QR is just the visual representation. If the QR expires but the link was already copied/shared via SMS, the underlying token still works until its 7-day expiry.
 
 **Invite link format:**
 - Primary: `https://carecompanion.app/join?group={groupId}&token={inviteToken}` (HTTPS universal link with App Store fallback for users without the app installed)
@@ -135,6 +145,20 @@ If two groups share the same name and password (unlikely but possible), the join
 
 Runs after the Care Group screen.
 
+### Progress Bar (all steps)
+
+A step progress indicator appears at the top of every wizard screen for both caregiver and patient paths.
+
+**Layout:** `Step N of M` label (left-aligned, `text-secondary` token) above a segmented bar. The bar is divided into M equal segments, each `4px` tall with `gap-1` between segments. Completed segments use the `accent` token (`#7c3aed`). Current segment uses `accent` at 60% opacity. Upcoming segments use `surface-border` token (`rgba(255,255,255,0.12)`). Segment border-radius: `2px`.
+
+**Step counts:**
+- Caregiver wizard: 6 steps (About patient → Primary concern → Apple Health heads-up → Diagnosis → Priorities → Notifications)
+- Patient/Self-care wizard: 4 steps (Connect Apple Health → Confirm records or Manual entry → Priorities → Notifications)
+
+**Backward navigation:** Tapping a completed segment navigates back to that step. The current step's data is preserved (not cleared) on backward navigation. Tapping a future (uncompleted) segment does nothing — no forward-skipping. Completed segments have a subtle `cursor: pointer` and lighten slightly on hover.
+
+**Animation:** On step advance, the newly completed segment fills left-to-right with a `200ms ease` transition. On back-navigation, the segment dims immediately (no reverse animation).
+
 ### Step 1 — About your patient
 - Patient name (required)
 - Patient age (optional)
@@ -182,6 +206,8 @@ Pick up to 3 focus areas: side effects, medications, appointments, lab results, 
 ## Patient & Self-care Onboarding Wizard
 
 Self-care users follow this exact path. Steps are identical.
+
+The progress bar spec from the Caregiver wizard applies here identically. Patient wizard has 4 steps total.
 
 ### Step 1 — Connect Apple Health + Hospital
 **Copy:** "Connect your hospital through Apple Health — we'll automatically pull in your diagnosis, medications, and lab results."
