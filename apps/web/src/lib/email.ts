@@ -126,6 +126,72 @@ export function careTeamInviteEmail({
 }
 
 /**
+ * Generates the HTML body for the onboarding recap email sent after setup completes.
+ */
+export function onboardingRecapEmailHtml({
+  name,
+  role,
+  cancerType,
+  medications,
+  nextAppointment,
+  careGroupName,
+  dashboardUrl,
+}: {
+  name: string
+  role: 'caregiver' | 'patient' | 'self'
+  cancerType?: string | null
+  medications?: string[]
+  nextAppointment?: string | null
+  careGroupName?: string | null
+  dashboardUrl: string
+}): string {
+  const roleLabel = role === 'caregiver' ? 'Caregiver' : role === 'patient' ? 'Patient' : 'Self-care'
+  const year = new Date().getFullYear()
+  const medicationsList = medications?.length
+    ? `<ul style="margin:4px 0 0;padding-left:16px;color:#4b5563;font-size:13px;">${medications.map(m => `<li>${m}</li>`).join('')}</ul>`
+    : '<p style="color:#9ca3af;font-size:13px;margin:4px 0 0;">None recorded yet</p>'
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8" /><title>CareCompanion — You're all set!</title></head>
+<body style="margin:0;padding:0;background-color:#f3f0ff;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f0ff;padding:40px 20px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(79,70,229,0.08);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px 40px;text-align:center;">
+            <p style="color:#fff;font-size:20px;font-weight:700;margin:0;">CareCompanion ✓</p>
+            <p style="color:rgba(255,255,255,0.85);font-size:15px;margin:8px 0 0;">You're all set, ${name}!</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 40px;">
+            <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">Here's a summary of what CareCompanion knows about you (${roleLabel}).</p>
+            ${cancerType ? `<p style="margin:0 0 6px;font-size:13px;font-weight:600;color:#374151;">🏥 Diagnosis</p><p style="margin:0 0 16px;font-size:13px;color:#4b5563;">${cancerType}</p>` : ''}
+            <p style="margin:0 0 6px;font-size:13px;font-weight:600;color:#374151;">💊 Medications</p>
+            <div style="margin-bottom:16px;">${medicationsList}</div>
+            ${nextAppointment ? `<p style="margin:0 0 6px;font-size:13px;font-weight:600;color:#374151;">🗓 Next appointment</p><p style="margin:0 0 16px;font-size:13px;color:#4b5563;">${nextAppointment}</p>` : ''}
+            ${careGroupName ? `<p style="margin:0 0 6px;font-size:13px;font-weight:600;color:#374151;">👨‍👩‍👧 Care Group</p><p style="margin:0 0 16px;font-size:13px;color:#4b5563;">${careGroupName}</p>` : ''}
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px auto 0;">
+              <tr><td style="background:linear-gradient(135deg,#6366f1,#7c3aed);border-radius:8px;">
+                <a href="${dashboardUrl}" style="display:inline-block;padding:12px 32px;font-size:14px;font-weight:600;color:#fff;text-decoration:none;">Go to your dashboard →</a>
+              </td></tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="background-color:#f9fafb;padding:20px 40px;border-top:1px solid #e5e7eb;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#9ca3af;">© ${year} CareCompanion. You can edit any of this from your profile.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+}
+
+/**
  * Returns branded HTML for the CareCompanion welcome email.
  * Uses inline styles and table layout for maximum email client compatibility.
  */
