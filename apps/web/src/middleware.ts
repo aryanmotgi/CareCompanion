@@ -51,6 +51,20 @@ export default auth((req) => {
     return NextResponse.redirect(url)
   }
 
+  // Redirect pre-feature users (no role) to /set-role
+  if (
+    req.auth?.user &&
+    !(req.auth.user as { role?: string | null }).role &&
+    !pathname.startsWith('/set-role') &&
+    !pathname.startsWith('/api') &&
+    !pathname.startsWith('/login') &&
+    !pathname.startsWith('/signup')
+  ) {
+    const url = req.nextUrl.clone()
+    url.pathname = '/set-role'
+    return NextResponse.redirect(url)
+  }
+
   if (req.auth && pathname === '/login') {
     // Don't redirect if there's an error param — let the login page show the error
     const errorParam = req.nextUrl.searchParams.get('error')
