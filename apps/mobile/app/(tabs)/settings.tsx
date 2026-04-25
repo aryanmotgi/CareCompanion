@@ -98,6 +98,8 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           await SecureStore.deleteItemAsync('cc-session-token')
+          await SecureStore.deleteItemAsync('cc-profile')
+          await SecureStore.deleteItemAsync('cc-csrf-token')
           router.replace('/login')
         },
       },
@@ -137,7 +139,7 @@ export default function SettingsScreen() {
 
   return (
     <TabFadeWrapper>
-      <ScrollView style={[styles.root, { paddingTop: insets.top + 16 }]} contentContainerStyle={{ paddingBottom: insets.bottom + 70 }}>
+      <ScrollView style={[styles.root, { paddingTop: insets.top + 16 }]} contentContainerStyle={{ paddingBottom: insets.bottom + 140 }}>
         <LinearGradient
           colors={theme.gradientAMuted as [string, string, ...string[]]}
           start={{ x: 0, y: 0 }}

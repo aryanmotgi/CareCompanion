@@ -18,10 +18,7 @@ async function apiFetch(
   if (config.getToken) {
     const token = await config.getToken()
     if (token) {
-      // Production (HTTPS) uses the __Secure- prefix; dev uses the plain name.
-      const isSecure = config.baseUrl.startsWith('https://')
-      const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
-      headers['Cookie'] = `${cookieName}=${token}`
+      headers['Authorization'] = `Bearer ${token}`
     }
   }
 
@@ -64,6 +61,50 @@ export function createApiClient(config: ApiClientConfig) {
           }>
         }>,
     },
+    journal: {
+      list: (days = 30) =>
+        apiFetch(config, `/api/journal?days=${days}`, { method: 'GET' }) as Promise<{
+          ok: boolean
+          data: { entries: Array<{
+            id: string
+            date: string
+            mood: string | null
+            energy: string | null
+            painLevel: number | null
+            sleepHours: string | null
+            symptoms: string[]
+            notes: string | null
+          }> }
+        }>,
+    },
+    doctors: {
+      list: (careProfileId: string) =>
+        apiFetch(config, `/api/records/doctors?care_profile_id=${careProfileId}`, { method: 'GET' }) as Promise<{
+          ok: boolean
+          data: Array<{
+            id: string
+            name: string
+            specialty: string | null
+            phone: string | null
+            notes: string | null
+          }>
+        }>,
+    },
+    careTeam: {
+      list: () =>
+        apiFetch(config, '/api/care-team', { method: 'GET' }) as Promise<{
+          members: Array<{
+            id: string
+            userId: string
+            role: string
+            email: string | null
+            display_name: string
+            joinedAt: string | null
+          }>
+          invites: Array<{ id: string; invitedEmail: string; role: string }>
+          role: string | null
+        }>,
+    },
     healthkit: {
       sync: (records: HealthKitRecord[]) =>
         apiFetch(config, '/api/healthkit/sync', {
@@ -94,13 +135,48 @@ export function createApiClient(config: ApiClientConfig) {
         conditions: string | null
         role: string
         caregiverForName: string | null
+        onboardingCompleted: boolean
       }>,
     csrfToken: () =>
       apiFetch(config, '/api/csrf-token', { method: 'GET' }) as Promise<{ csrfToken: string }>,
+    conversations: {
+      list: () =>
+        apiFetch(config, '/api/conversations', { method: 'GET' }) as Promise<{
+          ok: boolean
+          data: Array<{
+            id: string
+            title: string | null
+            tags: string[]
+            lastMessagePreview: string | null
+            createdAt: string
+            updatedAt: string
+            messageCount: number
+          }>
+        }>,
+      create: () =>
+        apiFetch(config, '/api/conversations', { method: 'POST' }) as Promise<{
+          id: string
+          title: string | null
+          tags: string[]
+          createdAt: string
+          updatedAt: string
+        }>,
+      get: (id: string) =>
+        apiFetch(config, `/api/conversations/${id}`, { method: 'GET' }) as Promise<{
+          ok: boolean
+          data: {
+            conversation: { id: string; title: string | null; tags: string[] }
+            messages: Array<{ id: string; role: string; content: string; createdAt: string }>
+          }
+        }>,
+      delete: (id: string) =>
+        apiFetch(config, `/api/conversations/${id}`, { method: 'DELETE' }) as Promise<{ ok: boolean; data: { deleted: boolean } }>,
+    },
     chat: {
       send: async (
         messages: Array<{ role: 'user' | 'assistant'; content: string }>,
         csrfToken: string,
+        conversationId?: string,
       ) => {
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
@@ -110,24 +186,22 @@ export function createApiClient(config: ApiClientConfig) {
         if (config.getToken) {
           const token = await config.getToken()
           if (token) {
-            const isSecure = config.baseUrl.startsWith('https://')
-            const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
-            headers['Cookie'] = `${cookieName}=${token}; cc-csrf-token=${csrfToken}`
+            headers['Authorization'] = `Bearer ${token}`
           }
         }
 
         const res = await fetch(`${config.baseUrl}/api/chat/mobile`, {
           method: 'POST',
           headers,
-          body: JSON.stringify({ messages }),
+          body: JSON.stringify({ messages, conversationId }),
         })
 
         if (!res.ok) {
           throw new Error(`Chat API error ${res.status}: ${await res.text()}`)
         }
 
-        const data = await res.json() as { content: string }
-        return { content: data.content || null }
+        const data = await res.json() as { content: string; conversationId: string }
+        return { content: data.content || null, conversationId: data.conversationId }
       },
     },
   }

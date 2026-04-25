@@ -1,2 +1,44 @@
 echo "🔍 Pre-push: running typecheck..."
 npm run typecheck
+
+# ── Schema drift check ────────────────────────────────────────────────────────
+# If schema.ts changed in this push, remind the dev to migrate Aurora.
+# Aurora is VPC-only — drizzle-kit push can't reach it from CI.
+# You must run the SQL manually via AWS Query Editor after every schema change.
+
+SCHEMA_FILE="apps/web/src/lib/db/schema.ts"
+
+# Compare against the remote branch we're pushing to
+REMOTE="${1:-origin}"
+REMOTE_BRANCH="${2:-main}"
+REMOTE_REF="refs/remotes/${REMOTE}/${REMOTE_BRANCH}"
+
+if git rev-parse --verify "$REMOTE_REF" >/dev/null 2>&1; then
+  if ! git diff --quiet "$REMOTE_REF" HEAD -- "$SCHEMA_FILE" 2>/dev/null; then
+    echo ""
+    echo "⚠️  ─────────────────────────────────────────────────────────────────"
+    echo "⚠️  SCHEMA CHANGED — Aurora migration required before deploying"
+    echo "⚠️  ─────────────────────────────────────────────────────────────────"
+    echo ""
+    echo "    $SCHEMA_FILE has changed since the last push."
+    echo "    Aurora is VPC-only. You must migrate it manually:"
+    echo ""
+    echo "    1. Go to AWS Console → RDS → Query Editor"
+    echo "    2. Connect to: database-3.cluster-co1wqcqamo75.us-east-1.rds.amazonaws.com"
+    echo "    3. Run the ALTER TABLE / CREATE TABLE SQL for your changes"
+    echo "    4. Verify /api/health returns schema: ok"
+    echo ""
+    echo "    Changed lines:"
+    git diff "$REMOTE_REF" HEAD -- "$SCHEMA_FILE" | grep "^[+-]" | grep -v "^[+-][+-][+-]" | grep -E "(pgTable|Column|integer|text|uuid|boolean|timestamp|jsonb|numeric|date)\(" | head -20
+    echo ""
+    echo "    Push aborted. Run with --no-verify to skip this check (not recommended)."
+    echo ""
+    exit 1
+  fi
+else
+  # First push to this remote — no comparison possible, just warn
+  echo ""
+  echo "ℹ️  First push to ${REMOTE}/${REMOTE_BRANCH} — verify Aurora schema matches schema.ts"
+  echo "   Run: curl -s https://<your-app>.vercel.app/api/health | jq .checks.schema"
+  echo ""
+fi

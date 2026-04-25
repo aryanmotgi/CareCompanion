@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
-import { encode } from 'next-auth/jwt'
+import { SignJWT } from 'jose'
 
 export async function POST(req: Request) {
   try {
@@ -28,17 +28,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
-    // Create a NextAuth-compatible JWT token
-    const secret = process.env.NEXTAUTH_SECRET!
-    const token = await encode({
-      token: {
-        sub: user.id,
-        id: user.id,
-        email: user.email ?? '',
-        name: user.displayName ?? user.email ?? '',
-      } as Parameters<typeof encode>[0]['token'],
-      secret,
+    const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!)
+    const token = await new SignJWT({
+      sub: user.id,
+      id: user.id,
+      email: user.email ?? '',
+      name: user.displayName ?? user.email ?? '',
     })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('30d')
+      .sign(secret)
 
     return NextResponse.json({ token })
   } catch (err) {

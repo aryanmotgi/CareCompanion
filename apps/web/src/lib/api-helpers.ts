@@ -3,39 +3,51 @@
  * Uses the standardized response format from api-response.ts.
  */
 import { NextResponse } from 'next/server'
+import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { apiError } from '@/lib/api-response'
 import { z } from 'zod'
+import { jwtVerify } from 'jose'
 
 /**
  * Authenticate the current request and return the local DB user.
- * Returns an error response if not authenticated.
+ * Accepts NextAuth session cookies (web) or Authorization: Bearer <jwt> (mobile).
  */
 export async function getAuthenticatedUser() {
+  // Try NextAuth session cookie first (web app)
   const session = await auth()
-  if (!session?.user?.id) {
-    return { user: null, error: apiError('Unauthorized', 401) }
+  if (session?.user?.id) {
+    const userEmail = session.user.email
+    if (!userEmail) return { user: null, error: apiError('Unauthorized', 401) }
+
+    const [dbUser] = await db.select().from(users).where(eq(users.email, userEmail)).limit(1)
+    if (!dbUser) return { user: null, error: apiError('Unauthorized', 401) }
+    return { user: dbUser, error: null }
   }
 
-  const userEmail = session.user.email
-  if (!userEmail) {
-    return { user: null, error: apiError('Unauthorized', 401) }
+  // Fall back to Authorization: Bearer <token> (mobile app)
+  const headersList = await headers()
+  const authHeader = headersList.get('authorization') ?? headersList.get('Authorization')
+  const bearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  if (bearer) {
+    try {
+      const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!)
+      const { payload } = await jwtVerify(bearer, secret)
+      const userId = (payload.id ?? payload.sub) as string | undefined
+      if (!userId) return { user: null, error: apiError('Unauthorized', 401) }
+
+      const [dbUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1)
+      if (!dbUser) return { user: null, error: apiError('Unauthorized', 401) }
+      return { user: dbUser, error: null }
+    } catch {
+      return { user: null, error: apiError('Unauthorized', 401) }
+    }
   }
 
-  const [dbUser] = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, userEmail))
-    .limit(1)
-
-  if (!dbUser) {
-    return { user: null, error: apiError('Unauthorized', 401) }
-  }
-
-  return { user: dbUser, error: null }
+  return { user: null, error: apiError('Unauthorized', 401) }
 }
 
 /**

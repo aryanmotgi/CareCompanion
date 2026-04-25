@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from '../src/theme'
-import { Timeline } from '../src/components/Timeline'
+import { Timeline, TimelineShareButton } from '../src/components/Timeline'
 import { AmbientOrbs } from '../src/components/AmbientOrbs'
 
 export default function TimelineScreen() {
@@ -28,8 +28,8 @@ export default function TimelineScreen() {
         <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={22} color={theme.text} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Care Timeline</Text>
-        <View style={{ width: 36 }} />
+        <Text style={[styles.title, { color: theme.text }]}>Treatment Journey</Text>
+        <TimelineShareButton />
       </View>
 
       <ScrollView

@@ -1,8 +1,32 @@
 import { db } from '@/lib/db'
 import { careProfiles } from '@/lib/db/schema'
+import { sql } from 'drizzle-orm'
 import { logger } from '@/lib/logger'
 
 const startTime = Date.now()
+
+// Every column that must exist in Aurora. Add a row here whenever schema.ts changes.
+// This is the single source of truth for "did we forget to run the migration?".
+const REQUIRED_COLUMNS: { table: string; column: string }[] = [
+  // care_profiles
+  { table: 'care_profiles', column: 'id' },
+  { table: 'care_profiles', column: 'user_id' },
+  { table: 'care_profiles', column: 'role' },
+  { table: 'care_profiles', column: 'caregiver_for_name' },
+  { table: 'care_profiles', column: 'checkin_streak' },
+  { table: 'care_profiles', column: 'last_radar_run_at' },
+  // care_team_members
+  { table: 'care_team_members', column: 'gratitude_nudge_count' },
+  { table: 'care_team_members', column: 'last_gratitude_nudge_at' },
+  // new Premium Care OS tables (just check they exist via one column each)
+  { table: 'wellness_checkins', column: 'id' },
+  { table: 'symptom_insights', column: 'id' },
+  { table: 'notification_deliveries', column: 'id' },
+  { table: 'care_team_activity_log', column: 'id' },
+  // messages (core chat)
+  { table: 'messages', column: 'id' },
+  { table: 'messages', column: 'user_id' },
+]
 
 /**
  * GET /api/health
@@ -23,6 +47,32 @@ export async function GET(req: Request) {
     checks.database = { status: 'ok', details: { responseTimeMs: dbDuration } }
   } catch (e) {
     checks.database = { status: 'error', message: e instanceof Error ? e.message : 'Unknown error' }
+  }
+
+  // Schema integrity — catch Aurora migration drift before users hit a 500
+  try {
+    const tableNames = [...new Set(REQUIRED_COLUMNS.map(r => r.table))]
+    const rows = await db.execute(sql`
+      SELECT table_name, column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = ANY(ARRAY[${sql.raw(tableNames.map(t => `'${t}'`).join(','))}])
+    `)
+    const found = new Set(
+      (rows as unknown as { table_name: string; column_name: string }[]).map(r => `${r.table_name}.${r.column_name}`)
+    )
+    const missing = REQUIRED_COLUMNS.filter(r => !found.has(`${r.table}.${r.column}`))
+    if (missing.length > 0) {
+      checks.schema = {
+        status: 'error',
+        message: `Aurora is missing ${missing.length} column(s) — run the migration`,
+        details: { missing: missing.map(r => `${r.table}.${r.column}`) },
+      }
+    } else {
+      checks.schema = { status: 'ok', details: { columnCount: REQUIRED_COLUMNS.length } }
+    }
+  } catch (e) {
+    checks.schema = { status: 'error', message: e instanceof Error ? e.message : 'Schema check failed' }
   }
 
   // Check critical env vars (names only, never values)

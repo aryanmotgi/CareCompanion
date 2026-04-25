@@ -70,7 +70,13 @@ export function TimelineCard({ item, onTakeMedication }: TimelineCardProps) {
   const expandHeight = useSharedValue(0)
   const scale = useSharedValue(1)
 
-  const config = TYPE_CONFIG[item.type]
+  const config = TYPE_CONFIG[item.type as keyof typeof TYPE_CONFIG] ?? {
+    icon: 'time-outline' as const,
+    label: 'EVENT',
+    getBorderColor: (t: ReturnType<typeof useTheme>) => t.accent,
+    getBgColor: () => 'rgba(99,102,241,0.08)',
+    getDotColor: (t: ReturnType<typeof useTheme>) => t.accent,
+  }
   const borderColor = config.getBorderColor(theme)
   const bgColor = config.getBgColor()
   const past = isPast(item.timestamp)

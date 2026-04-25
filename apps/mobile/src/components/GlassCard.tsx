@@ -39,7 +39,7 @@ export function GlassCard({ children, onPress, style }: GlassCardProps) {
         style={[
           styles.card,
           theme.isDark
-            ? { backgroundColor: 'transparent' }
+            ? { backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(139,92,246,0.18)' }
             : { ...theme.shadowCard, backgroundColor: theme.bgCard },
           animatedStyle,
           style,

@@ -25,6 +25,34 @@ import { useProfile } from '../../src/context/ProfileContext'
 type MedStatus = 'taken' | 'upcoming' | 'overdue'
 type CareTab = 'meds' | 'appts' | 'labs' | 'journal' | 'team'
 
+interface JournalEntry {
+  id: string
+  date: string
+  mood: string | null
+  energy: string | null
+  painLevel: number | null
+  sleepHours: string | null
+  symptoms: string[]
+  notes: string | null
+}
+
+interface Doctor {
+  id: string
+  name: string
+  specialty: string | null
+  phone: string | null
+  notes: string | null
+}
+
+interface TeamMember {
+  id: string
+  userId: string
+  role: string
+  email: string | null
+  display_name: string
+  joinedAt: string | null
+}
+
 const TAB_CONFIG: { key: CareTab; label: string }[] = [
   { key: 'meds', label: 'Meds' },
   { key: 'appts', label: 'Appts' },
@@ -231,6 +259,144 @@ function AppointmentRow({ appointment }: { appointment: any }) {
   )
 }
 
+const MOOD_EMOJI: Record<string, string> = {
+  great: '😊', good: '🙂', okay: '😐', poor: '😔', terrible: '😢',
+}
+const ENERGY_LABEL: Record<string, string> = {
+  great: 'Great', good: 'Good', moderate: 'Moderate', low: 'Low', very_low: 'Very Low',
+}
+const ROLE_LABEL: Record<string, string> = {
+  caregiver: 'Caregiver', viewer: 'Viewer', editor: 'Editor', admin: 'Admin',
+}
+const SPECIALTY_ICON: Record<string, string> = {
+  'Medical Oncologist': '🎗️',
+  'Breast Surgeon': '🏥',
+  'Primary Care Physician': '👨‍⚕️',
+  'Radiation Oncologist': '⚡',
+}
+
+function moodEmoji(mood: string | null): string {
+  if (!mood) return '😐'
+  const lower = mood.toLowerCase()
+  if (MOOD_EMOJI[lower]) return MOOD_EMOJI[lower]
+  const num = parseInt(mood)
+  if (!isNaN(num)) {
+    if (num >= 8) return '😊'
+    if (num >= 6) return '🙂'
+    if (num >= 4) return '😐'
+    if (num >= 2) return '😔'
+    return '😢'
+  }
+  return '😐'
+}
+
+function formatSymptom(s: string): string {
+  return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function JournalEntryCard({ entry }: { entry: JournalEntry }) {
+  const theme = useTheme()
+  const dateLabel = new Date(entry.date + 'T12:00:00').toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric',
+  })
+  const emoji = moodEmoji(entry.mood)
+
+  return (
+    <GlassCard style={styles.journalCard}>
+      <View style={styles.journalHeader}>
+        <Text style={[styles.journalDate, { color: theme.accent }]}>{dateLabel}</Text>
+        <Text style={styles.journalMoodEmoji}>{emoji}</Text>
+      </View>
+
+      <View style={styles.journalMetrics}>
+        {entry.sleepHours != null && (
+          <View style={styles.metricPill}>
+            <Text style={[styles.metricText, { color: theme.textMuted }]}>💤 {entry.sleepHours}h</Text>
+          </View>
+        )}
+        {entry.energy && (
+          <View style={styles.metricPill}>
+            <Text style={[styles.metricText, { color: theme.textMuted }]}>⚡ {ENERGY_LABEL[entry.energy] ?? entry.energy}</Text>
+          </View>
+        )}
+        {entry.painLevel != null && (
+          <View style={styles.metricPill}>
+            <Text style={[styles.metricText, { color: entry.painLevel >= 6 ? theme.rose : entry.painLevel >= 3 ? theme.amber : theme.green }]}>
+              Pain {entry.painLevel}/10
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {entry.symptoms.length > 0 && (
+        <View style={styles.symptomRow}>
+          {entry.symptoms.map((s) => (
+            <View key={s} style={[styles.symptomTag, { backgroundColor: 'rgba(99,102,241,0.12)', borderColor: 'rgba(99,102,241,0.25)' }]}>
+              <Text style={[styles.symptomTagText, { color: theme.accentHover }]}>{formatSymptom(s)}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {entry.notes ? (
+        <Text style={[styles.journalNotes, { color: theme.text }]} numberOfLines={3}>{entry.notes}</Text>
+      ) : null}
+    </GlassCard>
+  )
+}
+
+function DoctorCard({ doctor }: { doctor: Doctor }) {
+  const theme = useTheme()
+  const icon = doctor.specialty ? (SPECIALTY_ICON[doctor.specialty] ?? '🩺') : '🩺'
+  const initials = doctor.name.replace('Dr. ', '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+
+  return (
+    <GlassCard style={styles.teamCard}>
+      <View style={styles.teamRow}>
+        <View style={[styles.avatar, { backgroundColor: 'rgba(99,102,241,0.18)' }]}>
+          <Text style={styles.avatarText}>{initials}</Text>
+        </View>
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={[styles.teamName, { color: theme.text }]}>{doctor.name}</Text>
+          {doctor.specialty && (
+            <Text style={[styles.teamRole, { color: theme.accentHover }]}>{icon} {doctor.specialty}</Text>
+          )}
+          {doctor.phone && (
+            <Text style={[styles.teamDetail, { color: theme.textMuted }]}>📞 {doctor.phone}</Text>
+          )}
+        </View>
+      </View>
+    </GlassCard>
+  )
+}
+
+function TeamMemberCard({ member }: { member: TeamMember }) {
+  const theme = useTheme()
+  const name = member.display_name || member.email || 'Unknown'
+  const initials = name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+  const roleLabel = ROLE_LABEL[member.role] ?? member.role
+  const joinedDate = member.joinedAt
+    ? new Date(member.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    : null
+
+  return (
+    <GlassCard style={styles.teamCard}>
+      <View style={styles.teamRow}>
+        <View style={[styles.avatar, { backgroundColor: 'rgba(168,85,247,0.18)' }]}>
+          <Text style={styles.avatarText}>{initials}</Text>
+        </View>
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={[styles.teamName, { color: theme.text }]}>{name}</Text>
+          <Text style={[styles.teamRole, { color: '#a78bfa' }]}>{roleLabel}</Text>
+          {joinedDate && (
+            <Text style={[styles.teamDetail, { color: theme.textMuted }]}>Joined {joinedDate}</Text>
+          )}
+        </View>
+      </View>
+    </GlassCard>
+  )
+}
+
 export default function CareScreen() {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
@@ -239,6 +405,9 @@ export default function CareScreen() {
   const [meds, setMeds] = useState<Med[]>([])
   const [labs, setLabs] = useState<Lab[]>([])
   const [appointments, setAppointments] = useState<any[]>([])
+  const [journal, setJournal] = useState<JournalEntry[]>([])
+  const [doctors, setDoctors] = useState<Doctor[]>([])
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
@@ -257,13 +426,14 @@ export default function CareScreen() {
       apiClient.medications.list(profile.careProfileId).catch(() => []),
       apiClient.labResults.list(profile.careProfileId).catch(() => ({ labs: [] })),
       apiClient.appointments.list(profile.careProfileId).catch(() => []),
-    ]).then(([medsRaw, labsRaw, apptsRaw]) => {
-      // Unwrap { ok, data } API response format
+      apiClient.journal.list(30).catch(() => ({ data: { entries: [] } })),
+      apiClient.doctors.list(profile.careProfileId).catch(() => ({ data: [] })),
+      apiClient.careTeam.list().catch(() => ({ members: [], invites: [], role: null })),
+    ]).then(([medsRaw, labsRaw, apptsRaw, journalRaw, doctorsRaw, teamRaw]) => {
       const medsData = Array.isArray(medsRaw) ? medsRaw : ((medsRaw as any)?.data ?? [])
       const labsData = Array.isArray(labsRaw) ? labsRaw : ((labsRaw as any)?.data ?? (labsRaw as any)?.labs ?? labsRaw)
       const apptsData = Array.isArray(apptsRaw) ? apptsRaw : ((apptsRaw as any)?.data ?? [])
 
-      // Map API medications to the Med interface
       const mappedMeds: Med[] = (Array.isArray(medsData) ? medsData : []).map((m: any) => ({
         id: m.id,
         logId: m.logId || m.reminderLogId || undefined,
@@ -274,7 +444,6 @@ export default function CareScreen() {
       }))
       setMeds(mappedMeds)
 
-      // Map API labs to the Lab interface
       const labsList = Array.isArray(labsData) ? labsData : ((labsData as any)?.labs ?? [])
       const mappedLabs: Lab[] = labsList.map((l: any) => ({
         id: l.id,
@@ -282,14 +451,23 @@ export default function CareScreen() {
         value: String(l.value),
         range: l.referenceRange || '',
         date: l.dateTaken ? new Date(l.dateTaken).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
-        status: l.status === 'abnormal' ? 'abnormal' : l.status === 'borderline' ? 'borderline' : 'normal',
+        status: l.isAbnormal ? 'abnormal' : 'normal',
       })) || []
       setLabs(mappedLabs)
 
-      // Map API appointments, sorted by date
       const mappedAppts = (Array.isArray(apptsData) ? apptsData : [])
-        .sort((a: any, b: any) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime())
+        .sort((a: any, b: any) => new Date(a.date || a.dateTime || 0).getTime() - new Date(b.date || b.dateTime || 0).getTime())
       setAppointments(mappedAppts)
+
+      const journalEntries = (journalRaw as any)?.data?.entries ?? []
+      setJournal(journalEntries)
+
+      const doctorsList = (doctorsRaw as any)?.data ?? []
+      setDoctors(Array.isArray(doctorsList) ? doctorsList : [])
+
+      const teamData = teamRaw as any
+      const members: TeamMember[] = (teamData?.members ?? []).filter((m: any) => m.role !== 'owner')
+      setTeamMembers(members)
     }).catch(err => {
       console.error('[Care] Failed to load:', err?.message || err)
       setError(`Failed to load care data: ${err?.message || 'Unknown error'}`)
@@ -305,15 +483,12 @@ export default function CareScreen() {
     try {
       const token = await SecureStore.getItemAsync('cc-session-token')
       const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
-      const isSecure = baseUrl.startsWith('https://')
-      const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
 
       const res = await fetch(`${baseUrl}/api/reminders/respond`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-csrf-token': csrfToken || '',
-          'Cookie': `${cookieName}=${token}; cc-csrf-token=${csrfToken}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ log_id: logId, status: 'taken' }),
       })
@@ -395,21 +570,37 @@ export default function CareScreen() {
           )
 
       case 'journal':
-        return (
-          <GlassCard style={{ padding: 32, alignItems: 'center' }}>
-            <Text style={[styles.emptyEmoji]}>📝</Text>
-            <Text style={[styles.emptyText, { color: theme.textMuted }]}>How are you feeling today?</Text>
-            <Text style={[styles.emptyCta, { color: '#fbbf24' }]}>Start your first entry</Text>
-          </GlassCard>
-        )
+        return journal.length > 0
+          ? journal.map((entry) => <JournalEntryCard key={entry.id} entry={entry} />)
+          : (
+            <GlassCard style={{ padding: 32, alignItems: 'center' }}>
+              <Text style={styles.emptyEmoji}>📝</Text>
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>How are you feeling today?</Text>
+              <Text style={[styles.emptyCta, { color: '#fbbf24' }]}>Start your first entry</Text>
+            </GlassCard>
+          )
 
       case 'team':
         return (
-          <GlassCard style={{ padding: 32, alignItems: 'center' }}>
-            <Text style={[styles.emptyEmoji]}>👥</Text>
-            <Text style={[styles.emptyText, { color: theme.textMuted }]}>No care team members yet</Text>
-            <Text style={[styles.emptyCta, { color: '#a78bfa' }]}>Add your doctor</Text>
-          </GlassCard>
+          <>
+            {doctors.length > 0 && (
+              <>
+                <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>MEDICAL TEAM</Text>
+                {doctors.map((doc) => <DoctorCard key={doc.id} doctor={doc} />)}
+              </>
+            )}
+            <Text style={[styles.sectionLabel, { color: theme.textMuted, marginTop: doctors.length > 0 ? 20 : 0 }]}>CARE SUPPORTERS</Text>
+            {teamMembers.length > 0
+              ? teamMembers.map((m) => <TeamMemberCard key={m.id} member={m} />)
+              : (
+                <GlassCard style={{ padding: 24, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 28, marginBottom: 8 }}>👥</Text>
+                  <Text style={{ color: theme.text, fontSize: 15, fontWeight: '600', marginBottom: 4 }}>Invite a supporter</Text>
+                  <Text style={{ color: theme.textMuted, fontSize: 13, textAlign: 'center' }}>Family and caregivers can view your schedule and help coordinate care</Text>
+                </GlassCard>
+              )
+            }
+          </>
         )
 
       default:
@@ -508,4 +699,23 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 36, marginBottom: 12 },
   emptyText: { fontSize: 15, fontWeight: '500' },
   emptyCta: { fontSize: 14, fontWeight: '600', marginTop: 8 },
+  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.2, marginBottom: 8, marginLeft: 2 },
+  journalCard: { marginBottom: 12 },
+  journalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  journalDate: { fontSize: 14, fontWeight: '700' },
+  journalMoodEmoji: { fontSize: 22 },
+  journalMetrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  metricPill: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
+  metricText: { fontSize: 12, fontWeight: '500' },
+  symptomRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  symptomTag: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3 },
+  symptomTagText: { fontSize: 11, fontWeight: '600' },
+  journalNotes: { fontSize: 13, lineHeight: 19, opacity: 0.85 },
+  teamCard: { marginBottom: 10 },
+  teamRow: { flexDirection: 'row', alignItems: 'center' },
+  avatar: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  teamName: { fontSize: 15, fontWeight: '600' },
+  teamRole: { fontSize: 13, fontWeight: '500', marginTop: 2 },
+  teamDetail: { fontSize: 12, marginTop: 2 },
 })
