@@ -2,7 +2,7 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { streamText, stepCountIs, type UIMessage } from 'ai';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { db } from '@/lib/db';
-import { careProfiles, medications, doctors, appointments, labResults, notifications, claims, priorAuths, fsaHsa, symptomEntries, insurance, messages } from '@/lib/db/schema';
+import { careProfiles, medications, doctors, appointments, labResults, notifications, claims, priorAuths, fsaHsa, symptomEntries, insurance, messages, treatmentCycles } from '@/lib/db/schema';
 import { eq, desc, and, isNull } from 'drizzle-orm';
 import { buildSystemPrompt } from '@/lib/system-prompt';
 import { buildTools } from '@/lib/tools';
@@ -136,7 +136,7 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     loadConversationSummaries(dbUser!.id).catch(() => []),
     db.select().from(symptomEntries).where(eq(symptomEntries.userId, dbUser!.id)).orderBy(desc(symptomEntries.date)).limit(14).catch(() => []),
     db.select().from(insurance).where(eq(insurance.userId, dbUser!.id)).limit(1).catch(() => []),
-    Promise.resolve([]), // treatmentCycles query disabled until migration is run
+    profile?.id ? db.select().from(treatmentCycles).where(and(eq(treatmentCycles.careProfileId, profile.id), eq(treatmentCycles.isActive, true))).limit(1).catch(() => []) : Promise.resolve([]),
   ]);
   const [ins] = insRows;
   const [activeCycle] = activeCycleRows;

@@ -44,7 +44,8 @@ export async function POST(req: Request) {
     return Response.json({
       medications: extraction.extracted_data.medications || [],
     })
-  } catch {
-    return Response.json({ medications: [] })
+  } catch (err) {
+    console.error('[extract-medications] extraction failed:', err instanceof Error ? err.message : err)
+    return Response.json({ error: 'Extraction failed', medications: [] }, { status: 500 })
   }
 }

@@ -681,6 +681,26 @@ export function DashboardView({
         </div>
       )}
 
+      {/* Care Timeline shortcut — always visible */}
+      <a
+        href="/timeline"
+        className="flex items-center gap-3 p-4 rounded-2xl border border-white/[0.06] mt-4 transition-colors hover:bg-white/[0.06] active:scale-[0.98]"
+        style={{ background: 'rgba(99,102,241,0.06)' }}
+      >
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(99,102,241,0.15)' }}>
+          <svg width="20" height="20" fill="none" stroke="#A78BFA" strokeWidth="1.75" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-white">Care Timeline</p>
+          <p className="text-xs text-white/50">Medications, appointments &amp; milestones</p>
+        </div>
+        <svg width="16" height="16" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+      </a>
+
       {/* Tooltip for quick-ask card when no action items */}
       {actionCount === 0 && showTourTooltip && (
         <div className="relative mt-6">
