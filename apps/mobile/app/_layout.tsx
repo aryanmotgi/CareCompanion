@@ -22,16 +22,17 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function check() {
-      // SecureStore is native-only — on web skip auth gate and go straight to tabs
-      if (Platform.OS === 'web') {
+      try {
+        if (Platform.OS === 'web') { setReady(true); return }
+        const token = await SecureStore.getItemAsync('cc-session-token')
+        const isAuthScreen = segments[0] === 'login' || segments[0] === 'signup'
+        if (!token && !isAuthScreen) router.replace('/login')
+        else if (token && isAuthScreen) router.replace('/(tabs)')
+      } catch {
+        // fail safe — show whatever screen we're on
+      } finally {
         setReady(true)
-        return
       }
-      const token = await SecureStore.getItemAsync('cc-session-token')
-      const isAuthScreen = segments[0] === 'login' || segments[0] === 'signup'
-      if (!token && !isAuthScreen) router.replace('/login')
-      else if (token && isAuthScreen) router.replace('/(tabs)')
-      setReady(true)
     }
     void check()
   }, [segments, router])
