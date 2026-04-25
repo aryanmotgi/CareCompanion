@@ -301,6 +301,51 @@ fieldOverrides        JSONB   -- tracks which fields the user has manually edite
 
 ---
 
+## Visual Design Specifications
+
+### Care Group Screen — Progressive Disclosure (mobile-first)
+
+The Care Group screen uses sequential reveal, not all-at-once layout:
+
+**Step 1:** Two option cards only (Create / Join / Skip). Nothing else visible.
+**Step 2:** User selects Create → credentials form expands inline below the card with animation (slide down, 200ms ease-out).
+**Step 3:** After successful creation → form collapses, QR panel slides in. Share buttons appear below QR. "Waiting for [Name] to join..." status appears below share buttons.
+
+This avoids the problem of QR + form + waiting state competing on a 375px screen.
+
+### Interaction States
+
+**Role tile selected state:**
+- Border: `2px solid #7c3aed` (violet)
+- Background: `rgba(124,58,237,0.15)` tint
+- Box shadow: `0 0 0 1px rgba(124,58,237,0.4), 0 0 20px rgba(124,58,237,0.15)` (outer glow)
+- Checkmark badge: white ✓ on violet circle, top-right corner of tile
+- Transition: `all 150ms ease`
+
+**QR code generation loading state:**
+While the invite token is being created server-side (POST /api/care-group/invite), show a skeleton QR panel with a centered spinner. Copy: "Generating invite link..." Replaces QR on error with: "Failed to generate invite. Try again."
+
+**Hospital not supported in HealthKit picker:**
+If the patient's hospital doesn't appear in the supported list, show below the search:
+> "Your hospital may not support Health Records yet. You can still connect Apple Health to sync your activity, heart rate, and sleep data."
+Two CTAs: "Connect Apple Health (vitals only)" and "Skip for now". This prevents dead-ends.
+
+### "You're Connected" Screen — Timing & Animation
+
+1. Screen fades in (300ms)
+2. Confetti particles rain for 1.5s (CSS animation, tasteful — not overwhelming)
+3. Two avatars appear with a scale-in animation (400ms, staggered 100ms apart)
+4. Connecting line draws between them (300ms, left to right)
+5. Heading fades in (200ms)
+6. Subheading fades in (150ms delay)
+7. CTA button appears (200ms delay after subheading)
+
+Do NOT auto-advance. User must tap "Continue to setup →".
+
+Avatars use initials from displayName. If displayName is unavailable, use first letter of email. Color: Person 1 gets violet gradient, Person 2 gets sky-blue gradient.
+
+---
+
 ## Post-implementation
 
 - Run `/plan-ceo` review after implementation is complete
