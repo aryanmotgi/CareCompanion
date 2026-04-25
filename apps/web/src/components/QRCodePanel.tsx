@@ -6,7 +6,6 @@ import { QRCodeSVG } from 'qrcode.react'
 const QR_EXPIRY_SECONDS = 10 * 60  // 10 minutes
 
 export function QRCodePanel({
-  careGroupId,
   initialUrl,
   onRegenerate,
 }: {

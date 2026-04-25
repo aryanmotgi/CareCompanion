@@ -37,7 +37,6 @@ export function OnboardingShell({
   allProfiles,
   userName,
   userEmail,
-  userAvatar,
   userRole: userRoleProp,
 }: OnboardingShellProps) {
   // undefined = not yet chosen; null = create new; string = edit existing
