@@ -319,7 +319,7 @@ export default function HomeScreen() {
               </Animated.View>
             ) : meds.length > 0 ? (
               <Animated.View style={card1Style}>
-                <GlassCard style={styles.card}>
+                <GlassCard style={styles.card} onPress={() => router.push('/(tabs)/care')}>
                   <View style={styles.cardHeader}>
                     <Text style={[styles.cardLabel, { color: theme.textMuted }]}>
                       TODAY'S MEDICATIONS
@@ -335,10 +335,10 @@ export default function HomeScreen() {
                   {meds.map((med) => (
                     <View key={med.id} style={styles.medRow}>
                       <View style={[styles.dot, { backgroundColor: theme.amber }]} />
-                      <Text style={[styles.medName, { color: theme.text }]}>
-                        {med.name}{med.dose ? ` ${med.dose}` : ''}
+                      <Text style={[styles.medName, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">
+                        {med.name}{med.dose ? ` · ${med.dose}` : ''}
                       </Text>
-                      <Text style={[styles.medTime, { color: theme.textMuted }]}>
+                      <Text style={[styles.medTime, { color: theme.textMuted }]} numberOfLines={1}>
                         {med.frequency || ''}
                       </Text>
                     </View>

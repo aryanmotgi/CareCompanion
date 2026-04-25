@@ -27,5 +27,6 @@ export async function GET() {
     conditions: profile?.conditions ?? null,
     role: profile?.role ?? 'patient',
     caregiverForName: profile?.caregiverForName ?? null,
+    onboardingCompleted: profile?.onboardingCompleted ?? false,
   })
 }

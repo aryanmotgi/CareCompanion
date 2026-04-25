@@ -132,13 +132,16 @@ export function useOnboardingState(): OnboardingState {
     },
   ]
 
-  const completedCount = steps.filter((s) => s.done).length
+  // If the profile is marked onboardingCompleted, treat everything as done
+  const forceComplete = profile?.onboardingCompleted === true
+
+  const completedCount = forceComplete ? steps.length : steps.filter((s) => s.done).length
   const totalCount = steps.length
-  const nextStep = steps.find((s) => !s.done) || null
-  const isComplete = completedCount === totalCount
+  const nextStep = forceComplete ? null : (steps.find((s) => !s.done) || null)
+  const isComplete = forceComplete || completedCount === totalCount
 
   return {
-    steps,
+    steps: forceComplete ? steps.map(s => ({ ...s, done: true })) : steps,
     completedCount,
     totalCount,
     nextStep,

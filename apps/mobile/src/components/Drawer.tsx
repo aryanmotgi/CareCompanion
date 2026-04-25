@@ -9,7 +9,8 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { useTheme } from '../theme'
-import * as SecureStore from 'expo-secure-store'
+import * as SecureStore from "expo-secure-store"
+import { Platform } from "react-native"
 import { LinearGradient } from 'expo-linear-gradient'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
@@ -57,7 +58,7 @@ export function Drawer({ visible, onClose, userName, userRole = 'Patient' }: Dra
 
   async function signOut() {
     onClose()
-    await SecureStore.deleteItemAsync('cc-session-token')
+    if (Platform.OS !== "web") await SecureStore.deleteItemAsync("cc-session-token")
     timers.current.push(setTimeout(() => router.replace('/login'), 250))
   }
 

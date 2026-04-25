@@ -42,7 +42,10 @@ export default function EmergencyScreen() {
     }
     apiClient.medications
       .list(profile.careProfileId)
-      .then(setMedications)
+      .then((res) => {
+        const arr = Array.isArray(res) ? res : ((res as any)?.data ?? [])
+        setMedications(arr)
+      })
       .catch(() => { setMedsError(true) })
       .finally(() => setMedsLoading(false))
   }, [profile?.careProfileId])

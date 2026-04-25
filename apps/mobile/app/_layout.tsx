@@ -7,7 +7,7 @@ initSentry()
 import { Stack, useRouter, useSegments } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { StatusBar, ActivityIndicator, View } from 'react-native'
+import { StatusBar, ActivityIndicator, View, Platform } from 'react-native'
 import { useTheme } from '../src/theme'
 import { TestModeBanner } from '../src/components/TestModeBanner'
 import { useShakeDetector } from '../src/hooks/useShakeDetector'
@@ -22,6 +22,11 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function check() {
+      // SecureStore is native-only — on web skip auth gate and go straight to tabs
+      if (Platform.OS === 'web') {
+        setReady(true)
+        return
+      }
       const token = await SecureStore.getItemAsync('cc-session-token')
       const isAuthScreen = segments[0] === 'login' || segments[0] === 'signup'
       if (!token && !isAuthScreen) router.replace('/login')
