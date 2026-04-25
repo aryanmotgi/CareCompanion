@@ -8,7 +8,7 @@ import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { rateLimit } from '@/lib/rate-limit'
 
-const loginLimiter = rateLimit({ interval: 15 * 60 * 1000, maxRequests: 5 })
+const loginLimiter = rateLimit({ interval: 15 * 60 * 1000, maxRequests: 50 })
 
 export const { handlers, signIn, auth } = NextAuth({
   providers: [
