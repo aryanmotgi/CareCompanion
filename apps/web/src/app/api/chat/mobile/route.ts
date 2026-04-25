@@ -55,8 +55,8 @@ export async function POST(req: Request) {
       profile?.cancerType ? `Cancer type: ${profile.cancerType}` : '',
       profile?.cancerStage ? `Stage: ${profile.cancerStage}` : '',
       profile?.treatmentPhase ? `Treatment phase: ${profile.treatmentPhase}` : '',
-      meds.length > 0 ? `Medications: ${meds.map((m: any) => m.name).join(', ')}` : '',
-      appts.length > 0 ? `Upcoming appointments: ${appts.map((a: any) => a.purpose || a.specialty || 'Appointment').join(', ')}` : '',
+      meds.length > 0 ? `Medications: ${meds.map((m: { name: string }) => m.name).join(', ')}` : '',
+      appts.length > 0 ? `Upcoming appointments: ${appts.map((a: { purpose?: string; specialty?: string }) => a.purpose || a.specialty || 'Appointment').join(', ')}` : '',
       `Be warm, concise, and medically accurate. Keep responses focused and supportive.`,
     ].filter(Boolean).join('\n');
 
