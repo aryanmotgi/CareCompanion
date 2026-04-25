@@ -3,19 +3,57 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
-/* ── Interactive demo button — opens guest chat ── */
+/* ── Interactive demo button ── */
 function DemoButton() {
+  const [phase, setPhase] = useState<'idle' | 'seeding' | 'redirecting'>('idle');
+  const [error, setError] = useState('');
+
+  const handleClick = async () => {
+    setPhase('seeding');
+    setError('');
+    try {
+      const res = await fetch('/api/demo/start', { method: 'POST', credentials: 'same-origin' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Something went wrong.');
+        setPhase('idle');
+        return;
+      }
+      setPhase('redirecting');
+      window.location.href = '/dashboard';
+    } catch {
+      setError('Could not start demo. Please try again.');
+      setPhase('idle');
+    }
+  };
+
+  const label =
+    phase === 'seeding' ? 'Setting up demo…' :
+    phase === 'redirecting' ? 'Loading dashboard…' :
+    'Try interactive demo';
+
   return (
-    <Link
-      href="/chat/guest"
-      className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl border font-semibold text-sm transition-all hover:opacity-90"
-      style={{ borderColor: 'rgba(167,139,250,0.4)', background: 'rgba(167,139,250,0.08)', color: '#A78BFA' }}
-    >
-      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M8 5v14l11-7z" />
-      </svg>
-      Try interactive demo
-    </Link>
+    <div className="flex flex-col items-center gap-1.5">
+      <button
+        onClick={handleClick}
+        disabled={phase !== 'idle'}
+        className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl border font-semibold text-sm transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+        style={{ borderColor: 'rgba(167,139,250,0.4)', background: 'rgba(167,139,250,0.08)', color: '#A78BFA' }}
+      >
+        {phase !== 'idle' ? (
+          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+          </svg>
+        ) : (
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        )}
+        {label}
+      </button>
+      {error && <p className="text-xs text-red-400">{error}</p>}
+    </div>
   );
 }
 
