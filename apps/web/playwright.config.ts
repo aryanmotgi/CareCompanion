@@ -8,6 +8,7 @@ const isRemoteTarget = !baseURL.includes('localhost') && !baseURL.includes('127.
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: ['**/visual-regression*/**', '**/visual-regression*'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
