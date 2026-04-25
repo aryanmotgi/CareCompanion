@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildSystemPrompt } from '@/lib/system-prompt'
+import { buildSystemPrompt, buildRoleContext } from '@/lib/system-prompt'
 import type { CareProfile, Medication, Doctor, Appointment } from '@/lib/types'
 
 const baseProfile: CareProfile = {
@@ -180,5 +180,24 @@ describe('buildSystemPrompt', () => {
     expect(result).toContain('NEVER diagnose conditions')
     expect(result).toContain('Call 911')
     expect(result).toContain('MEDICATION INTERACTION CHECKING')
+  })
+})
+
+describe('buildRoleContext', () => {
+  it('includes caregiver role context', () => {
+    const prompt = buildRoleContext({ role: 'caregiver', primaryConcern: 'medications', caregivingExperience: 'first_time' })
+    expect(prompt).toContain('caregiver')
+    expect(prompt).toContain('medication')
+    expect(prompt).toContain('first time')
+  })
+
+  it('falls back gracefully when role is null', () => {
+    const prompt = buildRoleContext({ role: null, primaryConcern: null, caregivingExperience: null })
+    expect(typeof prompt).toBe('string')
+  })
+
+  it('includes patient role context', () => {
+    const prompt = buildRoleContext({ role: 'patient', primaryConcern: null, caregivingExperience: null })
+    expect(prompt).toContain('patient')
   })
 })
