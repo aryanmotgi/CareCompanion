@@ -43,7 +43,9 @@ jobs:
 
       - name: Run E2E tests
         working-directory: apps/web
+        timeout-minutes: 5
         run: npx playwright test --project=chromium
         env:
+          PLAYWRIGHT_BASE_URL: https://carecompanionai.org
           E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
           E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
