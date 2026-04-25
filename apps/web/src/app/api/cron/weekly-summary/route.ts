@@ -132,7 +132,7 @@ export async function GET(req: Request) {
 
       // Generate AI narrative
       const { text: narrative } = await generateText({
-        model: anthropic('claude-haiku-4.5'),
+        model: anthropic('claude-haiku-4-5-20251001'),
         prompt: `You are writing a warm, caring weekly update for a cancer caregiver to share with their family about how their loved one is doing.
 
 Write 2-3 short paragraphs in a warm, human tone. Focus on what's going well, acknowledge challenges honestly but gently, and end on a note of strength. Do NOT include medical advice. Do NOT use clinical language. Write as if a thoughtful friend is summarizing the week. Do NOT use markdown, just plain paragraphs.

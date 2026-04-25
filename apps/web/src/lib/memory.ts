@@ -53,7 +53,7 @@ export async function extractAndSaveMemories(
     const existingFacts = existingMemories.map((m) => `[${m.category}] ${m.fact}`).join('\n');
 
     const { output } = await generateText({
-      model: anthropic('claude-haiku-4.5'),
+      model: anthropic('claude-haiku-4-5-20251001'),
       output: Output.object({ schema: extractionSchema }),
       prompt: `You are a memory extraction system for a family caregiver AI assistant.
 
@@ -207,7 +207,7 @@ export async function summarizeConversation(
       .join('\n');
 
     const { output } = await generateText({
-      model: anthropic('claude-haiku-4.5'),
+      model: anthropic('claude-haiku-4-5-20251001'),
       output: Output.object({ schema: summarySchema }),
       prompt: `Summarize this caregiver AI conversation. Focus on: decisions made, information shared, action items, and emotional state of the caregiver.
 

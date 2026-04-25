@@ -17,7 +17,7 @@ export async function extractDocument(
   const prompt = buildExtractionPrompt(safeCategory)
 
   const { output: extraction } = await generateText({
-    model: anthropic('claude-sonnet-4.6'),
+    model: anthropic('claude-sonnet-4-6'),
     output: Output.object({ schema: ExtractionSchema }),
     messages: [
       {

@@ -12,6 +12,7 @@ import { useTheme } from '../src/theme'
 import { TestModeBanner } from '../src/components/TestModeBanner'
 import { useShakeDetector } from '../src/hooks/useShakeDetector'
 import { BugReportSheet } from '../src/components/BugReportSheet'
+import { ProfileProvider } from '../src/context/ProfileContext'
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const segments = useSegments()
@@ -68,7 +69,9 @@ export default function RootLayout() {
       <ThemedStatusBar />
       <TestModeBanner />
       <AuthGate>
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }} />
+        <ProfileProvider>
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }} />
+        </ProfileProvider>
       </AuthGate>
       <BugReportSheet
         visible={bugReportVisible}

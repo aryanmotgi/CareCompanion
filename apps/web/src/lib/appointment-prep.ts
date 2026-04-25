@@ -76,7 +76,7 @@ export async function generateAppointmentPrepForUser(
       : null;
 
     const { text } = await generateText({
-      model: anthropic('claude-haiku-4.5'),
+      model: anthropic('claude-haiku-4-5-20251001'),
       prompt: `You are helping a cancer caregiver prepare for a medical appointment. Generate a practical, specific prep sheet.
 
 APPOINTMENT: ${appt.purpose || appt.specialty || 'Medical appointment'} with ${appt.doctorName || 'doctor'} (${appt.specialty || ''})

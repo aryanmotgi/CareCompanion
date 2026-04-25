@@ -88,7 +88,7 @@ ${template.prep_tasks.map((t) => `- ${t}`).join('\n')}
 Use these as a starting point but customize based on the patient's specific data, conditions, and appointment context. Replace generic questions with ones tailored to this patient's situation.`;
 
   const { text } = await generateText({
-    model: anthropic('claude-sonnet-4.6'),
+    model: anthropic('claude-sonnet-4-6'),
     prompt: `Generate a doctor visit prep sheet. Format it as clean markdown that a caregiver can print or share.
 
 APPOINTMENT:

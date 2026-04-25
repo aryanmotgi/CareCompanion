@@ -34,7 +34,7 @@ export async function checkDrugInteractions(
   const medList = currentMedications.map(m => `${m.name}${m.dose ? ` (${m.dose})` : ''}`).join(', ')
 
   const { output } = await generateText({
-    model: anthropic('claude-haiku-4.5'),
+    model: anthropic('claude-haiku-4-5-20251001'),
     output: Output.object({ schema: InteractionSchema }),
     prompt: `You are a pharmacology expert. Check for drug interactions.
 
@@ -78,7 +78,7 @@ export async function checkAllInteractions(
   const medList = medications.map(m => `${m.name}${m.dose ? ` (${m.dose})` : ''}`).join(', ')
 
   const { output } = await generateText({
-    model: anthropic('claude-haiku-4.5'),
+    model: anthropic('claude-haiku-4-5-20251001'),
     output: Output.object({ schema: InteractionSchema }),
     prompt: `You are a pharmacology expert. Check ALL pairwise drug interactions in this medication list.
 

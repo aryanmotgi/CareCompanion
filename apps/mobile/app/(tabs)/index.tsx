@@ -438,6 +438,24 @@ export default function HomeScreen() {
               })()}
             </Animated.View>
 
+            {/* Timeline shortcut */}
+            <Animated.View style={card3Style}>
+              <GlassCard style={styles.card} onPress={() => router.push('/timeline' as any)}>
+                <View style={styles.timelineRow}>
+                  <View style={[styles.timelineIcon, { backgroundColor: 'rgba(99,102,241,0.15)' }]}>
+                    <Ionicons name="time-outline" size={20} color="#A78BFA" />
+                  </View>
+                  <View style={styles.timelineText}>
+                    <Text style={[styles.ctaTitle, { color: theme.text, fontSize: 14 }]}>Care Timeline</Text>
+                    <Text style={[styles.ctaSub, { color: theme.textMuted, fontSize: 12 }]}>
+                      Medications, appointments & milestones
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+                </View>
+              </GlassCard>
+            </Animated.View>
+
             {/* AI CTA card */}
             <View style={theme.shadowGlowViolet}>
               <Animated.View style={card3Style}>
@@ -675,6 +693,9 @@ const styles = StyleSheet.create({
   ctaText: { flex: 1 },
   ctaTitle: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
   ctaSub: { fontSize: 13, lineHeight: 18 },
+  timelineRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  timelineIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  timelineText: { flex: 1 },
   borderCardOuter: { borderRadius: 15, overflow: 'hidden', marginBottom: 12 },
   borderCardGradientWrap: { alignItems: 'center', justifyContent: 'center' },
   borderCardInner: { margin: 1.5, borderRadius: 14, overflow: 'hidden' },

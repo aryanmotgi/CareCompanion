@@ -18,7 +18,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '../../src/theme'
 import { NoiseOverlay } from '../../src/components/NoiseOverlay'
-import { ProfileProvider } from '../../src/context/ProfileContext'
 
 const TABS = [
   { name: 'index', label: 'Home', icon: 'home-outline', iconActive: 'home' },
@@ -198,21 +197,19 @@ export function TabFadeWrapper({ children }: { children: React.ReactNode }) {
 export default function TabLayout() {
   const theme = useTheme()
   return (
-    <ProfileProvider>
-      <View style={{ flex: 1, backgroundColor: theme.bg }}>
-        <NoiseOverlay />
-        <Tabs
-          tabBar={(props) => <CustomTabBar {...props} />}
-          screenOptions={{ headerShown: false, ...(({ contentStyle: { backgroundColor: theme.bg }, sceneContainerStyle: { backgroundColor: theme.bg } }) as any) }}
-        >
-          <Tabs.Screen name="index" />
-          <Tabs.Screen name="chat" />
-          <Tabs.Screen name="care" />
-          <Tabs.Screen name="scan" />
-          <Tabs.Screen name="settings" options={{ href: null }} />
-        </Tabs>
-      </View>
-    </ProfileProvider>
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
+      <NoiseOverlay />
+      <Tabs
+        tabBar={(props) => <CustomTabBar {...props} />}
+        screenOptions={{ headerShown: false, ...(({ contentStyle: { backgroundColor: theme.bg }, sceneContainerStyle: { backgroundColor: theme.bg } }) as any) }}
+      >
+        <Tabs.Screen name="index" />
+        <Tabs.Screen name="chat" />
+        <Tabs.Screen name="care" />
+        <Tabs.Screen name="scan" />
+        <Tabs.Screen name="settings" options={{ href: null }} />
+      </Tabs>
+    </View>
   )
 }
 

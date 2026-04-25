@@ -87,7 +87,7 @@ export async function POST(req: Request) {
       : 'No patient profile available.'
 
     const { output: triage } = await generateText({
-      model: anthropic('claude-haiku-4.5'),
+      model: anthropic('claude-haiku-4-5-20251001'),
       output: Output.object({ schema: TriageResultSchema }),
       prompt: `You are an oncology triage nurse AI. Assess the following symptoms and provide structured triage guidance.
 

@@ -131,7 +131,15 @@ export function Timeline({ onEmpty, onTakeMedication }: TimelineProps) {
   }
 
   if (items.length === 0) {
-    return null // The parent will show onboarding instead
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyIcon}>🗓️</Text>
+        <Text style={[styles.emptyTitle, { color: theme.text }]}>No events yet</Text>
+        <Text style={[styles.emptyBody, { color: theme.textMuted }]}>
+          Your medications, appointments, and milestones will appear here once you add them.
+        </Text>
+      </View>
+    )
   }
 
   const dayGroups = groupByDay(items)
@@ -264,6 +272,14 @@ const styles = StyleSheet.create({
     width: 2,
     borderRadius: 1,
   },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 32,
+  },
+  emptyIcon: { fontSize: 40, marginBottom: 16 },
+  emptyTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8 },
+  emptyBody: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
   loadingContainer: {
     alignItems: 'center',
     paddingVertical: 40,

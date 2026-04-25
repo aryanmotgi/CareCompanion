@@ -52,7 +52,7 @@ async function postHandler(req: Request) {
   const abnormalLabs = labs.filter((l) => l.isAbnormal);
 
   const { text } = await generateText({
-    model: anthropic('claude-haiku-4.5'),
+    model: anthropic('claude-haiku-4-5-20251001'),
     prompt: `Generate a comprehensive patient health summary document. This is designed to be printed or shared with a new doctor, specialist, or hospital. Format as clean markdown.
 
 PATIENT INFORMATION:

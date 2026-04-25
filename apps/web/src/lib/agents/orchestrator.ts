@@ -73,7 +73,7 @@ export async function orchestrate(
 
     try {
       const { text } = await generateText({
-        model: anthropic('claude-haiku-4.5'),
+        model: anthropic('claude-haiku-4-5-20251001'),
         system: config.systemPrompt,
         prompt: `PATIENT DATA:
 ${relevantData}

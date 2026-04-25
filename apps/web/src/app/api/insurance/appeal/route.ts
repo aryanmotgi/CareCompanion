@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     ])
 
     const { output: appeal } = await generateText({
-      model: anthropic('claude-haiku-4.5'),
+      model: anthropic('claude-haiku-4-5-20251001'),
       output: Output.object({ schema: AppealLetterSchema }),
       prompt: `You are a patient advocacy expert. Generate an insurance appeal letter for a denied claim.
 

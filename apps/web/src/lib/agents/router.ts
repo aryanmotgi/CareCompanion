@@ -24,7 +24,7 @@ export async function routeMessage(
 }> {
   try {
     const { object } = await generateObject({
-      model: anthropic('claude-haiku-4.5'),
+      model: anthropic('claude-haiku-4-5-20251001'),
       schema: routingSchema,
       prompt: `You are a message router for a family caregiver AI assistant. Classify which specialist agent(s) should handle this message.
 
