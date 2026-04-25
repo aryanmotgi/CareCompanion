@@ -14,13 +14,9 @@ import {
   careProfiles,
   medications,
   labResults,
-  appointments,
   doctors,
   insurance,
   notifications,
-  medicationReminders,
-  reminderLogs,
-  symptomEntries,
   userSettings,
 } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
