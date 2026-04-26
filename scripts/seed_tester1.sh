@@ -23,7 +23,7 @@ run() {
 }
 
 echo "🔐 Resetting password to CareTest2026!..."
-run "UPDATE users SET password_hash='\$2b\$12\$JVK60NCZtGAGAuqEpTfOb.N8QgByV34ExOSW96RKBVKLzKstTkjZm', hipaa_consent=true, hipaa_consent_at=NOW(), hipaa_consent_version='1.0' WHERE id='$USER_ID';"
+run "UPDATE users SET password_hash='\$2b\$12\$JVK60NCZtGAGAuqEpTfOb.N8QgByV34ExOSW96RKBVKLzKstTkjZm', hipaa_consent=true, hipaa_consent_at=NOW(), hipaa_consent_version='1.0', role='patient' WHERE id='$USER_ID';"
 
 echo "👤 Updating care profile..."
 run "UPDATE care_profiles SET
