@@ -604,8 +604,8 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Right: phone — visible beside text on desktop */}
-            <div className="flex-shrink-0 order-1 lg:order-2 animate-fade-in-up" style={{ animationDelay: '0.08s' }}>
+            {/* Right: phone — visible beside text on desktop, hidden on mobile to keep hero text above the fold */}
+            <div className="hidden lg:block flex-shrink-0 order-1 lg:order-2 animate-fade-in-up" style={{ animationDelay: '0.08s' }}>
               <PhoneMockup />
             </div>
           </div>
