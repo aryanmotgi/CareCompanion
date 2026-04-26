@@ -96,9 +96,9 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
-        <div className="h-4 bg-gray-100 rounded w-1/3 animate-pulse" />
-        <div className="h-6 bg-gray-100 rounded w-3/4 animate-pulse" />
-        <div className="h-24 bg-gray-100 rounded animate-pulse" />
+        <div className="h-4 rounded w-1/3 animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />
+        <div className="h-6 rounded w-3/4 animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />
+        <div className="h-24 rounded animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />
       </div>
     );
   }
@@ -107,36 +107,58 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <Link href="/community" className="text-sm text-gray-400 hover:text-gray-600 flex items-center gap-1 mb-5">
+      <Link
+        href="/community"
+        className="text-sm flex items-center gap-1 mb-5 transition-colors hover:opacity-80"
+        style={{ color: 'rgba(255,255,255,0.4)' }}
+      >
         ← Back to community
       </Link>
 
       {/* Post */}
-      <div className="border border-gray-200 rounded-2xl p-5 mb-6">
+      <div
+        className="rounded-2xl p-5 mb-6"
+        style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)' }}
+      >
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full font-medium">
+          <span
+            className="text-xs px-2.5 py-0.5 rounded-full font-medium"
+            style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' }}
+          >
             {post.authorLabel}
           </span>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
             {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
           </span>
         </div>
-        <h1 className="text-lg font-bold text-gray-900 mb-3">{post.title}</h1>
-        <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{post.body}</p>
+        <h1 className="text-lg font-bold text-white mb-3">{post.title}</h1>
+        <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.7)' }}>{post.body}</p>
 
         <div className="mt-4 flex items-center gap-4">
           <button
             onClick={handleUpvote}
             disabled={upvoting}
-            className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-all"
+            style={
               post.hasUpvoted
-                ? 'border-blue-300 bg-blue-50 text-blue-700'
-                : 'border-gray-200 text-gray-500 hover:border-gray-300'
-            }`}
+                ? {
+                    border: '2px solid #7c3aed',
+                    background: 'rgba(124,58,237,0.15)',
+                    color: '#c4b5fd',
+                    boxShadow: '0 0 0 2px rgba(124,58,237,0.2)',
+                  }
+                : {
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    background: 'rgba(255,255,255,0.06)',
+                    color: 'rgba(255,255,255,0.5)',
+                  }
+            }
           >
             ↑ {post.upvotes} {post.upvotes === 1 ? 'upvote' : 'upvotes'}
           </button>
-          <span className="text-sm text-gray-400">💬 {post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}</span>
+          <span className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            💬 {post.replyCount} {post.replyCount === 1 ? 'reply' : 'replies'}
+          </span>
         </div>
       </div>
 
@@ -147,15 +169,21 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           onChange={(e) => setReplyText(e.target.value)}
           placeholder="Share your experience or support…"
           rows={3}
-          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none placeholder:text-white/20"
+          style={{
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: 'rgba(255,255,255,0.9)',
+          }}
           maxLength={1000}
         />
         <div className="flex items-center justify-between mt-2">
-          <p className="text-xs text-gray-400">Your reply is anonymous</p>
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>Your reply is anonymous</p>
           <button
             type="submit"
             disabled={!replyText.trim() || submitting}
-            className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="text-white text-sm px-4 py-2 rounded-lg font-semibold disabled:opacity-50 hover:opacity-90 transition-opacity"
+            style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
           >
             {submitting ? 'Posting…' : 'Reply'}
           </button>
@@ -164,23 +192,30 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* Replies */}
       {replies.length === 0 ? (
-        <div className="text-center py-8 text-gray-400 text-sm">
+        <div className="text-center py-8 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
           No replies yet. Be the first to respond.
         </div>
       ) : (
         <div className="space-y-3">
           {replies.map((reply) => (
-            <div key={reply.id} className="border border-gray-100 rounded-xl p-4">
+            <div
+              key={reply.id}
+              className="rounded-xl p-4"
+              style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)' }}
+            >
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' }}
+                >
                   {reply.authorLabel}
                 </span>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
                   {formatDistanceToNow(new Date(reply.createdAt), { addSuffix: true })}
                 </span>
-                <span className="ml-auto text-xs text-gray-400">↑ {reply.upvotes}</span>
+                <span className="ml-auto text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>↑ {reply.upvotes}</span>
               </div>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{reply.body}</p>
+              <p className="text-sm whitespace-pre-wrap" style={{ color: 'rgba(255,255,255,0.7)' }}>{reply.body}</p>
             </div>
           ))}
         </div>
