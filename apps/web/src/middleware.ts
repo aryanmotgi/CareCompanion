@@ -53,6 +53,9 @@ export default auth((req) => {
   if (!req.auth && !isPublic) {
     const url = req.nextUrl.clone()
     url.pathname = '/login'
+    // RSC prefetch requests expect RSC payload, not an HTML redirect — rewrite
+    // so the login page is served as RSC without leaking protected content.
+    if (isPrefetch) return NextResponse.rewrite(url)
     return NextResponse.redirect(url)
   }
 
