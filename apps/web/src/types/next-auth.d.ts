@@ -14,5 +14,8 @@ declare module 'next-auth' {
   }
   interface JWT {
     role?: string | null
+    isDemo?: boolean
+    dbUserId?: string | null
+    displayName?: string | null
   }
 }

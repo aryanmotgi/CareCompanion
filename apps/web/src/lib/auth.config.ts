@@ -26,8 +26,8 @@ export const authConfig: NextAuthConfig = {
       return !!auth?.user
     },
     jwt({ token }) {
-      // Pass token through — isDemo and role are already on it from auth.ts callbacks
-      // or from the demo/start JWT mint. Making them available to session() below.
+      // Explicit pass-through. NextAuth would do this by default, but declaring the
+      // callback here makes the token → session data flow visible alongside session().
       return token
     },
     session({ session, token }) {
