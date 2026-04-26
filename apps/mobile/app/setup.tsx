@@ -9,7 +9,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
+  SafeAreaView,
 } from 'react-native'
+import * as SecureStore from 'expo-secure-store'
+
+const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -94,6 +98,12 @@ export default function SetupScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { profile, apiClient, csrfToken, refetch } = useProfile()
+  const [setupPhase, setSetupPhase] = useState<'care-group' | 'wizard'>('care-group')
+  const [cgStep, setCgStep] = useState<'pick' | 'create' | 'join'>('pick')
+  const [cgName, setCgName] = useState('')
+  const [cgPassword, setCgPassword] = useState('')
+  const [cgLoading, setCgLoading] = useState(false)
+  const [cgError, setCgError] = useState('')
   const [mode, setMode] = useState<'healthkit' | 'manual'>('healthkit')
   const [manualStep, setManualStep] = useState(0)
   const [selectedChip, setSelectedChip] = useState<string | null>(null)
@@ -180,6 +190,96 @@ export default function SetupScreen() {
       setSelectedChip(null)
       setTextValue('')
     }
+  }
+
+  if (setupPhase === 'care-group') {
+    return (
+      <SafeAreaView style={[styles.root, { backgroundColor: '#05060F' }]}>
+        <ScrollView contentContainerStyle={{ padding: 24, paddingTop: 48 }}>
+          <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700', marginBottom: 6 }}>
+            Set up your Care Group 👨‍👩‍👧
+          </Text>
+          <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 24 }}>
+            Connect with your patient or caregiver to share health data.
+          </Text>
+
+          {cgStep === 'pick' && (
+            <>
+              <Pressable
+                onPress={() => setCgStep('create')}
+                style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 14, padding: 16, marginBottom: 10 }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>✨ Create a new Care Group</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 3 }}>Pick a name and password to share.</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setCgStep('join')}
+                style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 14, padding: 16, marginBottom: 10 }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>🔗 Join an existing Care Group</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 3 }}>Enter the name and password someone gave you.</Text>
+              </Pressable>
+              <Pressable onPress={() => setSetupPhase('wizard')} style={{ marginTop: 8, alignItems: 'center' }}>
+                <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>Skip for now</Text>
+              </Pressable>
+            </>
+          )}
+
+          {(cgStep === 'create' || cgStep === 'join') && (
+            <>
+              <Pressable onPress={() => { setCgStep('pick'); setCgError('') }} style={{ marginBottom: 16 }}>
+                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>← Back</Text>
+              </Pressable>
+              <TextInput
+                value={cgName}
+                onChangeText={setCgName}
+                placeholder={cgStep === 'create' ? 'Group name (e.g. The Smith Family)' : 'Care Group name'}
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 12, padding: 14, color: '#fff', fontSize: 14, marginBottom: 10 }}
+              />
+              <TextInput
+                value={cgPassword}
+                onChangeText={setCgPassword}
+                placeholder="Group password"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                secureTextEntry
+                style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 12, padding: 14, color: '#fff', fontSize: 14, marginBottom: 10 }}
+              />
+              {!!cgError && <Text style={{ color: '#ef4444', fontSize: 12, marginBottom: 8 }}>{cgError}</Text>}
+              <Pressable
+                onPress={async () => {
+                  if (!cgName.trim() || !cgPassword) { setCgError('Enter a name and password'); return }
+                  setCgLoading(true)
+                  setCgError('')
+                  try {
+                    const token = await SecureStore.getItemAsync('cc-session-token')
+                    const endpoint = cgStep === 'create' ? '/api/care-group' : '/api/care-group/join'
+                    const res = await fetch(`${API_BASE}${endpoint}`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ name: cgName.trim(), password: cgPassword }),
+                    })
+                    const data = await res.json() as { error?: string }
+                    if (!res.ok) { setCgError(data.error ?? 'Something went wrong'); return }
+                    setSetupPhase('wizard')
+                  } catch {
+                    setCgError('Could not connect. Check your internet.')
+                  } finally {
+                    setCgLoading(false)
+                  }
+                }}
+                disabled={cgLoading}
+                style={{ backgroundColor: '#7c3aed', borderRadius: 12, padding: 14, alignItems: 'center', opacity: cgLoading ? 0.5 : 1 }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
+                  {cgLoading ? 'Loading...' : cgStep === 'create' ? 'Create Group' : 'Join Group'}
+                </Text>
+              </Pressable>
+            </>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    )
   }
 
   return (
