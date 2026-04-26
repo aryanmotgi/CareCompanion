@@ -105,7 +105,17 @@ export const { handlers, signIn, auth } = NextAuth({
       }
       return true
     },
-    async jwt({ token, user, account, profile }) {
+    async jwt({ token, user, account, profile, trigger }) {
+      // On session update (e.g. after /set-role saves to DB), re-read role from DB
+      if (trigger === 'update' && token.dbUserId) {
+        const refreshed = await db.query.users.findFirst({
+          where: eq(users.id, token.dbUserId as string),
+          columns: { role: true },
+        })
+        if (refreshed) token.role = refreshed.role ?? null
+        return token
+      }
+
       if (user) {
         if (account?.provider === 'apple' || account?.provider === 'google') {
           // Social sign-in: find or create user in our database

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 
 type Role = 'caregiver' | 'patient' | 'self'
 
@@ -13,6 +14,7 @@ const roles = [
 
 export default function SetRolePage() {
   const router = useRouter()
+  const { update } = useSession()
   const [role, setRole] = useState<Role | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -27,6 +29,8 @@ export default function SetRolePage() {
         body: JSON.stringify({ role }),
       })
       if (!res.ok) { setError('Something went wrong. Try again.'); return }
+      // Refresh the JWT so middleware sees the new role immediately
+      await update()
       router.push('/onboarding')
     } finally {
       setLoading(false)
