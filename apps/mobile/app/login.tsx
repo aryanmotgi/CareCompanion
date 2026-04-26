@@ -19,15 +19,19 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
 import { useRouter } from 'expo-router'
-import { signInWithCredentials } from '../src/services/auth'
+import { signInWithCredentials, signInWithCareGroup } from '../src/services/auth'
 import { signInWithApple, isAppleSignInAvailable } from '../src/services/apple-auth'
 import { signInWithGoogle } from '../src/services/google-auth'
 import { RippleButton } from '../src/components/RippleButton'
 
 export default function LoginScreen() {
   const router = useRouter()
+  const [tab, setTab] = useState<'email' | 'care-group'>('email')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [groupName, setGroupName] = useState('')
+  const [groupPassword, setGroupPassword] = useState('')
+  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [socialLoading, setSocialLoading] = useState<'apple' | 'google' | null>(null)
   const [appleAvailable, setAppleAvailable] = useState(false)
@@ -83,17 +87,31 @@ export default function LoginScreen() {
   const cardStyle = useAnimatedStyle(() => ({ opacity: cardOpacity.value, transform: [{ translateY: cardY.value }] }))
 
   async function handleSignIn() {
-    if (!email.trim() || !password) {
-      Alert.alert('Missing fields', 'Please enter your email and password.')
-      return
-    }
+    setError('')
     try {
       setLoading(true)
-      await signInWithCredentials(email.trim().toLowerCase(), password)
-      router.replace('/(tabs)')
+      if (tab === 'care-group') {
+        if (!groupName.trim() || !groupPassword) {
+          setError('Enter your Care Group name and password')
+          return
+        }
+        await signInWithCareGroup(groupName, groupPassword)
+        router.replace('/(tabs)')
+      } else {
+        if (!email.trim() || !password) {
+          Alert.alert('Missing fields', 'Please enter your email and password.')
+          return
+        }
+        await signInWithCredentials(email.trim().toLowerCase(), password)
+        router.replace('/(tabs)')
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Sign-in failed'
-      Alert.alert('Sign In Failed', msg)
+      if (tab === 'care-group') {
+        setError(msg)
+      } else {
+        Alert.alert('Sign In Failed', msg)
+      }
     } finally {
       setLoading(false)
     }
@@ -129,6 +147,26 @@ export default function LoginScreen() {
 
           <Text style={styles.heading}>Sign In</Text>
 
+          {/* Tab toggle */}
+          <View style={{ flexDirection: 'row', borderRadius: 10, overflow: 'hidden', marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+            {(['email', 'care-group'] as const).map((t) => (
+              <Pressable
+                key={t}
+                onPress={() => { setTab(t); setError('') }}
+                style={{
+                  flex: 1,
+                  paddingVertical: 10,
+                  alignItems: 'center',
+                  backgroundColor: tab === t ? '#7c3aed' : 'rgba(255,255,255,0.04)',
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '600', color: tab === t ? '#fff' : 'rgba(255,255,255,0.5)' }}>
+                  {t === 'email' ? 'Email' : 'Care Group'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
           {/* Social sign-in buttons */}
           {appleAvailable && (
             <Pressable
@@ -161,28 +199,54 @@ export default function LoginScreen() {
             <View style={styles.dividerLine} />
           </View>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="rgba(255,255,255,0.3)"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoCorrect={false}
-            returnKeyType="next"
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="rgba(255,255,255,0.3)"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            returnKeyType="done"
-            onSubmitEditing={handleSignIn}
-          />
+          {tab === 'email' ? (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Email"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoCorrect={false}
+                returnKeyType="next"
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                returnKeyType="done"
+                onSubmitEditing={handleSignIn}
+              />
+            </>
+          ) : (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Care Group name"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                value={groupName}
+                onChangeText={setGroupName}
+                autoCapitalize="words"
+                returnKeyType="next"
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Group password"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                value={groupPassword}
+                onChangeText={setGroupPassword}
+                secureTextEntry
+                returnKeyType="done"
+                onSubmitEditing={handleSignIn}
+              />
+              {!!error && <Text style={{ color: '#ef4444', fontSize: 12 }}>{error}</Text>}
+            </>
+          )}
 
           <RippleButton onPress={handleSignIn} disabled={loading}>
             <Text style={styles.signInText}>

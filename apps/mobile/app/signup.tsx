@@ -27,6 +27,8 @@ import { RippleButton } from '../src/components/RippleButton'
 
 export default function SignupScreen() {
   const router = useRouter()
+  const [role, setRole] = useState<'caregiver' | 'patient' | 'self' | null>(null)
+  const [roleError, setRoleError] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -107,6 +109,11 @@ export default function SignupScreen() {
       return
     }
 
+    if (!role) {
+      setRoleError('Please select your role')
+      return
+    }
+
     try {
       setLoading(true)
 
@@ -119,6 +126,7 @@ export default function SignupScreen() {
           password,
           displayName: displayName.trim(),
           hipaaConsent: true,
+          role,
         }),
       })
 
@@ -173,6 +181,43 @@ export default function SignupScreen() {
           />
 
           <Text style={styles.heading}>Sign Up</Text>
+
+          {/* Role selector */}
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginBottom: 8 }}>
+              I am joining as *
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {([
+                { value: 'caregiver', emoji: '🧑‍⚕️', label: 'Caregiver' },
+                { value: 'patient', emoji: '🤒', label: 'Patient' },
+                { value: 'self', emoji: '👤', label: 'Self-care' },
+              ] as const).map((r) => {
+                const selected = role === r.value
+                return (
+                  <Pressable
+                    key={r.value}
+                    onPress={() => { setRole(r.value); setRoleError('') }}
+                    style={{
+                      flex: 1,
+                      borderRadius: 12,
+                      padding: 10,
+                      alignItems: 'center',
+                      backgroundColor: selected ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.05)',
+                      borderWidth: selected ? 2 : 1,
+                      borderColor: selected ? '#7c3aed' : 'rgba(255,255,255,0.1)',
+                    }}
+                  >
+                    <Text style={{ fontSize: 20, marginBottom: 4 }}>{r.emoji}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: selected ? '#c4b5fd' : '#f1f5f9' }}>
+                      {r.label}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+            {!!roleError && <Text style={{ color: '#ef4444', fontSize: 11, marginTop: 4 }}>{roleError}</Text>}
+          </View>
 
           {/* Social sign-up buttons */}
           {appleAvailable && (
