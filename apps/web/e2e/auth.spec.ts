@@ -19,4 +19,17 @@ test.describe('Authentication', () => {
     await signInOrSkip(page)
     await expect(page).not.toHaveURL(/\/login/)
   })
+
+  test('login page has Care Group tab', async ({ page }) => {
+    await page.goto('/login')
+    await expect(page.getByText('Care Group')).toBeVisible()
+  })
+
+  test('Care Group tab shows group name and password fields', async ({ page }) => {
+    await page.goto('/login')
+    // Click the Care Group tab
+    await page.getByText('Care Group').click()
+    // Should show group name and password inputs
+    await expect(page.getByPlaceholder(/group name/i).or(page.locator('input').nth(0))).toBeVisible()
+  })
 })
