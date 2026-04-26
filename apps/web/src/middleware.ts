@@ -72,7 +72,9 @@ export default auth((req) => {
     const errorParam = req.nextUrl.searchParams.get('error')
     // Don't redirect RSC prefetch requests — they expect RSC payload, not an HTML redirect.
     // Redirecting them causes a MIME type console error on every page that links to /login.
-    const isPrefetch = req.headers.get('Next-Router-Prefetch') === '1' || req.nextUrl.searchParams.has('_rsc')
+    // Require RSC header + _rsc param together: _rsc alone can be spoofed via URL, but RSC header is only sent by Next.js
+    const isPrefetch = req.headers.get('Next-Router-Prefetch') === '1' ||
+      (req.headers.get('RSC') === '1' && req.nextUrl.searchParams.has('_rsc'))
     if (!errorParam && !isPrefetch) {
       const url = req.nextUrl.clone()
       const cb = req.nextUrl.searchParams.get('callbackUrl')
