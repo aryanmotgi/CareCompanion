@@ -2,6 +2,13 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.2.1.2] - 2026-04-26
+
+Eliminates the MIME type console error for unauthenticated users. Protected routes prefetched by Next.js now get the login page served as RSC payload instead of an HTML redirect, which is what the browser expected.
+
+### Fixed
+- **MIME console error (unauthenticated prefetch)** — middleware now uses `NextResponse.rewrite()` instead of `NextResponse.redirect()` for RSC prefetch requests to protected routes, eliminating the "text/html is not executable" browser error
+
 ## [0.2.1.1] - 2026-04-26
 
 Two polish fixes from the post-ship QA scan: chat markdown now renders `---` as a visual divider instead of literal text, and the Contact link is in the footer alongside the header nav.
