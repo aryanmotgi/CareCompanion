@@ -41,6 +41,11 @@ const PUBLIC_PATHS = [
 export default auth((req) => {
   const { pathname } = req.nextUrl
 
+  // Detect RSC prefetch requests — these must not be redirected or they produce a
+  // MIME type console error (prefetch client expects RSC payload, not HTML redirect).
+  // Next-Router-Prefetch: 1 is the documented signal for RSC prefetch requests.
+  const isPrefetch = req.headers.get('Next-Router-Prefetch') === '1'
+
   const isPublic = PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + '/')
   )
@@ -60,7 +65,8 @@ export default auth((req) => {
     !isDemo &&
     !(req.auth.user as { role?: string | null }).role &&
     !isPublic &&
-    !pathname.startsWith('/set-role')
+    !pathname.startsWith('/set-role') &&
+    !isPrefetch
   ) {
     const url = req.nextUrl.clone()
     url.pathname = '/set-role'
@@ -70,7 +76,7 @@ export default auth((req) => {
   if (req.auth && pathname === '/login') {
     // Don't redirect if there's an error param — let the login page show the error
     const errorParam = req.nextUrl.searchParams.get('error')
-    if (!errorParam) {
+    if (!errorParam && !isPrefetch) {
       const url = req.nextUrl.clone()
       const cb = req.nextUrl.searchParams.get('callbackUrl')
       url.search = ''

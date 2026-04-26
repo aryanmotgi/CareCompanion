@@ -26,13 +26,6 @@ export default function ResetPasswordPage() {
         </div>
         <ResetRequestForm />
       </div>
-
-      <style>{`
-        @keyframes loginFadeUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </div>
   );
 }

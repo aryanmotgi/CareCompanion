@@ -25,6 +25,22 @@ export const authConfig: NextAuthConfig = {
     authorized({ auth }) {
       return !!auth?.user
     },
+    jwt({ token }) {
+      // Explicit pass-through. NextAuth would do this by default, but declaring the
+      // callback here makes the token → session data flow visible alongside session().
+      return token
+    },
+    session({ session, token }) {
+      // Map custom token fields to session.user so middleware can read them via req.auth.
+      // Edge-safe: no DB queries, no Node.js imports.
+      if (session.user) {
+        session.user.isDemo = (token.isDemo as boolean) ?? false
+        session.user.role = (token.role as string | null) ?? null
+        session.user.id = (token.dbUserId as string | null) ?? (token.sub ?? '')
+        session.user.displayName = (token.displayName as string | null) ?? (token.name ?? '')
+      }
+      return session
+    },
   },
   trustHost: true,
 }
