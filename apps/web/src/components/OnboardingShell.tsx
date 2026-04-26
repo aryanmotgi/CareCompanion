@@ -46,6 +46,7 @@ export function OnboardingShell({
 
   const [phase, setPhase] = useState<Phase>('care-group');
   const [careGroupId, setCareGroupId] = useState<string | undefined>();
+  const [createdProfileId, setCreatedProfileId] = useState<string | null>(null);
 
   const completedProfiles = allProfiles.filter(
     (p) => p.onboardingCompleted === true
@@ -110,8 +111,18 @@ export function OnboardingShell({
       <CareGroupScreen
         userRole={careGroupRole}
         userDisplayName={userName || userEmail.split('@')[0] || 'You'}
-        onComplete={(cgId) => {
+        onComplete={async (cgId) => {
           setCareGroupId(cgId);
+          // If this is a new user with no care profile, create one now
+          if (!activeProfileId) {
+            try {
+              const res = await fetch('/api/care-profiles', { method: 'POST' });
+              const data = await res.json() as { id?: string };
+              if (data.id) setCreatedProfileId(data.id);
+            } catch {
+              // proceed anyway — wizard will show error if profile missing
+            }
+          }
           setPhase('wizard');
         }}
       />
@@ -119,10 +130,12 @@ export function OnboardingShell({
   }
 
   // Phase: wizard
-  if (phase === 'wizard' && activeProfileId) {
+  const wizardProfileId = activeProfileId ?? createdProfileId;
+
+  if (phase === 'wizard' && wizardProfileId) {
     return (
       <OnboardingWizard
-        careProfileId={activeProfileId}
+        careProfileId={wizardProfileId}
         userRole={derivedRole}
         careGroupId={careGroupId}
         onComplete={() => setPhase('complete')}
@@ -131,7 +144,7 @@ export function OnboardingShell({
   }
 
   // Phase: complete — redirect to dashboard
-  if (phase === 'complete' || (phase === 'wizard' && !activeProfileId)) {
+  if (phase === 'complete' || (phase === 'wizard' && !activeProfileId && !createdProfileId)) {
     if (typeof window !== 'undefined') {
       window.location.href = '/dashboard';
     }
