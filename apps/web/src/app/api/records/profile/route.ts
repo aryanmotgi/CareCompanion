@@ -35,6 +35,7 @@ export async function PATCH(req: Request) {
     conditions?: string; allergies?: string; onboarding_completed?: boolean;
     onboarding_priorities?: string[] | null;
     role?: string; caregiver_for_name?: string;
+    caregiving_experience?: string; primary_concern?: string; field_overrides?: unknown;
   }>(req);
   if (bodyError) return bodyError;
   const { id, ...fields } = body;
@@ -53,6 +54,9 @@ export async function PATCH(req: Request) {
   if (fields.onboarding_priorities !== undefined) allowed.onboardingPriorities = fields.onboarding_priorities;
   if (fields.role !== undefined) allowed.role = fields.role;
   if (fields.caregiver_for_name !== undefined) allowed.caregiverForName = fields.caregiver_for_name;
+  if (fields.caregiving_experience !== undefined) allowed.caregivingExperience = fields.caregiving_experience;
+  if (fields.primary_concern !== undefined) allowed.primaryConcern = fields.primary_concern;
+  if (fields.field_overrides !== undefined) allowed.fieldOverrides = fields.field_overrides;
 
   if (Object.keys(allowed).length === 0) return apiError('No valid fields to update', 400);
 
