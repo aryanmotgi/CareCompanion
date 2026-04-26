@@ -523,6 +523,7 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-7">
             <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-white/50 hover:text-white transition-colors cursor-pointer">Features</button>
             <Link href="/about" className="text-sm text-white/50 hover:text-white transition-colors">About</Link>
+            <Link href="/contact" className="text-sm text-white/50 hover:text-white transition-colors">Contact</Link>
             <Link href="/privacy" className="text-sm text-white/50 hover:text-white transition-colors">Privacy</Link>
             <Link href="/terms" className="text-sm text-white/50 hover:text-white transition-colors">Terms</Link>
           </div>
@@ -541,6 +542,7 @@ export default function LandingPage() {
             <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col gap-1">
               <button onClick={() => { setMobileMenuOpen(false); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-left text-sm text-white/60 hover:text-white py-2.5 cursor-pointer">Features</button>
               <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="text-sm text-white/60 hover:text-white py-2.5">About</Link>
+              <Link href="/contact" onClick={() => setMobileMenuOpen(false)} className="text-sm text-white/60 hover:text-white py-2.5">Contact</Link>
               <Link href="/privacy" onClick={() => setMobileMenuOpen(false)} className="text-sm text-white/60 hover:text-white py-2.5">Privacy</Link>
               <Link href="/terms" onClick={() => setMobileMenuOpen(false)} className="text-sm text-white/60 hover:text-white py-2.5">Terms</Link>
               <div className="border-t border-white/[0.07] pt-3 mt-2 flex flex-col gap-2">
