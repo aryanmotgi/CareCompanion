@@ -25,6 +25,20 @@ export const authConfig: NextAuthConfig = {
     authorized({ auth }) {
       return !!auth?.user
     },
+    jwt({ token }) {
+      // Pass token through — isDemo and role are already on it from auth.ts callbacks
+      // or from the demo/start JWT mint. Making them available to session() below.
+      return token
+    },
+    session({ session, token }) {
+      // Map custom token fields to session.user so middleware can read them via req.auth.
+      // Edge-safe: no DB queries, no Node.js imports.
+      if (session.user) {
+        session.user.isDemo = (token.isDemo as boolean) ?? false
+        session.user.role = (token.role as string | null) ?? null
+      }
+      return session
+    },
   },
   trustHost: true,
 }
