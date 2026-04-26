@@ -71,9 +71,15 @@ export function CaregiverWizard({
 
   const handleNotifications = async (enable: boolean) => {
     if (enable && 'Notification' in window) {
-      if (Notification.permission === 'granted') { onComplete(); return }
-      await Notification.requestPermission()
+      if (Notification.permission !== 'granted') {
+        await Notification.requestPermission()
+      }
     }
+    await fetch('/api/onboarding/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ careProfileId }),
+    }).catch(() => {})
     onComplete()
   }
 

@@ -132,7 +132,7 @@ function PasswordInput({
   )
 }
 
-export function SignupForm() {
+export function SignupForm({ joinGroup, joinToken }: { joinGroup?: string; joinToken?: string } = {}) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -210,8 +210,13 @@ export function SignupForm() {
       if (result?.error) {
         setError('Account created but sign-in failed. Please log in manually.')
         setLoading(false)
-      } else if (result?.url) {
-        window.location.href = result.url
+      } else if (result?.ok) {
+        // If user arrived via a care group invite link, complete the join before onboarding
+        if (joinGroup && joinToken) {
+          window.location.href = `/join?group=${joinGroup}&token=${joinToken}`
+        } else {
+          window.location.href = '/onboarding'
+        }
       } else {
         setError('Something went wrong. Please try again.')
         setLoading(false)

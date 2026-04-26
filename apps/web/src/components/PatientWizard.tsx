@@ -59,6 +59,11 @@ export function PatientWizard({
     if (enable && 'Notification' in window && Notification.permission !== 'granted') {
       await Notification.requestPermission()
     }
+    await fetch('/api/onboarding/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ careProfileId }),
+    }).catch(() => {})
     onComplete()
   }
 
