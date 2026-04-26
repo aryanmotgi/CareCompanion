@@ -19,6 +19,8 @@ function renderMarkdown(text: string) {
     // List items
     if (line.startsWith('- ') || line.startsWith('* ')) return <li key={i} className="ml-4 list-disc text-[var(--text)]">{formatInline(line.slice(2))}</li>;
     if (/^\d+\. /.test(line)) return <li key={i} className="ml-4 list-decimal text-[var(--text)]">{formatInline(line.replace(/^\d+\. /, ''))}</li>;
+    // Horizontal rule
+    if (line.trim() === '---' || line.trim() === '***' || line.trim() === '___') return <hr key={i} className="border-white/[0.1] my-2" />;
     // Empty line
     if (!line.trim()) return <div key={i} className="h-2" />;
     // Regular paragraph

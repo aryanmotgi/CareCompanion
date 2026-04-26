@@ -2,6 +2,14 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.2.1.1] - 2026-04-26
+
+Two polish fixes from the post-ship QA scan: chat markdown now renders `---` as a visual divider instead of literal text, and the Contact link is in the footer alongside the header nav.
+
+### Fixed
+- **Chat `---` rendering** — AI responses using `---` as section dividers now render as a styled `<hr>` instead of literal dashes in the message bubble
+- **Contact link missing from footer** — footer now has About / Contact / Privacy / Terms, matching the header nav
+
 ## [0.2.1.0] - 2026-04-26
 
 Production bug fixes across mobile rendering, auth flow, and the guest chat experience — all found and fixed via automated QA testing.
