@@ -1743,7 +1743,7 @@ h1, h2, h3, .font-display {
   letter-spacing: -0.01em;
 }
 
-/* Login page fade-up animation */
+/* Auth pages fade-up animation */
 @keyframes loginFadeUp {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
