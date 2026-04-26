@@ -1,7 +1,13 @@
 import { PublicNav } from '@/components/PublicNav';
 import { SignupForm } from '@/components/SignupForm';
 
-export default function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ joinGroup?: string; joinToken?: string }>
+}) {
+  const { joinGroup, joinToken } = await searchParams
+
   return (
     <div className="relative min-h-screen min-h-dvh flex flex-col items-center justify-center px-4 sm:px-6 overflow-hidden" style={{ background: '#05060F' }}>
 
@@ -33,7 +39,7 @@ export default function SignupPage() {
           <p className="text-sm text-white/40">Create your account</p>
         </div>
 
-        <SignupForm />
+        <SignupForm joinGroup={joinGroup} joinToken={joinToken} />
       </div>
 
       <style>{`

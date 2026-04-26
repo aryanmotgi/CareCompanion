@@ -1,5 +1,39 @@
 import type { CareProfile, Medication, Doctor, Appointment, LabResult, Claim, Notification, PriorAuth, FsaHsa, Memory, ConversationSummary, SymptomEntry, TreatmentCycle } from './types';
 
+export function buildRoleContext(opts: {
+  role: string | null
+  primaryConcern: string | null
+  caregivingExperience: string | null
+}): string {
+  const parts: string[] = []
+
+  if (opts.role === 'caregiver') {
+    parts.push('The user is a caregiver helping a patient manage their cancer care.')
+    if (opts.caregivingExperience === 'first_time') {
+      parts.push('This is their first time caregiving — use plain language, offer extra context, be encouraging.')
+    } else if (opts.caregivingExperience === 'experienced') {
+      parts.push('They are an experienced caregiver — be direct and clinical when appropriate.')
+    }
+  } else if (opts.role === 'patient') {
+    parts.push('The user is a patient managing their own cancer care.')
+  } else if (opts.role === 'self') {
+    parts.push('The user is managing their own health care independently without a dedicated caregiver.')
+  }
+
+  const concernMap: Record<string, string> = {
+    medications: 'Their primary concern is managing medications — prioritize medication tracking, dose schedules, and drug interaction explanations.',
+    lab_results: 'Their primary concern is understanding lab results and appointments — proactively explain test values and flag abnormal results.',
+    coordinating_care: 'Their primary concern is coordinating care — surface specialist appointments, referral tracking, and questions to ask doctors.',
+    emotional_support: 'Their primary concern is emotional support — open with empathy, offer coping resources, monitor caregiver stress.',
+  }
+
+  if (opts.primaryConcern && concernMap[opts.primaryConcern]) {
+    parts.push(concernMap[opts.primaryConcern])
+  }
+
+  return parts.join(' ')
+}
+
 const BASE_PROMPT = `You are CareCompanion, a warm and caring AI assistant built specifically for cancer patients and their family caregivers navigating the cancer journey.
 
 Your job:

@@ -156,7 +156,11 @@ function MedRow({ med, onTake, disabled }: { med: Med; onTake: (logId: string, m
             </Text>
             <Text style={[styles.medTime, { color: theme.textMuted }]}>{med.time}</Text>
           </View>
-          <Pressable onPress={canTake ? handleTake : undefined} style={[styles.checkBtn, disabled && { opacity: 0.4 }]}>
+          <Pressable
+            onPress={canTake ? handleTake : undefined}
+            accessibilityLabel={!med.logId && !taken ? 'No reminder set — tap to add one in Settings' : undefined}
+            style={[styles.checkBtn, (!canTake && !taken) && { opacity: 0.35 }]}
+          >
             <Animated.View
               style={[
                 styles.checkInner,

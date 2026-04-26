@@ -30,3 +30,54 @@ describe('registerSchema', () => {
     expect(registerSchema.safeParse({ email: 'a@b.com', password: 'validpass', displayName: 'Test' }).success).toBe(true)
   })
 })
+
+describe('registerSchema role field', () => {
+  it('accepts valid role: caregiver', () => {
+    const result = registerSchema.safeParse({
+      email: 'test@example.com',
+      password: 'password123',
+      displayName: 'Test User',
+      role: 'caregiver',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts valid role: patient', () => {
+    const result = registerSchema.safeParse({
+      email: 'test@example.com',
+      password: 'password123',
+      displayName: 'Test User',
+      role: 'patient',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts valid role: self', () => {
+    const result = registerSchema.safeParse({
+      email: 'test@example.com',
+      password: 'password123',
+      displayName: 'Test User',
+      role: 'self',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects invalid role value', () => {
+    const result = registerSchema.safeParse({
+      email: 'test@example.com',
+      password: 'password123',
+      displayName: 'Test User',
+      role: 'admin',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('accepts missing role (optional)', () => {
+    const result = registerSchema.safeParse({
+      email: 'test@example.com',
+      password: 'password123',
+      displayName: 'Test User',
+    })
+    expect(result.success).toBe(true)
+  })
+})

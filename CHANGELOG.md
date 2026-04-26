@@ -2,6 +2,30 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.2.0.0] - 2026-04-25
+
+Complete redesign of the auth and onboarding experience. Caregivers and patients now select their role at signup, connect through a shared Care Group, and get a personalized onboarding wizard with role-aware AI from day one.
+
+### Added
+- **Role selection at signup** — users pick Caregiver, Patient, or Self-care on the signup form; role persists through Google/Apple OAuth via short-lived cookie
+- **Care Group** — family name + shared password to link accounts; create (generates QR + invite link) or join (name + password); ConnectedCelebration screen when second member joins
+- **QRCodePanel** — 10-minute countdown, blur-on-expiry overlay, tap-to-regenerate, Share + Copy link buttons
+- **CaregiverWizard** (6 steps) — patient info, relationship, caregiving experience, primary concern (personalizes AI), Apple Health invite explainer, diagnosis placeholder, priorities, notifications
+- **PatientWizard** (4 steps) — hospital search, Apple Health connect → confirm records (with field overrides), manual entry fallback, priorities, notifications
+- **WizardProgressBar** — segmented step indicator with clickable back-navigation on completed steps
+- **Role-aware AI** — `buildRoleContext()` prepends role, primaryConcern, and caregivingExperience to every `/api/chat` system prompt
+- **Onboarding recap email** — `POST /api/onboarding/complete` marks completion and sends branded HTML summary with diagnosis, care group name, and dashboard link
+- **Care Group API routes** — create, join (with 10-member cap), invite (with 5-token cap and 7-day expiry), status polling, deep-link `/join` page
+- **`/set-role` page** — role selector for pre-existing users with no role; middleware redirects them there before any authenticated page
+- **Care Group login tab** — LoginForm now has an Email / Care Group toggle; group login resolves to the owner's account
+- New DB tables: `care_groups`, `care_group_members`, `care_group_invites`; new columns: `role` on users, `caregivingExperience`, `primaryConcern`, `fieldOverrides` on care_profiles
+
+### Changed
+- `OnboardingWizard` reduced to a thin role router delegating to `CaregiverWizard` or `PatientWizard`
+- `OnboardingShell` now shows Care Group setup as the first phase before the wizard
+- `SignupForm` includes `RoleSelector` above name/email; role validates before credential or OAuth submit
+- HealthKit sync insert loop wrapped in per-record try/catch — one bad FHIR record no longer aborts the entire batch
+
 ## [0.1.2.0] - 2026-04-06
 
 Complete onboarding overhaul. New users now get a guided tour, personalized dashboard, and a unified setup flow that replaces three separate paths.

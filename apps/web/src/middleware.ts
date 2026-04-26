@@ -51,6 +51,22 @@ export default auth((req) => {
     return NextResponse.redirect(url)
   }
 
+  // Redirect pre-feature users (no role) to /set-role — only on private pages.
+  // Skip for demo users (isDemo=true) — they don't need a role.
+  // Skip for public paths — no reason to gate them.
+  const isDemo = (req.auth?.user as { isDemo?: boolean } | undefined)?.isDemo === true
+  if (
+    req.auth?.user &&
+    !isDemo &&
+    !(req.auth.user as { role?: string | null }).role &&
+    !isPublic &&
+    !pathname.startsWith('/set-role')
+  ) {
+    const url = req.nextUrl.clone()
+    url.pathname = '/set-role'
+    return NextResponse.redirect(url)
+  }
+
   if (req.auth && pathname === '/login') {
     // Don't redirect if there's an error param — let the login page show the error
     const errorParam = req.nextUrl.searchParams.get('error')

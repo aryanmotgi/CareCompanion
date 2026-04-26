@@ -22,6 +22,7 @@ export async function POST(req: Request) {
   }
 
   let synced = 0
+  let errors = 0
   const counts = { medications: 0, labResults: 0, appointments: 0, skipped: 0 }
 
   for (const record of records) {
@@ -30,55 +31,70 @@ export async function POST(req: Request) {
     if (!record.healthkitFhirId) { counts.skipped++; continue }
 
     if (record.type === 'medication') {
-      await db.insert(medications)
-        .values({
-          careProfileId: careProfile.id,
-          name: record.name,
-          dose: record.dose,
-          frequency: record.frequency,
-          prescribingDoctor: record.prescribingDoctor,
-          healthkitFhirId: record.healthkitFhirId,
-        })
-        .onConflictDoUpdate({
-          target: medications.healthkitFhirId,
-          set: { name: record.name, dose: record.dose, frequency: record.frequency },
-        })
-      counts.medications++
-      synced++
+      try {
+        await db.insert(medications)
+          .values({
+            careProfileId: careProfile.id,
+            name: record.name,
+            dose: record.dose,
+            frequency: record.frequency,
+            prescribingDoctor: record.prescribingDoctor,
+            healthkitFhirId: record.healthkitFhirId,
+          })
+          .onConflictDoUpdate({
+            target: medications.healthkitFhirId,
+            set: { name: record.name, dose: record.dose, frequency: record.frequency },
+          })
+        counts.medications++
+        synced++
+      } catch (err) {
+        errors++
+        console.error('[healthkit/sync] insert failed for medication record:', err instanceof Error ? err.message : err)
+      }
     } else if (record.type === 'labResult') {
-      await db.insert(labResults)
-        .values({
-          userId: session.user.id,      // labResults uses userId, not careProfileId
-          testName: record.testName,
-          value: record.value,
-          unit: record.unit,
-          referenceRange: record.referenceRange,
-          dateTaken: record.dateTaken,  // "YYYY-MM-DD" date string matches date column
-          source: 'HealthKit',
-          healthkitFhirId: record.healthkitFhirId,
-        })
-        .onConflictDoUpdate({
-          target: labResults.healthkitFhirId,
-          set: { value: record.value, unit: record.unit },
-        })
-      counts.labResults++
-      synced++
+      try {
+        await db.insert(labResults)
+          .values({
+            userId: session.user.id,      // labResults uses userId, not careProfileId
+            testName: record.testName,
+            value: record.value,
+            unit: record.unit,
+            referenceRange: record.referenceRange,
+            dateTaken: record.dateTaken,  // "YYYY-MM-DD" date string matches date column
+            source: 'HealthKit',
+            healthkitFhirId: record.healthkitFhirId,
+          })
+          .onConflictDoUpdate({
+            target: labResults.healthkitFhirId,
+            set: { value: record.value, unit: record.unit },
+          })
+        counts.labResults++
+        synced++
+      } catch (err) {
+        errors++
+        console.error('[healthkit/sync] insert failed for labResult record:', err instanceof Error ? err.message : err)
+      }
     } else if (record.type === 'appointment') {
-      await db.insert(appointments)
-        .values({
-          careProfileId: careProfile.id,
-          doctorName: record.doctorName,
-          specialty: record.specialty,
-          dateTime: record.dateTime ? new Date(record.dateTime) : null,
-          location: record.location,
-          healthkitFhirId: record.healthkitFhirId,
-        })
-        .onConflictDoUpdate({
-          target: appointments.healthkitFhirId,
-          set: { dateTime: record.dateTime ? new Date(record.dateTime) : null, location: record.location },
-        })
-      counts.appointments++
-      synced++
+      try {
+        await db.insert(appointments)
+          .values({
+            careProfileId: careProfile.id,
+            doctorName: record.doctorName,
+            specialty: record.specialty,
+            dateTime: record.dateTime ? new Date(record.dateTime) : null,
+            location: record.location,
+            healthkitFhirId: record.healthkitFhirId,
+          })
+          .onConflictDoUpdate({
+            target: appointments.healthkitFhirId,
+            set: { dateTime: record.dateTime ? new Date(record.dateTime) : null, location: record.location },
+          })
+        counts.appointments++
+        synced++
+      } catch (err) {
+        errors++
+        console.error('[healthkit/sync] insert failed for appointment record:', err instanceof Error ? err.message : err)
+      }
     }
   }
 
@@ -90,5 +106,5 @@ export async function POST(req: Request) {
     details: { counts }, // counts only — medications: N, labResults: N, appointments: N
   })
 
-  return NextResponse.json({ synced })
+  return NextResponse.json({ synced, errors })
 }

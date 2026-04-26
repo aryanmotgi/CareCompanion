@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { OnboardingProfilePicker, PickerProfile } from './OnboardingProfilePicker';
+import { CareGroupScreen } from './CareGroupScreen';
 
 const OnboardingWizard = dynamic(
   () => import('@/components/OnboardingWizard').then((m) => m.OnboardingWizard),
@@ -27,18 +28,25 @@ interface OnboardingShellProps {
   userName: string;
   userEmail: string;
   userAvatar: string;
+  userRole?: 'caregiver' | 'patient' | 'self' | null;
 }
+
+type Phase = 'care-group' | 'wizard' | 'complete';
 
 export function OnboardingShell({
   allProfiles,
   userName,
   userEmail,
-  userAvatar,
+  userRole: userRoleProp,
 }: OnboardingShellProps) {
   // undefined = not yet chosen; null = create new; string = edit existing
   const [selectedProfileId, setSelectedProfileId] = useState<
     string | null | undefined
   >(allProfiles.length === 1 ? allProfiles[0].id : undefined);
+
+  const [phase, setPhase] = useState<Phase>('care-group');
+  const [careGroupId, setCareGroupId] = useState<string | undefined>();
+  const [createdProfileId, setCreatedProfileId] = useState<string | null>(null);
 
   const completedProfiles = allProfiles.filter(
     (p) => p.onboardingCompleted === true
@@ -64,19 +72,20 @@ export function OnboardingShell({
 
   const activeProfileId = activeProfile?.id ?? null;
 
-  // Map camelCase DB shape → snake_case ExistingProfile for OnboardingWizard
-  const existingProfileForWizard = activeProfile
-    ? {
-        id: activeProfile.id,
-        cancer_type: activeProfile.cancerType,
-        cancer_stage: activeProfile.cancerStage,
-        treatment_phase: activeProfile.treatmentPhase,
-        relationship: activeProfile.relationship,
-        patient_name: activeProfile.patientName,
-        patient_age: activeProfile.patientAge,
-        onboarding_priorities: activeProfile.onboardingPriorities,
-      }
-    : null;
+  // Derive userRole: prefer explicit prop, fall back to relationship on existing profile
+  const derivedRole = ((): 'caregiver' | 'patient' | 'self' | null => {
+    if (userRoleProp != null) return userRoleProp;
+    const rel = activeProfile?.relationship;
+    if (rel === 'self') return 'patient';
+    if (rel && rel !== 'self') return 'caregiver';
+    return null;
+  })();
+
+  // Normalize to CareGroupScreen-compatible type (no null)
+  const careGroupRole: 'caregiver' | 'patient' | 'self' =
+    derivedRole === 'caregiver' ? 'caregiver'
+    : derivedRole === 'self' ? 'self'
+    : 'patient';
 
   // Picker profiles (only need a subset of fields)
   const pickerProfiles: PickerProfile[] = allProfiles.map((p) => ({
@@ -96,13 +105,51 @@ export function OnboardingShell({
     );
   }
 
-  return (
-    <OnboardingWizard
-      userName={userName}
-      userEmail={userEmail}
-      userAvatar={userAvatar}
-      existingProfileId={activeProfileId}
-      existingProfile={existingProfileForWizard}
-    />
-  );
+  // Phase: care-group
+  if (phase === 'care-group') {
+    return (
+      <CareGroupScreen
+        userRole={careGroupRole}
+        userDisplayName={userName || userEmail.split('@')[0] || 'You'}
+        onComplete={async (cgId) => {
+          setCareGroupId(cgId);
+          // If this is a new user with no care profile, create one now
+          if (!activeProfileId) {
+            try {
+              const res = await fetch('/api/care-profiles', { method: 'POST' });
+              const data = await res.json() as { id?: string };
+              if (data.id) setCreatedProfileId(data.id);
+            } catch {
+              // proceed anyway — wizard will show error if profile missing
+            }
+          }
+          setPhase('wizard');
+        }}
+      />
+    );
+  }
+
+  // Phase: wizard
+  const wizardProfileId = activeProfileId ?? createdProfileId;
+
+  if (phase === 'wizard' && wizardProfileId) {
+    return (
+      <OnboardingWizard
+        careProfileId={wizardProfileId}
+        userRole={derivedRole}
+        careGroupId={careGroupId}
+        onComplete={() => setPhase('complete')}
+      />
+    );
+  }
+
+  // Phase: complete — redirect to dashboard
+  if (phase === 'complete' || (phase === 'wizard' && !activeProfileId && !createdProfileId)) {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/dashboard';
+    }
+    return null;
+  }
+
+  return null;
 }

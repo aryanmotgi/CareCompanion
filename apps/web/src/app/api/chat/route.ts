@@ -4,7 +4,7 @@ import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { db } from '@/lib/db';
 import { careProfiles, medications, doctors, appointments, labResults, notifications, claims, priorAuths, fsaHsa, symptomEntries, insurance, messages, treatmentCycles } from '@/lib/db/schema';
 import { eq, desc, and, isNull } from 'drizzle-orm';
-import { buildSystemPrompt } from '@/lib/system-prompt';
+import { buildSystemPrompt, buildRoleContext } from '@/lib/system-prompt';
 import { buildTools } from '@/lib/tools';
 import { extractAndSaveMemories, loadMemories, loadConversationSummaries, touchReferencedMemories, summarizeConversation } from '@/lib/memory';
 import { orchestrate } from '@/lib/agents/orchestrator';
@@ -54,7 +54,7 @@ async function handler(req: Request) {
       : '';
 
     const demoResult = streamText({
-      model: anthropic('claude-sonnet-4-6'),
+      model: anthropic('claude-sonnet-4.6'),
       maxOutputTokens: 512,
       system: `You are CareCompanion AI. The user is in demo mode exploring the app.
 Give a short, helpful 1-2 sentence answer about their question as it relates to cancer care.
@@ -175,7 +175,13 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
   // Run the multi-agent orchestrator in parallel with building the system prompt
   const conversationHistory = conversationMessages.slice(-6).map((m) => `${m.role}: ${m.content}`).join('\n');
 
-  const [orchestratorResult, systemPrompt] = await Promise.all([
+  const roleContext = buildRoleContext({
+    role: dbUser!.role ?? null,
+    primaryConcern: profile?.primaryConcern ?? null,
+    caregivingExperience: profile?.caregivingExperience ?? null,
+  })
+
+  const [orchestratorResult, baseSystemPrompt] = await Promise.all([
     userMessageText
       ? orchestrate(userMessageText, conversationHistory, {
           profile,
@@ -200,6 +206,10 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     )),
   ]);
 
+  const systemPrompt = roleContext
+    ? `${roleContext}\n\n${baseSystemPrompt}`
+    : baseSystemPrompt
+
   // Append specialist context to system prompt if multi-agent was used
   const fullSystemPrompt = orchestratorResult.synthesizedContext
     ? systemPrompt + orchestratorResult.synthesizedContext
@@ -209,7 +219,7 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
   const tools = buildTools(dbUser!.id, profile?.id || null);
 
   const result = streamText({
-    model: anthropic('claude-sonnet-4-6'),
+    model: anthropic('claude-sonnet-4.6'),
     maxOutputTokens: 4096,
     system: fullSystemPrompt,
     messages: conversationMessages,

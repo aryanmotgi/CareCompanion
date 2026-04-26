@@ -31,6 +31,7 @@ export const registerSchema = z.object({
   email: z.string().email('Valid email required'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   displayName: z.string().min(1, 'Display name is required'),
+  role: z.enum(['caregiver', 'patient', 'self']).optional(),
 })
 
 export type MedicationInput = z.infer<typeof medicationSchema>
