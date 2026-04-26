@@ -36,6 +36,8 @@ export const authConfig: NextAuthConfig = {
       if (session.user) {
         session.user.isDemo = (token.isDemo as boolean) ?? false
         session.user.role = (token.role as string | null) ?? null
+        session.user.id = (token.dbUserId as string | null) ?? (token.sub ?? '')
+        session.user.displayName = (token.displayName as string | null) ?? (token.name ?? '')
       }
       return session
     },

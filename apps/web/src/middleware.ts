@@ -41,6 +41,11 @@ const PUBLIC_PATHS = [
 export default auth((req) => {
   const { pathname } = req.nextUrl
 
+  // Detect RSC prefetch requests — these must not be redirected or they produce a
+  // MIME type console error (prefetch client expects RSC payload, not HTML redirect).
+  const isPrefetch = req.headers.get('Next-Router-Prefetch') === '1' ||
+    (req.headers.get('RSC') === '1' && req.nextUrl.searchParams.has('_rsc'))
+
   const isPublic = PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + '/')
   )
@@ -60,7 +65,8 @@ export default auth((req) => {
     !isDemo &&
     !(req.auth.user as { role?: string | null }).role &&
     !isPublic &&
-    !pathname.startsWith('/set-role')
+    !pathname.startsWith('/set-role') &&
+    !isPrefetch
   ) {
     const url = req.nextUrl.clone()
     url.pathname = '/set-role'
@@ -70,11 +76,6 @@ export default auth((req) => {
   if (req.auth && pathname === '/login') {
     // Don't redirect if there's an error param — let the login page show the error
     const errorParam = req.nextUrl.searchParams.get('error')
-    // Don't redirect RSC prefetch requests — they expect RSC payload, not an HTML redirect.
-    // Redirecting them causes a MIME type console error on every page that links to /login.
-    // Require RSC header + _rsc param together: _rsc alone can be spoofed via URL, but RSC header is only sent by Next.js
-    const isPrefetch = req.headers.get('Next-Router-Prefetch') === '1' ||
-      (req.headers.get('RSC') === '1' && req.nextUrl.searchParams.has('_rsc'))
     if (!errorParam && !isPrefetch) {
       const url = req.nextUrl.clone()
       const cb = req.nextUrl.searchParams.get('callbackUrl')
