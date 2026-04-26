@@ -2,6 +2,22 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.2.1.0] - 2026-04-26
+
+Production bug fixes across mobile rendering, auth flow, and the guest chat experience — all found and fixed via automated QA testing.
+
+### Fixed
+- **Mobile login blank** — login, signup, and reset-password pages were invisible at 375px; moved `@keyframes loginFadeUp` from JSX inline style tags to `globals.css` so the animation runs before hydration
+- **Mobile home hero invisible** — the 360×720px phone mockup was stacking above the hero text on mobile, pushing the headline and CTAs off-screen; now hidden below the `lg` breakpoint
+- **Interactive demo stuck on role screen** — demo users were always redirected to `/set-role` because the edge auth config had no session callback to surface `isDemo` from the JWT; added callbacks so the middleware can correctly detect demo sessions
+- **Console MIME error on every page** — Next.js was prefetching `/login` as an RSC payload, middleware redirected it to `/dashboard`, browser logged a MIME type error; added `isPrefetch` guard using the official `Next-Router-Prefetch` header
+- **Chat response showing literal `---` separator** — forced intro instruction in the guest chat system prompt caused the AI to prepend a preamble and markdown separator before every answer; removed the instruction
+- **Contact link missing from home page nav** — Contact was in the login/signup nav but not the marketing page nav; added to both desktop and mobile menu
+
+### Changed
+- **JWT type declarations** — extended the NextAuth JWT interface with `isDemo`, `dbUserId`, and `displayName` fields that were being written to tokens but not declared in the TypeScript types
+- **Auth session shape** — edge auth config now maps `id` and `displayName` from token to session, matching the server-side auth config
+
 ## [0.2.0.0] - 2026-04-25
 
 Complete redesign of the auth and onboarding experience. Caregivers and patients now select their role at signup, connect through a shared Care Group, and get a personalized onboarding wizard with role-aware AI from day one.
