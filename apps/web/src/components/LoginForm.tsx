@@ -135,21 +135,13 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
       email: email.trim().toLowerCase(),
       password,
       redirect: false,
-      callbackUrl: callbackUrl || '/dashboard',
     })
 
     if (result?.error) {
       setError('Invalid email or password. Please try again.')
       setLoading(false)
-    } else if (result?.url) {
-      // Use pathname only — result.url may contain the production domain when
-      // AUTH_URL is set to prod but the current request is on a preview URL.
-      try {
-        const parsed = new URL(result.url)
-        window.location.href = parsed.pathname + parsed.search
-      } catch {
-        window.location.href = result.url
-      }
+    } else if (result?.ok) {
+      router.push(callbackUrl || '/dashboard')
     } else {
       setError('Something went wrong. Please try again.')
       setLoading(false)
