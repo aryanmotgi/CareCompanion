@@ -43,8 +43,8 @@ export default auth((req) => {
 
   // Detect RSC prefetch requests — these must not be redirected or they produce a
   // MIME type console error (prefetch client expects RSC payload, not HTML redirect).
-  const isPrefetch = req.headers.get('Next-Router-Prefetch') === '1' ||
-    (req.headers.get('RSC') === '1' && req.nextUrl.searchParams.has('_rsc'))
+  // Next-Router-Prefetch: 1 is the documented signal for RSC prefetch requests.
+  const isPrefetch = req.headers.get('Next-Router-Prefetch') === '1'
 
   const isPublic = PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + '/')
