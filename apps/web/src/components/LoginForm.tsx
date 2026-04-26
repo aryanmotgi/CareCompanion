@@ -142,7 +142,14 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
       setError('Invalid email or password. Please try again.')
       setLoading(false)
     } else if (result?.url) {
-      window.location.href = result.url
+      // Use pathname only — result.url may contain the production domain when
+      // AUTH_URL is set to prod but the current request is on a preview URL.
+      try {
+        const parsed = new URL(result.url)
+        window.location.href = parsed.pathname + parsed.search
+      } catch {
+        window.location.href = result.url
+      }
     } else {
       setError('Something went wrong. Please try again.')
       setLoading(false)
