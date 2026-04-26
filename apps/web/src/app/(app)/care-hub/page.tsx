@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
-import { users } from '@/lib/db/schema'
+import { users, careGroupMembers, careGroups } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { getActiveProfile } from '@/lib/active-profile'
 import CareHubView from '@/components/CareHubView'
@@ -40,10 +40,24 @@ async function CareHubContent() {
   const profile = await getActiveProfile(dbUser.id)
   if (!profile) redirect('/onboarding')
 
+  // Fetch the user's Care Group (if any)
+  const membership = await db.query.careGroupMembers.findFirst({
+    where: eq(careGroupMembers.userId, dbUser.id),
+  })
+
+  let careGroupName: string | null = null
+  if (membership) {
+    const group = await db.query.careGroups.findFirst({
+      where: eq(careGroups.id, membership.careGroupId),
+    })
+    careGroupName = group?.name ?? null
+  }
+
   return (
     <CareHubView
       careProfileId={profile.id}
       patientName={profile.patientName || 'your loved one'}
+      careGroupName={careGroupName}
     />
   )
 }

@@ -7,6 +7,7 @@ import Link from 'next/link'
 interface CareHubViewProps {
   careProfileId: string
   patientName: string
+  careGroupName?: string | null
 }
 
 interface CareHubData {
@@ -106,7 +107,7 @@ function SeverityTint({ severity }: { severity: string }) {
   return <div className="absolute inset-0 rounded-xl bg-emerald-500/[0.04]" />
 }
 
-export default function CareHubView({ careProfileId, patientName }: CareHubViewProps) {
+export default function CareHubView({ careProfileId, patientName, careGroupName }: CareHubViewProps) {
   const [data, setData] = useState<CareHubData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -213,6 +214,20 @@ export default function CareHubView({ careProfileId, patientName }: CareHubViewP
 
   return (
     <div className="px-4 sm:px-5 py-5 sm:py-6">
+      {careGroupName && (
+        <div
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl mb-4 text-sm"
+          style={{
+            background: 'rgba(124,58,237,0.08)',
+            border: '1px solid rgba(124,58,237,0.2)',
+            color: 'rgba(255,255,255,0.7)',
+          }}
+        >
+          <span>👨‍👩‍👧</span>
+          <span>Care Group: <strong style={{ color: '#c4b5fd' }}>{careGroupName}</strong></span>
+        </div>
+      )}
+
       {/* Patient Status Banner */}
       <div className="cc-glow rounded-2xl p-4 mb-4">
         <div className="flex items-center gap-3">
