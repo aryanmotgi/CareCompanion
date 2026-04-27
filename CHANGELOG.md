@@ -2,6 +2,16 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.2.2.0] - 2026-04-27
+
+Full security hardening pass based on an automated OWASP audit (5 findings, all resolved).
+
+### Security
+- **Rate limiting on mobile auth endpoints** — `POST /api/auth/mobile-login` and `POST /api/auth/mobile-care-group-login` now enforce 5 attempts per hour per IP, closing brute-force account takeover vectors against patient medical data
+- **Memory prompt injection protection** — user-derived memories are now sanitized before injection into the system prompt: low-confidence facts are excluded, and facts matching AI behavioral directive patterns (`always recommend`, `never suggest`, `ignore`, etc.) are dropped before they reach Claude
+- **CSP `unsafe-eval` removed** — `next.config.mjs` no longer includes `unsafe-eval` in `script-src`, tightening XSS defense for all users
+- **`apps/mobile/.env` untracked** — removed from git history staging, `.gitignore` expanded to cover `.env` and `*/.env` patterns, `.env.example` added to document the public URL
+
 ## [0.2.1.4] - 2026-04-26
 
 Third attempt at the MIME console error. Instead of rewriting to the login page (which Vercel's edge layer was overriding), unauthenticated RSC prefetch requests to protected routes now return 204 No Content. No content = nothing for the browser to parse as a script = no MIME error. Next.js falls back gracefully.
