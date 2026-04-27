@@ -1,5 +1,30 @@
 import type { CareProfile, Medication, Doctor, Appointment, LabResult, Claim, Notification, PriorAuth, FsaHsa, Memory, ConversationSummary, SymptomEntry, TreatmentCycle } from './types';
 
+// Patterns that indicate a user-crafted AI behavioral directive rather than a
+// genuine patient/caregiver fact. These must not be injected into the system prompt.
+const AI_DIRECTIVE_PATTERNS: RegExp[] = [
+  /\b(always|never)\s+(recommend|suggest|tell|say|respond|answer|advise|instruct)\b/i,
+  /\b(ignore|forget|disregard|override|bypass)\b/i,
+  /\bfrom now on\b/i,
+  /\byour\s+(new\s+)?(instruction|directive|rule|guideline|system prompt|behavior|persona)\b/i,
+  /\bwhen\s+(i|they|the user)\s+ask\b/i,
+  /\bdo not\s+(recommend|suggest|mention|discuss)\b/i,
+  /\bstop\s+(recommending|suggesting|telling)\b/i,
+  /\bact as\b/i,
+  /\bpretend\b/i,
+];
+
+/**
+ * Returns the fact string if it looks like a genuine patient/caregiver fact,
+ * or null if it matches an AI directive injection pattern.
+ */
+function sanitizeMemoryFact(fact: string): string | null {
+  if (AI_DIRECTIVE_PATTERNS.some((p) => p.test(fact))) {
+    return null;
+  }
+  return fact;
+}
+
 export function buildRoleContext(opts: {
   role: string | null
   primaryConcern: string | null
@@ -341,15 +366,18 @@ export function buildSystemPrompt(
       }
     }
 
-    // Long-term memories — the agent's permanent knowledge about this patient
-    if (memories && memories.length > 0) {
+    // Long-term memories — the agent's permanent knowledge about this patient.
+    // Only high/medium confidence facts are injected; low-confidence inferences are
+    // excluded to reduce noise and limit prompt-injection surface area.
+    const safeMemories = (memories ?? []).filter((m) => m.confidence !== 'low');
+    if (safeMemories.length > 0) {
       context += `\n=== LONG-TERM MEMORY ===\n`;
       context += `These are facts you have learned from past conversations. Use them to personalize your responses.\n`;
       context += `Reference these naturally — don't say "according to my records" — just know them like a trusted friend would.\n\n`;
 
       // Group by category for clarity
       const grouped = new Map<string, Memory[]>();
-      for (const mem of memories) {
+      for (const mem of safeMemories) {
         const existing = grouped.get(mem.category) || [];
         existing.push(mem);
         grouped.set(mem.category, existing);
@@ -372,13 +400,18 @@ export function buildSystemPrompt(
       };
 
       for (const [category, mems] of Array.from(grouped.entries())) {
-        context += `[${categoryLabels[category] || category}]\n`;
+        const safeLines: string[] = [];
         for (const mem of mems) {
+          const sanitized = sanitizeMemoryFact(mem.fact);
+          if (!sanitized) continue;
           const age = mem.lastReferenced ? daysSince(mem.lastReferenced.toISOString()) : 999;
           const recency = age < 7 ? '' : age < 30 ? ' (mentioned weeks ago)' : ' (mentioned a while ago)';
-          context += `- ${mem.fact}${recency}\n`;
+          safeLines.push(`- ${sanitized}${recency}`);
         }
-        context += `\n`;
+        if (safeLines.length > 0) {
+          context += `[${categoryLabels[category] || category}]\n`;
+          context += safeLines.join('\n') + '\n\n';
+        }
       }
     }
 
