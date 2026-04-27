@@ -35,7 +35,7 @@ jobs:
           username: resend
           password: ${{ secrets.RESEND_API_KEY }}
           subject: 'CareCompanion Daily QA Digest'
-          to: ${{ secrets.TEAM_EMAIL }}
+          to: ${{ secrets.ALERT_EMAIL_TO }}
           from: 'CareCompanion QA <qa@carecompanionai.org>'
           body: |
             ## Daily QA Digest

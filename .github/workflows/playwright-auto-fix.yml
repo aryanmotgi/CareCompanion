@@ -20,5 +20,5 @@ jobs:
       - uses: anthropics/claude-code-action@38ec876110f9fbf8b950c79f534430740c3ac009
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          model: claude-sonnet-4-20250514
+          model: claude-sonnet-4-6
           allowed_tools: "Bash,Read,Write,Edit,Glob,Grep,WebSearch,WebFetch"
