@@ -51,11 +51,14 @@ export default auth((req) => {
   )
 
   if (!req.auth && !isPublic) {
+    if (isPrefetch) {
+      // RSC prefetch to a protected route: return empty 204 instead of redirecting.
+      // A redirect returns HTML which the browser tries to execute as a script → MIME error.
+      // 204 has no content, so there is nothing to parse — Next.js falls back gracefully.
+      return new NextResponse(null, { status: 204 })
+    }
     const url = req.nextUrl.clone()
     url.pathname = '/login'
-    // RSC prefetch requests expect RSC payload, not an HTML redirect — rewrite
-    // so the login page is served as RSC without leaking protected content.
-    if (isPrefetch) return NextResponse.rewrite(url)
     return NextResponse.redirect(url)
   }
 
