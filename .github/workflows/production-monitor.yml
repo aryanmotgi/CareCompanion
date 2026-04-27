@@ -34,7 +34,7 @@ jobs:
           # Poll until we see v=11 so we know the exact code we expect is live.
           for i in $(seq 1 24); do
             BODY=$(curl -s --max-time 10 https://carecompanionai.org/api/e2e/signin 2>/dev/null || echo "")
-            if echo "$BODY" | grep -q '"v":11'; then
+            if echo "$BODY" | grep -q '"v":12'; then
               echo "New deployment is live (attempt $i)"
               break
             fi

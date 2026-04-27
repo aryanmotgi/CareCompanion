@@ -26,7 +26,7 @@ const limiter = rateLimit({ interval: 60_000, maxRequests: 20 })
 // deployment is live.  The "v" field is bumped each time the endpoint changes
 // so the CI wait step can poll for the specific version it expects.
 export async function GET() {
-  return Response.json({ ready: true, v: 11 })
+  return Response.json({ ready: true, v: 12 })
 }
 
 export async function POST(req: Request) {
@@ -95,9 +95,10 @@ export async function POST(req: Request) {
       // Ensure HIPAA consent is set so the app layout doesn't redirect to /consent.
       // The E2E account bypasses the normal OAuth + consent UI flow, so this gate
       // would otherwise block every test navigation.
+      // Also set role so middleware doesn't redirect to /set-role on every request.
       await db
         .update(users)
-        .set({ hipaaConsent: true })
+        .set({ hipaaConsent: true, role: 'patient' })
         .where(eq(users.email, email))
 
       // Ensure a care profile exists so pages like /dashboard and /care don't
@@ -146,6 +147,7 @@ export async function POST(req: Request) {
       email,
       name: displayName,
       displayName,
+      role: 'patient',
       isDemo: false,
     },
     secret: authSecret,
