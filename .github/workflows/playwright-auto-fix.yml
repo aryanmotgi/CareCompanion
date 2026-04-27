@@ -1,12 +1,16 @@
 name: Auto-fix Playwright Failures
 
 on:
-  issues:
-    types: [opened]
+  # Manual re-run: supply the issue number and it will attempt a fix
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'GitHub issue number to fix'
+        required: true
+        type: string
 
 jobs:
   auto-fix:
-    if: contains(github.event.issue.labels.*.name, 'playwright-auto-fix')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -16,9 +20,41 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
-      # anthropics/claude-code-action@v1 — pinned to SHA for supply chain security
+      - name: Fetch issue body
+        id: issue
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        with:
+          script: |
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: parseInt('${{ inputs.issue_number }}'),
+            });
+            core.setOutput('body', issue.data.body);
+
+      # anthropics/claude-code-action — pinned to SHA for supply chain security
       - uses: anthropics/claude-code-action@38ec876110f9fbf8b950c79f534430740c3ac009
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           model: claude-sonnet-4-6
           allowed_tools: "Bash,Read,Write,Edit,Glob,Grep,WebSearch,WebFetch"
+          prompt: |
+            A CareCompanion production monitor failure was filed as issue #${{ inputs.issue_number }}.
+
+            Issue body:
+            ${{ steps.issue.outputs.body }}
+
+            Your job:
+            1. Read the Playwright output in the issue body to understand which tests failed and why
+            2. Find the root cause in the **application code** under `apps/web/src/` — do NOT modify the test file
+            3. Fix the root cause
+            4. Run `npm run typecheck` to confirm no type errors
+            5. Create a PR with your fix targeting `main`
+
+            Key facts about this codebase:
+            - Next.js App Router monorepo (Turborepo). Web app is under `apps/web/src/`
+            - Auth: NextAuth v5 with Aurora Serverless. Session cookie is `authjs.session-token`
+            - E2E monitor account auth is in `apps/web/src/app/api/e2e/signin/route.ts`
+            - If multiple tests fail, they almost always share one root cause (auth, DB, middleware)
+            - Known pitfall: Aurora cold-starts cause DB errors — the signin route retries up to 4 times
+            - Known pitfall: middleware redirects users with no `role` to `/set-role` — the JWT must include `role`

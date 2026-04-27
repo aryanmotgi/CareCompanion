@@ -87,8 +87,9 @@ jobs:
 
             This alert was triggered automatically by the scheduled Playwright smoke test.
 
-      - name: Create auto-fix issue
+      - name: Create tracking issue
         if: steps.e2e.outcome == 'failure'
+        id: issue
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
         with:
           script: |
@@ -104,13 +105,14 @@ jobs:
             });
             if (existing.data.length > 0) {
               console.log('Open auto-fix issue already exists, skipping creation.');
+              core.setOutput('issue_number', existing.data[0].number);
+              core.setOutput('skipped', 'true');
               return;
             }
 
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const date = new Date().toISOString().split('T')[0];
 
-            // Extract failed test names from Playwright output
             const failedTests = output
               .split('\n')
               .filter(line => /^\s+[✗×✘]|FAILED|─ FAIL/.test(line))
@@ -121,7 +123,7 @@ jobs:
               ? failedTests.map(t => `- ${t}`).join('\n')
               : '- (could not parse failed test names from output)';
 
-            await github.rest.issues.create({
+            const issue = await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `🔧 Auto-fix: Production monitor failure (${date})`,
@@ -141,15 +143,37 @@ jobs:
                 '```',
                 output.slice(-3000),
                 '```',
-                '',
-                '### Instructions for auto-fix agent',
-                '',
-                'Analyze the Playwright test failures above. The test file is `apps/web/e2e/production-monitor.spec.ts`.',
-                'Find the root cause in the application code (not the test) and create a PR with a fix.',
-                'The production site is a Next.js app inside a Turborepo monorepo. Check page components under `apps/web/src/`.',
-                'If multiple tests failed, they likely share a root cause (e.g., DB connection failure, auth issue).',
               ].join('\n'),
             });
+            core.setOutput('issue_number', issue.data.number);
+            core.setOutput('skipped', 'false');
+
+      - name: Auto-fix with Claude Code
+        if: steps.e2e.outcome == 'failure' && steps.issue.outputs.skipped != 'true'
+        uses: anthropics/claude-code-action@38ec876110f9fbf8b950c79f534430740c3ac009
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-6
+          allowed_tools: "Bash,Read,Write,Edit,Glob,Grep,WebSearch,WebFetch"
+          prompt: |
+            The CareCompanion production monitor just failed. Read the Playwright output from `playwright-output.txt` in the repo root to understand what broke.
+
+            Your job:
+            1. Read `playwright-output.txt` to see which tests failed and why
+            2. Find the root cause in the **application code** under `apps/web/src/` — do NOT modify the test file
+            3. Fix the root cause
+            4. Run `npm run typecheck` to confirm no type errors
+            5. Create a PR with your fix targeting `main`
+
+            Key facts about this codebase:
+            - Next.js App Router monorepo (Turborepo). Web app is under `apps/web/src/`
+            - Auth: NextAuth v5 with Aurora Serverless (not Supabase). Session cookie is `authjs.session-token`
+            - E2E monitor account auth is in `apps/web/src/app/api/e2e/signin/route.ts`
+            - If multiple tests fail, they almost always share one root cause (auth, DB, middleware)
+            - Known pitfall: Aurora cold-starts cause DB errors — the signin route retries up to 4 times
+            - Known pitfall: middleware redirects users with no `role` to `/set-role` — the JWT must include `role`
+
+            Tracking issue: #${{ steps.issue.outputs.issue_number }}
 
       - name: Send success email alert
         if: steps.e2e.outcome == 'success'
