@@ -22,7 +22,11 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     // Middleware calls this to decide whether the request is authenticated.
     // Reads the signed JWT from the cookie — zero DB queries, Edge-safe.
-    authorized({ auth }) {
+    // RSC prefetch requests must return true so NextAuth calls our middleware
+    // handler, which applies a rewrite instead of a redirect for those requests.
+    // Returning false here causes NextAuth to redirect before our handler runs.
+    authorized({ auth, request }) {
+      if (request.headers.get('Next-Router-Prefetch') === '1') return true
       return !!auth?.user
     },
     jwt({ token }) {
