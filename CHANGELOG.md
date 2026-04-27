@@ -2,6 +2,13 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.2.1.3] - 2026-04-26
+
+Root cause fix for the MIME console error. The `authorized` callback was returning `false` for unauthenticated RSC prefetch requests, causing NextAuth to redirect before our middleware handler ran. Now prefetch requests pass through to the handler, which rewrites them to the login page as RSC payload.
+
+### Fixed
+- **MIME console error (root cause)** — `authorized` callback in `auth.config.ts` now returns `true` for `Next-Router-Prefetch` requests so the middleware handler can apply `NextResponse.rewrite()` instead of NextAuth applying a redirect
+
 ## [0.2.1.2] - 2026-04-26
 
 Eliminates the MIME type console error for unauthenticated users. Protected routes prefetched by Next.js now get the login page served as RSC payload instead of an HTML redirect, which is what the browser expected.
