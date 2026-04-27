@@ -4,9 +4,18 @@ import { careGroups, careGroupMembers, users } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
 import { SignJWT } from 'jose'
+import { rateLimit } from '@/lib/rate-limit'
+
+const careGroupLimiter = rateLimit({ interval: 60 * 60 * 1000, maxRequests: 5 })
 
 export async function POST(req: Request) {
   try {
+    const ip = (req.headers.get('x-forwarded-for') ?? '127.0.0.1').split(',')[0].trim()
+    const { success } = await careGroupLimiter.check(`mobile-care-group-login:${ip}`)
+    if (!success) {
+      return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 })
+    }
+
     const { groupName, groupPassword } = await req.json() as { groupName: string; groupPassword: string }
 
     if (!groupName?.trim() || !groupPassword) {
