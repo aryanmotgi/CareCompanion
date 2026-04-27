@@ -2,6 +2,13 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.2.1.4] - 2026-04-26
+
+Third attempt at the MIME console error. Instead of rewriting to the login page (which Vercel's edge layer was overriding), unauthenticated RSC prefetch requests to protected routes now return 204 No Content. No content = nothing for the browser to parse as a script = no MIME error. Next.js falls back gracefully.
+
+### Fixed
+- **MIME console error (final fix)** — unauthenticated RSC prefetch to protected routes returns `204 No Content` instead of an HTML redirect; browser sees no content and logs no error
+
 ## [0.2.1.3] - 2026-04-26
 
 Root cause fix for the MIME console error. The `authorized` callback was returning `false` for unauthenticated RSC prefetch requests, causing NextAuth to redirect before our middleware handler ran. Now prefetch requests pass through to the handler, which rewrites them to the login page as RSC payload.
