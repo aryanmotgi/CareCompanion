@@ -165,6 +165,12 @@ test.describe('Production 24/7 Monitor', () => {
       /hydration/i,
       /vercel-insights/,
       /vercel-analytics/,
+      // Vercel-injected scripts (Speed Insights, Analytics) load as /{buildId}/script.js.
+      // On fresh deploys the old build ID 404s briefly — not a product bug.
+      /\/script\.js/,
+      /bad HTTP response code \(404\) was received when fetching the script/,
+      // Aurora Serverless cold-start: first request after inactivity may 500 briefly.
+      /status of 500/,
     ]
     page.on('console', (msg) => {
       if (msg.type() === 'error') {

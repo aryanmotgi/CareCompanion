@@ -112,5 +112,8 @@ export default auth((req) => {
 export const config = {
   // Catch everything except Next.js internals and static assets.
   // PUBLIC_PATHS list above handles allow/deny — not this matcher.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.svg$|.*\\.ico$|.*\\.webp$).*)'],
+  // Also exclude bare .js/.css files so Vercel-injected scripts (e.g. Speed
+  // Insights /{buildId}/script.js) are never redirected to /login, which
+  // causes a MIME-type error in the browser when the redirect returns HTML.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.svg$|.*\\.ico$|.*\\.webp$|.*\\.js$|.*\\.css$).*)'],
 }
