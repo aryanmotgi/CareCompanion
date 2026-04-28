@@ -129,23 +129,38 @@ test.describe('Production 24/7 Monitor', () => {
     const onChat = page.url().includes('/chat')
     if (!onChat) return
 
+    // Capture /api/chat response so failures show the exact HTTP status.
+    let chatApiStatus = 0
+    let chatApiBody = ''
+    page.on('response', async (res) => {
+      if (res.url().includes('/api/chat') && res.request().method() === 'POST') {
+        chatApiStatus = res.status()
+        if (chatApiStatus !== 200) chatApiBody = await res.text().catch(() => '')
+      }
+    })
+
     const chatInput = page.locator('input[type="text"]').first()
     await expect(chatInput).toBeVisible({ timeout: 10000 })
     await chatInput.fill('hello')
 
-    // Click the send button — more reliable than pressing Enter in headless mode.
+    // Click send — more reliable than pressing Enter in headless mode.
     const sendButton = page.locator('button[title="Send"]')
     await expect(sendButton).toBeVisible({ timeout: 5000 })
     await sendButton.click()
 
-    // Confirm the user message appeared (proves the send worked).
+    // Confirm user bubble appeared — proves the message was sent.
     await expect(page.locator('.chat-bubble-user').first()).toBeVisible({ timeout: 10000 })
 
-    // Wait for the AI response. Budget is generous: Aurora cold-start (≤30s) +
-    // system-prompt build + Claude round-trip + Vercel function maxDuration is 60s,
-    // so give the test 90s to avoid racing the function timeout.
+    // Wait for AI response. 90s budget: Aurora cold-start + prompt build + Claude.
     const assistantMessage = page.locator('.chat-bubble-ai').first()
-    await expect(assistantMessage).toBeVisible({ timeout: 90000 })
+    try {
+      await expect(assistantMessage).toBeVisible({ timeout: 90000 })
+    } catch {
+      throw new Error(
+        `AI response never appeared. /api/chat returned HTTP ${chatApiStatus || '(no response)'}` +
+        (chatApiBody ? `: ${chatApiBody.slice(0, 200)}` : '')
+      )
+    }
   })
 
   test('page load performance budgets', async ({ page }) => {
