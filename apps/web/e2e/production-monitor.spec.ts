@@ -134,7 +134,7 @@ test.describe('Production 24/7 Monitor', () => {
     await chatInput.fill('hello')
     await chatInput.press('Enter')
 
-    const assistantMessage = page.locator('[data-role="assistant"], .assistant-message, [class*="assistant"]').first()
+    const assistantMessage = page.locator('.chat-bubble-ai').first()
     // 60s: Aurora cold-start (up to 30s) + system prompt build + Claude response
     await expect(assistantMessage).toBeVisible({ timeout: 60000 })
   })
