@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
 import type { UIMessage } from 'ai';
 import { useSearchParams } from 'next/navigation';
 import { MessageBubble } from '@/components/MessageBubble';
@@ -28,6 +29,13 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
 
   const { messages, sendMessage, status, error, regenerate, stop, setMessages } = useChat({
     messages: initialMessages,
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+      // Read the CSRF cookie at request time so the token is always fresh.
+      headers: () => ({
+        'x-csrf-token': document.cookie.match(/(^| )cc-csrf-token=([^;]+)/)?.[2] ?? '',
+      }),
+    }),
   });
 
   const handleNewChat = () => {
