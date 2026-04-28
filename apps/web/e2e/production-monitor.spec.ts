@@ -129,14 +129,23 @@ test.describe('Production 24/7 Monitor', () => {
     const onChat = page.url().includes('/chat')
     if (!onChat) return
 
-    const chatInput = page.locator('textarea, input[type="text"]').first()
+    const chatInput = page.locator('input[type="text"]').first()
     await expect(chatInput).toBeVisible({ timeout: 10000 })
     await chatInput.fill('hello')
-    await chatInput.press('Enter')
 
+    // Click the send button — more reliable than pressing Enter in headless mode.
+    const sendButton = page.locator('button[title="Send"]')
+    await expect(sendButton).toBeVisible({ timeout: 5000 })
+    await sendButton.click()
+
+    // Confirm the user message appeared (proves the send worked).
+    await expect(page.locator('.chat-bubble-user').first()).toBeVisible({ timeout: 10000 })
+
+    // Wait for the AI response. Budget is generous: Aurora cold-start (≤30s) +
+    // system-prompt build + Claude round-trip + Vercel function maxDuration is 60s,
+    // so give the test 90s to avoid racing the function timeout.
     const assistantMessage = page.locator('.chat-bubble-ai').first()
-    // 60s: Aurora cold-start (up to 30s) + system prompt build + Claude response
-    await expect(assistantMessage).toBeVisible({ timeout: 60000 })
+    await expect(assistantMessage).toBeVisible({ timeout: 90000 })
   })
 
   test('page load performance budgets', async ({ page }) => {
