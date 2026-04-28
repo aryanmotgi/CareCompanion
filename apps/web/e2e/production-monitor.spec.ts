@@ -135,7 +135,8 @@ test.describe('Production 24/7 Monitor', () => {
     await chatInput.press('Enter')
 
     const assistantMessage = page.locator('[data-role="assistant"], .assistant-message, [class*="assistant"]').first()
-    await expect(assistantMessage).toBeVisible({ timeout: 30000 })
+    // 60s: Aurora cold-start (up to 30s) + system prompt build + Claude response
+    await expect(assistantMessage).toBeVisible({ timeout: 60000 })
   })
 
   test('page load performance budgets', async ({ page }) => {
@@ -171,6 +172,10 @@ test.describe('Production 24/7 Monitor', () => {
       /bad HTTP response code \(404\) was received when fetching the script/,
       // Aurora Serverless cold-start: first request after inactivity may 500 briefly.
       /status of 500/,
+      // Background API calls (notifications, prefetches) that 404 or hit rate limits
+      // are infra noise — the monitor checks UI, not API health (that's api-health-ping).
+      /status of 404/,
+      /status of 429/,
     ]
     page.on('console', (msg) => {
       if (msg.type() === 'error') {

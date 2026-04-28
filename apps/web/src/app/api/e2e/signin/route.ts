@@ -27,7 +27,7 @@ const limiter = rateLimit({ interval: 60_000, maxRequests: 60 })
 // deployment is live.  The "v" field is bumped each time the endpoint changes
 // so the CI wait step can poll for the specific version it expects.
 export async function GET() {
-  return Response.json({ ready: true, v: 13 })
+  return Response.json({ ready: true, v: 14 })
 }
 
 export async function POST(req: Request) {
