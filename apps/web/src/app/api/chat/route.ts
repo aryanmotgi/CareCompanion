@@ -11,7 +11,6 @@ import { orchestrate } from '@/lib/agents/orchestrator';
 import { rateLimit } from '@/lib/rate-limit';
 import { ApiErrors } from '@/lib/api-response';
 import { withMetrics } from '@/lib/api-metrics';
-import { validateCsrf } from '@/lib/csrf';
 import { logAudit } from '@/lib/audit';
 
 const ipLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 30 });
@@ -21,9 +20,6 @@ const userLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, ma
 export const maxDuration = 60;
 
 async function handler(req: Request) {
-  const { valid, error: csrfError } = await validateCsrf(req);
-  if (!valid) return csrfError!;
-
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
   const { success: ipSuccess } = await ipLimiter.check(ip);
   if (!ipSuccess) {
