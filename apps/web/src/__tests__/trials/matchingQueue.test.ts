@@ -100,7 +100,7 @@ const closeTrial = {
   title: 'Ovarian Trial',
   matchScore: 60,
   eligibilityGaps: [{
-    gapType: 'measurable',
+    gapType: 'measurable' as const,
     description: 'CA-125 must drop below 35',
     metric: 'CA-125',
     currentValue: '52',
