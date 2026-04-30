@@ -10,15 +10,21 @@ import { eq } from 'drizzle-orm'
 export const maxDuration = 300
 
 export async function POST() {
-  const { user, error } = await getAuthenticatedUser()
-  if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const { user, error } = await getAuthenticatedUser()
+    if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const [profile] = await db.select({ id: careProfiles.id })
-    .from(careProfiles).where(eq(careProfiles.userId, user.id)).limit(1)
-  if (!profile) return NextResponse.json({ error: 'No care profile found' }, { status: 404 })
+    const [profile] = await db.select({ id: careProfiles.id })
+      .from(careProfiles).where(eq(careProfiles.userId, user.id)).limit(1)
+    if (!profile) return NextResponse.json({ error: 'No care profile found' }, { status: 404 })
 
-  const patientProfile = await assembleProfile(profile.id)
-  const { matched, close } = await runTrialsAgent(patientProfile)
+    const patientProfile = await assembleProfile(profile.id)
+    const { matched, close } = await runTrialsAgent(patientProfile)
 
-  return NextResponse.json({ matched, close })
+    return NextResponse.json({ matched, close })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Internal error'
+    console.error('[trials/match]', msg)
+    return NextResponse.json({ error: msg, matched: [], close: [] }, { status: 500 })
+  }
 }

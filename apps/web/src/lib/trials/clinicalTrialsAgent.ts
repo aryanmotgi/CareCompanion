@@ -69,7 +69,9 @@ Only output trials with matchCategory "matched" or "close". Skip "excluded" enti
 Limit to top 20 trials across all tool calls.`
 
   const { text } = await generateText({
-    model: anthropic('claude-sonnet-4-6'),
+    // Haiku: ~20x cheaper per token than Sonnet — critical at 30k TPM org limit.
+    // Tool-calling quality is sufficient for trial search + scoring.
+    model: anthropic('claude-haiku-4-5-20251001'),
     system: systemPrompt,
     prompt: userMessage,
     tools: {
@@ -77,7 +79,7 @@ Limit to top 20 trials across all tool calls.`
       get_trial_details:     getTrialDetailsTool,
       search_by_eligibility: searchByEligibilityTool,
     },
-    stopWhen: stepCountIs(10),
+    stopWhen: stepCountIs(6),
   })
 
   const jsonBlocks = [...text.matchAll(/```json\n([\s\S]*?)\n```/g)].map(m => m[1])
