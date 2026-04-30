@@ -9,12 +9,26 @@ export default async function TrialsPage() {
   const session = await auth()
   if (!session?.user) redirect('/login')
 
-  const [profile] = await db.select({ zipCode: careProfiles.zipCode })
+  const [profile] = await db.select({
+    zipCode:    careProfiles.zipCode,
+    patientName: careProfiles.patientName,
+    cancerType:  careProfiles.cancerType,
+    cancerStage: careProfiles.cancerStage,
+    patientAge:  careProfiles.patientAge,
+  })
     .from(careProfiles)
     .where(eq(careProfiles.userId, session.user.id as string))
     .limit(1)
 
   const hasZip = /^\d{5}$/.test(profile?.zipCode ?? '')
 
-  return <TrialsTab hasZip={hasZip} />
+  return (
+    <TrialsTab
+      hasZip={hasZip}
+      patientName={profile?.patientName ?? undefined}
+      cancerType={profile?.cancerType ?? undefined}
+      cancerStage={profile?.cancerStage ?? undefined}
+      patientAge={profile?.patientAge ?? undefined}
+    />
+  )
 }

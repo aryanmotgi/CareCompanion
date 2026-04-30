@@ -31,18 +31,36 @@ type TrialMatch = {
   updatedAt?: string | null
 }
 
-export function TrialsTab({ hasZip }: { hasZip: boolean }) {
+type SavedTrial = { nctId: string; interestStatus: string }
+
+type Props = {
+  hasZip:      boolean
+  patientName?: string
+  cancerType?:  string
+  cancerStage?: string
+  patientAge?:  number
+}
+
+export function TrialsTab({ hasZip }: Props) {
   const [matched, setMatched]         = useState<TrialMatch[]>([])
   const [close, setClose]             = useState<TrialMatch[]>([])
+  const [saved, setSaved]             = useState<Record<string, string>>({}) // nctId → interestStatus
   const [loading, setLoading]         = useState(true)
   const [liveRunning, setLiveRunning] = useState(false)
 
   useEffect(() => {
-    fetch('/api/trials/matches')
-      .then(r => r.json())
-      .then(data => {
-        setMatched(data.matched ?? [])
-        setClose(data.close ?? [])
+    Promise.all([
+      fetch('/api/trials/matches').then(r => r.json()),
+      fetch('/api/trials/saved').then(r => r.json()),
+    ])
+      .then(([matchData, savedData]) => {
+        setMatched(matchData.matched ?? [])
+        setClose(matchData.close ?? [])
+        const savedMap: Record<string, string> = {}
+        for (const s of (savedData as SavedTrial[])) {
+          savedMap[s.nctId] = s.interestStatus
+        }
+        setSaved(savedMap)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -64,6 +82,7 @@ export function TrialsTab({ hasZip }: { hasZip: boolean }) {
       body: JSON.stringify({ nctId }),
       headers: { 'Content-Type': 'application/json' },
     }).catch(() => {})
+    setSaved(s => ({ ...s, [nctId]: 'interested' }))
   }
 
   async function dismissTrial(nctId: string) {
@@ -79,14 +98,6 @@ export function TrialsTab({ hasZip }: { hasZip: boolean }) {
   function shareTrial(nctId: string, title: string, url: string) {
     const body = encodeURIComponent(`I found this trial, can we discuss? ${url}`)
     window.open(`mailto:?subject=${encodeURIComponent(title)}&body=${body}`)
-  }
-
-  async function contactTrial(nctId: string) {
-    const detail = await fetch(`/api/trials/${nctId}`).then(r => r.json()).catch(() => null)
-    const loc = detail?.locations?.[0]
-    const contact = loc?.contacts?.[0]
-    if (contact?.email) window.open(`mailto:${contact.email}`)
-    else if (contact?.phone) window.open(`tel:${contact.phone}`)
   }
 
   if (loading) {
@@ -128,10 +139,10 @@ export function TrialsTab({ hasZip }: { hasZip: boolean }) {
               trialUrl={t.trialUrl}
               stale={t.stale}
               updatedAt={t.updatedAt}
+              savedStatus={saved[t.nctId] ?? null}
               onSave={saveTrial}
               onDismiss={dismissTrial}
               onShare={shareTrial}
-              onContact={contactTrial}
             />
           ))}
         </section>
@@ -153,6 +164,7 @@ export function TrialsTab({ hasZip }: { hasZip: boolean }) {
               trialUrl={t.trialUrl}
               eligibilityGaps={t.eligibilityGaps ?? []}
               phase={t.phase}
+              savedStatus={saved[t.nctId] ?? null}
               onSave={saveTrial}
               onDismiss={dismissTrial}
             />

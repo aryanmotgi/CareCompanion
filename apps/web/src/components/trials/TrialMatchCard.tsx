@@ -1,4 +1,6 @@
 'use client'
+import { useState } from 'react'
+import { TrialDetailPanel } from './TrialDetailPanel'
 
 type Props = {
   nctId:                string
@@ -13,10 +15,10 @@ type Props = {
   trialUrl:             string | null
   stale?:               boolean
   updatedAt?:           string | null
+  savedStatus:          string | null
   onSave:    (nctId: string) => void
   onDismiss: (nctId: string) => void
   onShare:   (nctId: string, title: string, url: string) => void
-  onContact: (nctId: string) => void
 }
 
 function ScoreBadge({ score }: { score: number }) {
@@ -33,25 +35,34 @@ function ScoreBadge({ score }: { score: number }) {
 }
 
 export function TrialMatchCard(props: Props) {
+  const [expanded, setExpanded] = useState(false)
   const nearestSite = props.locations?.[0]
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
+      {/* Header row — always visible */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <a
-            href={props.trialUrl ?? '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-medium text-blue-700 hover:underline line-clamp-2"
+          <button
+            onClick={() => setExpanded(e => !e)}
+            className="text-sm font-medium text-blue-700 hover:underline text-left line-clamp-2 w-full"
           >
             {props.title}
-          </a>
+          </button>
           <p className="text-xs text-gray-500 mt-0.5">
             {props.nctId} · {props.phase ?? 'Phase N/A'}
           </p>
         </div>
-        <ScoreBadge score={props.matchScore} />
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <ScoreBadge score={props.matchScore} />
+          <button
+            onClick={() => setExpanded(e => !e)}
+            className="text-xs text-gray-400 hover:text-gray-600 px-1"
+            aria-label={expanded ? 'Collapse' : 'Expand'}
+          >
+            {expanded ? '▲' : '▼'}
+          </button>
+        </div>
       </div>
 
       {props.stale && (
@@ -60,41 +71,31 @@ export function TrialMatchCard(props: Props) {
         </p>
       )}
 
+      {/* Summary row — always visible */}
       {props.matchReasons.length > 0 && (
-        <div>
-          <p className="text-xs font-medium text-gray-700 mb-1">Why you match</p>
-          <ul className="space-y-0.5">
-            {props.matchReasons.map((r, i) => (
-              <li key={i} className="text-xs text-gray-600 flex gap-1.5">
-                <span className="text-green-500 flex-shrink-0">✓</span>{r}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {props.disqualifyingFactors.length > 0 && (
-        <div>
-          <p className="text-xs font-medium text-gray-700 mb-1">Potential concerns</p>
-          <ul className="space-y-0.5">
-            {props.disqualifyingFactors.map((f, i) => (
-              <li key={i} className="text-xs text-gray-600 flex gap-1.5">
-                <span className="text-red-400 flex-shrink-0">✗</span>{f}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {props.uncertainFactors.length > 0 && (
-        <div>
-          {props.uncertainFactors.map((u, i) => (
-            <p key={i} className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded">{u}</p>
+        <ul className="space-y-0.5">
+          {props.matchReasons.slice(0, expanded ? undefined : 2).map((r, i) => (
+            <li key={i} className="text-xs text-gray-600 flex gap-1.5">
+              <span className="text-green-500 flex-shrink-0">✓</span>{r}
+            </li>
           ))}
-        </div>
+          {!expanded && props.matchReasons.length > 2 && (
+            <li className="text-xs text-gray-400 pl-4">+{props.matchReasons.length - 2} more — expand to see all</li>
+          )}
+        </ul>
       )}
 
-      {nearestSite && (
+      {props.disqualifyingFactors.length > 0 && !expanded && (
+        <ul className="space-y-0.5">
+          {props.disqualifyingFactors.slice(0, 1).map((f, i) => (
+            <li key={i} className="text-xs text-gray-600 flex gap-1.5">
+              <span className="text-red-400 flex-shrink-0">✗</span>{f}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {nearestSite && !expanded && (
         <p className="text-xs text-gray-500">
           📍 {nearestSite.city}, {nearestSite.state}
           {props.enrollmentStatus === 'RECRUITING' && (
@@ -103,32 +104,64 @@ export function TrialMatchCard(props: Props) {
         </p>
       )}
 
-      <div className="flex gap-2 pt-1 flex-wrap">
-        <button
-          onClick={() => props.onSave(props.nctId)}
-          className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Save
-        </button>
-        <button
-          onClick={() => props.onContact(props.nctId)}
-          className="text-xs px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50"
-        >
-          Contact
-        </button>
-        <button
-          onClick={() => props.onShare(props.nctId, props.title, props.trialUrl ?? '')}
-          className="text-xs px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50"
-        >
-          Share
-        </button>
-        <button
-          onClick={() => props.onDismiss(props.nctId)}
-          className="text-xs px-3 py-1.5 text-gray-500 hover:text-gray-700 ml-auto"
-        >
-          Dismiss
-        </button>
-      </div>
+      {/* Collapsed actions */}
+      {!expanded && (
+        <div className="flex gap-2 pt-1 flex-wrap">
+          <button
+            onClick={() => setExpanded(true)}
+            className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            View details &amp; contact →
+          </button>
+          <button
+            onClick={() => props.onShare(props.nctId, props.title, props.trialUrl ?? '')}
+            className="text-xs px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50"
+          >
+            Share
+          </button>
+          <button
+            onClick={() => props.onDismiss(props.nctId)}
+            className="text-xs px-3 py-1.5 text-gray-500 hover:text-gray-700 ml-auto"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Expanded detail panel */}
+      {expanded && (
+        <TrialDetailPanel
+          nctId={props.nctId}
+          isCloseMatch={false}
+          matchReasons={props.matchReasons}
+          uncertainFactors={props.uncertainFactors}
+          onSave={props.onSave}
+          savedStatus={props.savedStatus}
+        />
+      )}
+
+      {expanded && (
+        <div className="flex gap-2 pt-1 border-t border-gray-100 flex-wrap">
+          <button
+            onClick={() => props.onShare(props.nctId, props.title, props.trialUrl ?? '')}
+            className="text-xs px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50"
+          >
+            Share with oncologist
+          </button>
+          <button
+            onClick={() => props.onDismiss(props.nctId)}
+            className="text-xs px-3 py-1.5 text-gray-500 hover:text-gray-700"
+          >
+            Dismiss
+          </button>
+          <button
+            onClick={() => setExpanded(false)}
+            className="text-xs text-gray-400 hover:text-gray-600 ml-auto"
+          >
+            Collapse ▲
+          </button>
+        </div>
+      )}
     </div>
   )
 }

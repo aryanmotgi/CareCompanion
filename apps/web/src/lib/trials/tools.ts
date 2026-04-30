@@ -27,7 +27,9 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
 function formatLocations(locations: unknown[], max: number): object[] {
   return (locations ?? []).slice(0, max).map((loc: unknown) => {
     const l = loc as Record<string, unknown>
-    return { facility: l.facility, city: l.city, state: l.state, country: l.country, status: l.status }
+    const contacts = ((l.contacts ?? []) as Array<Record<string, string>>)
+      .map(c => ({ name: c.name ?? null, phone: c.phone ?? null, email: c.email ?? null }))
+    return { facility: l.facility, city: l.city, state: l.state, country: l.country, status: l.status, contacts }
   })
 }
 
@@ -105,6 +107,8 @@ export async function getTrialDetails(nctId: string): Promise<Record<string, unk
         ?.map(i => ({ type: i.type, name: i.name, description: (i.description ?? '').slice(0, 300) })),
       primary_outcomes: (p?.outcomesModule?.primaryOutcomes as Array<Record<string, string>> | undefined)
         ?.map(o => o.measure),
+      central_contacts: ((p?.contactsLocationsModule?.centralContacts ?? []) as Array<Record<string, string>>)
+        .map(c => ({ name: c.name ?? null, phone: c.phone ?? null, email: c.email ?? null, role: c.role ?? null })),
       locations: formatLocations((p?.contactsLocationsModule?.locations ?? []) as unknown[], 10),
       url: `https://clinicaltrials.gov/study/${p?.identificationModule?.nctId}`,
     }
