@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { db } from '@/lib/db'
 import { savedTrials, careProfiles } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const { user, error } = await getAuthenticatedUser()
   if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

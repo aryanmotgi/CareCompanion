@@ -69,7 +69,7 @@ Only output trials with matchCategory "matched" or "close". Skip "excluded" enti
 Limit to top 20 trials across all tool calls.`
 
   const { text } = await generateText({
-    model: anthropic('claude-sonnet-4.6'),
+    model: anthropic('claude-sonnet-4-6'),
     system: systemPrompt,
     prompt: userMessage,
     tools: {

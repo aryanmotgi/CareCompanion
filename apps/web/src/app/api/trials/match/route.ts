@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { assembleProfile } from '@/lib/trials/assembleProfile'
 import { runTrialsAgent } from '@/lib/trials/clinicalTrialsAgent'
@@ -6,7 +6,7 @@ import { db } from '@/lib/db'
 import { careProfiles } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   const { user, error } = await getAuthenticatedUser()
   if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
