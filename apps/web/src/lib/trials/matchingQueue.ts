@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { matchingQueue, trialMatches, notifications, careProfiles } from '@/lib/db/schema'
-import { eq, and, isNull, lt, sql } from 'drizzle-orm'
+import { eq, and, isNull, lt, gt, sql } from 'drizzle-orm'
 import { assembleProfile } from './assembleProfile'
 import { runTrialsAgent, type TrialMatchResult } from './clinicalTrialsAgent'
 import type { EligibilityGap } from './assembleProfile'
@@ -9,9 +9,22 @@ export async function enqueueMatchingRun(
   careProfileId: string,
   reason: 'profile_update' | 'new_medication' | 'new_lab' | 'nightly' | 'retry'
 ): Promise<void> {
-  await db.insert(matchingQueue)
-    .values({ careProfileId, reason, status: 'pending' })
-    .onConflictDoNothing()
+  // UPDATE first: reset any pending/claimed row so trigger runs are never silently dropped
+  // when the nightly cron has a row claimed. If updated, we're done.
+  const updated = await db.update(matchingQueue)
+    .set({ status: 'pending', reason, claimedAt: null })
+    .where(and(
+      eq(matchingQueue.careProfileId, careProfileId),
+      sql`${matchingQueue.status} IN ('pending', 'claimed')`
+    ))
+    .returning({ id: matchingQueue.id })
+
+  if (updated.length === 0) {
+    // No active row exists — insert fresh. onConflictDoNothing guards against a concurrent insert.
+    await db.insert(matchingQueue)
+      .values({ careProfileId, reason, status: 'pending' })
+      .onConflictDoNothing()
+  }
 }
 
 // Fire-and-forget helper for trigger sites. Waits 2s after enqueue before
@@ -98,6 +111,19 @@ export async function saveMatchResults(
       .from(careProfiles).where(eq(careProfiles.id, careProfileId)).limit(1)
     if (cp) {
       await Promise.all(closedGapTrials.map(async trial => {
+        // Deduplicate: skip if a gap_closed notification for this trial was sent in the last 24h
+        const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000)
+        const [recent] = await db.select({ id: notifications.id })
+          .from(notifications)
+          .where(and(
+            eq(notifications.userId, cp.userId),
+            eq(notifications.type, 'trial_gap_closed'),
+            sql`${notifications.message} LIKE ${'%' + trial.nctId + '%'}`,
+            gt(notifications.createdAt, since24h),
+          ))
+          .limit(1)
+        if (recent) return // already notified recently
+
         const prev    = existingMap.get(trial.nctId)
         const gaps    = (prev?.eligibilityGaps as EligibilityGap[] | null) ?? []
         const gapDesc = gaps[0]?.description ?? 'an eligibility criterion'
@@ -106,7 +132,7 @@ export async function saveMatchResults(
           type:    'trial_gap_closed',
           title:   'You may now qualify for a trial',
           message: `${trial.title} (${trial.nctId}) — ${gapDesc} has been met. Open CareCompanion to review.`,
-        }).catch(() => {}) // non-fatal
+        }).catch(err => console.error('[trials] gap-closed notification failed:', err))
       }))
     }
   }
