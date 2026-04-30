@@ -123,7 +123,7 @@ export async function POST(req: Request) {
       }));
       await db.insert(labResults).values(rows);
       saved.lab_results = rows.length;
-      void enqueueMatchingRun(profile.id, 'new_medication').then(() =>
+      void enqueueMatchingRun(profile.id, 'new_lab').then(() =>
         void processMatchingQueueForProfile(profile.id)
       );
     }

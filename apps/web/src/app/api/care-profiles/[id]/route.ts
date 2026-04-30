@@ -66,7 +66,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .where(and(eq(careProfiles.id, id), eq(careProfiles.userId, dbUser.id)))
     .returning({ id: careProfiles.id })
 
-  void enqueueMatchingRun(updated.id, 'new_medication').then(() =>
+  void enqueueMatchingRun(updated.id, 'profile_update').then(() =>
     void processMatchingQueueForProfile(updated.id)
   )
 

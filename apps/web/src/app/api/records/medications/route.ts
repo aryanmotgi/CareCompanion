@@ -92,6 +92,9 @@ export async function DELETE(req: Request) {
   if (!profile) return apiError('Forbidden', 403);
 
   const result = await softDelete('medications', id, dbUser!.id, profile.id);
+  void enqueueMatchingRun(profile.id, 'new_medication').then(() =>
+    void processMatchingQueueForProfile(profile.id)
+  );
   return apiSuccess(result);
 }
 
