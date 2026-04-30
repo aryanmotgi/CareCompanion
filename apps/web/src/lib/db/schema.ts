@@ -10,6 +10,7 @@ import {
   jsonb,
   primaryKey,
   uniqueIndex,
+  index,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
@@ -572,7 +573,9 @@ export const mutations = pgTable('mutations', {
   confirmedDate: date('confirmed_date'),
   source:        text('source').notNull().default('manual'),
   createdAt:     timestamp('created_at', { withTimezone: true }).defaultNow(),
-})
+}, (table) => ({
+  careProfileIdx: index('mutations_care_profile_idx').on(table.careProfileId),
+}))
 
 // ── Clinical Trials — Trial Matches ──────────────────────────────────────────
 export const trialMatches = pgTable('trial_matches', {
@@ -595,6 +598,9 @@ export const trialMatches = pgTable('trial_matches', {
   updatedAt:            timestamp('updated_at', { withTimezone: true }).defaultNow(),
 }, (table) => ({
   careProfileNctUniq: uniqueIndex('trial_matches_care_profile_nct_idx').on(table.careProfileId, table.nctId),
+  careProfileIdx:     index('trial_matches_care_profile_idx').on(table.careProfileId),
+  matchCategoryIdx:   index('trial_matches_match_category_idx').on(table.matchCategory),
+  updatedAtIdx:       index('trial_matches_updated_at_idx').on(table.updatedAt),
 }))
 
 // ── Clinical Trials — Saved Trials ───────────────────────────────────────────
@@ -608,21 +614,27 @@ export const savedTrials = pgTable('saved_trials', {
   lastStatusCheckedAt:       timestamp('last_status_checked_at', { withTimezone: true }),
   notifiedOfChangeAt:        timestamp('notified_of_change_at', { withTimezone: true }),
 }, (table) => ({
-  careProfileNctUniq: uniqueIndex('saved_trials_care_profile_nct_idx').on(table.careProfileId, table.nctId),
+  careProfileNctUniq:   uniqueIndex('saved_trials_care_profile_nct_idx').on(table.careProfileId, table.nctId),
+  careProfileIdx:       index('saved_trials_care_profile_idx').on(table.careProfileId),
+  lastStatusCheckedIdx: index('saved_trials_last_status_checked_idx').on(table.lastStatusCheckedAt),
 }))
 
 // ── Clinical Trials — Matching Queue ─────────────────────────────────────────
 export const matchingQueue = pgTable('matching_queue', {
   id:            uuid('id').primaryKey().defaultRandom(),
   careProfileId: uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
-  reason:        text('reason').notNull().default('profile_update'),
+  reason:        text('reason').notNull(),
   status:        text('status').notNull().default('pending'),
   triggeredAt:   timestamp('triggered_at', { withTimezone: true }).defaultNow(),
   claimedAt:     timestamp('claimed_at', { withTimezone: true }),
   processedAt:   timestamp('processed_at', { withTimezone: true }),
   errorMessage:  text('error_message'),
   retryCount:    integer('retry_count').notNull().default(0),
-})
+}, (table) => ({
+  onePendingPerPatient: uniqueIndex('matching_queue_one_pending_per_patient_idx')
+    .on(table.careProfileId)
+    .where(sql`status IN ('pending', 'claimed')`),
+}))
 
 // ── Clinical Trials — Cron State ─────────────────────────────────────────────
 export const cronState = pgTable('cron_state', {
