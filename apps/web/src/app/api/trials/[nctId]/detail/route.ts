@@ -3,6 +3,9 @@ import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { db } from '@/lib/db'
 import { careProfiles } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+
+// generateText call with full trial context can take 30-60s
+export const maxDuration = 300
 import { getTrialDetails } from '@/lib/trials/tools'
 import { assembleProfile } from '@/lib/trials/assembleProfile'
 import { generateText } from 'ai'

@@ -49,6 +49,7 @@ export function TrialsTab({ profileId, hasZip: initialHasZip }: Props) {
   const [saved, setSaved]             = useState<Record<string, string>>({}) // nctId → interestStatus
   const [loading, setLoading]         = useState(true)
   const [liveRunning, setLiveRunning] = useState(false)
+  const [liveError, setLiveError]     = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -70,12 +71,18 @@ export function TrialsTab({ profileId, hasZip: initialHasZip }: Props) {
 
   async function runLive() {
     setLiveRunning(true)
+    setLiveError(null)
     try {
-      const data = await fetch('/api/trials/match', { method: 'POST' }).then(r => r.json())
+      const res = await fetch('/api/trials/match', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? `Server error ${res.status}`)
       setMatched(data.matched ?? [])
       setClose(data.close ?? [])
-    } catch { /* ignore */ }
-    setLiveRunning(false)
+    } catch (e) {
+      setLiveError(e instanceof Error ? e.message : 'Search failed — try again')
+    } finally {
+      setLiveRunning(false)
+    }
   }
 
   async function saveTrial(nctId: string) {
@@ -110,6 +117,12 @@ export function TrialsTab({ profileId, hasZip: initialHasZip }: Props) {
     <div className="space-y-6 max-w-2xl mx-auto py-6 px-4">
       {!hasZip && (
         <ZipCodePrompt profileId={profileId} onSaved={() => setHasZip(true)} />
+      )}
+
+      {liveError && (
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">
+          Search failed: {liveError}
+        </div>
       )}
 
       <div className="flex items-center justify-between">

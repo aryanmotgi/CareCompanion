@@ -6,6 +6,9 @@ import { db } from '@/lib/db'
 import { careProfiles } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
+// Claude agent + ClinicalTrials.gov calls easily exceed 10s default
+export const maxDuration = 300
+
 export async function POST() {
   const { user, error } = await getAuthenticatedUser()
   if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
