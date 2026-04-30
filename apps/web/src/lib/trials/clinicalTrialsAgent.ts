@@ -85,9 +85,11 @@ ${JSON.stringify(allTrials, null, 2)}`,
     }
   }
 
+  const NCT_RE = /^NCT\d{8}$/
   const results: TrialMatchResult[] = rawArray
     .filter((t): t is Record<string, unknown> => !!t && typeof t === 'object')
     .filter(t => t.matchCategory !== 'excluded')
+    .filter(t => NCT_RE.test(String(t.nct_id ?? t.nctId ?? ''))) // reject hallucinated/malformed IDs
     .map(t => ({
       nctId:                String(t.nct_id ?? t.nctId ?? ''),
       title:                String(t.title ?? ''),

@@ -337,7 +337,7 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
               <div className="flex gap-2 mt-3 flex-wrap">
                 <CopyButton text={clinical_summary} label="Copy for oncologist" />
                 <a
-                  href={`mailto:?subject=Clinical Trial for Review: ${trial.nct_id}&body=${encodeURIComponent(clinical_summary)}`}
+                  href={`mailto:?subject=Clinical Trial for Review: ${trial.nct_id}&body=${encodeURIComponent(clinical_summary.replace(/[\r\n]+/g, ' '))}`}
                   className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
                 >
                   Email to oncologist →

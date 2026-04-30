@@ -104,10 +104,15 @@ Location: ${patient.city ?? ''} ${patient.state ?? ''}
     prompt,
   })
 
+  const isStr = (v: unknown): v is string => typeof v === 'string'
   let generated: { summary: string; visit_frequency: string; email_body: string; phone_script: string; clinical_summary?: string }
   try {
     const cleaned = text.replace(/^```json\n?|\n?```$/g, '').trim()
-    generated = JSON.parse(cleaned)
+    const parsed = JSON.parse(cleaned)
+    if (!isStr(parsed?.summary) || !isStr(parsed?.email_body) || !isStr(parsed?.phone_script)) {
+      throw new Error('LLM response missing required string fields')
+    }
+    generated = parsed
   } catch {
     generated = {
       summary: t.brief_summary as string ?? 'Summary not available.',
