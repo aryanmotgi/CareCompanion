@@ -9,6 +9,7 @@ import {
   timestamp,
   jsonb,
   primaryKey,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
@@ -51,6 +52,9 @@ export const careProfiles = pgTable('care_profiles', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   caregivingExperience: text('caregiving_experience'), // 'first_time' | 'some_experience' | 'experienced'
   primaryConcern: text('primary_concern'),             // 'medications' | 'lab_results' | 'coordinating_care' | 'emotional_support'
+  city:    text('city'),
+  state:   text('state'),
+  zipCode: text('zip_code'),
   fieldOverrides: jsonb('field_overrides'),            // { cancerType: true, stage: true, ... } — FHIR sync skips true fields
 })
 
@@ -557,4 +561,72 @@ export const careGroupInvites = pgTable('care_group_invites', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+// ── Clinical Trials — Mutations ───────────────────────────────────────────────
+export const mutations = pgTable('mutations', {
+  id:            uuid('id').primaryKey().defaultRandom(),
+  careProfileId: uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
+  mutationName:  text('mutation_name').notNull(),
+  status:        text('status').notNull().default('unknown'),
+  confirmedDate: date('confirmed_date'),
+  source:        text('source').notNull().default('manual'),
+  createdAt:     timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+// ── Clinical Trials — Trial Matches ──────────────────────────────────────────
+export const trialMatches = pgTable('trial_matches', {
+  id:                   uuid('id').primaryKey().defaultRandom(),
+  careProfileId:        uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
+  nctId:                text('nct_id').notNull(),
+  title:                text('title'),
+  matchCategory:        text('match_category').notNull().default('matched'),
+  matchScore:           integer('match_score'),
+  matchReasons:         text('match_reasons').array().default(sql`'{}'`),
+  disqualifyingFactors: text('disqualifying_factors').array().default(sql`'{}'`),
+  uncertainFactors:     text('uncertain_factors').array().default(sql`'{}'`),
+  eligibilityGaps:      jsonb('eligibility_gaps'),
+  enrollmentStatus:     text('enrollment_status'),
+  locations:            jsonb('locations'),
+  trialUrl:             text('trial_url'),
+  notifiedAt:           timestamp('notified_at', { withTimezone: true }),
+  lastCheckedAt:        timestamp('last_checked_at', { withTimezone: true }).defaultNow(),
+  createdAt:            timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt:            timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  careProfileNctUniq: uniqueIndex('trial_matches_care_profile_nct_idx').on(table.careProfileId, table.nctId),
+}))
+
+// ── Clinical Trials — Saved Trials ───────────────────────────────────────────
+export const savedTrials = pgTable('saved_trials', {
+  id:                        uuid('id').primaryKey().defaultRandom(),
+  careProfileId:             uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
+  nctId:                     text('nct_id').notNull(),
+  savedAt:                   timestamp('saved_at', { withTimezone: true }).defaultNow(),
+  interestStatus:            text('interest_status').notNull().default('interested'),
+  lastKnownEnrollmentStatus: text('last_known_enrollment_status'),
+  lastStatusCheckedAt:       timestamp('last_status_checked_at', { withTimezone: true }),
+  notifiedOfChangeAt:        timestamp('notified_of_change_at', { withTimezone: true }),
+}, (table) => ({
+  careProfileNctUniq: uniqueIndex('saved_trials_care_profile_nct_idx').on(table.careProfileId, table.nctId),
+}))
+
+// ── Clinical Trials — Matching Queue ─────────────────────────────────────────
+export const matchingQueue = pgTable('matching_queue', {
+  id:            uuid('id').primaryKey().defaultRandom(),
+  careProfileId: uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
+  reason:        text('reason').notNull().default('profile_update'),
+  status:        text('status').notNull().default('pending'),
+  triggeredAt:   timestamp('triggered_at', { withTimezone: true }).defaultNow(),
+  claimedAt:     timestamp('claimed_at', { withTimezone: true }),
+  processedAt:   timestamp('processed_at', { withTimezone: true }),
+  errorMessage:  text('error_message'),
+  retryCount:    integer('retry_count').notNull().default(0),
+})
+
+// ── Clinical Trials — Cron State ─────────────────────────────────────────────
+export const cronState = pgTable('cron_state', {
+  key:       text('key').primaryKey(),
+  value:     text('value').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })
