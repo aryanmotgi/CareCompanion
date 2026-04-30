@@ -5,6 +5,7 @@ import { getAuthenticatedUser, parseBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { validateCsrf } from '@/lib/csrf';
 import { softDelete } from '@/lib/soft-delete';
+import { enqueueMatchingRun, processMatchingQueueForProfile } from '@/lib/trials/matchingQueue';
 
 // POST — add a medication
 export async function POST(req: Request) {
@@ -52,6 +53,10 @@ export async function POST(req: Request) {
     refillDate: refill_date || null,
     notes: notes || null,
   }).returning();
+
+  void enqueueMatchingRun(profileId, 'new_medication').then(() =>
+    void processMatchingQueueForProfile(profileId)
+  );
 
   return apiSuccess(med);
 }
@@ -161,6 +166,11 @@ export async function PUT(req: Request) {
   }));
 
   const inserted = await db.insert(medications).values(rows).returning();
+
+  void enqueueMatchingRun(profile.id, 'new_medication').then(() =>
+    void processMatchingQueueForProfile(profile.id)
+  );
+
   return apiSuccess(inserted);
 }
 

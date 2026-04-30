@@ -6,6 +6,7 @@ import { db } from '@/lib/db';
 import { careProfiles, medications, labResults, insurance, appointments, claims } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { enqueueMatchingRun, processMatchingQueueForProfile } from '@/lib/trials/matchingQueue';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 20 });
 
@@ -103,6 +104,9 @@ export async function POST(req: Request) {
       }));
       await db.insert(medications).values(rows);
       saved.medications = rows.length;
+      void enqueueMatchingRun(profile.id, 'new_medication').then(() =>
+        void processMatchingQueueForProfile(profile.id)
+      );
     }
 
     // Save lab results
@@ -119,6 +123,9 @@ export async function POST(req: Request) {
       }));
       await db.insert(labResults).values(rows);
       saved.lab_results = rows.length;
+      void enqueueMatchingRun(profile.id, 'new_medication').then(() =>
+        void processMatchingQueueForProfile(profile.id)
+      );
     }
 
     // Save insurance
