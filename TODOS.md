@@ -154,3 +154,17 @@ Deferred work from gstack plan reviews. One item per section. Priority: P1 (bloc
 | Medications schema (Phase 2) | Launch funnel CEO review | Deferred to Phase 2 when med tracking is a feature |
 | Offline caching + network banner | Mobile parity CEO review | Phase 3 — needs React Query or AsyncStorage cache layer first |
 | Aurora 503 retry handling | Mobile parity CEO review | Phase 3 — retry-after with backoff when cold-start 503s during API calls |
+
+---
+
+### Trials: saveMatchResults transaction safety
+
+**What:** Wrap `saveMatchResults` snapshot SELECT + upserts + gap-closed notification inserts in a single DB transaction. Alternatively, add a unique constraint on `(userId, type, nctId-substring)` in the notifications table and rely on insert-on-conflict to prevent duplicates instead of the manual 24h dedup check.
+
+**Why:** Two concurrent calls (live `/api/trials/match` POST + background queue worker) can both read the same pre-update snapshot and both fire gap-closed notifications, since the 24h dedup check is itself a TOCTOU race without a transaction. Found in pre-landing review of clinical trials feature.
+
+**Context:** The `enqueueMatchingRun` UPDATE-first pattern already prevents concurrent queue rows. The risk is a user clicking "Refresh" while the nightly queue worker is also running.
+
+**Effort:** M (human: ~2h / CC: ~15 min)
+**Priority:** P2
+**Depends on:** Aurora Serverless v2 migration (Data API v1 has limited transaction support)

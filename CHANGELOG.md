@@ -2,6 +2,32 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.3.0.0] - 2026-04-29
+
+Full clinical trials matching feature. Caregivers can now search thousands of active trials against a patient's real medical profile, see what they're close to qualifying for, get notified when an eligibility gap closes, and share a clinical-tone summary with their oncologist.
+
+### Added
+- **Clinical Trials tab** — new bottom nav item (flask icon, between Care and Scan) routes to `/trials`
+- **Profile data prompt** — inline form on the Trials tab to enter cancer type, stage, and age without leaving the page; auto-triggers a search on save
+- **Inline zip code input** — replaced the amber banner linking to Settings with an in-place form that saves without navigation
+- **Cache-first results** — trial matches load instantly from the DB on mount, showing the last-run results with a relative timestamp ("Updated 3h ago") before any live search
+- **Full-screen loading overlay** — when "Find trials now" is clicked, a dark-gradient overlay with rotating phase messages ("Reviewing your medical profile…", "Scoring trial matches…") replaces the tab during the search
+- **Gap closure notifications** — when a trial moves from "close" to "matched" (an eligibility gap was resolved), a push notification fires naming the specific criterion met; 24h dedup prevents repeat alerts
+- **Oncologist share panel** — each matched trial's detail view includes a clinical-tone referral note (doctor-to-doctor language, ECOG/staging abbreviations, matching rationale) with a copy button and mailto link
+- **16 new unit tests** — `clinicalTrialsAgent.test.ts` covers parallel fetch, dedup, JSON parse fallback chain, NCT ID validation, score clamping, and matched/close split; two additional `saveMatchResults` notification-branch tests
+
+### Changed
+- **5-10x speed improvement** — replaced sequential agentic tool-call loop with parallel CT.gov pre-fetch (`Promise.all`) + single Haiku scoring call; search time dropped from 60s+ to 5-15s
+- **Switched to Haiku model** for trial scoring (`claude-haiku-4-5-20251001`), staying under the 30k TPM org limit while reducing cost ~20x vs Sonnet
+- **Error surfacing** — match route now catches all errors and returns `{error, matched:[], close:[]}` instead of an empty 500 body; UI renders the error message inline
+- **Enqueue safety** — `enqueueMatchingRun` uses UPDATE-first (resets any pending/claimed row to pending) instead of `onConflictDoNothing`, which was silently dropping trigger runs when the nightly cron had a row claimed
+- **Duplicate notification guard** — `saveMatchResults` deduplicates gap-closed notifications with a 24h lookback before inserting
+
+### Fixed
+- **LLM nctId validation** — trial objects with malformed or hallucinated NCT IDs are now filtered before DB upsert (`/^NCT\d{8}$/`)
+- **LLM output field validation** — `detail` route validates that parsed JSON fields are strings before returning to client; falls back to static defaults on type mismatch
+- **Email header injection** — `\r\n` stripped from `clinical_summary` before embedding in `mailto:` body parameter
+
 ## [0.2.2.0] - 2026-04-27
 
 Full security hardening pass based on an automated OWASP audit (5 findings, all resolved).
