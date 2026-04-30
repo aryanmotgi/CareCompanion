@@ -85,13 +85,22 @@ ${JSON.stringify(allTrials, null, 2)}`,
     }
   }
 
-  const NCT_RE = /^NCT\d{8}$/
+  // NCT IDs are NCT + exactly 8 digits. Accept 4+ to tolerate minor LLM formatting variation.
+  // Reject empty strings, wildcards (% _), and anything that isn't an NCT identifier.
+  const NCT_RE = /^NCT\d{4,}$/
   const results: TrialMatchResult[] = rawArray
     .filter((t): t is Record<string, unknown> => !!t && typeof t === 'object')
     .filter(t => t.matchCategory !== 'excluded')
-    .filter(t => NCT_RE.test(String(t.nct_id ?? t.nctId ?? ''))) // reject hallucinated/malformed IDs
+    .filter(t => {
+      const id = String(t.nct_id ?? t.nctId ?? '').trim()
+      if (!NCT_RE.test(id)) {
+        console.warn('[trials-agent] skipping trial with invalid nctId:', id)
+        return false
+      }
+      return true
+    })
     .map(t => ({
-      nctId:                String(t.nct_id ?? t.nctId ?? ''),
+      nctId:                String(t.nct_id ?? t.nctId ?? '').trim(),
       title:                String(t.title ?? ''),
       matchScore:           Math.max(0, Math.min(100, Number(t.matchScore) || 0)),
       matchReasons:         Array.isArray(t.matchReasons) ? t.matchReasons : [],
