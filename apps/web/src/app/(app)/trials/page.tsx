@@ -10,7 +10,8 @@ export default async function TrialsPage() {
   if (!session?.user) redirect('/login')
 
   const [profile] = await db.select({
-    zipCode:    careProfiles.zipCode,
+    id:          careProfiles.id,
+    zipCode:     careProfiles.zipCode,
     patientName: careProfiles.patientName,
     cancerType:  careProfiles.cancerType,
     cancerStage: careProfiles.cancerStage,
@@ -22,13 +23,16 @@ export default async function TrialsPage() {
 
   const hasZip = /^\d{5}$/.test(profile?.zipCode ?? '')
 
+  if (!profile) redirect('/login')
+
   return (
     <TrialsTab
+      profileId={profile.id}
       hasZip={hasZip}
-      patientName={profile?.patientName ?? undefined}
-      cancerType={profile?.cancerType ?? undefined}
-      cancerStage={profile?.cancerStage ?? undefined}
-      patientAge={profile?.patientAge ?? undefined}
+      patientName={profile.patientName ?? undefined}
+      cancerType={profile.cancerType ?? undefined}
+      cancerStage={profile.cancerStage ?? undefined}
+      patientAge={profile.patientAge ?? undefined}
     />
   )
 }

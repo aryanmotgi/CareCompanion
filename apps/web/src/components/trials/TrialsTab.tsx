@@ -34,14 +34,16 @@ type TrialMatch = {
 type SavedTrial = { nctId: string; interestStatus: string }
 
 type Props = {
-  hasZip:      boolean
+  profileId:    string
+  hasZip:       boolean
   patientName?: string
   cancerType?:  string
   cancerStage?: string
   patientAge?:  number
 }
 
-export function TrialsTab({ hasZip }: Props) {
+export function TrialsTab({ profileId, hasZip: initialHasZip }: Props) {
+  const [hasZip, setHasZip] = useState(initialHasZip)
   const [matched, setMatched]         = useState<TrialMatch[]>([])
   const [close, setClose]             = useState<TrialMatch[]>([])
   const [saved, setSaved]             = useState<Record<string, string>>({}) // nctId → interestStatus
@@ -106,7 +108,9 @@ export function TrialsTab({ hasZip }: Props) {
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto py-6 px-4">
-      {!hasZip && <ZipCodePrompt />}
+      {!hasZip && (
+        <ZipCodePrompt profileId={profileId} onSaved={() => setHasZip(true)} />
+      )}
 
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-gray-900">Clinical Trials</h1>
