@@ -10,6 +10,7 @@ import { MedicationReminders } from '@/components/MedicationReminders';
 import { DashboardInsights } from '@/components/DashboardInsights';
 import { OnboardingWelcomeBanner } from '@/components/OnboardingWelcomeBanner';
 import { ShareHealthCard } from '@/components/ShareHealthCard';
+import { TrialsDashboardCard } from '@/components/trials/TrialsDashboardCard';
 
 async function DashboardContent() {
   const session = await auth();
@@ -96,6 +97,7 @@ async function DashboardContent() {
       />
       <div className="px-4 sm:px-5 pb-6 space-y-4">
         {profile?.cancerType && (meds.length > 0 || appts.length > 0 || labs.length > 0) && <ShareHealthCard />}
+        <TrialsDashboardCard />
         <DashboardInsights />
       </div>
     </>
