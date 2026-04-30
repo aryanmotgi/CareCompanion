@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { assembleProfile } from '@/lib/trials/assembleProfile'
 import { runTrialsAgent } from '@/lib/trials/clinicalTrialsAgent'
+import { saveMatchResults } from '@/lib/trials/matchingQueue'
 import { db } from '@/lib/db'
 import { careProfiles } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -21,7 +22,12 @@ export async function POST() {
     const patientProfile = await assembleProfile(profile.id)
     const { matched, close } = await runTrialsAgent(patientProfile)
 
-    return NextResponse.json({ matched, close })
+    // Persist results so the cache stays fresh after a live refresh
+    void saveMatchResults(profile.id, matched, close).catch(err =>
+      console.error('[trials/match] cache save failed:', err)
+    )
+
+    return NextResponse.json({ matched, close, refreshedAt: new Date().toISOString() })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Internal error'
     console.error('[trials/match]', msg)

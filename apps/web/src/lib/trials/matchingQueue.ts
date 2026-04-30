@@ -2,7 +2,8 @@ import { db } from '@/lib/db'
 import { matchingQueue, trialMatches, notifications, careProfiles } from '@/lib/db/schema'
 import { eq, and, isNull, lt, sql } from 'drizzle-orm'
 import { assembleProfile } from './assembleProfile'
-import { runTrialsAgent } from './clinicalTrialsAgent'
+import { runTrialsAgent, type TrialMatchResult } from './clinicalTrialsAgent'
+import type { EligibilityGap } from './assembleProfile'
 
 export async function enqueueMatchingRun(
   careProfileId: string,
@@ -31,6 +32,117 @@ export async function releaseStaleClaimedRows(): Promise<void> {
     .where(and(eq(matchingQueue.status, 'claimed'), lt(matchingQueue.claimedAt!, tenMinutesAgo)))
 }
 
+// Shared upsert logic — used by both the live /api/trials/match route and the background queue.
+// Also handles D4 gap closure alerts: when a trial moves from 'close' → 'matched', fires a
+// specific notification naming the gap that was resolved.
+export async function saveMatchResults(
+  careProfileId: string,
+  matched: TrialMatchResult[],
+  close: TrialMatchResult[],
+): Promise<void> {
+  // Snapshot existing matches to detect close→matched transitions for gap closure alerts.
+  const existing = await db.select({
+    nctId:           trialMatches.nctId,
+    matchCategory:   trialMatches.matchCategory,
+    eligibilityGaps: trialMatches.eligibilityGaps,
+    title:           trialMatches.title,
+  }).from(trialMatches).where(eq(trialMatches.careProfileId, careProfileId))
+  const existingMap = new Map(existing.map(r => [r.nctId, r]))
+
+  const upsertTrial = async (trial: TrialMatchResult, category: 'matched' | 'close') => {
+    const gaps = category === 'close' ? trial.eligibilityGaps : null
+    await db.insert(trialMatches)
+      .values({
+        careProfileId,
+        nctId:                trial.nctId,
+        title:                trial.title,
+        matchCategory:        category,
+        matchScore:           trial.matchScore,
+        matchReasons:         trial.matchReasons,
+        disqualifyingFactors: trial.disqualifyingFactors,
+        uncertainFactors:     trial.uncertainFactors,
+        eligibilityGaps:      gaps,
+        enrollmentStatus:     trial.enrollmentStatus,
+        locations:            trial.locations,
+        trialUrl:             trial.trialUrl,
+        updatedAt:            new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [trialMatches.careProfileId, trialMatches.nctId],
+        set: {
+          title:                trial.title,
+          matchCategory:        category,
+          matchScore:           trial.matchScore,
+          matchReasons:         trial.matchReasons,
+          disqualifyingFactors: trial.disqualifyingFactors,
+          uncertainFactors:     trial.uncertainFactors,
+          eligibilityGaps:      gaps,
+          enrollmentStatus:     trial.enrollmentStatus,
+          locations:            trial.locations,
+          trialUrl:             trial.trialUrl,
+          updatedAt:            new Date(),
+          lastCheckedAt:        new Date(),
+        },
+      })
+  }
+
+  await Promise.all([
+    ...matched.map(t => upsertTrial(t, 'matched')),
+    ...close.map(t => upsertTrial(t, 'close')),
+  ])
+
+  // Gap closure alerts — specific message naming the resolved gap.
+  const closedGapTrials = matched.filter(t => existingMap.get(t.nctId)?.matchCategory === 'close')
+  if (closedGapTrials.length > 0) {
+    const [cp] = await db.select({ userId: careProfiles.userId })
+      .from(careProfiles).where(eq(careProfiles.id, careProfileId)).limit(1)
+    if (cp) {
+      await Promise.all(closedGapTrials.map(async trial => {
+        const prev    = existingMap.get(trial.nctId)
+        const gaps    = (prev?.eligibilityGaps as EligibilityGap[] | null) ?? []
+        const gapDesc = gaps[0]?.description ?? 'an eligibility criterion'
+        await db.insert(notifications).values({
+          userId:  cp.userId,
+          type:    'trial_gap_closed',
+          title:   'You may now qualify for a trial',
+          message: `${trial.title} (${trial.nctId}) — ${gapDesc} has been met. Open CareCompanion to review.`,
+        }).catch(() => {}) // non-fatal
+      }))
+    }
+  }
+
+  // Generic notification for brand-new unnotified matches (no prior record).
+  const newUnnotified = await db.select({ id: trialMatches.id, matchCategory: trialMatches.matchCategory })
+    .from(trialMatches)
+    .where(and(eq(trialMatches.careProfileId, careProfileId), isNull(trialMatches.notifiedAt)))
+  if (newUnnotified.length > 0) {
+    const [cp] = await db.select({ userId: careProfiles.userId })
+      .from(careProfiles).where(eq(careProfiles.id, careProfileId)).limit(1)
+    if (cp) {
+      const hasMatched = newUnnotified.some(m => m.matchCategory === 'matched')
+      const hasClose   = newUnnotified.some(m => m.matchCategory === 'close')
+      if (hasMatched) {
+        await db.insert(notifications).values({
+          userId:  cp.userId,
+          type:    'trial_match',
+          title:   'New trial matches available',
+          message: 'New trial matches are available. Open CareCompanion to view.',
+        }).catch(() => {})
+      } else if (hasClose) {
+        await db.insert(notifications).values({
+          userId:  cp.userId,
+          type:    'trial_close',
+          title:   "You're close to qualifying for new trials",
+          message: "You're close to qualifying for new trials. Open CareCompanion to see what's changed.",
+        }).catch(() => {})
+      }
+      await db.update(trialMatches)
+        .set({ notifiedAt: new Date() })
+        .where(and(eq(trialMatches.careProfileId, careProfileId), isNull(trialMatches.notifiedAt)))
+    }
+  }
+}
+
 async function claimQueueRow(careProfileId: string): Promise<string | null> {
   const rows = await db.update(matchingQueue)
     .set({ status: 'claimed', claimedAt: new Date() })
@@ -47,117 +159,11 @@ export async function processMatchingQueueForProfile(careProfileId: string): Pro
     const profile = await assembleProfile(careProfileId)
     const { matched, close } = await runTrialsAgent(profile)
 
-    for (const trial of matched) {
-      await db.insert(trialMatches)
-        .values({
-          careProfileId,
-          nctId:                trial.nctId,
-          title:                trial.title,
-          matchCategory:        'matched',
-          matchScore:           trial.matchScore,
-          matchReasons:         trial.matchReasons,
-          disqualifyingFactors: trial.disqualifyingFactors,
-          uncertainFactors:     trial.uncertainFactors,
-          eligibilityGaps:      null,
-          enrollmentStatus:     trial.enrollmentStatus,
-          locations:            trial.locations,
-          trialUrl:             trial.trialUrl,
-          updatedAt:            new Date(),
-        })
-        .onConflictDoUpdate({
-          target: [trialMatches.careProfileId, trialMatches.nctId],
-          set: {
-            title:                trial.title,
-            matchCategory:        'matched',
-            matchScore:           trial.matchScore,
-            matchReasons:         trial.matchReasons,
-            disqualifyingFactors: trial.disqualifyingFactors,
-            uncertainFactors:     trial.uncertainFactors,
-            eligibilityGaps:      null,
-            enrollmentStatus:     trial.enrollmentStatus,
-            locations:            trial.locations,
-            trialUrl:             trial.trialUrl,
-            updatedAt:            new Date(),
-            lastCheckedAt:        new Date(),
-          },
-        })
-    }
-
-    for (const trial of close) {
-      await db.insert(trialMatches)
-        .values({
-          careProfileId,
-          nctId:                trial.nctId,
-          title:                trial.title,
-          matchCategory:        'close',
-          matchScore:           trial.matchScore,
-          matchReasons:         trial.matchReasons,
-          disqualifyingFactors: trial.disqualifyingFactors,
-          uncertainFactors:     trial.uncertainFactors,
-          eligibilityGaps:      trial.eligibilityGaps,
-          enrollmentStatus:     trial.enrollmentStatus,
-          locations:            trial.locations,
-          trialUrl:             trial.trialUrl,
-          updatedAt:            new Date(),
-        })
-        .onConflictDoUpdate({
-          target: [trialMatches.careProfileId, trialMatches.nctId],
-          set: {
-            title:                trial.title,
-            matchCategory:        'close',
-            matchScore:           trial.matchScore,
-            matchReasons:         trial.matchReasons,
-            disqualifyingFactors: trial.disqualifyingFactors,
-            uncertainFactors:     trial.uncertainFactors,
-            eligibilityGaps:      trial.eligibilityGaps,
-            enrollmentStatus:     trial.enrollmentStatus,
-            locations:            trial.locations,
-            trialUrl:             trial.trialUrl,
-            updatedAt:            new Date(),
-            lastCheckedAt:        new Date(),
-          },
-        })
-    }
-
-    // Notify on new unnotified matches
-    const newMatches = await db.select()
-      .from(trialMatches)
-      .where(and(eq(trialMatches.careProfileId, careProfileId), isNull(trialMatches.notifiedAt)))
-
-    if (newMatches.length > 0) {
-      const [cp] = await db.select({ userId: careProfiles.userId })
-        .from(careProfiles).where(eq(careProfiles.id, careProfileId)).limit(1)
-
-      if (cp) {
-        const hasMatched = newMatches.some(m => m.matchCategory === 'matched')
-        const hasClose   = newMatches.some(m => m.matchCategory === 'close')
-
-        if (hasMatched) {
-          await db.insert(notifications).values({
-            userId:  cp.userId,
-            type:    'trial_match',
-            title:   'New trial matches available',
-            message: 'New trial matches are available. Open CareCompanion to view.',
-          })
-        } else if (hasClose) {
-          await db.insert(notifications).values({
-            userId:  cp.userId,
-            type:    'trial_close',
-            title:   "You're close to qualifying for new trials",
-            message: "You're close to qualifying for new trials. Open CareCompanion to see what's changed.",
-          })
-        }
-
-        await db.update(trialMatches)
-          .set({ notifiedAt: new Date() })
-          .where(and(eq(trialMatches.careProfileId, careProfileId), isNull(trialMatches.notifiedAt)))
-      }
-    }
+    await saveMatchResults(careProfileId, matched, close)
 
     await db.update(matchingQueue)
       .set({ status: 'completed', processedAt: new Date() })
       .where(eq(matchingQueue.id, rowId))
-
   } catch (err) {
     await db.update(matchingQueue)
       .set({

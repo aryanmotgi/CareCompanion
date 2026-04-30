@@ -33,17 +33,18 @@ type TrialDetail = {
 }
 
 export type DetailContent = {
-  trial:           TrialDetail
-  contact:         Contact | null
-  all_contacts:    Contact[]
-  summary:         string
-  visit_frequency: string
+  trial:            TrialDetail
+  contact:          Contact | null
+  all_contacts:     Contact[]
+  summary:          string
+  visit_frequency:  string
   email: {
     to:      string | null
     subject: string
     body:    string
   }
-  phone_script: string
+  phone_script:     string
+  clinical_summary: string | null
 }
 
 type Props = {
@@ -148,7 +149,7 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
 
   if (!content) return null
 
-  const { trial, contact, all_contacts, summary, visit_frequency, email, phone_script } = content
+  const { trial, contact, all_contacts, summary, visit_frequency, email, phone_script, clinical_summary } = content
 
   const recruitingLocations = trial.locations.filter(l => l.status === 'RECRUITING')
   const topLocations = (recruitingLocations.length > 0 ? recruitingLocations : trial.locations).slice(0, 3)
@@ -320,7 +321,34 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
         </div>
       </Section>
 
-      {/* 9. Save and track */}
+      {/* 9. Share with oncologist — clinical summary */}
+      {clinical_summary && (
+        <Section title="Share with oncologist">
+          <div className="rounded-lg border border-gray-200 bg-gray-50">
+            <div className="px-3 py-2.5 flex items-start justify-between gap-2">
+              <p className="text-xs text-gray-600 leading-relaxed">
+                Clinical referral note — written for your oncologist, not the trial coordinator.
+              </p>
+            </div>
+            <div className="px-3 pb-3 border-t border-gray-200">
+              <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed mt-3">
+                {clinical_summary}
+              </pre>
+              <div className="flex gap-2 mt-3 flex-wrap">
+                <CopyButton text={clinical_summary} label="Copy for oncologist" />
+                <a
+                  href={`mailto:?subject=Clinical Trial for Review: ${trial.nct_id}&body=${encodeURIComponent(clinical_summary)}`}
+                  className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
+                >
+                  Email to oncologist →
+                </a>
+              </div>
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {/* 10. Save and track */}
       <div className="flex items-center gap-3 pt-1 border-t border-gray-100">
         {savedStatus === null ? (
           <button

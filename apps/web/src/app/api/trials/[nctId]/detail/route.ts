@@ -95,7 +95,8 @@ Location: ${patient.city ?? ''} ${patient.state ?? ''}
   "summary": "<3 sentences: (1) what the trial is testing, (2) what participation looks like week to week for the patient, (3) what the potential benefit is. Written for a non-medical caregiver — no jargon, no abbreviations.>",
   "visit_frequency": "<One sentence describing how often the patient would need to visit, based on the trial description. If not mentioned, say: 'Visit schedule not specified — ask the coordinator for details.'>",
   "email_body": "<Email body addressed to the trial team. Opening: Dear [Trial Coordinator / Research Team]. Introduce the caregiver and patient (name optional — caregiver's choice). Include: cancer type, stage, age, key mutations (with confidence level), prior treatment lines, current medications. Closing ask: ${closeMatchEmailCTA} Sign off professionally. 3–5 short paragraphs, plain language.>",
-  "phone_script": "<Short plain language phone script the caregiver reads aloud. Structure: (1) who they are and who the patient is, (2) why they are calling and the trial NCT ID, (3) exactly 3 questions to ask about eligibility, enrollment timeline, and next steps. Conversational tone. 150–200 words max.>"
+  "phone_script": "<Short plain language phone script the caregiver reads aloud. Structure: (1) who they are and who the patient is, (2) why they are calling and the trial NCT ID, (3) exactly 3 questions to ask about eligibility, enrollment timeline, and next steps. Conversational tone. 150–200 words max.>",
+  "clinical_summary": "<A concise clinical referral note for an oncologist. Format: NCT ID and brief title on line 1. Phase, status, sponsor on line 2. Mechanism/intervention in 1 clinical sentence. Key eligibility criteria most relevant to this patient (use clinical abbreviations freely: ECOG, HER2+, NSCLC, etc). Why this patient may meet eligibility: specific matching factors. Any eligibility uncertainties requiring physician review. End with: 'Recommended for physician review and eligibility determination.' 150–200 words. Clinical tone throughout — this is doctor to doctor, not caregiver to coordinator.>"
 }`
 
   const { text } = await generateText({
@@ -103,13 +104,11 @@ Location: ${patient.city ?? ''} ${patient.state ?? ''}
     prompt,
   })
 
-  let generated: { summary: string; visit_frequency: string; email_body: string; phone_script: string }
+  let generated: { summary: string; visit_frequency: string; email_body: string; phone_script: string; clinical_summary?: string }
   try {
-    // Strip any accidental markdown fencing
     const cleaned = text.replace(/^```json\n?|\n?```$/g, '').trim()
     generated = JSON.parse(cleaned)
   } catch {
-    // Fallback if JSON parse fails
     generated = {
       summary: t.brief_summary as string ?? 'Summary not available.',
       visit_frequency: 'Visit schedule not specified — ask the coordinator for details.',
@@ -127,8 +126,9 @@ Location: ${patient.city ?? ''} ${patient.state ?? ''}
       subject: emailSubject,
       body:    generated.email_body,
     },
-    summary:         generated.summary,
-    visit_frequency: generated.visit_frequency,
-    phone_script:    generated.phone_script,
+    summary:          generated.summary,
+    visit_frequency:  generated.visit_frequency,
+    phone_script:     generated.phone_script,
+    clinical_summary: generated.clinical_summary ?? null,
   })
 }
