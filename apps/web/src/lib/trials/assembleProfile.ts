@@ -63,6 +63,8 @@ export function buildPriorTreatmentLines(
   cycles: Array<{ regimenName: string | null; startDate: string; cycleNumber: number; isActive: boolean }>
 ): PriorTreatmentLine[] {
   const prior = cycles.filter(c => !c.isActive && c.regimenName)
+  // Groups by regimenName only (not startDate) — same regimen = one prior line regardless of date gaps.
+  // startDate comes from the cycle with the highest cycleNumber in that group.
   const grouped: Record<string, { startDate: string; maxCycle: number }> = {}
   for (const c of prior) {
     const key = c.regimenName!
