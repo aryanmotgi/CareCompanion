@@ -26,7 +26,7 @@ export async function routeMessage(
 }> {
   try {
     const result = await generateText({
-      model: anthropic('claude-haiku-4.5'),
+      model: anthropic('claude-haiku-4-5-20251001'),
       output: Output.object({ schema: routingSchema }),
       prompt: `You are a message router for a family caregiver AI assistant. Classify which specialist agent(s) should handle this message.
 
@@ -37,7 +37,7 @@ SPECIALISTS:
 - wellness: Symptoms, mood, sleep, pain, caregiver burnout, emotional support
 - labs: Lab results, blood work, test interpretation, trends
 - general: Profile updates, general questions, document analysis, multi-topic
-- trials: clinical trials, research studies, enrollment, trial eligibility, "find me trials", "am I eligible", "close to qualifying", "trial match"
+- trials: trial, study, clinical trials, research studies, enrollment, trial eligibility, "find me trials", "am I eligible", "close to qualifying", "trial match"
 
 RULES:
 - Simple messages → 1 specialist
