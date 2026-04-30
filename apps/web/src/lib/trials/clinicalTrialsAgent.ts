@@ -1,7 +1,6 @@
 import { anthropic } from '@ai-sdk/anthropic'
-import { generateText, stepCountIs, tool } from 'ai'
-import { z } from 'zod'
-import { searchTrials, getTrialDetails, searchByEligibility } from './tools'
+import { generateText } from 'ai'
+import { searchTrials, searchByEligibility } from './tools'
 import { buildScoringSystemPrompt, isCloseTrial } from './gapAnalysis'
 import type { PatientProfile, EligibilityGap } from './assembleProfile'
 
@@ -23,89 +22,84 @@ export type AgentMatchOutput = {
   close:   TrialMatchResult[]
 }
 
-const searchTrialsTool = tool({
-  description: 'Search ClinicalTrials.gov for trials matching a condition',
-  inputSchema: z.object({
-    condition: z.string(),
-    terms:     z.string().optional(),
-    location:  z.string().optional(),
-    status:    z.string().optional(),
-    phase:     z.string().optional(),
-    pageSize:  z.number().optional(),
-  }),
-  execute: async (params) => searchTrials(params),
-})
-
-const getTrialDetailsTool = tool({
-  description: 'Get full protocol details for a specific clinical trial by NCT ID',
-  inputSchema: z.object({ nct_id: z.string() }),
-  execute: async ({ nct_id }: { nct_id: string }) => getTrialDetails(nct_id),
-})
-
-const searchByEligibilityTool = tool({
-  description: 'Search trials filtered by patient eligibility — always uses RECRUITING status',
-  inputSchema: z.object({
-    condition: z.string(),
-    terms:     z.string().optional(),
-    age:       z.number().optional(),
-    sex:       z.string().optional(),
-    location:  z.string().optional(),
-  }),
-  execute: async (params) => searchByEligibility(params),
-})
-
 export async function runTrialsAgent(profile: PatientProfile): Promise<AgentMatchOutput> {
+  const t0 = Date.now()
   const systemPrompt = buildScoringSystemPrompt(profile)
   const locationFilter = profile.zipCode ? `50mi:${profile.zipCode}` : undefined
+  const condition = profile.cancerType ?? 'cancer'
 
-  const userMessage = `Find and score clinical trials for this patient.
-Search for trials matching: ${profile.cancerType ?? 'cancer'}, stage: ${profile.cancerStage ?? 'unknown'}.
-${locationFilter ? `Filter by location: ${locationFilter}` : 'No location filter — patient zip code not provided.'}
-Age: ${profile.age ?? 'unknown'}.
+  // Fetch trials from CT.gov in parallel — eliminates the sequential agentic tool-call loop.
+  // Two searches: broad condition search + eligibility-filtered RECRUITING-only search.
+  console.log('[trials-agent] starting parallel CT.gov fetch')
+  const [broadResult, eligResult] = await Promise.all([
+    searchTrials({ condition, location: locationFilter, status: 'RECRUITING', pageSize: 20 }),
+    searchByEligibility({ condition, age: profile.age ?? undefined, location: locationFilter }),
+  ])
+  console.log(`[trials-agent] CT.gov fetch done in ${Date.now() - t0}ms`)
 
-For each trial found, score it and output a JSON code block (\`\`\`json) with one object per trial containing: nct_id, title, matchCategory, matchScore, matchReasons, disqualifyingFactors, uncertainFactors, eligibilityGaps, status, locations, url.
+  // Deduplicate by nct_id
+  const seen = new Set<string>()
+  const allTrials: object[] = []
+  const sources = [
+    ...('trials' in broadResult ? broadResult.trials : []),
+    ...('trials' in eligResult ? eligResult.trials : []),
+  ]
+  for (const t of sources) {
+    const id = (t as Record<string, unknown>).nct_id as string
+    if (id && !seen.has(id)) { seen.add(id); allTrials.push(t) }
+  }
 
-Only output trials with matchCategory "matched" or "close". Skip "excluded" entirely.
-Limit to top 20 trials across all tool calls.`
+  if (allTrials.length === 0) {
+    console.log('[trials-agent] no trials found from CT.gov')
+    return { matched: [], close: [] }
+  }
 
+  console.log(`[trials-agent] scoring ${allTrials.length} trials with Haiku`)
+  const t1 = Date.now()
+
+  // Single Claude call — no tool calls, just batch scoring.
   const { text } = await generateText({
-    // Haiku: ~20x cheaper per token than Sonnet — critical at 30k TPM org limit.
-    // Tool-calling quality is sufficient for trial search + scoring.
+    // Haiku: ~20x cheaper per token than Sonnet, stays under 30k TPM org limit.
     model: anthropic('claude-haiku-4-5-20251001'),
     system: systemPrompt,
-    prompt: userMessage,
-    tools: {
-      search_trials:         searchTrialsTool,
-      get_trial_details:     getTrialDetailsTool,
-      search_by_eligibility: searchByEligibilityTool,
-    },
-    stopWhen: stepCountIs(6),
+    prompt: `Score each of the following clinical trials for this patient. Output one JSON array (no markdown fencing) containing ALL trials with matchCategory "matched" or "close". Skip "excluded" trials entirely.
+
+Each object must have: nct_id, title, matchCategory, matchScore (0-100), matchReasons (string[]), disqualifyingFactors (string[]), uncertainFactors (string[]), eligibilityGaps (array or null), status, locations (array), url.
+
+Trials to score:
+${JSON.stringify(allTrials, null, 2)}`,
   })
+  console.log(`[trials-agent] Claude scoring done in ${Date.now() - t1}ms, total ${Date.now() - t0}ms`)
 
-  const jsonBlocks = [...text.matchAll(/```json\n([\s\S]*?)\n```/g)].map(m => m[1])
-  const results: TrialMatchResult[] = []
-
-  for (const block of jsonBlocks) {
-    try {
-      const parsed = JSON.parse(block)
-      const trials = Array.isArray(parsed) ? parsed : [parsed]
-      for (const t of trials) {
-        if (t.matchCategory === 'excluded') continue
-        results.push({
-          nctId:                t.nct_id ?? t.nctId ?? '',
-          title:                t.title ?? '',
-          matchScore:           Math.max(0, Math.min(100, Number(t.matchScore) || 0)),
-          matchReasons:         Array.isArray(t.matchReasons) ? t.matchReasons : [],
-          disqualifyingFactors: Array.isArray(t.disqualifyingFactors) ? t.disqualifyingFactors : [],
-          uncertainFactors:     Array.isArray(t.uncertainFactors) ? t.uncertainFactors : [],
-          eligibilityGaps:      Array.isArray(t.eligibilityGaps) ? t.eligibilityGaps : null,
-          enrollmentStatus:     t.status ?? null,
-          locations:            Array.isArray(t.locations) ? t.locations : [],
-          trialUrl:             t.url ?? null,
-        })
-      }
-    } catch { /* skip malformed block */ }
+  // Parse — model may return a bare array or wrap it in a code block
+  let rawArray: unknown[] = []
+  try {
+    const cleaned = text.replace(/^```(?:json)?\n?|\n?```$/g, '').trim()
+    const parsed = JSON.parse(cleaned)
+    rawArray = Array.isArray(parsed) ? parsed : []
+  } catch {
+    // Try extracting first JSON array from text
+    const m = text.match(/\[[\s\S]*\]/)
+    if (m) {
+      try { rawArray = JSON.parse(m[0]) } catch { /* give up */ }
+    }
   }
+
+  const results: TrialMatchResult[] = rawArray
+    .filter((t): t is Record<string, unknown> => !!t && typeof t === 'object')
+    .filter(t => t.matchCategory !== 'excluded')
+    .map(t => ({
+      nctId:                String(t.nct_id ?? t.nctId ?? ''),
+      title:                String(t.title ?? ''),
+      matchScore:           Math.max(0, Math.min(100, Number(t.matchScore) || 0)),
+      matchReasons:         Array.isArray(t.matchReasons) ? t.matchReasons : [],
+      disqualifyingFactors: Array.isArray(t.disqualifyingFactors) ? t.disqualifyingFactors : [],
+      uncertainFactors:     Array.isArray(t.uncertainFactors) ? t.uncertainFactors : [],
+      eligibilityGaps:      Array.isArray(t.eligibilityGaps) ? t.eligibilityGaps : null,
+      enrollmentStatus:     String(t.status ?? ''),
+      locations:            Array.isArray(t.locations) ? t.locations : [],
+      trialUrl:             String(t.url ?? ''),
+    }))
 
   const matched = results.filter(r => {
     const isClose = r.eligibilityGaps && isCloseTrial(r.eligibilityGaps as EligibilityGap[])

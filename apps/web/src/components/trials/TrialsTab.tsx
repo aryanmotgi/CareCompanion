@@ -50,6 +50,21 @@ export function TrialsTab({ profileId, hasZip: initialHasZip }: Props) {
   const [loading, setLoading]         = useState(true)
   const [liveRunning, setLiveRunning] = useState(false)
   const [liveError, setLiveError]     = useState<string | null>(null)
+  const [livePhase, setLivePhase]     = useState(0)
+
+  const SEARCH_PHASES = [
+    'Reviewing your medical profile…',
+    'Searching clinical trials database…',
+    'Analyzing eligibility criteria…',
+    'Scoring trial matches…',
+    'Almost there…',
+  ]
+
+  useEffect(() => {
+    if (!liveRunning) { setLivePhase(0); return }
+    const id = setInterval(() => setLivePhase(p => Math.min(p + 1, SEARCH_PHASES.length - 1)), 8000)
+    return () => clearInterval(id)
+  }, [liveRunning])
 
   useEffect(() => {
     Promise.all([
@@ -113,6 +128,51 @@ export function TrialsTab({ profileId, hasZip: initialHasZip }: Props) {
     return <div className="py-12 text-center text-sm text-gray-500">Loading trial matches…</div>
   }
 
+  if (liveRunning) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
+        style={{ background: 'linear-gradient(135deg, #0a0814 0%, #110d24 100%)' }}>
+        {/* Pulsing rings */}
+        <div className="relative flex items-center justify-center mb-10">
+          <div className="absolute w-32 h-32 rounded-full opacity-20 animate-ping"
+            style={{ background: 'radial-gradient(circle, #7C3AED, transparent)', animationDuration: '2s' }} />
+          <div className="absolute w-24 h-24 rounded-full opacity-30 animate-ping"
+            style={{ background: 'radial-gradient(circle, #6366F1, transparent)', animationDuration: '2s', animationDelay: '0.4s' }} />
+          <div className="w-16 h-16 rounded-full flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #7C3AED, #6366F1)', boxShadow: '0 0 40px rgba(124,58,237,0.5)' }}>
+            <svg width="28" height="28" fill="none" stroke="white" strokeWidth="1.75" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15M14.25 3.104c.251.023.501.05.75.082M19.8 15a2.25 2.25 0 01.45 2.795l-1.2 1.8A2.25 2.25 0 0117.175 21H6.075a2.25 2.25 0 01-1.875-.905l-1.2-1.8A2.25 2.25 0 013 15h16.8z" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Rotating message */}
+        <p key={livePhase} className="text-lg font-medium text-white text-center mb-3"
+          style={{ animation: 'fadeInUp 0.5s ease-out' }}>
+          {SEARCH_PHASES[livePhase]}
+        </p>
+        <p className="text-sm text-purple-300 text-center">
+          Searching thousands of active trials for your exact profile
+        </p>
+
+        {/* Progress dots */}
+        <div className="flex gap-2 mt-8">
+          {SEARCH_PHASES.map((_, i) => (
+            <div key={i} className="w-1.5 h-1.5 rounded-full transition-all duration-500"
+              style={{ background: i <= livePhase ? '#A78BFA' : 'rgba(167,139,250,0.2)' }} />
+          ))}
+        </div>
+
+        <style>{`
+          @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 max-w-2xl mx-auto py-6 px-4">
       {!hasZip && (
@@ -132,7 +192,7 @@ export function TrialsTab({ profileId, hasZip: initialHasZip }: Props) {
           disabled={liveRunning}
           className="text-sm px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
         >
-          {liveRunning ? 'Searching…' : 'Find trials now'}
+          Find trials now
         </button>
       </div>
 
