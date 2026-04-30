@@ -217,4 +217,41 @@ describe('saveMatchResults', () => {
     const gapNotif = allInsertValues.find(v => v?.type === 'trial_gap_closed')
     expect(gapNotif).toBeUndefined()
   })
+
+  it('fires trial_match notification for new unnotified matched trials', async () => {
+    // Existing snapshot: no prior results for profile
+    mockSelect.mockImplementation(() => selectMock([]))
+    // After upsert, newUnnotified query returns a matched row
+    let selectCall = 0
+    mockSelect.mockImplementation(() => {
+      selectCall++
+      if (selectCall === 1) return selectMock([]) // snapshot (no existing)
+      if (selectCall === 2) return selectMock([{ id: 'row-1', matchCategory: 'matched' }]) // newUnnotified
+      return selectMock([{ userId: 'user-abc' }]) // careProfiles
+    })
+
+    await saveMatchResults('profile-abc', [matchedTrial], [])
+
+    const allInsertValues = mockInsert.mock.results.map(r => r?.value?.values?.mock?.calls?.[0]?.[0])
+    const matchNotif = allInsertValues.find(v => v?.type === 'trial_match')
+    expect(matchNotif).toBeDefined()
+    expect(matchNotif.title).toBe('New trial matches available')
+  })
+
+  it('fires trial_close notification when only close trials are unnotified', async () => {
+    let selectCall = 0
+    mockSelect.mockImplementation(() => {
+      selectCall++
+      if (selectCall === 1) return selectMock([]) // snapshot
+      if (selectCall === 2) return selectMock([{ id: 'row-2', matchCategory: 'close' }]) // newUnnotified close only
+      return selectMock([{ userId: 'user-abc' }]) // careProfiles
+    })
+
+    await saveMatchResults('profile-abc', [], [closeTrial])
+
+    const allInsertValues = mockInsert.mock.results.map(r => r?.value?.values?.mock?.calls?.[0]?.[0])
+    const closeNotif = allInsertValues.find(v => v?.type === 'trial_close')
+    expect(closeNotif).toBeDefined()
+    expect(closeNotif.title).toContain('close')
+  })
 })
