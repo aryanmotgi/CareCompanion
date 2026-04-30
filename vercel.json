@@ -27,6 +27,14 @@
     {
       "path": "/api/cron/radar",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/trials-match",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/trials-status",
+      "schedule": "0 3 * * *"
     }
   ]
 }
