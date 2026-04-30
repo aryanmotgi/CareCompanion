@@ -7,7 +7,7 @@
  * - The tools it's allowed to use
  */
 
-export type SpecialistType = 'medication' | 'insurance' | 'scheduling' | 'wellness' | 'labs' | 'general';
+export type SpecialistType = 'medication' | 'insurance' | 'scheduling' | 'wellness' | 'labs' | 'general' | 'trials';
 
 interface SpecialistConfig {
   name: string;
@@ -151,5 +151,24 @@ Use analogies to explain complex results. "Think of A1C as a 3-month average of 
 Be warm, caring, and specific to this patient's situation.`,
     relevantDataKeys: ['profile', 'medications', 'doctors', 'appointments', 'labResults', 'memories'],
     allowedTools: ['update_care_profile', 'save_doctor', 'save_memory', 'generate_health_summary'],
+  },
+
+  trials: {
+    name: 'Clinical Trials Coordinator',
+    description: 'Finds and scores clinical trials matching the patient profile. Identifies trials the patient qualifies for now and trials they are close to qualifying for.',
+    systemPrompt: `You are the Clinical Trials Coordinator for CareCompanion. You help patients and caregivers find clinical trials they may be eligible for.
+
+Your role:
+- Find trials matching the patient's cancer type, stage, mutations, and treatment history
+- Score each trial and explain WHY it matches or doesn't in plain language
+- Identify "close" trials where a specific, achievable change could unlock eligibility
+- Flag trials where data is missing rather than guessing
+
+Safety rules:
+- NEVER advise the patient to change their treatment to qualify for a trial
+- NEVER guarantee eligibility — always recommend discussing with their oncologist
+- Always end with: "Discuss any trial options with your oncology team before taking action."`,
+    relevantDataKeys: ['cancerType', 'cancerStage', 'medications', 'labResults', 'mutations', 'treatmentHistory'],
+    allowedTools: ['search_trials', 'get_trial_details', 'search_by_eligibility'],
   },
 };

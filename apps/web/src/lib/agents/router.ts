@@ -1,14 +1,16 @@
 import { anthropic } from '@ai-sdk/anthropic';
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import type { SpecialistType } from './specialists';
 
 const routingSchema = z.object({
-  specialists: z.array(z.enum(['medication', 'insurance', 'scheduling', 'wellness', 'labs', 'general']))
+  specialists: z.array(z.enum(['medication', 'insurance', 'scheduling', 'wellness', 'labs', 'general', 'trials']))
     .describe('Which specialist agents should handle this message. Can be multiple for complex queries.'),
   reasoning: z.string().describe('Brief reasoning for the routing decision'),
   is_complex: z.boolean().describe('Whether this needs multiple specialists working together'),
 });
+
+type RoutingOutput = z.infer<typeof routingSchema>;
 
 /**
  * Route a user message to the appropriate specialist agent(s).
@@ -23,9 +25,9 @@ export async function routeMessage(
   isComplex: boolean;
 }> {
   try {
-    const { object } = await generateObject({
-      model: anthropic('claude-haiku-4-5-20251001'),
-      schema: routingSchema,
+    const result = await generateText({
+      model: anthropic('claude-haiku-4.5'),
+      output: Output.object({ schema: routingSchema }),
       prompt: `You are a message router for a family caregiver AI assistant. Classify which specialist agent(s) should handle this message.
 
 SPECIALISTS:
@@ -35,6 +37,7 @@ SPECIALISTS:
 - wellness: Symptoms, mood, sleep, pain, caregiver burnout, emotional support
 - labs: Lab results, blood work, test interpretation, trends
 - general: Profile updates, general questions, document analysis, multi-topic
+- trials: clinical trials, research studies, enrollment, trial eligibility, "find me trials", "am I eligible", "close to qualifying", "trial match"
 
 RULES:
 - Simple messages → 1 specialist
@@ -50,6 +53,7 @@ USER MESSAGE:
 ${userMessage}`,
     });
 
+    const object = result.output as RoutingOutput;
     return {
       specialists: object.specialists as SpecialistType[],
       reasoning: object.reasoning,
