@@ -13,6 +13,17 @@ export async function enqueueMatchingRun(
     .onConflictDoNothing()
 }
 
+// Fire-and-forget helper for trigger sites. Waits 2s after enqueue before
+// processing so back-to-back triggers don't send simultaneous Claude calls.
+export async function triggerMatchingRun(
+  careProfileId: string,
+  reason: 'profile_update' | 'new_medication' | 'new_lab' | 'nightly' | 'retry'
+): Promise<void> {
+  await enqueueMatchingRun(careProfileId, reason)
+  await new Promise(resolve => setTimeout(resolve, 2000))
+  await processMatchingQueueForProfile(careProfileId)
+}
+
 export async function releaseStaleClaimedRows(): Promise<void> {
   const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
   await db.update(matchingQueue)

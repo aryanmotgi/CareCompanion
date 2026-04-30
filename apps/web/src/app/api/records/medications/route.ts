@@ -5,7 +5,7 @@ import { getAuthenticatedUser, parseBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { validateCsrf } from '@/lib/csrf';
 import { softDelete } from '@/lib/soft-delete';
-import { enqueueMatchingRun, processMatchingQueueForProfile } from '@/lib/trials/matchingQueue';
+import { triggerMatchingRun } from '@/lib/trials/matchingQueue';
 
 // POST — add a medication
 export async function POST(req: Request) {
@@ -54,9 +54,7 @@ export async function POST(req: Request) {
     notes: notes || null,
   }).returning();
 
-  void enqueueMatchingRun(profileId, 'new_medication').then(() =>
-    void processMatchingQueueForProfile(profileId)
-  );
+  void triggerMatchingRun(profileId, 'new_medication');
 
   return apiSuccess(med);
 }
@@ -92,9 +90,7 @@ export async function DELETE(req: Request) {
   if (!profile) return apiError('Forbidden', 403);
 
   const result = await softDelete('medications', id, dbUser!.id, profile.id);
-  void enqueueMatchingRun(profile.id, 'new_medication').then(() =>
-    void processMatchingQueueForProfile(profile.id)
-  );
+  void triggerMatchingRun(profile.id, 'new_medication');
   return apiSuccess(result);
 }
 
@@ -170,9 +166,7 @@ export async function PUT(req: Request) {
 
   const inserted = await db.insert(medications).values(rows).returning();
 
-  void enqueueMatchingRun(profile.id, 'new_medication').then(() =>
-    void processMatchingQueueForProfile(profile.id)
-  );
+  void triggerMatchingRun(profile.id, 'new_medication');
 
   return apiSuccess(inserted);
 }

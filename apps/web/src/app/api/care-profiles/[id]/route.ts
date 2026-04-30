@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { careProfiles, users } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
-import { enqueueMatchingRun, processMatchingQueueForProfile } from '@/lib/trials/matchingQueue'
+import { triggerMatchingRun } from '@/lib/trials/matchingQueue'
 
 // GET — fetch a specific care profile (must belong to the current user)
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -66,9 +66,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .where(and(eq(careProfiles.id, id), eq(careProfiles.userId, dbUser.id)))
     .returning({ id: careProfiles.id })
 
-  void enqueueMatchingRun(updated.id, 'profile_update').then(() =>
-    void processMatchingQueueForProfile(updated.id)
-  )
+  void triggerMatchingRun(updated.id, 'profile_update')
 
   return NextResponse.json({ id: updated.id })
 }
