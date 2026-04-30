@@ -53,6 +53,21 @@ const TABS = [
     ),
   },
   {
+    label: 'Trials',
+    href: '/trials',
+    icon: (active: boolean) => (
+      <svg width="24" height="24" fill="none" stroke={active ? 'url(#trialsStroke)' : '#4B5568'} strokeWidth="1.75" viewBox="0 0 24 24">
+        <defs>
+          <linearGradient id="trialsStroke" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#A78BFA" />
+            <stop offset="100%" stopColor="#6366F1" />
+          </linearGradient>
+        </defs>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15M14.25 3.104c.251.023.501.05.75.082M19.8 15a2.25 2.25 0 01.45 2.795l-1.2 1.8A2.25 2.25 0 0117.175 21H6.075a2.25 2.25 0 01-1.875-.905l-1.2-1.8A2.25 2.25 0 013 15h16.8z" />
+      </svg>
+    ),
+  },
+  {
     label: 'Scan',
     href: '/scans',
     icon: (active: boolean) => (
