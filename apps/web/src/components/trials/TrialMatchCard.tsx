@@ -66,8 +66,9 @@ export function TrialMatchCard(props: Props) {
       </div>
 
       {props.stale && (
-        <p className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
-          Last matched{props.updatedAt ? ` ${new Date(props.updatedAt).toLocaleDateString()}` : ''} — click &quot;Find trials now&quot; to refresh
+        <p className="text-xs px-2 py-1 rounded"
+          style={{ color: 'rgba(251,191,36,0.80)', background: 'rgba(251,191,36,0.10)' }}>
+          Last matched{props.updatedAt ? ` ${new Date(props.updatedAt).toLocaleDateString()}` : ''} — tap Refresh to update
         </p>
       )}
 

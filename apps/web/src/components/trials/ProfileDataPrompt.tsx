@@ -54,10 +54,11 @@ export function ProfileDataPrompt({ profileId, onSaved }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-blue-200 bg-blue-50/60 px-5 py-4 space-y-3">
+    <div className="rounded-xl border px-5 py-4 space-y-3"
+      style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.12)' }}>
       <div>
-        <p className="text-sm font-medium text-blue-900">Tell us about the patient</p>
-        <p className="text-xs text-blue-700 mt-0.5">
+        <p className="text-sm font-medium text-white/90">Tell us about the patient</p>
+        <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>
           We use this to find relevant trials — takes 10 seconds.
         </p>
       </div>
@@ -65,13 +66,14 @@ export function ProfileDataPrompt({ profileId, onSaved }: Props) {
         <div className="space-y-2">
           {/* Cancer type with datalist suggestions */}
           <div>
-            <label className="text-xs font-medium text-gray-700 mb-1 block">Cancer type</label>
+            <label className="text-xs font-medium mb-1 block" style={{ color: 'rgba(255,255,255,0.40)' }}>Cancer type</label>
             <input
               list="cancer-suggestions"
               value={cancerType}
               onChange={e => { setCancerType(e.target.value); setError(null) }}
               placeholder="e.g. Breast Cancer, Lung Cancer"
-              className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/60"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.90)' }}
             />
             <datalist id="cancer-suggestions">
               {CANCER_SUGGESTIONS.map(s => <option key={s} value={s} />)}
@@ -81,11 +83,12 @@ export function ProfileDataPrompt({ profileId, onSaved }: Props) {
           <div className="grid grid-cols-2 gap-2">
             {/* Stage */}
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Stage</label>
+              <label className="text-xs font-medium mb-1 block" style={{ color: 'rgba(255,255,255,0.40)' }}>Stage</label>
               <select
                 value={cancerStage}
                 onChange={e => setCancerStage(e.target.value)}
-                className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/60"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.90)' }}
               >
                 <option value="">Select stage</option>
                 {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -94,7 +97,7 @@ export function ProfileDataPrompt({ profileId, onSaved }: Props) {
 
             {/* Age */}
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Patient age</label>
+              <label className="text-xs font-medium mb-1 block" style={{ color: 'rgba(255,255,255,0.40)' }}>Patient age</label>
               <input
                 type="number"
                 min={1}
@@ -102,18 +105,20 @@ export function ProfileDataPrompt({ profileId, onSaved }: Props) {
                 value={age}
                 onChange={e => setAge(e.target.value)}
                 placeholder="e.g. 58"
-                className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/60"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.90)' }}
               />
             </div>
           </div>
         </div>
 
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {error && <p className="text-xs text-red-400">{error}</p>}
 
         <button
           type="submit"
           disabled={saving || !cancerType.trim()}
-          className="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          className="w-full py-2 text-white text-sm font-semibold rounded-xl disabled:opacity-40 transition-opacity"
+          style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
         >
           {saving ? 'Saving…' : 'Find my trials →'}
         </button>

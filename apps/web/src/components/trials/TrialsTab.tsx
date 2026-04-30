@@ -76,6 +76,7 @@ export function TrialsTab({
   const [liveError, setLiveError]     = useState<string | null>(null)
   const [livePhase, setLivePhase]     = useState(0)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
+  const [hasSearched, setHasSearched] = useState(false)
 
   // Rotate loading phases
   useEffect(() => {
@@ -122,6 +123,7 @@ export function TrialsTab({
       setMatched(data.matched ?? [])
       setClose(data.close ?? [])
       setLastUpdated(data.refreshedAt ?? new Date().toISOString())
+      setHasSearched(true)
     } catch (e) {
       setLiveError(e instanceof Error ? e.message : 'Search failed — try again')
     } finally {
@@ -154,7 +156,7 @@ export function TrialsTab({
   }
 
   if (loading) {
-    return <div className="py-12 text-center text-sm text-gray-500">Loading trial matches…</div>
+    return <div className="py-12 text-center text-sm" style={{ color: 'rgba(255,255,255,0.40)' }}>Loading trial matches…</div>
   }
 
   // Full-screen loading overlay during live search
@@ -220,17 +222,17 @@ export function TrialsTab({
       )}
 
       {liveError && (
-        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700">
+        <div className="rounded-lg px-4 py-2 text-sm text-red-400"
+          style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)' }}>
           Search failed: {liveError}
         </div>
       )}
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">Clinical Trials</h1>
-          {/* D3 — last updated timestamp */}
+          <h1 className="text-lg font-semibold text-white/90">Clinical Trials</h1>
           {lastUpdated && (
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.40)' }}>
               Updated {formatRelativeTime(lastUpdated)}
             </p>
           )}
@@ -239,7 +241,8 @@ export function TrialsTab({
           onClick={runLive}
           disabled={liveRunning || !cancerType}
           title={!cancerType ? 'Add cancer type above to search' : undefined}
-          className="text-sm px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+          className="text-sm px-4 py-2 text-white font-semibold rounded-xl disabled:opacity-40"
+          style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
         >
           {hasResults ? 'Refresh' : 'Find trials now'}
         </button>
@@ -247,9 +250,14 @@ export function TrialsTab({
 
       {matched.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-            Matched Trials
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold text-white/90">
+              Matched Trials
+            </h2>
+            <span className="text-xs px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 font-medium">
+              {matched.length}
+            </span>
+          </div>
           {matched.map(t => (
             <TrialMatchCard
               key={t.nctId}
@@ -276,10 +284,10 @@ export function TrialsTab({
 
       {close.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+          <h2 className="text-xs font-medium text-white/40 uppercase tracking-wide">
             Trials You&apos;re Close To
           </h2>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.30)' }}>
             These trials have specific gaps — we&apos;ll notify you if you become eligible.
           </p>
           {close.map(t => (
@@ -300,10 +308,21 @@ export function TrialsTab({
 
       {!hasResults && cancerType && (
         <div className="py-12 text-center space-y-2">
-          <p className="text-sm text-gray-500">No trial matches found yet.</p>
-          <p className="text-xs text-gray-400">
-            Click &quot;Find trials now&quot; to search, or check back after your next appointment.
-          </p>
+          {hasSearched ? (
+            <>
+              <p className="text-sm text-white/60">No matching trials found for this profile.</p>
+              <p className="text-xs text-white/30">
+                Try updating the cancer type or stage above, or check back as new trials open.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-white/60">No trial matches found yet.</p>
+              <p className="text-xs text-white/30">
+                Click &quot;Find trials now&quot; to search, or check back after your next appointment.
+              </p>
+            </>
+          )}
         </div>
       )}
     </div>
