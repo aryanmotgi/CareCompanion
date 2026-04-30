@@ -28,6 +28,7 @@ type TrialMatch = {
   locations: Array<{ city?: string; state?: string; country?: string }> | null
   trialUrl: string | null
   stale: boolean
+  updatedAt?: string | null
 }
 
 export function TrialsTab({ hasZip }: { hasZip: boolean }) {
@@ -126,6 +127,7 @@ export function TrialsTab({ hasZip }: { hasZip: boolean }) {
               locations={t.locations}
               trialUrl={t.trialUrl}
               stale={t.stale}
+              updatedAt={t.updatedAt}
               onSave={saveTrial}
               onDismiss={dismissTrial}
               onShare={shareTrial}

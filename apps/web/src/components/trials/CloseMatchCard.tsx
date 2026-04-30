@@ -23,6 +23,21 @@ type Props = {
 const gapLabels: Record<string, string> = {
   measurable:  'Lab value to reach',
   conditional: 'Condition to meet',
+  fixed:       'Permanent barrier',
+}
+
+function getGapLabel(gap: EligibilityGap): string {
+  if (gap.gapType === 'measurable') return 'Lab value to reach'
+  if (gap.gapType === 'fixed') return 'Permanent barrier'
+  // conditional — try to be more specific based on description
+  const desc = gap.description.toLowerCase()
+  if (desc.includes('medication') || desc.includes('treatment') || desc.includes('drug') || desc.includes('stop') || desc.includes('prior')) {
+    return 'Medication to stop'
+  }
+  if (desc.includes('complet') || desc.includes('line') || desc.includes('therapy')) {
+    return 'Treatment to complete'
+  }
+  return 'Condition to meet'
 }
 
 export function CloseMatchCard(props: Props) {
@@ -52,7 +67,7 @@ export function CloseMatchCard(props: Props) {
         {props.eligibilityGaps.map((gap, i) => (
           <div key={i} className="bg-white border border-purple-100 rounded p-2.5 space-y-1">
             <span className="text-xs font-medium text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">
-              {gapLabels[gap.gapType] ?? gap.gapType}
+              {getGapLabel(gap)}
             </span>
             <p className="text-xs text-gray-700 mt-1">{gap.description}</p>
             {!gap.verifiable && (

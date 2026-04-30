@@ -12,6 +12,7 @@ type Props = {
   locations:            Array<{ city?: string; state?: string; country?: string }> | null
   trialUrl:             string | null
   stale?:               boolean
+  updatedAt?:           string | null
   onSave:    (nctId: string) => void
   onDismiss: (nctId: string) => void
   onShare:   (nctId: string, title: string, url: string) => void
@@ -55,7 +56,7 @@ export function TrialMatchCard(props: Props) {
 
       {props.stale && (
         <p className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
-          Stale match — click &quot;Find trials now&quot; to refresh
+          Last matched{props.updatedAt ? ` ${new Date(props.updatedAt).toLocaleDateString()}` : ''} — click &quot;Find trials now&quot; to refresh
         </p>
       )}
 
