@@ -601,6 +601,9 @@ export const trialMatches = pgTable('trial_matches', {
   careProfileIdx:     index('trial_matches_care_profile_idx').on(table.careProfileId),
   matchCategoryIdx:   index('trial_matches_match_category_idx').on(table.matchCategory),
   updatedAtIdx:       index('trial_matches_updated_at_idx').on(table.updatedAt),
+  notifiedAtNullIdx:  index('trial_matches_notified_at_null_idx')
+    .on(table.notifiedAt)
+    .where(sql`notified_at IS NULL`),
 }))
 
 // ── Clinical Trials — Saved Trials ───────────────────────────────────────────
