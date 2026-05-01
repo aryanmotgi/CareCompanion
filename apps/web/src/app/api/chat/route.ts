@@ -50,7 +50,7 @@ async function handler(req: Request) {
       : '';
 
     const demoResult = streamText({
-      model: anthropic('claude-sonnet-4.6'),
+      model: anthropic('claude-sonnet-4-6'),
       maxOutputTokens: 512,
       system: `You are CareCompanion AI. The user is in demo mode exploring the app.
 Give a short, helpful 1-2 sentence answer about their question as it relates to cancer care.
@@ -215,7 +215,7 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
   const tools = buildTools(dbUser!.id, profile?.id || null);
 
   const result = streamText({
-    model: anthropic('claude-sonnet-4.6'),
+    model: anthropic('claude-sonnet-4-6'),
     maxOutputTokens: 4096,
     system: fullSystemPrompt,
     messages: conversationMessages,
