@@ -85,6 +85,21 @@ Security hardening, Care Tab reliability, dashboard fixes, trials engine improve
 - **staleThreshold reduced from 90 to 30 days** — trial match results older than 30 days are flagged as stale (enrollment status changes frequently)
 - **Trials agent refactored to single-call search** — removed duplicate `searchByEligibility` call; single search with `pageSize: 40` is faster and avoids dedup overhead
 
+### Security (Chat & Notifications audit)
+- **CSRF missing on notification dismiss and mark-all-read** — `NotificationsView` and `NotificationBell` were POSTing to `/api/notifications/read` without the `x-csrf-token` header; backend CSRF check rejected every call silently; users could dismiss or mark notifications but changes never persisted
+- **PHI in chat URL parameters from notification links** — "Ask AI" links embedded medication names, lab values, and appointment info in `?prompt=` URL query parameters, exposing patient data in server logs, browser history, and Referer headers; replaced with generic type-based prompts
+- **CSRF missing on POST /api/care-group/join** — state-mutating endpoint added users to care groups without CSRF validation; now consistent with POST /api/care-group
+- **LIKE wildcard injection in trials-status cron** — `nctId` was interpolated into a LIKE pattern without escaping `%` and `_` metacharacters; defensively escaped before interpolation
+
+### Fixed (Chat & Notifications)
+- **"Ask AI" from notifications never auto-sent** — `NotificationsView` used `"Tell me more about: {title}"` which doesn't match `isAllowedPrompt()`; all notification links now use type-based prompts that match the allowlist and auto-send
+- **Soft-deleted items generated spurious notifications** — `generateNotificationsForUser` queried medications and appointments without `isNull(deletedAt)` filters; deleted medications still generated refill alerts, past appointments still generated prep reminders
+- **markAllRead showed success toast on API failure** — `NotificationsView` called `showToast` before checking `res.ok`; state is now rolled back and an error toast is shown on failure
+- **NotificationBell dismiss had no error handling** — notification disappeared from UI on failure with no rollback or feedback; now rolls back optimistic state on non-ok response
+- **Notification cron timed out for large user bases** — `generateNotificationsForAllUsers` processed users in a serial loop; at ~500ms/user this hit Vercel's 60s cron limit at 120+ users; now runs in parallel batches of 10 via `Promise.allSettled`
+- **Orchestrator rate limiter never enforced** — `rateLimit()` was instantiated inside `orchestrate()` per request, creating a fresh in-memory store each call; limit was never shared across requests; moved to module scope
+- **Orchestrator polluted patient memory store** — multi-agent queries were logged as `category: 'other'` rows in the `memories` table; the memory extraction LLM treated these system events as patient facts; insert block removed
+
 ### Fixed (Document Scan & Upload)
 - **Scan requests silently failing with 403** — DocumentScanner, CategoryScanner, and CategoryUploadCard were posting to `/api/scan-document` without the `x-csrf-token` header; the backend CSRF check rejected every scan. Now all three components read the CSRF cookie via `useCsrfToken()` and include the header
 - **Bulk document delete was a no-op** — the Delete button in the document organizer ran `exitBulkMode()` and nothing else (a "// In a real app..." comment marked the gap). Now calls `DELETE /api/documents/:id` for each selected document and shows success/error counts
