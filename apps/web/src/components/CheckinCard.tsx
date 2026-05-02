@@ -56,7 +56,19 @@ export function CheckinCard({ careProfileId }: CheckinCardProps) {
     fetchStatus()
   }
 
-  if (loading) return null
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-[var(--border)] bg-white/[0.02] p-4 mb-4 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-3.5 w-28 bg-white/[0.06] rounded-md" />
+            <div className="h-3 w-40 bg-white/[0.04] rounded-md" />
+          </div>
+          <div className="h-8 w-20 bg-white/[0.06] rounded-xl" />
+        </div>
+      </div>
+    )
+  }
 
   // Already checked in today
   if (checkin) {
