@@ -2,6 +2,23 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.3.1.0] - 2026-05-01
+
+Bug fixes across onboarding, trials search, and dashboard design polish.
+
+### Fixed
+- **Settings "Edit Profile" now opens the profile wizard directly** — was always showing the Care Group setup screen; the onboarding shell now initializes to the wizard phase when the user has completed profiles
+- **Completed onboarding no longer re-triggers** — layout gate used a non-deterministic query (`.limit(1)` without ORDER BY) that could return an incomplete secondary profile, redirecting users back to onboarding; now checks for any completed profile
+- **Trials search surfaces CT.gov API errors** — timeouts and rate-limit responses were silently returning "No matching trials found"; errors now surface in the UI with a visible error message
+- **CT.gov search now fetches up to 100 results** — was capped at 20 despite requesting 40; raised to 100 for better match coverage
+- **TEST suffix stripped from cancerType in Claude scoring prompt** — the CT.gov search already stripped it but the Haiku system prompt was still seeing the raw test string
+- **Trial phase field included in scoring output** — Haiku now returns the phase value so it propagates to the UI
+- **Dark design system applied to TrialMatchCard** — all color tokens rewritten for the dark theme; cards were rendering with light-mode colors
+- **Dashboard layout and microcopy polish** — gradient CTAs removed, celebratory copy replaced with clinical-register language, analytics hero metrics simplified, symptom pills use neutral styling
+
+### Changed
+- **staleThreshold reduced from 90 to 30 days** — trial match results older than 30 days are now flagged as stale (was 89 days, too permissive for enrollment status changes)
+
 ## [0.3.0.0] - 2026-04-29
 
 Full clinical trials matching feature. Caregivers can now search thousands of active trials against a patient's real medical profile, see what they're close to qualifying for, get notified when an eligibility gap closes, and share a clinical-tone summary with their oncologist.
