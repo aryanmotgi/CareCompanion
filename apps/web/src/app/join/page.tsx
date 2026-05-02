@@ -30,6 +30,11 @@ export default async function JoinPage({
   if (!invite) {
     redirect('/onboarding?error=invite-not-found')
   }
+  // Verify the invite belongs to the group in the URL — prevents joining an arbitrary
+  // group by crafting a URL with a valid token from a different group.
+  if (invite.careGroupId !== careGroupId) {
+    redirect('/onboarding?error=invite-not-found')
+  }
   if (invite.usedBy) {
     redirect('/onboarding?error=invite-used')
   }
@@ -43,14 +48,14 @@ export default async function JoinPage({
   // Check not already a member
   const existing = await db.query.careGroupMembers.findFirst({
     where: and(
-      eq(careGroupMembers.careGroupId, careGroupId),
+      eq(careGroupMembers.careGroupId, invite.careGroupId),
       eq(careGroupMembers.userId, session.user.id),
     ),
   })
 
   if (!existing) {
     await db.insert(careGroupMembers).values({
-      careGroupId,
+      careGroupId: invite.careGroupId,
       userId: session.user.id,
       role: 'member',
     })
