@@ -4,10 +4,14 @@ import { db } from '@/lib/db'
 import { careGroups, careGroupMembers } from '@/lib/db/schema'
 import { eq, and, count } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
+import { validateCsrf } from '@/lib/csrf'
 
 const MAX_MEMBERS = 10
 
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req)
+  if (!valid) return csrfError!
+
   try {
     const session = await auth()
     if (!session?.user?.id) {

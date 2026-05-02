@@ -52,7 +52,7 @@ export async function GET(req: Request) {
               .where(and(
                 eq(notifications.userId, cp.userId),
                 eq(notifications.type, 'trial_status_change'),
-                sql`${notifications.message} LIKE ${'%' + row.nctId + '%'}`,
+                sql`${notifications.message} LIKE ${'%' + row.nctId.replace(/%/g, '\\%').replace(/_/g, '\\_') + '%'}`,
                 gt(notifications.createdAt, since24h),
               ))
               .limit(1)

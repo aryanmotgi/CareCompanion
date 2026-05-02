@@ -32,7 +32,7 @@ vi.mock('@/lib/api-response', () => ({ apiError: mocks.apiError, apiSuccess: moc
 vi.mock('@/lib/db', () => ({
   db: {
     select: vi.fn(() => ({ from: mocks.mockFrom })),
-    update: (arg: unknown) => mocks.mockUpdate(arg),
+    update: () => mocks.mockUpdate(),
   },
 }))
 vi.mock('@/lib/db/schema', () => ({
