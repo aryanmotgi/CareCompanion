@@ -4,10 +4,9 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+const mockCheck = vi.fn().mockResolvedValue({ success: false })
 vi.mock('@/lib/rate-limit', () => ({
-  rateLimit: vi.fn().mockReturnValue({
-    check: vi.fn().mockResolvedValue({ success: false }),
-  }),
+  rateLimit: vi.fn().mockReturnValue({ check: mockCheck }),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -49,5 +48,7 @@ describe('POST /api/auth/register — rate limiting', () => {
     expect(res.status).toBe(429)
     const json = await res.json()
     expect(json.error).toContain('Too many')
+    // Verify rate-limit check was actually invoked (guards against dead code)
+    expect(mockCheck).toHaveBeenCalledWith('1.2.3.4')
   })
 })
