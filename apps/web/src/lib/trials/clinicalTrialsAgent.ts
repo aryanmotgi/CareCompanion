@@ -28,7 +28,8 @@ export async function runTrialsAgent(profile: PatientProfile): Promise<AgentMatc
   const t0 = Date.now()
   const systemPrompt = buildScoringSystemPrompt(profile)
   const locationFilter = profile.zipCode ? `50mi:${profile.zipCode}` : undefined
-  const condition = profile.cancerType ?? 'cancer'
+  // Strip test/seed suffixes so CT.gov gets a clean search term
+  const condition = (profile.cancerType ?? 'cancer').replace(/\s*\(TEST[^)]*\)/gi, '').trim() || 'cancer'
 
   // Fetch trials from CT.gov in parallel — eliminates the sequential agentic tool-call loop.
   // Two searches: broad condition search + eligibility-filtered RECRUITING-only search.
