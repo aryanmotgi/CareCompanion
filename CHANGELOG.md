@@ -4,7 +4,26 @@ All notable changes to CareCompanion will be documented in this file.
 
 ## [0.3.1.0] - 2026-05-02
 
-Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, and Settings/Profile/Emergency Card audit.
+Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, and Care Groups/Care Team/Sharing security audit.
+
+### Fixed (Care Groups, Care Team, Sharing)
+- **Care group invite CSRF missing** — `POST /api/care-group/invite` had no CSRF check; any page could forge group invite requests
+- **Care group status polling IDOR** — `GET /api/care-group/[id]/status` returned member data to any authenticated user who guessed a group UUID; added membership check with 403
+- **Care group join race condition** — membership insert and invite mark-as-used were separate DB writes; concurrent requests could double-join; wrapped in transaction + added member-limit guard on invite path
+- **Mobile care group login rate limit bypassable** — rate limiter key was IP-only; attacker could rotate IPs; changed to IP+groupName
+- **Care group frontend CSRF headers missing** — all three POST calls in `CareGroupScreen` lacked `x-csrf-token`; all mutations silently failed with 403
+- **QRCodePanel unhandled AbortError** — `navigator.share()` called without catch; user cancelling share sheet threw unhandled promise rejection
+- **Care team accept non-atomic** — member insert and invite-status update were not in a transaction; if update failed, user became member with re-acceptable pending invite; now wrapped in `db.transaction`
+- **Care team acceptInvite CSRF missing** — `acceptInvite` fetch in `CareTeamView` lacked `x-csrf-token`; every email-link accept silently failed with 403
+- **Checkin share CSRF missing** — `POST /api/checkins/share` had no CSRF validation
+- **Checkin share IDOR** — any authenticated user could pass any `checkinId` and trigger push notifications to a different patient's care team; ownership now verified via `careProfileId → careProfiles.userId`
+- **Shared page empty state** — health profile share pages with no data rendered only header/footer; now shows "No health data has been added yet" card
+- **Weekly summary empty narrative** — `WeeklySummaryPage` rendered empty container when narrative was blank; now shows "No summary available yet" placeholder
+
+### Changed (Dead Code)
+- Removed `bcryptjs` and `expo-image-picker` from root `package.json` (already in workspace packages)
+- Added 4 missing mobile dependencies to `apps/mobile/package.json`: `@sentry/react-native`, `expo-system-ui`, `posthog-react-native`, `react-native-shake`
+- Removed `export` keyword from 22 symbols confirmed to have no external importers across mobile and web
 
 ### Fixed (Settings, Profile, Emergency Card)
 - **Notification preferences never saved** — component sent camelCase keys (`quietHoursStart`, `refillReminders`) but the API checks snake_case (`quiet_hours_start`, `refill_reminders`); every save returned 400 silently

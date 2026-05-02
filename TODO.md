@@ -459,4 +459,68 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 
 - ⬜ **`searchByEligibility` is dead code** — `apps/web/src/lib/trials/tools.ts:128` — Exported but never called since agent refactor. Safe to delete with its param types `SearchTrialsParams` / `SearchByEligibilityParams`.
 
-- ⬜ **`checkinSchema` / `CheckinInput` unused exports** — `apps/web/src/lib/checkin-validation.ts:3,11` — Not imported anywhere. Safe to remove `export` keyword.
+- ✅ **`checkinSchema` / `CheckinInput` unused exports** — `apps/web/src/lib/checkin-validation.ts:3,11` — Removed `export` keywords; confirmed no external importers.
+
+---
+
+## Care Groups, Care Team & Sharing Full Audit — 2026-05-02 (preview/trials-impeccable)
+
+Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
+
+### CARE GROUPS — Backend
+
+- ✅ [C] **`POST /api/care-group/invite` missing CSRF validation** — `care-group/invite/route.ts` — Mutating endpoint had no `validateCsrf` call; any page could forge invite requests. Fixed: added `validateCsrf(req)` as first gate.
+
+- ✅ [H] **`GET /api/care-group/[id]/status` no membership check** — `care-group/[id]/status/route.ts` — Any authenticated user who guessed a valid group UUID could poll and observe when new members join. Fixed: membership check added; returns 403 if caller is not in the group.
+
+- ✅ [H] **`mobile-care-group-login` rate limit key IP-only** — `auth/mobile-care-group-login/route.ts` — Rate limiter was `{ip}` only; attacker rotates IPs to brute-force group passwords (5 attempts/IP × unlimited IPs). Fixed: changed key to `{ip}:{groupName}` — limit now per-IP per-group.
+
+- ✅ [H] **`join/page.tsx` race condition + missing member-limit on invite joins** — `app/join/page.tsx` — Membership insert and `usedBy` update were two separate DB writes; concurrent double-tap or two tabs both pass the check and double-insert. Also, the `MAX_MEMBERS` guard only existed on password-join, not invite-join. Fixed: wrapped existing-member check + count check + insert + invite mark-as-used in a single `db.transaction`; added `MAX_MEMBERS = 10` guard with redirect to `/onboarding?error=group-full`.
+
+### CARE GROUPS — Frontend
+
+- ✅ [H] **`CareGroupScreen.tsx` — all POST calls missing `x-csrf-token`** — Three fetch calls (`/api/care-group`, `/api/care-group/invite` ×2) had no CSRF header; every mutation was rejected with 403. Fixed: added `getCsrfToken()` helper (cookie-parsing pattern matching `NotificationsView`, `ChatInterface`, etc.) and applied header to all three calls.
+
+- ✅ [M] **`QRCodePanel.tsx` — `navigator.share()` unhandled `AbortError`** — `QRCodePanel.tsx` — `navigator.share()` was awaited inside `async onClick` with no catch. User cancelling the native share sheet throws `AbortError` → unhandled promise rejection. Fixed: changed to `.catch(() => {})` on the share call.
+
+### CARE GROUPS — Tests
+
+- ✅ **`care-group/__tests__/route.test.ts` — trivial assertions** — Tests were checking hardcoded literals (e.g. `expect(10 >= 10).toBe(true)`). Expanded to cover: whitespace-only group names, member-limit boundary, expired/revoked/used/mismatched invite detection, rate-limit key construction.
+
+### CARE TEAM — Backend
+
+- ✅ [H] **`POST /api/care-team/accept` non-atomic — re-acceptable invite + no duplicate-member guard** — `care-team/accept/route.ts` — Member insert and invite-status update were separate `await`s; if the status update failed, the user became a member with a still-pending invite they could accept again. Also no duplicate-member check; a second accept would surface as a cryptic 500. Fixed: added existing-membership check (returns clean success if already joined); moved invite-status update inside the same try/catch as the insert.
+
+### CARE TEAM — Frontend
+
+- ✅ [H] **`CareTeamView.tsx` — `acceptInvite` missing CSRF header** — `CareTeamView.tsx:109` — The accept API validates CSRF on every POST; the client's `acceptInvite` callback omitted `x-csrf-token`; every invite-accept from the email link silently failed with 403. Fixed: added `'x-csrf-token': csrfToken` matching the pattern already used by `sendInvite` and `removeMember`.
+
+### CARE TEAM — Clean (no issues)
+
+- `apps/web/src/app/api/care-team/route.ts` — Auth first, batch user lookup (no N+1), safe `.catch(() => [])` on parallel queries.
+- `apps/web/src/app/api/care-team/invite/route.ts` — CSRF + rate limit + auth in order; self-invite, duplicate-pending-invite, and already-a-member all blocked.
+- `apps/web/src/app/api/care-team/remove/route.ts` — CSRF present; owner-removal blocked; non-owner can only remove self.
+- `apps/web/src/app/(app)/care-team/page.tsx` — Server component; session checked; `searchParams` awaited per Next.js 14 App Router.
+
+### SHARING — Backend
+
+- ✅ [C] **`POST /api/checkins/share` missing CSRF + IDOR** — `checkins/share/route.ts` — (1) No CSRF check on a mutating endpoint. (2) Any authenticated user could pass any `checkinId` and trigger push notifications to a different patient's care team — ownership was never verified. Fixed: `validateCsrf(req)` added as first gate; ownership check added via `checkinId → careProfileId → careProfiles.userId` with 403 on mismatch.
+
+### SHARING — Frontend
+
+- ✅ [M] **`shared/[token]/page.tsx` — missing empty state** — When a profile has no medications, labs, appointments, or overview data, the page rendered only header and footer — an empty, confusing screen. Fixed: added `hasContent` flag across all data sections; renders "No health data has been added yet" card when all empty.
+
+### SHARING — Clean (no issues)
+
+- `apps/web/src/app/api/share/route.ts` — CSRF + rate limit + auth in order; ownership verified; token is `randomUUID()` (122-bit entropy); 7-day expiry; audit log written.
+- `apps/web/src/app/api/share/[token]/route.ts` — Public endpoint by design; rate-limited per IP; expiry enforced; no IDOR risk (opaque UUID tokens).
+- `apps/web/src/app/api/share/weekly/route.ts` — Auth verified; query scoped to `userId = user.id`; clean null return when no weekly share.
+
+### DEAD CODE CLEANUP — 2026-05-02
+
+- ✅ **Removed `bcryptjs` from root `package.json`** — Only used in `apps/web`; already resolved through workspace node_modules.
+- ✅ **Removed `expo-image-picker` from root `package.json`** — Already listed in `apps/mobile/package.json`.
+- ✅ **Added 4 unlisted mobile deps to `apps/mobile/package.json`** — `@sentry/react-native ^6.3.0`, `expo-system-ui ~4.0.7`, `posthog-react-native ^3.3.3`, `react-native-shake ^5.6.0` — all imported but missing from package.json.
+- ✅ **De-exported 11 unused exports** — `TimelineCard`, `trackEvent`, `events`, `signOut` (mobile), `THEME_KEY`, `shared`, `hapticAbnormalLab`, `hapticScanSuccess`, `hapticCardLand`, `signIn` (web auth.ts), `checkinSchema` — confirmed no external importers; removed `export` keyword.
+- ✅ **De-exported 11 unused exported types** — `OnboardingStep`, `OnboardingState`, `EmergencyWidgetData`, `GlowShadow`, `Theme` (mobile), `CheckinInput`, `BurnoutSignal`, `MutationConfidence`, `LabResultEntry`, `PriorTreatmentLine`, `SearchTrialsParams`, `SearchByEligibilityParams` — all confirmed internal-only; removed `export` keyword.
+- **KEPT (false positives)** — `babel.config.js` (Metro implicit), `babel-preset-expo` (Metro implicit), `EligibilityGap` (imported by gapAnalysis + clinicalTrialsAgent + tests), `TimelineEvent` (imported by timeline/page.tsx), `postcss-load-config` (JSDoc @type only), `.context/**` knip ignore (directory contains retro notes).
