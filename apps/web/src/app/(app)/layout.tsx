@@ -81,14 +81,16 @@ export default async function AppLayout({
 
   const userId = dbUser.id
 
-  // Onboarding gate — redirect if user has a profile with onboardingCompleted === false
+  // Onboarding gate — redirect if user has no completed care profile.
+  // Query for ANY completed profile rather than the first arbitrary one to
+  // avoid redirecting users who have a completed profile + an in-progress one.
   try {
-    const [activeProfile] = await db
-      .select({ onboardingCompleted: careProfiles.onboardingCompleted })
+    const [completedProfile] = await db
+      .select({ id: careProfiles.id })
       .from(careProfiles)
-      .where(eq(careProfiles.userId, userId))
+      .where(and(eq(careProfiles.userId, userId), eq(careProfiles.onboardingCompleted, true)))
       .limit(1)
-    if (activeProfile && activeProfile.onboardingCompleted === false) {
+    if (!completedProfile) {
       redirect('/onboarding')
     }
   } catch (e) {

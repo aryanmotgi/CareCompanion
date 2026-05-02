@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 
 type Role = 'caregiver' | 'patient' | 'self'
 
@@ -13,6 +14,7 @@ const roles = [
 
 export default function SetRolePage() {
   const router = useRouter()
+  const { update } = useSession()
   const [role, setRole] = useState<Role | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -27,9 +29,17 @@ export default function SetRolePage() {
         body: JSON.stringify({ role }),
       })
       if (!res.ok) { setError('Something went wrong. Try again.'); return }
-      // Trigger NextAuth to re-run the jwt callback and update the cookie
-      await fetch('/api/auth/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+      // Trigger NextAuth jwt callback with trigger='update' to re-read role from DB.
+      // update() rewrites the session cookie before we navigate, preventing the
+      // middleware from redirecting back to /set-role due to a stale cookie.
+      const updated = await update()
+      if (!updated) {
+        setError('Session refresh failed. Please sign out and back in.')
+        return
+      }
       router.push('/onboarding')
+    } catch {
+      setError('Something went wrong. Try again.')
     } finally {
       setLoading(false)
     }

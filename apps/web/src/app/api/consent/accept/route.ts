@@ -24,7 +24,7 @@ export async function POST(req: Request) {
         hipaaConsentAt: new Date(),
         hipaaConsentVersion: CONSENT_VERSION,
       })
-      .where(eq(users.email, session.user.email!))
+      .where(eq(users.id, session.user.id))
 
     console.log(`[consent/accept] user=${session.user.id} version=${CONSENT_VERSION}`)
     return NextResponse.json({ ok: true })

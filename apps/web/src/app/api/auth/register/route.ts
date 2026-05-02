@@ -4,6 +4,9 @@ import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { registerSchema } from '@carecompanion/utils'
+import { rateLimit } from '@/lib/rate-limit'
+
+const registerLimiter = rateLimit({ interval: 60 * 60 * 1000, maxRequests: 5 })
 
 export async function POST(req: Request) {
   try {
@@ -15,6 +18,13 @@ export async function POST(req: Request) {
 
     const { email, password, displayName } = parsed.data
     const normalizedEmail = email.trim().toLowerCase()
+
+    // Rate limit by IP: 5 registrations per hour
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+    const { success: rateLimitOk } = await registerLimiter.check(ip)
+    if (!rateLimitOk) {
+      return NextResponse.json({ error: 'Too many registration attempts. Try again later.' }, { status: 429 })
+    }
 
     const existing = await db.query.users.findFirst({ where: eq(users.email, normalizedEmail) })
     if (existing) {

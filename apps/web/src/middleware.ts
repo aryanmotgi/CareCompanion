@@ -34,7 +34,7 @@ const PUBLIC_PATHS = [
   '/api/share/',             // Public share links with token (e.g. /api/share/abc123) — POST /api/share itself is protected
   '/api/demo/start',         // Demo session creation — no auth needed to start a demo
   '/api/feedback',           // Bug report submissions — works without auth
-  '/api/debug-auth',         // TEMP: local dev auth debugging
+  // '/api/debug-auth' intentionally omitted — dev-only, requires NODE_ENV check internally
   '/shared',                 // Public share pages
   '/reset-password',          // Password reset pages
 ]
@@ -87,7 +87,7 @@ export default auth((req) => {
       const url = req.nextUrl.clone()
       const cb = req.nextUrl.searchParams.get('callbackUrl')
       url.search = ''
-      url.pathname = (cb && cb.startsWith('/')) ? cb : '/dashboard'
+      url.pathname = (cb && cb.startsWith('/') && !cb.startsWith('//')) ? cb : '/dashboard'
       return NextResponse.redirect(url)
     }
   }

@@ -10,7 +10,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'dev only' }, { status: 403 })
   }
   const url = new URL(req.url)
-  const email = url.searchParams.get('email') ?? 'aryan.motgi1@gmail.com'
+  const email = url.searchParams.get('email')
+  if (!email) return NextResponse.json({ error: 'email param required' }, { status: 400 })
   const setRole = url.searchParams.get('setRole')
   try {
     const user = await db.query.users.findFirst({
