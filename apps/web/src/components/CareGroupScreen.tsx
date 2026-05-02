@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { QRCodePanel } from './QRCodePanel'
 import { ConnectedCelebration } from './ConnectedCelebration'
 
@@ -23,6 +23,16 @@ export function CareGroupScreen({
   const [careGroupId, setCareGroupId] = useState<string | null>(null)
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
   const [connectedName, setConnectedName] = useState('')
+  const pollingRef = useRef<{ interval: ReturnType<typeof setInterval>; timeout: ReturnType<typeof setTimeout> } | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current.interval)
+        clearTimeout(pollingRef.current.timeout)
+      }
+    }
+  }, [])
 
   const subheading = userRole === 'caregiver'
     ? 'Connect with your patient so you can share their health data.'
@@ -77,12 +87,18 @@ export function CareGroupScreen({
   }
 
   const startPolling = useCallback((groupId: string) => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current.interval)
+      clearTimeout(pollingRef.current.timeout)
+    }
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/care-group/${groupId}/status`)
         const data = await res.json()
         if (data.joined) {
           clearInterval(interval)
+          if (pollingRef.current) clearTimeout(pollingRef.current.timeout)
+          pollingRef.current = null
           setConnectedName(data.name ?? 'Your partner')
           setStep('connected')
         }
@@ -90,7 +106,11 @@ export function CareGroupScreen({
         // ignore polling errors
       }
     }, 3000)
-    setTimeout(() => clearInterval(interval), 30_000)
+    const timeout = setTimeout(() => {
+      clearInterval(interval)
+      pollingRef.current = null
+    }, 30_000)
+    pollingRef.current = { interval, timeout }
   }, [])
 
   const handleRegenerateInvite = useCallback(async (): Promise<string> => {

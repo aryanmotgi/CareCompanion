@@ -49,6 +49,7 @@ export function OnboardingShell({
   );
   const [careGroupId, setCareGroupId] = useState<string | undefined>();
   const [createdProfileId, setCreatedProfileId] = useState<string | null>(null);
+  const [profileCreateError, setProfileCreateError] = useState(false);
 
   const completedProfiles = allProfiles.filter(
     (p) => p.onboardingCompleted === true
@@ -98,6 +99,15 @@ export function OnboardingShell({
     onboardingCompleted: p.onboardingCompleted,
   }));
 
+  if (profileCreateError) {
+    return (
+      <div className="flex flex-col gap-4 p-6 max-w-md mx-auto text-center">
+        <p className="text-sm text-red-400">Something went wrong setting up your profile. Please refresh the page and try again.</p>
+        <button type="button" onClick={() => { setProfileCreateError(false); }} className="text-xs underline" style={{ color: 'rgba(255,255,255,0.4)' }}>Try again</button>
+      </div>
+    );
+  }
+
   if (shouldShowPicker) {
     return (
       <OnboardingProfilePicker
@@ -120,9 +130,15 @@ export function OnboardingShell({
             try {
               const res = await fetch('/api/care-profiles', { method: 'POST' });
               const data = await res.json() as { id?: string };
-              if (data.id) setCreatedProfileId(data.id);
+              if (data.id) {
+                setCreatedProfileId(data.id);
+              } else {
+                setProfileCreateError(true);
+                return;
+              }
             } catch {
-              // proceed anyway — wizard will show error if profile missing
+              setProfileCreateError(true);
+              return;
             }
           }
           setPhase('wizard');

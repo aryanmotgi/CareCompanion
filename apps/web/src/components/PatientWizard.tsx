@@ -201,9 +201,16 @@ export function PatientWizard({
       <button type="button" disabled={saving}
         onClick={async () => {
           setSaving(true)
+          const filledMeds = manualMeds.filter(m => m.trim())
           await patchProfile(careProfileId, {
             cancerType: manualDiagnosis || null,
-            fieldOverrides: manualDiagnosis ? { cancerType: true } : {},
+            // Store free-text medications in the conditions text field (best effort
+            // until the onboarding wizard is wired to the medications table).
+            ...(filledMeds.length > 0 && { conditions: filledMeds.join(', ') }),
+            fieldOverrides: {
+              ...(manualDiagnosis && { cancerType: true }),
+              ...(filledMeds.length > 0 && { conditions: true }),
+            },
           })
           setSaving(false)
           setInner('priorities')
