@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
+import { useCsrfToken } from '@/components/CsrfProvider'
+import { useToast } from '@/components/ToastProvider'
 
 // ---------- Types ----------
 type DocCategory = 'all' | 'medical' | 'insurance' | 'lab' | 'prescriptions' | 'other'
@@ -17,6 +19,7 @@ interface OrganizableDocument {
 interface DocumentOrganizerProps {
   documents: OrganizableDocument[]
   onScanNew: () => void
+  onDocumentsChanged?: () => void
 }
 
 // ---------- Category config ----------
@@ -100,7 +103,9 @@ function formatDate(dateStr: string | null): string {
 }
 
 // ---------- Component ----------
-export function DocumentOrganizer({ documents, onScanNew }: DocumentOrganizerProps) {
+export function DocumentOrganizer({ documents, onScanNew, onDocumentsChanged }: DocumentOrganizerProps) {
+  const csrfToken = useCsrfToken()
+  const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState<DocCategory>('all')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortOption>('date-newest')
@@ -383,9 +388,25 @@ export function DocumentOrganizer({ documents, onScanNew }: DocumentOrganizerPro
             )}
           </div>
           <button
-            onClick={() => {
-              // In a real app this would call an API to delete selected documents
+            onClick={async () => {
+              if (!window.confirm(`Delete ${selected.size} document${selected.size !== 1 ? 's' : ''}? This cannot be undone.`)) return
+              const ids = [...selected]
+              const results = await Promise.allSettled(
+                ids.map((id) =>
+                  fetch(`/api/documents/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'x-csrf-token': csrfToken },
+                  })
+                )
+              )
+              const failed = results.filter((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok)).length
+              if (failed > 0) {
+                showToast(`Failed to delete ${failed} document${failed !== 1 ? 's' : ''}`, 'error')
+              } else {
+                showToast(`Deleted ${ids.length} document${ids.length !== 1 ? 's' : ''}`, 'success')
+              }
               exitBulkMode()
+              onDocumentsChanged?.()
             }}
             className="flex items-center gap-1 text-xs font-medium text-red-400 bg-red-500/10 px-3 py-1.5 rounded-lg hover:bg-red-500/20 transition-colors"
           >

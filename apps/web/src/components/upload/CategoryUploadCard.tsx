@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { EditableItem, CATEGORY_FIELDS } from './EditableFieldList';
 import { ManualEntryForm } from './ManualEntryForms';
 import { useToast } from '@/components/ToastProvider';
+import { useCsrfToken } from '@/components/CsrfProvider';
 
 export type UploadCategoryId =
   | 'medications'
@@ -153,6 +154,8 @@ function emptyItem(categoryId: UploadCategoryId): Record<string, string> {
   return Object.fromEntries(fields.map((f) => [f.key, '']));
 }
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
 export function CategoryUploadCard({
   categoryId,
   label,
@@ -164,6 +167,7 @@ export function CategoryUploadCard({
   onSaved,
 }: CategoryUploadCardProps) {
   const { showToast } = useToast();
+  const csrfToken = useCsrfToken();
   const [state, setState] = useState<CardState>('idle');
   const [preview, setPreview] = useState<string | null>(null);
   const [items, setItems] = useState<Record<string, string>[]>([]);
@@ -176,6 +180,12 @@ export function CategoryUploadCard({
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
+
+    if (file.size > MAX_FILE_SIZE) {
+      setScanError('File too large. Maximum size is 10 MB.');
+      showToast('File too large (max 10 MB)', 'error');
+      return;
+    }
 
     setScanError(null);
 
@@ -190,7 +200,7 @@ export function CategoryUploadCard({
     formData.append('category', categoryId);
 
     try {
-      const res = await fetch('/api/scan-document', { method: 'POST', body: formData });
+      const res = await fetch('/api/scan-document', { method: 'POST', headers: { 'x-csrf-token': csrfToken }, body: formData });
       if (!res.ok) throw new Error('scan failed');
       const data = await res.json();
       const extracted = extractItems(categoryId, data);
@@ -217,7 +227,7 @@ export function CategoryUploadCard({
     try {
       const res = await fetch(getSaveEndpoint(categoryId), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error('save failed');
