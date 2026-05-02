@@ -4,7 +4,29 @@ All notable changes to CareCompanion will be documented in this file.
 
 ## [0.3.1.0] - 2026-05-02
 
-Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, and Care Groups/Care Team/Sharing security audit.
+Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, and Insurance/Financial/Compliance/HIPAA security audit.
+
+### Fixed (Insurance, Financial, Compliance, HIPAA)
+- **Account deletion no-op** — `DELETE /api/delete-account` queried `WHERE providerSub = userId` (wrong column); deletes silently matched nothing for most users; PHI was never actually removed. Changed to `WHERE id = userId`
+- **Audit log written before delete** — `logAudit('delete_account')` fired before `db.delete(users)`; a failed delete appeared as a successful deletion in the audit trail. Moved to after the successful delete
+- **HIPAA audit log retention 1 year → 6 years** — retention cron purged audit logs after 365 days; HIPAA 45 CFR §164.530(j) requires 6-year minimum. Changed to `365 × 6` days
+- **Stored XSS in PDF care summary export** — every DB-sourced PHI field (patient name, conditions, medications, lab values, doctor names, etc.) was interpolated raw into the HTML template; any `<script>` tag stored in profile fields would execute when the user opened the download. Added `escapeHtml()` and applied to all fields
+- **Appeal generator CSRF missing** — `AppealGenerator` POSTed to `/api/insurance/appeal` without `x-csrf-token`; the backend validates CSRF and rejected every request with 403, making the feature entirely broken. Added `useCsrfToken()` hook and header
+- **Soft-deleted claims visible in Insurance view** — claims query lacked `isNull(claims.deletedAt)` filter; deleted claims appeared in the claim list and stats. Fixed
+- **Soft-deleted claims included in PDF export** — same missing filter in the PDF export route. Fixed
+- **Appeal route accepted raw string as claim_id** — no UUID format validation; malformed input reached the DB query directly. Added `z.string().uuid()` via Zod schema
+- **Appeal route unbounded additional_context** — `additional_context` was interpolated verbatim into the AI prompt with no length limit; enabled prompt injection and API cost abuse. Added `z.string().max(2000)` validation
+- **Negative monetary values accepted in insurance upload** — `deductible_limit`, `deductible_used`, `oop_limit`, `oop_used` had no `.nonnegative()` constraint; negative values corrupted the insurance display and calculations. Fixed
+- **Claim status field accepted arbitrary strings** — `save-scan-results` ClaimSchema accepted any string for `status`; unknown values broke filter tabs. Changed to `z.enum(['paid','pending','denied','in_review'])`
+- **Insurance re-scan always created duplicate rows** — document scan always INSERTed a new insurance row; rescanning the same card created stale duplicates. Changed to upsert (select + update/insert)
+- **Compliance tracker worst_time format mismatch** — `worst_time` was stored as a full ISO timestamp (`2026-05-02T14:30:00.000Z`) but the frontend `formatTime24()` expected `HH:MM`; the field rendered as `NaN:05 AM`. Changed to `.substring(11, 16)`
+- **CSV export had no audit log and no rate limiting** — PHI could be exported repeatedly with no record. Added `logAudit('export_data')` and `rateLimit({ maxRequests: 5 })`
+- **Audit log pagination offset not validated** — `parseInt('abc')` returned NaN; Postgres treated `OFFSET null` as no offset and returned the full table. Added `Math.max(0, parseInt(...) || 0)` guard
+- **EOB URL rendered as raw href** — `claim.eobUrl` was used as an anchor href without scheme validation; a `javascript:` URI stored in the field would execute on click. Added `startsWith('https://')` guard
+- **Share URL hardcoded to production domain** — `shareUrl` was hardcoded to `https://carecompanionai.org`; share links in staging/dev resolved to the wrong environment. Changed to `process.env.NEXT_PUBLIC_APP_URL` with fallback
+- **Compliance report and calendar access not audited** — both endpoints read PHI-derived medication adherence data with no audit trail. Added `logAudit` to both
+- **Consent acceptance not audited** — consent accept only `console.log`'d; no durable record in the audit log. Replaced with `logAudit('hipaa_consent_accepted')` including consent version
+- **NaN totals in AnalyticsDashboard financial calculations** — `parseFloat` on non-numeric claim amount strings produced NaN that silently corrupted the total billed/paid display. Added `|| 0` NaN guard
 
 ### Fixed (Care Groups, Care Team, Sharing)
 - **Care group invite CSRF missing** — `POST /api/care-group/invite` had no CSRF check; any page could forge group invite requests

@@ -524,3 +524,91 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 - ✅ **De-exported 11 unused exports** — `TimelineCard`, `trackEvent`, `events`, `signOut` (mobile), `THEME_KEY`, `shared`, `hapticAbnormalLab`, `hapticScanSuccess`, `hapticCardLand`, `signIn` (web auth.ts), `checkinSchema` — confirmed no external importers; removed `export` keyword.
 - ✅ **De-exported 11 unused exported types** — `OnboardingStep`, `OnboardingState`, `EmergencyWidgetData`, `GlowShadow`, `Theme` (mobile), `CheckinInput`, `BurnoutSignal`, `MutationConfidence`, `LabResultEntry`, `PriorTreatmentLine`, `SearchTrialsParams`, `SearchByEligibilityParams` — all confirmed internal-only; removed `export` keyword.
 - **KEPT (false positives)** — `babel.config.js` (Metro implicit), `babel-preset-expo` (Metro implicit), `EligibilityGap` (imported by gapAnalysis + clinicalTrialsAgent + tests), `TimelineEvent` (imported by timeline/page.tsx), `postcss-load-config` (JSDoc @type only), `.context/**` knip ignore (directory contains retro notes).
+
+---
+
+## Insurance, Financial, Compliance & HIPAA Full Audit — 2026-05-02 (preview/trials-impeccable)
+
+Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
+
+### FIXED — CRITICAL
+
+- ✅ [C] **`delete-account` wrong WHERE clause — accounts never actually deleted** — `app/api/delete-account/route.ts:32` — `eq(users.providerSub, user.id)` compared providerSub (Cognito sub text) against DB primary key UUID; for credential-based users providerSub is null so delete was a no-op. PHI retained indefinitely after "deletion". Fixed: changed to `eq(users.id, user.id)`.
+
+- ✅ [C] **`delete-account` audit log written before DB delete** — `app/api/delete-account/route.ts` — Failed delete logged as success in audit trail. Fixed: moved `logAudit` to after `db.delete` succeeds.
+
+- ✅ [C] **Audit log retention 1 year — HIPAA requires 6 years** — `app/api/cron/retention/route.ts:40` — Purging audit logs after 365 days violates HIPAA 45 CFR §164.530(j). Fixed: changed to `365 * 6` days; updated retention_policy response + comment.
+
+- ✅ [C] **Stored XSS in PDF export — all DB PHI interpolated into HTML unescaped** — `app/api/export/pdf/route.ts` — `profile.patientName`, conditions, allergies, med names, lab values, etc. all interpolated raw into HTML template string. Any `<script>` tag in DB fields executes when user opens the export. Fixed: added `escapeHtml()` helper, applied to all DB-sourced values.
+
+- ✅ [C] **`AppealGenerator` missing CSRF token — all appeals returned 403** — `components/AppealGenerator.tsx:40-44` — `fetch('/api/insurance/appeal')` had no `x-csrf-token` header; backend validates CSRF and rejected every request. Fixed: added `useCsrfToken()` hook, header, and dep array entry.
+
+### FIXED — HIGH
+
+- ✅ [H] **Soft-deleted claims shown in Insurance view** — `app/(app)/insurance/page.tsx:25` — No `isNull(claims.deletedAt)` filter. Deleted claims appeared in claim list, count, and stats. Fixed.
+
+- ✅ [H] **Soft-deleted claims included in PDF export** — `app/api/export/pdf/route.ts:63` — Same missing filter. Fixed.
+
+- ✅ [H] **`claim_id` not validated as UUID in appeal route** — `app/api/insurance/appeal/route.ts:39` — Raw string accepted with no format check; reached DB query directly. Fixed: added `z.string().uuid()` via Zod bodySchema.
+
+- ✅ [H] **`additional_context` unbounded — prompt injection risk** — `app/api/insurance/appeal/route.ts:83` — Interpolated directly into AI prompt with no length limit; attacker could hijack LLM output or inflate API costs. Fixed: `z.string().max(2000)`.
+
+- ✅ [H] **Negative monetary values accepted in insurance upload** — `app/api/upload/insurance/route.ts:14-17` — No `.nonnegative()` on `deductible_limit`, `deductible_used`, `oop_limit`, `oop_used`. Fixed.
+
+- ✅ [H] **Claim `status` accepted any string** — `app/api/save-scan-results/route.ts:44` — `z.string().optional()` allowed `"APPROVED"`, `"REJECTED"` etc. which break filter tabs and sorting. Fixed: `z.enum(['paid','pending','denied','in_review'])`.
+
+- ✅ [H] **Insurance scan always INSERT — duplicate rows on every re-scan** — `app/api/save-scan-results/route.ts:128-138` — Unconditional insert; re-scanning same card created multiple rows; insurance page always showed first (oldest). Fixed: upsert — check for existing row, update if found.
+
+- ✅ [H] **Compliance tracker `worst_time` stored full ISO timestamp** — `lib/compliance-tracker.ts:96` — Stored `"2026-05-02T14:30:00.000Z"` but `formatTime24()` expected `"14:30"`. Rendered as `"NaN:05 AM"`. Fixed: `.substring(11, 16)`.
+
+- ✅ [H] **CSV export had no audit log and no rate limiting** — `app/api/export/csv/route.ts` — PHI exported with no record, no throttle. Fixed: added `logAudit` + `rateLimit({ maxRequests: 5 })`.
+
+- ✅ [H] **Audit log pagination `offset` not validated** — `app/api/compliance/audit-log/route.ts:25` — `parseInt('abc')` → NaN → Postgres OFFSET null → full table dump. Fixed: `Math.max(0, parseInt(...) || 0)`.
+
+### FIXED — MEDIUM / LOW
+
+- ✅ [M] **`eobUrl` rendered as raw `href` — `javascript:` URI risk** — `components/InsuranceView.tsx:367` — Stored URL used directly without scheme validation. Fixed: `startsWith('https://')` guard; non-https renders nothing.
+
+- ✅ [M] **Share URL hardcoded to `https://carecompanionai.org`** — `app/api/share/route.ts:111` — Broken in staging/dev. Fixed: `process.env.NEXT_PUBLIC_APP_URL || 'https://carecompanionai.org'`.
+
+- ✅ [M] **Compliance report/calendar access not audited** — `app/api/compliance/report/route.ts`, `calendar/route.ts` — PHI-derived adherence data accessed with no audit trail. Fixed: added `logAudit` to both.
+
+- ✅ [M] **Consent acceptance not audited** — `app/api/consent/accept/route.ts` — Only `console.log`'d. Fixed: `logAudit('hipaa_consent_accepted')` with version in details.
+
+- ✅ [M] **`console.error` in audit-log route instead of structured logger** — Fixed: `logger.error`.
+
+- ✅ [M] **`parseFloat` on claim amounts produces NaN in AnalyticsDashboard totals** — `components/AnalyticsDashboard.tsx:66-68` — Non-numeric billedAmount strings silently NaN'd the total. Fixed: `(parseFloat(x ?? '0') || 0)`.
+
+### OPEN — ARCHITECTURAL (requires design decisions)
+
+- ⬜ [C] **HIPAA consent gate not enforced in API routes** — `lib/api-helpers.ts` — `getAuthenticatedUser()` never checks `hipaaConsent`; direct `/api/*` calls and mobile Bearer-token path bypass the consent gate entirely. **Fix needed:** add consent check to `getAuthenticatedUser()` or new `getAuthenticatedAndConsentedUser()` returning 403 when `hipaaConsent !== true`.
+
+- ⬜ [C] **30+ PHI-serving API routes have no audit log entries** — HIPAA violation. Routes with zero audit: `api/records/medications`, `api/records/labs`, `api/records/appointments`, `api/records/doctors`, `api/records/profile`, `api/care-hub`, `api/care-profiles/**`, `api/timeline`, `api/search`, `api/triage`, `api/visit-prep`, `api/labs/trends`, `api/journal`, `api/checkins`, `api/documents/**`, `api/interactions/check`, `api/upload/allergies`, `api/import-data`, `api/import-medications`, `api/share/[token]`. **Fix needed:** middleware logging all PHI-path requests, or `logAudit` in each handler.
+
+- ⬜ [C] **Public share token serves PHI with no audit log and no recipient ID** — `app/api/share/[token]/route.ts` — Full PHI (meds, labs, care plan) delivered to bearer of token with no record of who, when, or from where. **Fix needed:** `logAudit` on every access; record token + IP + timestamp.
+
+- ⬜ [H] **`/api/chat` POST has no CSRF protection** — `app/api/chat/route.ts` — Chat triggers `save_insurance`, `estimate_cost`, and other mutating tools but has no `validateCsrf`. Cross-site form POST could trigger mutations on behalf of a logged-in victim.
+
+- ⬜ [H] **`/api/health-summary` POST has no CSRF protection** — `app/api/health-summary/route.ts` — Same pattern.
+
+- ⬜ [H] **`export-data` JSON export omits FSA/HSA, insurance, and priorAuths** — `app/api/export-data/route.ts` — HIPAA data portability export is incomplete. These tables contain PHI.
+
+### OPEN — MEDIUM / LOW
+
+- ⬜ [M] **Prior authorizations have no UI or CRUD API** — `lib/db/schema.ts:182-193` — `priorAuths` table exists and is included in AI context but users can't view/add/edit/delete. Only accessible via chat.
+
+- ⬜ [M] **Appeal rate limit keyed by IP — spoofable** — `app/api/insurance/appeal/route.ts:31` — `x-forwarded-for` is attacker-controlled. Should use authenticated user ID as rate limit key.
+
+- ⬜ [M] **FSA/HSA balance injected as raw numeric string** — `lib/system-prompt.ts:364` — `$150.0000000000` sent to LLM. Fix: `parseFloat(a.balance).toFixed(2)`.
+
+- ⬜ [M] **Multiple insurance plans not displayed** — `app/(app)/insurance/page.tsx` — Upload allows `is_additional=true` but UI only shows first row. Additional plans silently ignored.
+
+- ⬜ [M] **`plan_type` accepted in upload/insurance but silently dropped** — `app/api/upload/insurance/route.ts` — Parsed by Zod, never mapped to DB column. Either add the column or remove from schema.
+
+- ⬜ [M] **Consent page doesn't redirect already-consented users** — `app/consent/page.tsx` — Re-accepting updates `hipaaConsentAt` timestamp, creating misleading consent records.
+
+- ⬜ [L] **`claims.userId` has no DB index** — `lib/db/schema.ts` — Full table scan on every insurance page load. Add `index('claims_user_id_idx').on(table.userId)`.
+
+- ⬜ [L] **`fsaHsa.accountType` unconstrained text** — Notification logic `=== 'fsa'` silently misses `'FSA'`. Enforce `z.enum(['fsa','hsa'])` at API layer.
+
+- ⬜ [L] **`logAudit` is fire-and-forget — audit failures not alerted** — `lib/audit.ts:44` — PHI access can proceed with broken audit trail. Wire logger.error to error tracking.
