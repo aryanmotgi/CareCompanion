@@ -331,3 +331,52 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 ### KNIP / DEAD CODE
 
 - ✅ Created `knip.json` ignoring `.claude/**`, `.clone/**`, `.context/**` — reduced false-positive "unused files" from 20 → 5.
+
+---
+
+## Scan & Document Upload Flow Audit — 2026-05-02 (preview/trials-impeccable)
+
+Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
+
+### CRITICAL — Backend Security
+
+- ✅ [C] **CSRF token missing in all scan/save fetch calls** — `DocumentScanner.tsx:100,122`, `CategoryScanner.tsx:113,135`, `CategoryUploadCard.tsx:193,218` — All three components POST to `/api/scan-document` and `/api/save-scan-results` without `x-csrf-token` header. Both endpoints call `validateCsrf` first; every scan returned 403 silently swallowed as "Failed to analyze the document." Fixed: added `useCsrfToken()` hook to all three components; pass header in all fetch calls.
+
+### HIGH — Functional Gaps
+
+- ✅ [H] **Bulk delete is a no-op** — `DocumentOrganizer.tsx:387` — Delete button called `exitBulkMode()` with a "// In a real app..." comment — no API call, no actual deletion. Fixed: now calls `DELETE /api/documents/:id` for each selected document in parallel; shows success/failure toast; calls `onDocumentsChanged()` to refresh.
+
+- ✅ [H] **No DELETE endpoint for documents** — No route existed to soft-delete a document. Fixed: created `app/api/documents/[id]/route.ts` with ownership-verified soft-delete (sets `deletedAt`).
+
+- ✅ [H] **Document list doesn't refresh after scan+save** — `ScanCenter.tsx` — After saving scan results, `onSaved` callback was not wired. Documents list remained stale until manual reload. Fixed: `ScanCenter` now calls `router.refresh()` on save in both `DocumentScanner` and `CategoryScanner`.
+
+- ✅ [H] **No client-side file size validation** — `DocumentScanner.tsx`, `CategoryScanner.tsx`, `CategoryUploadCard.tsx` — User got no feedback until server returned 413 after full upload. Fixed: check `file.size > 10MB` before scan; show error toast immediately.
+
+- ✅ [H] **PDFs rejected despite "Upload photo or PDF" UI copy** — `DocumentScanner.tsx:232`, `CategoryScanner.tsx:241` — `accept="image/*"` on file inputs. CategoryUploadCard correctly had `application/pdf`. Fixed: changed both to `accept="image/*,.pdf,application/pdf"`.
+
+### HIGH — Backend (scan-document)
+
+- ⬜ [H] **`/api/scan-document` passes base64 image but Claude API gets `type: 'image'` for PDFs** — `extract-document.ts:17` — `generateText` message uses `{ type: 'image', image: base64 }` for all inputs. PDFs encoded as base64 won't decode correctly this way — Claude Sonnet expects `{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }` for PDFs. Fix: detect `file.type === 'application/pdf'` in the scanner components, pass `media_type` to the API; update `extractDocument()` to accept a `mediaType` param.
+
+### MEDIUM — UX / Edge Cases
+
+- ✅ [M] **`dead code` `apps/mobile/src/lib/network-simulator.ts`** — Not imported anywhere. Deleted.
+
+- ⬜ [M] **Bulk re-categorize is a no-op** — `DocumentOrganizer.tsx:370` — Re-categorize dropdown closes but makes no API call. No backend endpoint exists to update a document's `type` field. Fix: add a `PATCH /api/documents/:id` endpoint accepting `{ type: string }`; wire up the UI handler to call it per selected document.
+
+- ⬜ [M] **Scan result error messages don't surface API error details** — `DocumentScanner.tsx:108`, `CategoryScanner.tsx:122` — Rate limit (429), size limit (413), and AI config errors (503) all show the same "Failed to analyze the document" message. Users hitting rate limits get no wait-time guidance. Fix: parse `error` from API response body and show specific messages (e.g. "Too many scans. Try again in 60 seconds.").
+
+- ⬜ [M] **Save button shows when `hasData=false` in edge case** — `DocumentScanner.tsx:385` — If scan returns an empty result with `notes` text but no structured data, `hasData` is `false` (save button hidden) but notes are visible. User sees data but can't save it. Fix: include `result.notes` in `hasData` check.
+
+### LOW — Polish
+
+- ⬜ [L] **DocumentScanner `accept="image/*"` also has `capture="environment"` which breaks desktop PDF uploads** — `DocumentScanner.tsx:234` — `capture="environment"` forces camera on mobile; on desktop it's ignored. But with PDF support now added, camera capture and file-picker conflict is more pronounced on some mobile browsers. Consider removing `capture` attribute or making it conditional.
+
+- ⬜ [L] **`DocumentOrganizer` re-categorize menu shows all 5 categories including current one** — Should filter out the document's current category from re-categorize options.
+
+- ⬜ [L] **Grid view "Scanned" source label is hardcoded** — `DocumentOrganizer.tsx:582` — All grid cards show "Scanned" regardless of source. The documents table has no `source` column. Minor; remove or add source tracking.
+
+### KNIP FALSE POSITIVES (safe to ignore)
+- `bcryptjs` at root — used in `apps/web/src/app/api/care-group/route.ts` + 3 others; knip reports it on root but it's a transitive workspace dep.
+- `expo-image-picker` at root — dynamically `require()`d in `apps/mobile/app/(tabs)/scan.tsx`; knip can't detect dynamic imports.
+- All 16 "unused exported types" for trials — public types exported for cross-package use; not dead code.

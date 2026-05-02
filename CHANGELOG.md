@@ -4,7 +4,7 @@ All notable changes to CareCompanion will be documented in this file.
 
 ## [0.3.1.0] - 2026-05-02
 
-Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, and design system polish.
+Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, and document scan/upload fixes.
 
 ### Added
 - **knip dead-code scanner** — `npm run deadcode` now available via knip; catches unused exports across the monorepo
@@ -84,6 +84,15 @@ Security hardening, Care Tab reliability, dashboard fixes, trials engine improve
 ### Changed
 - **staleThreshold reduced from 90 to 30 days** — trial match results older than 30 days are flagged as stale (enrollment status changes frequently)
 - **Trials agent refactored to single-call search** — removed duplicate `searchByEligibility` call; single search with `pageSize: 40` is faster and avoids dedup overhead
+
+### Fixed (Document Scan & Upload)
+- **Scan requests silently failing with 403** — DocumentScanner, CategoryScanner, and CategoryUploadCard were posting to `/api/scan-document` without the `x-csrf-token` header; the backend CSRF check rejected every scan. Now all three components read the CSRF cookie via `useCsrfToken()` and include the header
+- **Bulk document delete was a no-op** — the Delete button in the document organizer ran `exitBulkMode()` and nothing else (a "// In a real app..." comment marked the gap). Now calls `DELETE /api/documents/:id` for each selected document and shows success/error counts
+- **No delete endpoint for documents** — new `DELETE /api/documents/[id]` route with CSRF validation, auth check, ownership verification via care profile, and soft-delete (`deletedAt`)
+- **Document list stale after scan+save** — after saving scan results the document list stayed frozen until a manual page reload. ScanCenter now calls `router.refresh()` on save to re-fetch from the server component
+- **No client-side file size check** — users uploading files over 10 MB got no feedback until the server returned 413 after the full upload. Now validates `file.size > 10 MB` before the request and shows a toast immediately
+- **PDFs rejected despite "Upload photo or PDF" UI text** — file inputs in DocumentScanner and CategoryScanner were `accept="image/*"` only; changed to `accept="image/*,.pdf,application/pdf"` to match the described capability
+- **DELETE ownership TOCTOU** — the document ownership check and the soft-delete were two separate queries; added `careProfileId` to the UPDATE WHERE clause so the delete cannot affect documents that changed ownership between checks
 
 ## [0.3.0.0] - 2026-04-29
 
