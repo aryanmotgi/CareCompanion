@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { validateCsrf } from '@/lib/csrf'
 import { db } from '@/lib/db'
 import { careProfiles, users, careGroupMembers, careGroups } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { sendEmail, onboardingRecapEmailHtml } from '@/lib/email'
 
 export async function POST(req: Request) {
+  const { valid: csrfValid, error: csrfError } = await validateCsrf(req)
+  if (!csrfValid) return csrfError
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

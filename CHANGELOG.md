@@ -44,6 +44,18 @@ Security hardening, Care Tab reliability, dashboard fixes, trials engine improve
 - **Care group join validates token ownership** — `/join` page used the URL `group` param for inserts; an attacker with a valid token for one group could join any group by crafting the URL; now uses `invite.careGroupId`
 - **Onboarding complete route verifies profile ownership** — any authenticated user could mark any care profile as complete by sending a foreign `careProfileId`; ownership check added
 
+### Fixed (Trials)
+- **Vercel build crash on 9 API routes** — `DYNAMIC_SERVER_USAGE` error during static page generation; 9 authenticated routes missing `export const dynamic = 'force-dynamic'` (`chat/search`, `compliance/*`, `cycles/current`, `notifications/preferences`, `refills/status`, `search`, `share/weekly`)
+- **Trial detail panel fetched in render body** — `fetch()` call was inside the React render function, firing twice per mount in Strict Mode and leaking the in-flight request on unmount; moved to `useEffect` with `cancelled` flag
+- **saveTrial had no rollback on API error** — optimistic `setSaved` updated UI before the request; `.catch(()=>{})` swallowed failures permanently; now rolls back to previous state (mirrors dismissTrial pattern)
+- **Trial phase always showed "Phase N/A" from cache** — `phase` field was in the in-memory `TrialMatchResult` type but not persisted to `trial_matches` DB table; added column + migration
+- **NCT ID not validated in 4 API endpoints** — `save`, `saved/[nctId]`, `[nctId]`, and `[nctId]/detail` routes accepted any string and passed it to CT.gov API + DB; now validates `/^NCT\d{4,}$/`
+- **Cron close-trials query unbounded** — `SELECT * FROM trial_matches WHERE matchCategory='close'` loaded all rows with no limit; OOM risk at scale; capped at 200 per cron run
+- **Trial status change notifications fired on every cron run** — no dedup; oscillating enrollment status spammed users; added 24h dedup matching `matchingQueue.ts` pattern
+- **Trial load lost matches when saved-trials fetch failed** — `Promise.all([matches, saved])` discarded all results if either fetch threw; replaced with `Promise.allSettled` (saved badge absence on failure, not full error screen)
+- **Lab date was blank string in trial scoring prompt** — `dateTaken ?? ''` sent empty string to Claude; changed to `'Date unknown'`
+- **ContactBlock fallback linked to `href="#"`** — scroll-to-top instead of trial page; now uses `trial.url`
+
 ### Fixed
 - **Daily check-in "Med" energy always returned 400** — `CheckinModal` sent `energy: 'med'` but the server validates `z.enum(['low', 'medium', 'high'])`; every medium-energy check-in silently failed since launch
 - **Appointment cards no longer show past same-day visits** — `Math.ceil()` on a small negative fraction rounds to 0, so a 2-hour-past appointment showed as "Today at X"

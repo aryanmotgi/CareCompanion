@@ -19,8 +19,12 @@ export async function POST(req: Request) {
     const { email, password, displayName } = parsed.data
     const normalizedEmail = email.trim().toLowerCase()
 
-    // Rate limit by IP: 5 registrations per hour
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+    // Rate limit by IP — use x-real-ip (set by Vercel edge, not spoofable).
+    // x-forwarded-for leftmost value is attacker-controlled; rightmost is the last untrusted hop.
+    const ip =
+      req.headers.get('x-real-ip')?.trim() ??
+      req.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() ??
+      'unknown'
     const { success: rateLimitOk } = await registerLimiter.check(ip)
     if (!rateLimitOk) {
       return NextResponse.json({ error: 'Too many registration attempts. Try again later.' }, { status: 429 })

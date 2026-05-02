@@ -115,10 +115,10 @@ ${JSON.stringify(allTrials, null, 2)}`,
         disqualifyingFactors: Array.isArray(t.disqualifyingFactors) ? t.disqualifyingFactors : [],
         uncertainFactors:     Array.isArray(t.uncertainFactors) ? t.uncertainFactors : [],
         eligibilityGaps:      gaps,
-        phase:                t.phase ? String(t.phase) : null,
+        phase:                t.phase ? String(t.phase).slice(0, 50) : null,
         enrollmentStatus:     String(t.status ?? ''),
         locations:            Array.isArray(t.locations) ? t.locations : [],
-        trialUrl:             t.url ? String(t.url) : null,
+        trialUrl:             t.url && /^https:\/\//i.test(String(t.url)) ? String(t.url) : null,
       }
     })
 

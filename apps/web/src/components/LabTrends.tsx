@@ -32,7 +32,7 @@ interface LabTrendsResponse {
   data: {
     trends: LabTrend[]
     red_flags: Array<{ message: string }>
-    overall_status: 'good' | 'monitor' | 'concerning' | 'critical' | 'warning' | 'stable'
+    overall_status: 'good' | 'monitor' | 'concerning' | 'critical'
   }
 }
 

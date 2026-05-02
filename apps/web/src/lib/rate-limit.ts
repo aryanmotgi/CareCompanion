@@ -80,6 +80,10 @@ export function rateLimit({
     !!process.env.KV_REST_API_URL &&
     !!process.env.KV_REST_API_TOKEN
 
+  if (!hasRedis && typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
+    console.warn('[rate-limit] KV_REST_API_URL / KV_REST_API_TOKEN not set — falling back to in-memory limiter. Rate limits are NOT enforced globally across serverless instances.')
+  }
+
   const windowSecs = Math.max(1, Math.ceil(interval / 1000))
 
   const redisLimiter = hasRedis

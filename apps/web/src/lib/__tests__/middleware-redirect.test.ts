@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest'
 
 // Extracted logic from middleware.ts:90 — the callbackUrl resolution guard
 function resolveCallbackUrl(cb: string | null): string {
-  return cb && cb.startsWith('/') && !cb.startsWith('//') ? cb : '/dashboard'
+  return cb && cb.startsWith('/') && !cb.startsWith('//') && !cb.startsWith('/\\') ? cb : '/dashboard'
 }
 
 describe('middleware callbackUrl open-redirect guard', () => {
@@ -20,6 +20,11 @@ describe('middleware callbackUrl open-redirect guard', () => {
   it('blocks protocol-relative URLs (//evil.com attack vector)', () => {
     expect(resolveCallbackUrl('//evil.com')).toBe('/dashboard')
     expect(resolveCallbackUrl('//evil.com/steal-tokens')).toBe('/dashboard')
+  })
+
+  it('blocks backslash-relative URLs (/\\evil.com browser normalization)', () => {
+    expect(resolveCallbackUrl('/\\evil.com')).toBe('/dashboard')
+    expect(resolveCallbackUrl('/\\\\evil.com')).toBe('/dashboard')
   })
 
   it('blocks absolute URLs', () => {

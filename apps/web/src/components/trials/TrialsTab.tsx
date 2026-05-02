@@ -143,7 +143,6 @@ export function TrialsTab({
   }
 
   async function saveTrial(nctId: string) {
-    const prevSaved = saved
     setSaved(s => ({ ...s, [nctId]: 'interested' }))
     const res = await fetch('/api/trials/save', {
       method: 'POST',
@@ -151,13 +150,19 @@ export function TrialsTab({
       headers: { 'Content-Type': 'application/json' },
     }).catch(() => null)
     if (!res?.ok) {
-      setSaved(prevSaved)
+      // Remove the optimistically-added entry; preserve concurrent changes to other keys
+      setSaved(s => {
+        const next = { ...s }
+        delete next[nctId]
+        return next
+      })
     }
   }
 
   async function dismissTrial(nctId: string) {
-    const prevMatched = matched
-    const prevClose = close
+    // Capture the dismissed items before filtering so we can restore exactly them on failure
+    const dismissedMatched = matched.filter(t => t.nctId === nctId)
+    const dismissedClose   = close.filter(t => t.nctId === nctId)
     setMatched(m => m.filter(t => t.nctId !== nctId))
     setClose(c => c.filter(t => t.nctId !== nctId))
     const res = await fetch(`/api/trials/saved/${nctId}`, {
@@ -166,8 +171,9 @@ export function TrialsTab({
       headers: { 'Content-Type': 'application/json' },
     }).catch(() => null)
     if (!res?.ok) {
-      setMatched(prevMatched)
-      setClose(prevClose)
+      // Restore the specific items rather than the full snapshot to survive concurrent dismissals
+      if (dismissedMatched.length > 0) setMatched(m => [...m, ...dismissedMatched])
+      if (dismissedClose.length > 0)   setClose(c => [...c, ...dismissedClose])
     }
   }
 

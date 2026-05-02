@@ -63,11 +63,15 @@ export async function GET(req: Request) {
                 title:   'A saved trial has a status update',
                 message: `Trial ${row.nctId} status changed to ${newStatus}. Open CareCompanion to view details.`,
               })
+              await db.update(savedTrials)
+                .set({ lastKnownEnrollmentStatus: newStatus, lastStatusCheckedAt: new Date(), notifiedOfChangeAt: new Date() })
+                .where(eq(savedTrials.id, row.id))
+            } else {
+              await db.update(savedTrials)
+                .set({ lastKnownEnrollmentStatus: newStatus, lastStatusCheckedAt: new Date() })
+                .where(eq(savedTrials.id, row.id))
             }
           }
-          await db.update(savedTrials)
-            .set({ lastKnownEnrollmentStatus: newStatus, lastStatusCheckedAt: new Date(), notifiedOfChangeAt: new Date() })
-            .where(eq(savedTrials.id, row.id))
         } else {
           await db.update(savedTrials)
             .set({ lastStatusCheckedAt: new Date() })

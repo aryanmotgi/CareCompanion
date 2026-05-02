@@ -139,7 +139,8 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
       setError('Invalid email or password. Please try again.')
       setLoading(false)
     } else if (result?.ok) {
-      window.location.href = callbackUrl || '/dashboard'
+      const safeCallback = callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//') && !callbackUrl.startsWith('/\\') ? callbackUrl : '/dashboard'
+      window.location.href = safeCallback
     } else {
       setError('Something went wrong. Please try again.')
       setLoading(false)

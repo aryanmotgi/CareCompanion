@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { validateCsrf } from '@/lib/csrf';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { db } from '@/lib/db';
 import {
@@ -18,6 +19,8 @@ export const dynamic = 'force-dynamic';
 
 // POST — submit a wellness check-in
 export async function POST(req: NextRequest) {
+  const { valid: csrfValid, error: csrfError } = await validateCsrf(req)
+  if (!csrfValid) return csrfError
   const { user: dbUser, error: authError } = await getAuthenticatedUser();
   if (authError || !dbUser) return authError ?? apiError('Unauthorized', 401);
 

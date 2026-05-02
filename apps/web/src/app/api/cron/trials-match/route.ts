@@ -54,6 +54,7 @@ export async function GET(req: Request) {
   // Limit to 200 rows per run to avoid loading the entire table into memory.
   const closeTrials = await db.select().from(trialMatches)
     .where(eq(trialMatches.matchCategory, 'close'))
+    .orderBy(trialMatches.careProfileId)
     .limit(200)
   const byProfile = new Map<string, typeof closeTrials>()
   for (const t of closeTrials) {
