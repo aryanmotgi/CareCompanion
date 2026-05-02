@@ -2,11 +2,16 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
-## [0.3.1.0] - 2026-05-01
+## [0.3.1.0] - 2026-05-02
 
-Bug fixes across onboarding, trials search, and dashboard design polish.
+Bug fixes across security, onboarding, trials search, and dashboard design polish.
 
 ### Fixed
+- **Care group join no longer accepts cross-group tokens** — `/join` page verified the invite token but used the `group` URL param (not the invite's stored group ID) for membership inserts; an attacker with a valid token could join any group by crafting the URL. Fixed: invite's `careGroupId` must match the URL param, and inserts now use `invite.careGroupId`
+- **Onboarding complete route verifies profile ownership** — `POST /api/onboarding/complete` accepted any authenticated user's `careProfileId`, allowing one user to mark another's profile as complete. Fixed: ownership check added before the update
+- **Manual health entry in patient wizard now saves medications** — the "Enter manually" step collected medication names and appointment date but never included them in the API call; medications now save to the `conditions` field
+- **Care profile creation failure no longer causes a redirect loop** — if `POST /api/care-profiles` failed during onboarding, the shell fell through to a dashboard redirect with no completed profile, which AppLayout bounced back to onboarding. Fixed: error state shown with "Try again" instead of silent redirect
+- **QR code polling interval cleaned up on unmount** — `setInterval` and `setTimeout` in CareGroupScreen were never cleared if the user navigated away before the 30s timeout; refs now clean up on unmount
 - **Settings "Edit Profile" now opens the profile wizard directly** — was always showing the Care Group setup screen; the onboarding shell now initializes to the wizard phase when the user has completed profiles
 - **Completed onboarding no longer re-triggers** — layout gate used a non-deterministic query (`.limit(1)` without ORDER BY) that could return an incomplete secondary profile, redirecting users back to onboarding; now checks for any completed profile
 - **Trials search surfaces CT.gov API errors** — timeouts and rate-limit responses were silently returning "No matching trials found"; errors now surface in the UI with a visible error message
