@@ -55,12 +55,17 @@ export function NotificationsView({ notifications: initial }: NotificationsViewP
   })
 
   const dismiss = async (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id))
-    await fetch('/api/notifications/read', {
+    const prev = notifications
+    setNotifications((n) => n.filter((x) => x.id !== id))
+    const res = await fetch('/api/notifications/read', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     })
+    if (!res.ok) {
+      setNotifications(prev)
+      showToast('Failed to dismiss notification', 'error')
+    }
   }
 
   const markAllRead = async () => {
