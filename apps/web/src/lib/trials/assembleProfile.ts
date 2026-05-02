@@ -5,7 +5,7 @@ import {
 } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 
-export type MutationConfidence = 'high' | 'medium' | 'low'
+type MutationConfidence = 'high' | 'medium' | 'low'
 
 export type EligibilityGap = {
   gapType:       'measurable' | 'conditional' | 'fixed'
@@ -18,7 +18,7 @@ export type EligibilityGap = {
   closureSignal: string | null
 }
 
-export type LabResultEntry = {
+type LabResultEntry = {
   testName:     string
   numericValue: number | null
   unit:         string | null
@@ -26,7 +26,7 @@ export type LabResultEntry = {
   isAbnormal:   boolean
 }
 
-export type PriorTreatmentLine = {
+type PriorTreatmentLine = {
   regimen:    string
   startDate:  string
   cycleCount: number

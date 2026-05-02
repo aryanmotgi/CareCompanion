@@ -10,7 +10,7 @@ import { rateLimit } from '@/lib/rate-limit'
 
 const loginLimiter = rateLimit({ interval: 15 * 60 * 1000, maxRequests: 50 })
 
-export const { handlers, signIn, auth } = NextAuth({
+export const { handlers, auth } = NextAuth({
   providers: [
     Apple({
       clientId: process.env.APPLE_CLIENT_ID!,

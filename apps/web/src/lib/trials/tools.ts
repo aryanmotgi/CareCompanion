@@ -33,7 +33,7 @@ function formatLocations(locations: unknown[], max: number): object[] {
   })
 }
 
-export type SearchTrialsParams = {
+type SearchTrialsParams = {
   condition: string
   terms?:    string
   location?: string
@@ -117,7 +117,7 @@ export async function getTrialDetails(nctId: string): Promise<Record<string, unk
   }
 }
 
-export type SearchByEligibilityParams = {
+type SearchByEligibilityParams = {
   condition: string
   terms?:    string
   age?:      number

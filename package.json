@@ -28,9 +28,5 @@
       "bash -c 'cd apps/web && ./node_modules/.bin/next lint --fix --file \"$@\"' --"
     ]
   },
-  "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "expo-image-picker": "16.0.6"
-  },
   "version": "0.3.1.0"
 }

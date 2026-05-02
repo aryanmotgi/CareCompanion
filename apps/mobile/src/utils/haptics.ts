@@ -8,7 +8,7 @@ export function hapticMedTaken(): void {
 }
 
 /** Warning pulse for abnormal lab values */
-export function hapticAbnormalLab(): void {
+function hapticAbnormalLab(): void {
   void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
 }
 
@@ -18,7 +18,7 @@ export function hapticAIMessage(): void {
 }
 
 /** Success burst when scan completes */
-export function hapticScanSuccess(): void {
+function hapticScanSuccess(): void {
   void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 }
 
@@ -36,6 +36,6 @@ export function hapticAbnormalLabEntrance(): void {
 }
 
 /** Soft landing for card entrance */
-export function hapticCardLand(): void {
+function hapticCardLand(): void {
   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft)
 }
