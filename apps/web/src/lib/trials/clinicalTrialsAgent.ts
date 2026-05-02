@@ -7,11 +7,13 @@ import type { PatientProfile, EligibilityGap } from './assembleProfile'
 export type TrialMatchResult = {
   nctId:                string
   title:                string
+  matchCategory:        'matched' | 'close'
   matchScore:           number
   matchReasons:         string[]
   disqualifyingFactors: string[]
   uncertainFactors:     string[]
   eligibilityGaps:      EligibilityGap[] | null
+  phase:                string | null
   enrollmentStatus:     string | null
   locations:            object[]
   trialUrl:             string | null
@@ -99,26 +101,33 @@ ${JSON.stringify(allTrials, null, 2)}`,
       }
       return true
     })
-    .map(t => ({
-      nctId:                String(t.nct_id ?? t.nctId ?? '').trim(),
-      title:                String(t.title ?? ''),
-      matchScore:           Math.max(0, Math.min(100, Number(t.matchScore) || 0)),
-      matchReasons:         Array.isArray(t.matchReasons) ? t.matchReasons : [],
-      disqualifyingFactors: Array.isArray(t.disqualifyingFactors) ? t.disqualifyingFactors : [],
-      uncertainFactors:     Array.isArray(t.uncertainFactors) ? t.uncertainFactors : [],
-      eligibilityGaps:      Array.isArray(t.eligibilityGaps) ? t.eligibilityGaps : null,
-      enrollmentStatus:     String(t.status ?? ''),
-      locations:            Array.isArray(t.locations) ? t.locations : [],
-      trialUrl:             String(t.url ?? ''),
-    }))
+    .map(t => {
+      const rawCat = String(t.matchCategory ?? '').toLowerCase()
+      const gaps   = Array.isArray(t.eligibilityGaps) ? (t.eligibilityGaps as EligibilityGap[]) : null
+      // Trust Haiku's classification first; fall back to gap analysis.
+      let category: 'matched' | 'close' = rawCat === 'close' ? 'close' : 'matched'
+      if (gaps && isCloseTrial(gaps)) category = 'close'
+      return {
+        nctId:                String(t.nct_id ?? t.nctId ?? '').trim(),
+        title:                String(t.title ?? ''),
+        matchCategory:        category,
+        matchScore:           Math.max(0, Math.min(100, Number(t.matchScore) || 0)),
+        matchReasons:         Array.isArray(t.matchReasons) ? t.matchReasons : [],
+        disqualifyingFactors: Array.isArray(t.disqualifyingFactors) ? t.disqualifyingFactors : [],
+        uncertainFactors:     Array.isArray(t.uncertainFactors) ? t.uncertainFactors : [],
+        eligibilityGaps:      gaps,
+        phase:                t.phase ? String(t.phase) : null,
+        enrollmentStatus:     String(t.status ?? ''),
+        locations:            Array.isArray(t.locations) ? t.locations : [],
+        trialUrl:             String(t.url ?? ''),
+      }
+    })
 
-  const matched = results.filter(r => {
-    const isClose = r.eligibilityGaps && isCloseTrial(r.eligibilityGaps as EligibilityGap[])
-    return !isClose && r.matchScore >= 40
-  })
-  const close = results.filter(r =>
-    r.eligibilityGaps && isCloseTrial(r.eligibilityGaps as EligibilityGap[])
-  )
+  const matched = results
+    .filter(r => r.matchCategory === 'matched')
+    .sort((a, b) => b.matchScore - a.matchScore)
+  const close   = results.filter(r => r.matchCategory === 'close')
 
+  console.log(`[trials-agent] returned ${matched.length} matched, ${close.length} close (from ${rawArray.length} scored)`)
   return { matched, close }
 }

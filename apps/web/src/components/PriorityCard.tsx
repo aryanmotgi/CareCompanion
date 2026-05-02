@@ -111,6 +111,17 @@ export function PriorityCard({
           style={animStyle}
         >
           {content}
+          <div className="flex items-center justify-end mt-2 pt-1 gap-1">
+            <span className="text-[10px] text-[var(--text-muted)]">
+              {expanded ? 'Less' : 'Action steps'}
+            </span>
+            <svg
+              className={`w-3.5 h-3.5 text-[var(--text-muted)] transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+              fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </div>
         </ExpandableCard>
       </div>
     )

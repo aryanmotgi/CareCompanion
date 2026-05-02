@@ -308,7 +308,7 @@ export function ProfileCompleteness({
                 <>
                   <h3 className="text-sm font-semibold text-[#10b981]">Profile complete!</h3>
                   <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                    Great job! Your care profile is fully set up.
+                    Your care team has everything they need.
                   </p>
                 </>
               ) : (
@@ -355,9 +355,6 @@ export function ProfileCompleteness({
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-[var(--text)]">{item.label}</p>
                 </div>
-                <span className="text-[10px] font-semibold text-[var(--lavender)] bg-[var(--lavender)]/10 px-2 py-0.5 rounded-full flex-shrink-0">
-                  +{item.weight}%
-                </span>
                 <svg className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0 group-hover:text-[var(--lavender)] transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>

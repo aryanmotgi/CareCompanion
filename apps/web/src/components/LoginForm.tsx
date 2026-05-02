@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 
 function FloatingInput({
@@ -97,7 +96,6 @@ function PasswordInput({
 }
 
 export function LoginForm({ initialError, callbackUrl }: { initialError?: string; callbackUrl?: string }) {
-  const router = useRouter()
   const [tab, setTab] = useState<'email' | 'care-group'>('email')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -122,7 +120,7 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
         setLoading(false)
         return
       }
-      router.push('/dashboard')
+      window.location.href = '/dashboard'
       return
     }
 
@@ -141,7 +139,7 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
       setError('Invalid email or password. Please try again.')
       setLoading(false)
     } else if (result?.ok) {
-      router.push(callbackUrl || '/dashboard')
+      window.location.href = callbackUrl || '/dashboard'
     } else {
       setError('Something went wrong. Please try again.')
       setLoading(false)

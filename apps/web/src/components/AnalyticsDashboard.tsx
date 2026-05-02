@@ -213,8 +213,8 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
                       {latest.value} {latest.unit || ''}
                     </p>
                     {!isNaN(change) && change !== 0 && (
-                      <p className={`text-[10px] ${change > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                        {changeStr} {latest.unit || ''}
+                      <p className="text-[10px] text-[var(--text-muted)]">
+                        {change > 0 ? '↑' : '↓'} {Math.abs(change).toFixed(1)} {latest.unit || ''}
                       </p>
                     )}
                   </div>

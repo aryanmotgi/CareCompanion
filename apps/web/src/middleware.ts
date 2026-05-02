@@ -34,6 +34,7 @@ const PUBLIC_PATHS = [
   '/api/share/',             // Public share links with token (e.g. /api/share/abc123) — POST /api/share itself is protected
   '/api/demo/start',         // Demo session creation — no auth needed to start a demo
   '/api/feedback',           // Bug report submissions — works without auth
+  '/api/debug-auth',         // TEMP: local dev auth debugging
   '/shared',                 // Public share pages
   '/reset-password',          // Password reset pages
 ]

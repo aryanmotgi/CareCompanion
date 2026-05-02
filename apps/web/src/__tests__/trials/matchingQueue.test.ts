@@ -84,11 +84,13 @@ import {
 const matchedTrial = {
   nctId: 'NCT001',
   title: 'HER2+ Phase II Study',
+  matchCategory: 'matched' as const,
   matchScore: 85,
   matchReasons: ['HER2+', 'Stage III'],
   disqualifyingFactors: [],
   uncertainFactors: [],
   eligibilityGaps: null,
+  phase: 'PHASE2',
   enrollmentStatus: 'RECRUITING',
   locations: [],
   trialUrl: 'https://clinicaltrials.gov/study/NCT001',
@@ -98,6 +100,7 @@ const closeTrial = {
   ...matchedTrial,
   nctId: 'NCT002',
   title: 'Ovarian Trial',
+  matchCategory: 'close' as const,
   matchScore: 60,
   eligibilityGaps: [{
     gapType: 'measurable' as const,
