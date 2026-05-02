@@ -200,7 +200,6 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
               const latestVal = parseFloat(latest.value || '0');
               const prevVal = parseFloat(previous.value || '0');
               const change = latestVal - prevVal;
-              const changeStr = change > 0 ? `+${change.toFixed(1)}` : change.toFixed(1);
 
               return (
                 <div key={testName} className="flex items-center justify-between">
