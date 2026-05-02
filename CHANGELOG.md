@@ -34,6 +34,14 @@ Security hardening, Care Tab reliability, dashboard fixes, trials engine improve
 - **Interaction check skips LLM when no other meds** — previously fired a paid LLM call even with 0 current medications to compare against; now returns early
 - **Appointment add errors were silent** — failed POSTs closed the form with no message; error now shown inline
 
+### Security (post-adversarial review)
+- **debug-auth route deleted** — `GET /api/debug-auth` exposed a password-reset-via-query-param endpoint active on Vercel preview deployments; route removed entirely
+- **CSRF added to 5 mutation routes** — `POST /api/trials/save`, `POST /api/trials/match`, `PATCH /api/trials/saved/[nctId]`, `POST /api/care-group`, and `POST /api/auth/set-role` lacked `validateCsrf()` guards, making group creation and role assignment exploitable via cross-site POST; all now consistent with the rest of the codebase
+- **Care group join race condition fixed** — `POST /api/care-group/join` checked membership then inserted in two separate queries; concurrent requests could both pass the check and double-join; wrapped in a `db.transaction()` 
+- **Cron profile scan capped at 500** — `GET /api/cron/trials-match` loaded every care profile with no `LIMIT`; would OOM Lambda at scale
+- **Cycles rate-limit IP hardened** — `DELETE/PATCH /api/cycles/[id]` used leftmost `x-forwarded-for` (attacker-controlled); now uses `x-real-ip` with rightmost XFF fallback, matching the register route fix
+- **Drug interaction safe default on LLM parse failure** — `checkDrugInteractions()` and `checkAllInteractions()` returned `undefined` when structured output parsing failed; now return a conservative safe default (`safe_to_combine: false`)
+
 ### Security
 - **Check-in API now verifies ownership** — `GET /api/checkins` returned any profile's check-in data to any authenticated user; fixed: caller must own the profile or be a care team member
 - **Consent route uses user ID not email** — `POST /api/consent/accept` used `WHERE email =` which silently skips Apple Sign-In users with null email; fixed to use `WHERE id =` matching session user ID
