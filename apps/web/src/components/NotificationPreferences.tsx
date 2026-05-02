@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useToast } from './ToastProvider'
+import { useCsrfToken } from './CsrfProvider'
 import type { UserSettings, NotificationCategoryPrefs } from '@/lib/types'
 
 // ─── Shared UI primitives (same as SettingsPage) ─────────────────────────────
@@ -156,6 +157,7 @@ interface NotificationPreferencesProps {
 
 export function NotificationPreferences({ settings, onSettingsChange }: NotificationPreferencesProps) {
   const { showToast } = useToast()
+  const csrfToken = useCsrfToken()
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const saveStatusTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -194,19 +196,19 @@ export function NotificationPreferences({ settings, onSettingsChange }: Notifica
 
     debounceRef.current = setTimeout(async () => {
       try {
+        // API expects snake_case keys
         const payload = {
-          quietHoursStart: updatedQuietHours.enabled ? updatedQuietHours.start : null,
-          quietHoursEnd: updatedQuietHours.enabled ? updatedQuietHours.end : null,
-          // Keep legacy fields in sync
-          refillReminders: updatedPrefs.medications.refill_reminders && updatedPrefs.medications.enabled,
-          appointmentReminders: updatedPrefs.appointments.enabled,
-          labAlerts: updatedPrefs.lab_results.enabled,
-          claimUpdates: updatedPrefs.insurance.claim_status && updatedPrefs.insurance.enabled,
+          quiet_hours_start: updatedQuietHours.enabled ? updatedQuietHours.start : null,
+          quiet_hours_end: updatedQuietHours.enabled ? updatedQuietHours.end : null,
+          refill_reminders: updatedPrefs.medications.refill_reminders && updatedPrefs.medications.enabled,
+          appointment_reminders: updatedPrefs.appointments.enabled,
+          lab_alerts: updatedPrefs.lab_results.enabled,
+          claim_updates: updatedPrefs.insurance.claim_status && updatedPrefs.insurance.enabled,
         }
 
         const res = await fetch('/api/records/settings', {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
           body: JSON.stringify(payload),
         })
 
@@ -214,7 +216,12 @@ export function NotificationPreferences({ settings, onSettingsChange }: Notifica
 
         onSettingsChange({
           ...settings,
-          ...payload,
+          quietHoursStart: payload.quiet_hours_start,
+          quietHoursEnd: payload.quiet_hours_end,
+          refillReminders: payload.refill_reminders,
+          appointmentReminders: payload.appointment_reminders,
+          labAlerts: payload.lab_alerts,
+          claimUpdates: payload.claim_updates,
         })
 
         setSaveStatus('saved')
@@ -226,7 +233,7 @@ export function NotificationPreferences({ settings, onSettingsChange }: Notifica
         setSaveStatus('idle')
       }
     }, 600)
-  }, [settings, onSettingsChange, showToast])
+  }, [settings, onSettingsChange, showToast, csrfToken])
 
   const toggleCategory = (categoryKey: CategoryKey) => {
     const category = prefs[categoryKey]

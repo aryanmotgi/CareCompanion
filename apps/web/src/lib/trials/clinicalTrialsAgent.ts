@@ -19,7 +19,7 @@ export type TrialMatchResult = {
   trialUrl:             string | null
 }
 
-export type AgentMatchOutput = {
+type AgentMatchOutput = {
   matched: TrialMatchResult[]
   close:   TrialMatchResult[]
 }

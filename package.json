@@ -17,11 +17,9 @@
     "deadcode": "knip"
   },
   "devDependencies": {
-    "dotenv": "^17.4.2",
     "husky": "^9.1.7",
     "knip": "^6.11.0",
     "lint-staged": "^16.4.0",
-    "tsx": "^4.21.0",
     "turbo": "^2.0.0",
     "typescript": "^5"
   },

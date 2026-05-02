@@ -67,6 +67,7 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
   const [settings, setSettings] = useState<UserSettings | null>(initialSettings)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -131,7 +132,7 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
         const json = JSON.parse(text)
         const res = await fetch('/api/import-data', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
           body: JSON.stringify(json),
         })
         if (!res.ok) {
@@ -155,20 +156,24 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
   }
 
   const handleChangePassword = async () => {
-    if (!newPassword || newPassword.length < 6) return
+    if (!currentPassword || !newPassword || newPassword.length < 8) return
     setSaving(true)
     try {
       const res = await fetch('/api/account/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: newPassword }),
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
+        body: JSON.stringify({ currentPassword, password: newPassword }),
       })
-      if (!res.ok) throw new Error('Failed to update password')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as { error?: string }).error || 'Failed to update password')
+      }
+      setCurrentPassword('')
       setNewPassword('')
       setShowPasswordForm(false)
       showToast('Password updated', 'success')
-    } catch {
-      showToast('Failed to update password', 'error')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to update password', 'error')
     }
     setSaving(false)
   }
@@ -218,7 +223,7 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
           label="Edit Profile & Preferences"
           description="Update cancer type, treatment phase, and priorities"
           onClick={() => {
-            window.location.href = '/onboarding'
+            window.location.href = '/profile/edit'
           }}
         />
       </SettingsGroup>
@@ -256,8 +261,8 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
                 setSettings({ ...settings, aiPersonality: val })
                 await fetch('/api/records/settings', {
                   method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ aiPersonality: val }),
+                  headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
+                  body: JSON.stringify({ ai_personality: val }),
                 })
               }}
               className="bg-transparent text-[#64748b] text-sm outline-none cursor-pointer"
@@ -321,22 +326,31 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
 
       {showPasswordForm && (
         <div className="mt-3 bg-white/[0.04] border border-white/[0.06] rounded-xl p-4">
+          <label className="text-[#94a3b8] text-xs mb-1.5 block" htmlFor="current-password">Current password</label>
+          <input
+            id="current-password"
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="Current password"
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-[#e2e8f0] text-sm mb-3 outline-none focus:border-[#A78BFA]/40 transition-colors"
+          />
           <label className="text-[#94a3b8] text-xs mb-1.5 block" htmlFor="new-password">New password</label>
           <input
             id="new-password"
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="Min 6 characters"
-            minLength={6}
+            placeholder="Min 8 characters"
+            minLength={8}
             className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-[#e2e8f0] text-sm mb-3 outline-none focus:border-[#A78BFA]/40 transition-colors"
           />
-          {newPassword.length > 0 && newPassword.length < 6 && (
-            <p className="text-[#ef4444] text-xs mb-2">Password must be at least 6 characters</p>
+          {newPassword.length > 0 && newPassword.length < 8 && (
+            <p className="text-[#ef4444] text-xs mb-2">Password must be at least 8 characters</p>
           )}
           <button
             onClick={handleChangePassword}
-            disabled={saving || newPassword.length < 6}
+            disabled={saving || !currentPassword || newPassword.length < 8}
             className="w-full py-2.5 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
           >
             {saving && (
@@ -386,7 +400,7 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
       <SettingsGroup>
         <SettingsRow
           label="App Version"
-          right={<span className="text-[#64748b] text-sm">0.1.2</span>}
+          right={<span className="text-[#64748b] text-sm">0.3.1.0</span>}
         />
         <SettingsRow label="Terms of Service" onClick={() => window.open('/terms', '_blank')} />
         <SettingsRow label="Privacy Policy" onClick={() => window.open('/privacy', '_blank')} />

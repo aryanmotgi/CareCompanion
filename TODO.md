@@ -398,3 +398,65 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 - `bcryptjs` at root — used in `apps/web/src/app/api/care-group/route.ts` + 3 others; knip reports it on root but it's a transitive workspace dep.
 - `expo-image-picker` at root — dynamically `require()`d in `apps/mobile/app/(tabs)/scan.tsx`; knip can't detect dynamic imports.
 - All 16 "unused exported types" for trials — public types exported for cross-package use; not dead code.
+
+---
+
+## Settings, Profile & Emergency Card Full Audit — 2026-05-02 (preview/trials-impeccable)
+
+Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
+
+### SETTINGS — Frontend (`components/SettingsPage.tsx`, `components/NotificationPreferences.tsx`)
+
+- ✅ [C] **Notification prefs never saved — camelCase vs snake_case key mismatch** — `NotificationPreferences.tsx:198-205` — Component sent `quietHoursStart`, `refillReminders`, etc. (camelCase) but `/api/records/settings` checks `body.quiet_hours_start`, `body.refill_reminders` (snake_case). Every save returned 400 "No valid fields" silently shown as "Failed to save" toast. Fixed: changed all payload keys to snake_case.
+
+- ✅ [C] **Notification prefs missing CSRF header** — `NotificationPreferences.tsx:207` — No `x-csrf-token` on the settings PATCH; API has `validateCsrf` which rejects all saves. Fixed: added `useCsrfToken()` hook + CSRF header. Added `csrfToken` to `useCallback` dep array.
+
+- ✅ [C] **AI personality never saved — camelCase vs snake_case key mismatch** — `SettingsPage.tsx:259` — Sent `{ aiPersonality: val }` but API checks `body.ai_personality`. Fix: changed to `ai_personality`.
+
+- ✅ [H] **AI personality change missing CSRF header** — `SettingsPage.tsx:257` — inline `fetch` for personality dropdown had no `x-csrf-token`. Fixed.
+
+- ✅ [H] **Change-password form missing `currentPassword` field** — `SettingsPage.tsx:161-173` — API (`change-password/route.ts:37`) requires `{ currentPassword, password }` but form only sent `{ password }`. Backend returned 400 "Current password is required" but the component had generic catch. Fixed: added `currentPassword` state + input field, wired into request body, surface error message from API response.
+
+- ✅ [H] **Change-password missing CSRF header** — `SettingsPage.tsx:162` — POST to `/api/account/change-password` had no `x-csrf-token` despite endpoint calling `validateCsrf`. Fixed.
+
+- ✅ [M] **Password min length mismatch: frontend 6 chars, API requires 8** — `SettingsPage.tsx:158,334` — `minLength={6}` and `if newPassword.length < 6` checks. API validates `password.length < 8`. Fixed: bumped both checks to 8.
+
+- ✅ [M] **Import-data POST missing CSRF header** — `SettingsPage.tsx:132` — `/api/import-data` calls `validateCsrf`; import silently failed with 403. Fixed.
+
+- ✅ [M] **"Edit Profile" links to `/onboarding` instead of `/profile/edit`** — `SettingsPage.tsx:221` — Clicking "Edit Profile & Preferences" relaunched the onboarding wizard. Fixed: changed href to `/profile/edit`.
+
+- ✅ [L] **Hardcoded app version `0.1.2`** — `SettingsPage.tsx:388` — Current version is `0.3.1.0`. Fixed.
+
+### PROFILE — Frontend (`components/ProfileEditor.tsx`, `app/(app)/profile/edit/page.tsx`)
+
+- ✅ [C] **All profile mutations missing CSRF header** — `ProfileEditor.tsx:95,118,136,158,170,192,205,228` — Every `fetch` call (savePatientInfo, saveConditions, addMedication, removeMedication, addDoctor, removeDoctor, addAppointment, removeAppointment) had no `x-csrf-token`. All 8 write paths were rejected by the API with 403. Fixed: added `useCsrfToken()` hook + CSRF header to all 8 calls.
+
+- ✅ [H] **Conditions & Allergies section always blank on open** — `ProfileEditor.tsx:63-64` — State initialized to `''` instead of `profile.conditions || ''` / `profile.allergies || ''`. Users opening the section saw empty inputs and could accidentally clear existing values by hitting Save. Fixed: initialize from profile props.
+
+- ✅ [M] **Profile edit page shows soft-deleted medications, doctors, appointments** — `profile/edit/page.tsx:18-21` — Queries had no `isNull(deletedAt)` filter. Removed records appeared in edit form. Fixed: added `and(..., isNull(deletedAt))` to all three queries.
+
+### EMERGENCY CARD — Frontend + Backend (`components/EmergencyCard.tsx`, `app/(app)/emergency/page.tsx`)
+
+- ✅ [H] **Emergency page ignores active profile — always shows first profile by creation date** — `emergency/page.tsx:15` — Used `WHERE userId = ? LIMIT 1` ordered by insertion. Multi-profile users see wrong profile. Fixed: replaced with `getActiveProfile(dbUser.id)` (respects `userPreferences.activeProfileId`).
+
+- ✅ [M] **Share button clipboard fallback has no error handling** — `EmergencyCard.tsx:48-50` — `navigator.clipboard.writeText()` throws on HTTP pages and some browsers. Silent uncaught promise rejection. Fixed: wrapped in try/catch; no-op gracefully (user can screenshot).
+
+- ✅ [M] **`navigator.share` rejection not caught (non-AbortError)** — `EmergencyCard.tsx:46-47` — If system share sheet fails (e.g., no apps installed), the promise throws. Fixed: wrapped in try/catch with AbortError exclusion; falls back to clipboard on share failure.
+
+- ⬜ [M] **"Last updated" shows profile creation date, not last edit** — `emergency/page.tsx:37` — `careProfiles` table has no `updatedAt` column, so `createdAt` is shown as last-updated. **Schema fix required**: add `updatedAt timestamp` column with `$onUpdate(() => new Date())` trigger; run migration; update all profile PATCH routes to set it.
+
+### DEAD CODE CLEANUP (`knip`)
+
+- ✅ **Deleted 4 unused files** — `apps/mobile/src/components/OnboardingJourney.tsx`, `apps/mobile/src/lib/feature-flags.ts`, `apps/video/remotion.config.ts`, `apps/video/src/components/CalloutLabel.tsx` — no imports found in any package.
+
+- ✅ **Removed 3 unused deps from `apps/mobile/package.json`** — `@babel/runtime`, `@carecompanion/utils`, `expo-web-browser` — zero code usages.
+
+- ✅ **Removed 2 unused devDeps from root `package.json`** — `dotenv`, `tsx` — not referenced by any scripts or code.
+
+- ✅ **Removed 4 unused `export` keywords** — `trackEvent` in `analytics.ts`, `DetailContent` in `TrialDetailPanel.tsx`, `AgentMatchOutput` in `clinicalTrialsAgent.ts`, `SUPPORTED_HOSPITALS` in `hospitals.ts` — confirmed no external importers.
+
+- ⬜ **`careProfiles` table needs `updatedAt` column** — `schema.ts:34-60` — No timestamp tracks when a profile was last edited. Emergency card "last updated" shows creation date. Fix: add `updatedAt: timestamp('updated_at').defaultNow().$onUpdateFn(() => new Date())` and run migration.
+
+- ⬜ **`searchByEligibility` is dead code** — `apps/web/src/lib/trials/tools.ts:128` — Exported but never called since agent refactor. Safe to delete with its param types `SearchTrialsParams` / `SearchByEligibilityParams`.
+
+- ⬜ **`checkinSchema` / `CheckinInput` unused exports** — `apps/web/src/lib/checkin-validation.ts:3,11` — Not imported anywhere. Safe to remove `export` keyword.

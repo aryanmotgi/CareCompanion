@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { FormField } from '@/components/ui/FormField';
+import { useCsrfToken } from '@/components/CsrfProvider';
 import type { CareProfile, Medication, Doctor, Appointment } from '@/lib/types';
 
 interface ProfileEditorProps {
@@ -52,6 +53,8 @@ export function ProfileEditor({
   doctors: initialDoctors,
   appointments: initialAppointments,
 }: ProfileEditorProps) {
+  const csrfToken = useCsrfToken();
+
   // Patient info
   const [patientName, setPatientName] = useState(profile.patientName || '');
   const [patientAge, setPatientAge] = useState(profile.patientAge?.toString() || '');
@@ -59,9 +62,9 @@ export function ProfileEditor({
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState('');
 
-  // Conditions (stored separately, not in CareProfile)
-  const [conditions, setConditions] = useState('');
-  const [allergies, setAllergies] = useState('');
+  // Conditions (initialized from profile)
+  const [conditions, setConditions] = useState(profile.conditions || '');
+  const [allergies, setAllergies] = useState(profile.allergies || '');
   const [savingConditions, setSavingConditions] = useState(false);
   const [conditionsMsg, setConditionsMsg] = useState('');
 
@@ -94,7 +97,7 @@ export function ProfileEditor({
     setProfileMsg('');
     const res = await fetch('/api/records/profile', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
       body: JSON.stringify({
         id: profile.id,
         patient_name: patientName,
@@ -117,7 +120,7 @@ export function ProfileEditor({
     setConditionsMsg('');
     const res = await fetch('/api/records/profile', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
       body: JSON.stringify({ id: profile.id, conditions, allergies }),
     });
     setSavingConditions(false);
@@ -135,7 +138,7 @@ export function ProfileEditor({
     setSavingMeds(true);
     const res = await fetch('/api/records/medications', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
       body: JSON.stringify({
         care_profile_id: profile.id,
         name: newMedName,
@@ -157,7 +160,7 @@ export function ProfileEditor({
   const removeMedication = async (id: string) => {
     const res = await fetch('/api/records/medications', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
       body: JSON.stringify({ id }),
     });
     if (res.ok) {
@@ -170,7 +173,7 @@ export function ProfileEditor({
     setSavingDocs(true);
     const res = await fetch('/api/records/doctors', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
       body: JSON.stringify({
         care_profile_id: profile.id,
         name: newDocName,
@@ -192,7 +195,7 @@ export function ProfileEditor({
   const removeDoctor = async (id: string) => {
     const res = await fetch('/api/records/doctors', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
       body: JSON.stringify({ id }),
     });
     if (res.ok) {
@@ -205,7 +208,7 @@ export function ProfileEditor({
     setSavingAppts(true);
     const res = await fetch('/api/records/appointments', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
       body: JSON.stringify({
         care_profile_id: profile.id,
         doctor_name: newApptDoctor || null,
@@ -227,7 +230,7 @@ export function ProfileEditor({
   const removeAppointment = async (id: string) => {
     const res = await fetch('/api/records/appointments', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
       body: JSON.stringify({ id }),
     });
     if (res.ok) {

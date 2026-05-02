@@ -41,12 +41,22 @@ export function EmergencyCard({ patient, medications, doctors, insurance }: Emer
     d.specialty?.toLowerCase().includes('internal')
   ) || doctors[0];
 
-  const handleShare = () => {
+  const handleShare = async () => {
     const text = buildPlainText();
     if (typeof navigator.share === 'function') {
-      navigator.share({ title: `Emergency Info — ${patient.name}`, text });
+      try {
+        await navigator.share({ title: `Emergency Info — ${patient.name}`, text });
+      } catch (e) {
+        if (e instanceof Error && e.name !== 'AbortError') {
+          await navigator.clipboard.writeText(text).catch(() => null);
+        }
+      }
     } else {
-      navigator.clipboard.writeText(text);
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        // Clipboard API not available (HTTP context); no-op — user can screenshot
+      }
     }
   };
 

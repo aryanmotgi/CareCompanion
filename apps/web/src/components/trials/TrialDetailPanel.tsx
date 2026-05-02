@@ -32,7 +32,7 @@ type TrialDetail = {
   url: string
 }
 
-export type DetailContent = {
+type DetailContent = {
   trial:            TrialDetail
   contact:          Contact | null
   all_contacts:     Contact[]

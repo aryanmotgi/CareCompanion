@@ -12,10 +12,8 @@
     "android": "expo run:android"
   },
   "dependencies": {
-    "@babel/runtime": "^7.20.0",
     "@carecompanion/api": "workspace:*",
     "@carecompanion/types": "workspace:*",
-    "@carecompanion/utils": "workspace:*",
     "@expo/metro-runtime": "~4.0.1",
     "@expo/vector-icons": "~14.0.4",
     "@react-native-async-storage/async-storage": "1.23.1",
@@ -37,7 +35,6 @@
     "expo-secure-store": "~13.0.0",
     "expo-sensors": "~14.0.2",
     "expo-updates": "~0.27.5",
-    "expo-web-browser": "~13.0.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-native": "0.76.5",

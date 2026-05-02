@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db';
 import { users, careProfiles, medications, doctors, appointments } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { ProfileEditor } from '@/components/ProfileEditor'
 
 export default async function ProfileEditPage() {
@@ -16,9 +16,9 @@ export default async function ProfileEditPage() {
   if (!profile) redirect('/setup');
 
   const [meds, docs, appts] = await Promise.all([
-    db.select().from(medications).where(eq(medications.careProfileId, profile.id)).catch(() => []),
-    db.select().from(doctors).where(eq(doctors.careProfileId, profile.id)).catch(() => []),
-    db.select().from(appointments).where(eq(appointments.careProfileId, profile.id)).catch(() => []),
+    db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).catch(() => []),
+    db.select().from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))).catch(() => []),
+    db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).catch(() => []),
   ]);
 
   return (

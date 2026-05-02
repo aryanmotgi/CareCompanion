@@ -4,7 +4,29 @@ All notable changes to CareCompanion will be documented in this file.
 
 ## [0.3.1.0] - 2026-05-02
 
-Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, and document scan/upload fixes.
+Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, and Settings/Profile/Emergency Card audit.
+
+### Fixed (Settings, Profile, Emergency Card)
+- **Notification preferences never saved** — component sent camelCase keys (`quietHoursStart`, `refillReminders`) but the API checks snake_case (`quiet_hours_start`, `refill_reminders`); every save returned 400 silently
+- **Notification preferences CSRF missing** — `PATCH /api/records/settings` called without `x-csrf-token`; all saves rejected by the API
+- **AI personality never saved** — settings PATCH sent `{ aiPersonality }` but API expects `{ ai_personality }`; personality dropdown had no effect since launch
+- **AI personality CSRF missing** — same endpoint, same issue
+- **Change-password form missing current password field** — API requires `{ currentPassword, password }` but form only sent `{ password }`; every password change returned 400
+- **Change-password CSRF missing** — POST to `/api/account/change-password` lacked `x-csrf-token`
+- **Password min length mismatch** — frontend checked 6 chars but API requires 8; users could pass frontend validation then fail server validation
+- **Import data CSRF missing** — POST to `/api/import-data` lacked `x-csrf-token`; imports silently failed
+- **Edit Profile linked to /onboarding** — Settings "Edit Profile" button relaunched the onboarding wizard instead of navigating to `/profile/edit`
+- **All profile mutations missing CSRF** — all 8 ProfileEditor write paths (save patient info, save conditions, add/remove medication, add/remove doctor, add/remove appointment) had no `x-csrf-token`; every edit was rejected by the API
+- **Conditions & Allergies section always blank** — state initialized to `''` instead of `profile.conditions / profile.allergies`; users who clicked Save without re-entering would silently clear existing data
+- **Profile edit showed soft-deleted records** — medications, doctors, and appointments queries lacked `isNull(deletedAt)`; removed records appeared in the edit form
+- **Emergency card showed wrong profile for multi-profile users** — page used `WHERE userId = ? LIMIT 1` (creation order) instead of `getActiveProfile()`; care team members saw the wrong patient's emergency data
+- **Emergency card share/clipboard had no error handling** — `navigator.share()` rejection and `clipboard.writeText()` throw on HTTP pages were uncaught; now wrapped with fallback
+
+### Removed (Dead Code)
+- Deleted 4 unused files: `apps/mobile/src/components/OnboardingJourney.tsx`, `apps/mobile/src/lib/feature-flags.ts`, `apps/video/remotion.config.ts`, `apps/video/src/components/CalloutLabel.tsx`
+- Removed 3 unused dependencies from mobile: `@babel/runtime`, `@carecompanion/utils`, `expo-web-browser`
+- Removed 2 unused devDependencies from root: `dotenv`, `tsx`
+- Removed 4 unused `export` keywords: `trackEvent` (analytics.ts), `DetailContent` (TrialDetailPanel.tsx), `AgentMatchOutput` (clinicalTrialsAgent.ts), `SUPPORTED_HOSPITALS` (hospitals.ts)
 
 ### Added
 - **knip dead-code scanner** — `npm run deadcode` now available via knip; catches unused exports across the monorepo
