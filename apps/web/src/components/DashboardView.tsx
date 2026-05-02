@@ -199,10 +199,11 @@ export function DashboardView({
       }
     })
 
-    // Appointment cards (next 7 days)
+    // Appointment cards (next 7 days, future only)
     appointments.forEach((appt) => {
       if (!appt.dateTime) return
       const apptDate = new Date(appt.dateTime)
+      if (apptDate.getTime() <= now.getTime()) return
       const daysUntil = Math.ceil((apptDate.getTime() - now.getTime()) / 86400000)
       if (daysUntil >= 0 && daysUntil <= 7) {
         const timeStr = apptDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
