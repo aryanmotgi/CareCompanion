@@ -127,7 +127,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
     // Remove the ?accept= param from the URL without a reload
     window.history.replaceState({}, '', '/care-team');
     loadTeam();
-  }, [showToast, loadTeam]);
+  }, [showToast, loadTeam, csrfToken]);
 
   useEffect(() => {
     if (acceptInviteId) {

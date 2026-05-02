@@ -8,7 +8,7 @@ const checkinSchema = z.object({
   notes: z.string().max(500).optional(),
 });
 
-type CheckinInput = z.infer<typeof checkinSchema>;
+export type CheckinInput = z.infer<typeof checkinSchema>;
 
 export function validateCheckin(data: unknown) {
   return checkinSchema.safeParse(data);

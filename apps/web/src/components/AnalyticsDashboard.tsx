@@ -63,9 +63,9 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
     .slice(0, 6);
 
   // ---- Spending ----
-  const totalBilled = claims.reduce((sum, c) => sum + parseFloat(c.billedAmount || '0'), 0);
-  const totalPaid = claims.reduce((sum, c) => sum + parseFloat(c.paidAmount || '0'), 0);
-  const totalOOP = claims.reduce((sum, c) => sum + parseFloat(c.patientResponsibility || '0'), 0);
+  const totalBilled = claims.reduce((sum, c) => sum + (parseFloat(c.billedAmount ?? '0') || 0), 0);
+  const totalPaid = claims.reduce((sum, c) => sum + (parseFloat(c.paidAmount ?? '0') || 0), 0);
+  const totalOOP = claims.reduce((sum, c) => sum + (parseFloat(c.patientResponsibility ?? '0') || 0), 0);
   const deniedCount = claims.filter((c) => c.status === 'denied').length;
 
   if (loading) {

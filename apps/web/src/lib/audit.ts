@@ -27,6 +27,7 @@ type AuditAction =
   | 'switch_profile'
   | 'sync_data'
   | 'view_records'
+  | 'hipaa_consent_accepted'
 
 interface AuditEntry {
   user_id: string
