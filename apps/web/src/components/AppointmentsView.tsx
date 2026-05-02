@@ -18,6 +18,7 @@ export function AppointmentsView({ appointments: initial, profileId }: Appointme
   const [dateTime, setDateTime] = useState('');
   const [purpose, setPurpose] = useState('');
   const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
 
   const upcoming = appointments.filter((a) => a.dateTime && new Date(a.dateTime) >= new Date());
@@ -26,28 +27,36 @@ export function AppointmentsView({ appointments: initial, profileId }: Appointme
   const addAppointment = async () => {
     if (!doctor.trim() && !purpose.trim()) return;
     setSaving(true);
-    const res = await fetch('/api/records/appointments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        care_profile_id: profileId,
-        doctorName: doctor || null,
-        dateTime: dateTime || null,
-        purpose: purpose || null,
-      }),
-    });
-    const json = await res.json();
-    setSaving(false);
-    if (res.ok && json.data) {
-      setAppointments((prev) => [...prev, json.data].sort((a, b) => {
-        if (!a.dateTime) return 1;
-        if (!b.dateTime) return -1;
-        return new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime();
-      }));
-      setDoctor('');
-      setDateTime('');
-      setPurpose('');
-      setShowAdd(false);
+    setAddError(null);
+    try {
+      const res = await fetch('/api/records/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          care_profile_id: profileId,
+          doctor_name: doctor || null,
+          date_time: dateTime || null,
+          purpose: purpose || null,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.data) {
+        setAppointments((prev) => [...prev, json.data].sort((a, b) => {
+          if (!a.dateTime) return 1;
+          if (!b.dateTime) return -1;
+          return new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime();
+        }));
+        setDoctor('');
+        setDateTime('');
+        setPurpose('');
+        setShowAdd(false);
+      } else {
+        setAddError(json.error || 'Failed to save appointment. Please try again.');
+      }
+    } catch {
+      setAddError('Network error. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -115,9 +124,10 @@ export function AppointmentsView({ appointments: initial, profileId }: Appointme
             <FormField label="Date & time" type="datetime-local" value={dateTime} onChange={setDateTime} />
             <FormField label="Purpose" value={purpose} onChange={setPurpose} placeholder="e.g., Cardiology checkup" />
           </div>
+          {addError && <p className="text-xs text-red-400">{addError}</p>}
           <div className="flex gap-2">
             <Button onClick={addAppointment} loading={saving}>Save</Button>
-            <Button variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
+            <Button variant="secondary" onClick={() => { setShowAdd(false); setAddError(null); }}>Cancel</Button>
           </div>
         </div>
       )}

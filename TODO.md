@@ -166,6 +166,111 @@ Date: 2026-05-02
 
 ---
 
+---
+
+## Care Tab Full Audit — 2026-05-02 (preview/trials-impeccable)
+
+Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
+
+### MEDICATIONS — Backend (`app/api/records/medications/route.ts`)
+
+- ✅ [C] No string length limits on any text field (name/dose/frequency/notes/refill_date) — POST lines 47-55
+- ✅ [C] `refill_date` stored as raw unvalidated string (no format/range check) — POST:53, PATCH:129
+- ✅ [H] PUT bulk: `String(undefined)` → literal `"undefined"` stored as medication name — line 162
+- ✅ [H] PUT bulk: unbounded array length, no cap — line 148
+- ✅ [H] DELETE/PATCH ownership lookup doesn't filter soft-deleted records — lines 76-80, 111-115
+- ✅ [H] PATCH can update `refillDate` on a soft-deleted medication — lines 127-131
+- ✅ [M] Whitespace-only name (`"   "`) passes `!name` check — POST line 25
+- ✅ [M] DELETE fires `triggerMatchingRun` with wrong reason `'new_medication'` — line 93
+- ⬜ [L] `refill_date` schema column is `text` not `date` type — schema.ts:91
+
+### MEDICATIONS — Frontend (`components/MedicationsView.tsx`)
+
+- ✅ [H] Silent failure on POST — no user-facing error state — lines 44-69
+- ✅ [H] Silent failure on DELETE — dialog closes with no error — lines 72-85
+- ✅ [H] Silent failure on PATCH refill — editor closes, date change lost silently — lines 87-101
+- ⬜ [M] No loading state during post-scan re-fetch — lines 111-117
+- ⬜ [M] `handleScanSaved` fetch failure is completely silent — lines 111-117
+- ✅ [M] `savingRefill` is global state — disables all rows while one saves — line 29
+- ⬜ [M] No client-side or server-side duplicate name detection
+- ✅ [M] Date input has no `min`/`max` bounds — line 220-224
+
+### LABS — Frontend (`components/LabTrends.tsx`, `LabTrendChart.tsx`, `lib/lab-trends.ts`)
+
+- ✅ [C] STATUS_CONFIG mismatch — `'warning'`/`'stable'` from API crash UI (no key in STATUS_CONFIG) — LabTrends.tsx:41-45, lab-trends.ts:240
+- ⬜ [H] Chart date sort wrong across year boundaries (year always = current year) — LabTrendChart.tsx:186-192
+- ✅ [H] 1-point chart renders as degenerate invisible line with no message — LabTrendChart.tsx:211-213
+- ✅ [H] Rapid rise of tumor markers misclassified as "Declining" not "Rapid Decline" — lab-trends.ts:109-113
+- ⬜ [H] No error boundary for DB failure on labs page — page.tsx:21-25
+- ⬜ [H] `care_profile_id` accepted but ownership never verified — records/labs/route.ts:12-31
+- ✅ [M] Date UTC parsing off-by-one in "Recent" filter — LabsView.tsx:33
+- ✅ [M] SVG gradient ID collides across multiple sparklines — LabTrends.tsx:166
+- ✅ [M] `change_percent: null` when value is exactly 0.0% (falsy zero bug) — lab-trends.ts:179
+- ⬜ [M] Multi-test chart uses first trend's reference range for all lines — LabTrendChart.tsx:215-216
+- ⬜ [M] No retry / stale-data indicator after 429 rate limit — LabTrends.tsx:417-418
+- ✅ [L] `formatDateHeading` renders "Invalid Date" heading for malformed dateTaken — LabsView.tsx:10-17
+- ✅ [L] Exponential notation (e.g., `1.5e-3`) stripped → wrong float — lab-trends.ts:66-71
+- ⬜ [L] Chat prompt sends lab value without unit — LabTrends.tsx:297-300
+
+### APPOINTMENTS — Backend + Frontend
+
+- ✅ [H] Field name mismatch: sends `doctorName` (camelCase), API reads `doctor_name` — AppointmentsView.tsx:34
+- ⬜ [H] No edit capability — delete + re-add only
+- ⬜ [M] No past-date guard on form (no `min` attribute on datetime-local)
+- ⬜ [M] UTC ISO string parsed in browser local time — appointment can appear in wrong day
+- ⬜ [M] No deduplication — double-tap inserts duplicate appointments
+
+### TREATMENT CYCLES — Backend + Frontend
+
+- ✅ [C] No DELETE endpoint for cycles — [id]/route.ts only has PATCH
+- ⬜ [H] Side effects stored in localStorage only — lost on device switch/incognito — TreatmentCycleTracker.tsx:169-186
+- ✅ [H] Divide-by-zero when `totalCycles` is 0 or `cycleLengthDays` is 0 — lines 209-210
+- ✅ [H] `dayInCycle` can exceed `cycleLengthDays` when refill date is past — lines 58-59
+- ✅ [M] Whole tracker hidden with no fallback when no meds match cycle regex — line 207
+- ⬜ [M] Cycles GET doesn't filter soft-deleted profiles — route.ts:35-43
+- ⬜ [M] `isActive` stays true after final cycle completes — route.ts:88-92
+
+### DRUG INTERACTIONS — Backend + Frontend
+
+- ⬜ [C] Severity mismatch: API produces `major/moderate/minor`, component has `critical` key — never reachable — InteractionWarning.tsx:6 + drug-interactions.ts:12
+- ⬜ [H] Unhandled rejection if `generateText` throws / `output` undefined — drug-interactions.ts:36,59
+- ✅ [H] Soft-deleted meds included in interaction check (missing `isNull(deletedAt)`) — interactions/check/route.ts:44
+- ✅ [M] Single-medication LLM call still fires with 0 other meds — route.ts:61-74
+
+### REFILL STATUS — Backend + Frontend
+
+- ✅ [H] Soft-deleted medications included in refill calculations — refill-tracker.ts:23-33
+- ⬜ [H] `days_until_refill` is negative for overdue meds (semantic bug) — refill-tracker.ts:60
+- ⬜ [M] No rate limit on `/api/refills/status` GET endpoint
+- ⬜ [L] Ambiguous JSON shape double-fallback — RefillStatus.tsx:118
+- ⬜ [L] No "last updated" timestamp on refill card
+
+### MANUAL ENTRY & UPLOAD — Backend + Frontend
+
+- ⬜ [C] No server-side MIME type check — any file type accepted — documents/extract/route.ts:122
+- ⬜ [C] File fully buffered BEFORE size check — OOM risk on large uploads — documents/extract/route.ts:56-58,122
+- ⬜ [C] Empty form can be submitted with no client-side validation — CategoryUploadCard.tsx:214
+- ⬜ [H] No field-level error feedback — only generic "Failed" toast — CategoryUploadCard.tsx:227
+- ⬜ [H] Date fields not validated — invalid strings persisted to DB — EditableFieldList.tsx:19,39,52
+- ⬜ [H] Number → NaN silently sent as JSON number — CategoryUploadCard.tsx:128-138
+- ⬜ [H] No upload timeout / AbortController — UI hangs indefinitely — CategoryUploadCard.tsx:192-203
+- ⬜ [H] Insurance deductible/OOP never pre-populated from OCR — CategoryUploadCard.tsx:81-82
+- ⬜ [H] Rate limit by IP not user ID in save-scan-results — route.ts:67-70
+- ⬜ [M] `document_id` update lacks ownership check (IDOR) — documents/extract/route.ts:80-85
+- ⬜ [M] Category hint allowlist mismatch client vs server
+- ⬜ [M] Manual form stays open after successful save — CategoryUploadCard.tsx:224-226
+- ⬜ [M] PDF renders as broken image in preview — CategoryUploadCard.tsx:325
+- ⬜ [M] Cancel button enabled during save — state corruption risk — CategoryUploadCard.tsx:375
+- ⬜ [M] Appointment `location` dropped from OCR extraction — CategoryUploadCard.tsx:56-60
+- ⬜ [L] Conditions not trimmed/deduped after extraction — CategoryUploadCard.tsx:44-45
+- ⬜ [L] Insurance "Unknown" provider fallback silently saved — CategoryUploadCard.tsx:124
+
+### KNIP
+
+- ✅ Installed `knip@6.11.0` — added `"deadcode": "knip"` to root `package.json` scripts
+
+---
+
 ## Already fixed this session (do not re-open)
 
 - ~~Dashboard layout contract: action cards first, secondary surfaces below fold~~

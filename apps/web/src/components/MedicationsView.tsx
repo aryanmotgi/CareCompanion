@@ -21,83 +21,111 @@ export function MedicationsView({ medications: initial, profileId }: Medications
   const [dose, setDose] = useState('');
   const [frequency, setFrequency] = useState('');
   const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  const [refillError, setRefillError] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null);
   const [removing, setRemoving] = useState(false);
   const [interactionWarning, setInteractionWarning] = useState<{ interactions: { drug1: string; drug2: string; severity: 'critical' | 'major' | 'moderate' | 'minor'; description: string }[]; medName: string } | null>(null);
   const [editingRefill, setEditingRefill] = useState<string | null>(null); // medication id
   const [refillDate, setRefillDate] = useState('');
-  const [savingRefill, setSavingRefill] = useState(false);
+  const [savingRefillId, setSavingRefillId] = useState<string | null>(null);
 
   const addMedication = async () => {
     if (!name.trim()) return;
     setSaving(true);
-    const res = await fetch('/api/records/medications', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        care_profile_id: profileId,
-        name: name.trim(),
-        dose: dose || null,
-        frequency: frequency || null,
-      }),
-    });
-    const json = await res.json();
-    setSaving(false);
-    if (res.ok && json.data) {
-      setMedications((prev) => [...prev, json.data]);
-      setName('');
-      setDose('');
-      setFrequency('');
-      setShowAdd(false);
+    setAddError(null);
+    try {
+      const res = await fetch('/api/records/medications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          care_profile_id: profileId,
+          name: name.trim(),
+          dose: dose || null,
+          frequency: frequency || null,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.data) {
+        setMedications((prev) => [...prev, json.data]);
+        setName('');
+        setDose('');
+        setFrequency('');
+        setShowAdd(false);
 
-      // Automatically check for drug interactions with existing medications
-      try {
-        const checkRes = await fetch('/api/interactions/check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ medication: json.data.name }),
-        });
-        if (checkRes.ok) {
-          const checkData = await checkRes.json();
-          if (checkData.data?.interactions?.length > 0) {
-            setInteractionWarning({ interactions: checkData.data.interactions, medName: json.data.name });
+        // Automatically check for drug interactions with existing medications
+        try {
+          const checkRes = await fetch('/api/interactions/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ medication: json.data.name }),
+          });
+          if (checkRes.ok) {
+            const checkData = await checkRes.json();
+            if (checkData.data?.interactions?.length > 0) {
+              setInteractionWarning({ interactions: checkData.data.interactions, medName: json.data.name });
+            }
           }
+        } catch {
+          // Interaction check is non-blocking; silently ignore failures
         }
-      } catch {
-        // Interaction check is non-blocking; silently ignore failures
+      } else {
+        setAddError(json.error || 'Failed to add medication. Please try again.');
       }
+    } catch {
+      setAddError('Network error. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
   const removeMedication = async () => {
     if (!confirmRemove) return;
     setRemoving(true);
-    const res = await fetch('/api/records/medications', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: confirmRemove.id }),
-    });
-    if (res.ok) {
-      setMedications((prev) => prev.filter((m) => m.id !== confirmRemove.id));
+    setRemoveError(null);
+    try {
+      const res = await fetch('/api/records/medications', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: confirmRemove.id }),
+      });
+      if (res.ok) {
+        setMedications((prev) => prev.filter((m) => m.id !== confirmRemove.id));
+        setConfirmRemove(null);
+      } else {
+        const json = await res.json().catch(() => ({}));
+        setRemoveError(json.error || 'Failed to remove. Please try again.');
+      }
+    } catch {
+      setRemoveError('Network error. Please try again.');
+    } finally {
+      setRemoving(false);
     }
-    setRemoving(false);
-    setConfirmRemove(null);
   };
 
   const updateRefillDate = async (id: string, date: string) => {
-    setSavingRefill(true);
-    const res = await fetch('/api/records/medications', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, refill_date: date || null }),
-    });
-    const json = await res.json();
-    if (res.ok && json.data) {
-      setMedications((prev) => prev.map((m) => m.id === id ? { ...m, refillDate: json.data.refillDate } : m));
+    setSavingRefillId(id);
+    setRefillError(null);
+    try {
+      const res = await fetch('/api/records/medications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, refill_date: date || null }),
+      });
+      const json = await res.json();
+      if (res.ok && json.data) {
+        setMedications((prev) => prev.map((m) => m.id === id ? { ...m, refillDate: json.data.refillDate } : m));
+        setEditingRefill(null);
+        setRefillDate('');
+      } else {
+        setRefillError(json.error || 'Failed to save refill date. Please try again.');
+      }
+    } catch {
+      setRefillError('Network error. Please try again.');
+    } finally {
+      setSavingRefillId(null);
     }
-    setSavingRefill(false);
-    setEditingRefill(null);
-    setRefillDate('');
   };
 
   const markRefilled = async (id: string) => {
@@ -146,9 +174,10 @@ export function MedicationsView({ medications: initial, profileId }: Medications
             <FormField label="Dose" value={dose} onChange={setDose} placeholder="e.g., 500mg" />
             <FormField label="Frequency" value={frequency} onChange={setFrequency} placeholder="e.g., Twice daily" />
           </div>
+          {addError && <p className="text-xs text-red-400">{addError}</p>}
           <div className="flex gap-2">
             <Button onClick={addMedication} loading={saving} disabled={!name.trim()}>Save</Button>
-            <Button variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
+            <Button variant="secondary" onClick={() => { setShowAdd(false); setAddError(null); }}>Cancel</Button>
           </div>
         </div>
       )}
@@ -216,26 +245,30 @@ export function MedicationsView({ medications: initial, profileId }: Medications
 
                     {/* Refill date editor */}
                     {isEditingThisRefill && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <input
-                          type="date"
-                          value={refillDate}
-                          onChange={(e) => setRefillDate(e.target.value)}
-                          className="text-xs bg-white/[0.06] border border-white/[0.12] rounded-lg px-2 py-1 text-[var(--text)] outline-none focus:border-[#6366F1]/50"
-                        />
-                        <button
-                          onClick={() => updateRefillDate(med.id, refillDate)}
-                          disabled={savingRefill}
-                          className="text-xs px-2.5 py-1 rounded-lg bg-[#6366F1]/20 text-[#A78BFA] hover:bg-[#6366F1]/30 transition-colors disabled:opacity-50"
-                        >
-                          {savingRefill ? '...' : 'Save'}
-                        </button>
-                        <button
-                          onClick={() => { setEditingRefill(null); setRefillDate(''); }}
-                          className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
-                        >
-                          Cancel
-                        </button>
+                      <div className="mt-2 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="date"
+                            value={refillDate}
+                            onChange={(e) => setRefillDate(e.target.value)}
+                            min={new Date().toISOString().slice(0, 10)}
+                            className="text-xs bg-white/[0.06] border border-white/[0.12] rounded-lg px-2 py-1 text-[var(--text)] outline-none focus:border-[#6366F1]/50"
+                          />
+                          <button
+                            onClick={() => updateRefillDate(med.id, refillDate)}
+                            disabled={savingRefillId === med.id}
+                            className="text-xs px-2.5 py-1 rounded-lg bg-[#6366F1]/20 text-[#A78BFA] hover:bg-[#6366F1]/30 transition-colors disabled:opacity-50"
+                          >
+                            {savingRefillId === med.id ? '...' : 'Save'}
+                          </button>
+                          <button
+                            onClick={() => { setEditingRefill(null); setRefillDate(''); setRefillError(null); }}
+                            className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                        {refillError && <p className="text-xs text-red-400">{refillError}</p>}
                       </div>
                     )}
                   </div>
@@ -245,7 +278,7 @@ export function MedicationsView({ medications: initial, profileId }: Medications
                     {(refillUrgent || refillOverdue) && !isEditingThisRefill && (
                       <button
                         onClick={() => markRefilled(med.id)}
-                        disabled={savingRefill}
+                        disabled={savingRefillId === med.id}
                         className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors disabled:opacity-50"
                       >
                         Refilled
@@ -286,6 +319,9 @@ export function MedicationsView({ medications: initial, profileId }: Medications
         />
       )}
 
+      {removeError && (
+        <p className="text-xs text-red-400 text-center">{removeError}</p>
+      )}
       <ConfirmDialog
         open={!!confirmRemove}
         title="Remove Medication"
@@ -294,7 +330,7 @@ export function MedicationsView({ medications: initial, profileId }: Medications
         variant="danger"
         loading={removing}
         onConfirm={removeMedication}
-        onCancel={() => setConfirmRemove(null)}
+        onCancel={() => { setConfirmRemove(null); setRemoveError(null); }}
       />
     </div>
   );

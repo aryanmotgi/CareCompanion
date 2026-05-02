@@ -4,7 +4,35 @@ All notable changes to CareCompanion will be documented in this file.
 
 ## [0.3.1.0] - 2026-05-02
 
-Security hardening, dashboard reliability fixes, trials engine improvements, and design system polish.
+Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, and design system polish.
+
+### Added
+- **knip dead-code scanner** — `npm run deadcode` now available via knip; catches unused exports across the monorepo
+
+### Fixed (Care Tab)
+- **Lab trends status never matched UI** — `overall_status: 'warning'` and `'stable'` from the API had no entry in `STATUS_CONFIG`; any user with warning-level labs crashed the Trends UI. Now maps to `'concerning'` and `'monitor'` respectively
+- **Doctor name always blank on new appointments** — frontend sent `doctorName` (camelCase), API reads `doctor_name` (snake_case); all appointments saved with a null doctor since the feature launched
+- **Drug interactions checked against deleted medications** — soft-deleted medications were included in the interaction check query; users could see warnings for drugs they had already removed
+- **Refill status showed deleted medications** — same missing `isNull(deletedAt)` filter; removed medications still appeared with overdue refill alerts
+- **Treatment cycle divide-by-zero** — `totalCycles: 0` or `cycleLengthDays: 0` in notes caused `Infinity%` progress; both now guarded with `Math.max(1, ...)`
+- **Day-in-cycle overflow when refill overdue** — `dayInCycle` could exceed `cycleLengthDays` when next infusion date was past; now clamped to `[1, cycleLengthDays]`
+- **Cycle tracker vanished with no message** — when no medication notes matched the cycle regex, the whole component returned null; now shows an empty state with setup instructions
+- **Medication add/edit/delete failures were silent** — all three mutation flows swallowed errors and closed their UI without feedback; each now shows an inline error message
+- **Saving one refill date disabled all rows** — `savingRefill` was a single boolean shared across all medications; replaced with `savingRefillId` (string | null) so only the affected row is disabled
+- **Lab value exponential notation parsed wrong** — `1.5e-3` was stripped to `1.5` (the `e` was removed), producing values 1000× too large for any sub-1 lab result
+- **Lab trend rapid-rise of tumor markers misclassified** — CEA/PSA/CA-125 rising 20%+ showed as "Declining" instead of "Rapid Decline"; higherIsWorse flip logic now checks `changePercent` magnitude directly
+- **Lab 1-point chart rendered as invisible line** — Recharts draws nothing with a single data point; now shows a message asking for more results
+- **Lab sparkline gradient ID collision** — all `stable` sparklines shared the same SVG gradient ID; one overwrote the other's color. Fixed with `useId()` per instance
+- **Lab change_percent null when exactly 0%** — `changePercent ? ... : null` treated zero as falsy, hiding the `0.0%` indicator
+- **Lab date UTC off-by-one in Recent filter** — bare `YYYY-MM-DD` strings parsed as UTC midnight fell on the previous day in US timezones; now appended with `T00:00:00` for local-time parsing
+- **Lab date heading showed "Invalid Date"** — malformed `dateTaken` values fell through to `toLocaleDateString()` which returned the literal string "Invalid Date"; now guarded
+- **No DELETE endpoint for treatment cycles** — cycles could only be deactivated via PATCH; a true DELETE handler is now available at `DELETE /api/cycles/[id]`
+- **Medication API: no input length limits** — name, dose, frequency, and notes fields were unbounded; now capped (name 200, dose 100, frequency 200, notes 2000 chars)
+- **Medication API: unvalidated refill_date** — any string including `"injection attempt"` was written to the DB; now validated against `YYYY-MM-DD` format before insert/update
+- **Medication API: bulk PUT stored literal "undefined"** — `String(undefined)` when `m.name` was missing silently inserted rows with name `"undefined"`; now filtered before insert
+- **Medication API: soft-deleted medication editable** — PATCH and DELETE ownership lookups didn't filter `deletedAt IS NULL`, allowing updates to already-deleted records
+- **Interaction check skips LLM when no other meds** — previously fired a paid LLM call even with 0 current medications to compare against; now returns early
+- **Appointment add errors were silent** — failed POSTs closed the form with no message; error now shown inline
 
 ### Security
 - **Check-in API now verifies ownership** — `GET /api/checkins` returned any profile's check-in data to any authenticated user; fixed: caller must own the profile or be a care team member

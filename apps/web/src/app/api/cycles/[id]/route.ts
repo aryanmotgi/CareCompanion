@@ -20,6 +20,46 @@ const PatchSchema = z.object({
 
 interface Props { params: Promise<{ id: string }> }
 
+// DELETE — remove a treatment cycle
+export async function DELETE(req: Request, { params }: Props) {
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
+  const ip = req.headers.get('x-forwarded-for') || 'unknown';
+  const { success } = await limiter.check(ip);
+  if (!success) return ApiErrors.rateLimited();
+
+  try {
+    const { user: dbUser, error: authError } = await getAuthenticatedUser();
+    if (authError) return authError;
+
+    const { id } = await params;
+
+    const [existingCycle] = await db
+      .select({ id: treatmentCycles.id, careProfileId: treatmentCycles.careProfileId })
+      .from(treatmentCycles)
+      .where(eq(treatmentCycles.id, id))
+      .limit(1);
+
+    if (!existingCycle) return apiError('Treatment cycle not found', 404);
+
+    const [profile] = await db
+      .select({ id: careProfiles.id })
+      .from(careProfiles)
+      .where(and(eq(careProfiles.id, existingCycle.careProfileId), eq(careProfiles.userId, dbUser!.id)))
+      .limit(1);
+
+    if (!profile) return apiError('Treatment cycle not found', 404);
+
+    await db.delete(treatmentCycles).where(eq(treatmentCycles.id, id));
+
+    return apiSuccess({ deleted: true });
+  } catch (err) {
+    console.error('[cycles/id] DELETE error:', err);
+    return apiError('Internal server error', 500);
+  }
+}
+
 // PATCH — update a treatment cycle
 export async function PATCH(req: Request, { params }: Props) {
   const { valid, error: csrfError } = await validateCsrf(req);

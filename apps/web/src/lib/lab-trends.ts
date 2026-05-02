@@ -64,8 +64,8 @@ const RED_FLAG_COMBOS: Array<{ tests: string[]; condition: (vals: Record<string,
  */
 function parseLabValue(value: string | null): number | null {
   if (!value) return null
-  // Remove non-numeric chars except decimal and minus
-  const cleaned = value.replace(/[^0-9.\-]/g, '')
+  // Remove non-numeric chars except decimal, minus, plus, and exponent notation (e.g. 1.5e-3)
+  const cleaned = value.replace(/[^0-9.eE\-\+]/g, '')
   const num = parseFloat(cleaned)
   return isNaN(num) ? null : num
 }
@@ -108,9 +108,15 @@ export function analyzeTrend(results: LabResult[]): TrendAnalysis | null {
     // For tests where HIGHER is worse, flip the interpretation
     const higherIsWorse = ['Creatinine', 'ALT', 'AST', 'Bilirubin', 'CEA', 'CA-125', 'CA-19-9', 'PSA', 'AFP', 'LDH']
     if (higherIsWorse.some(t => testName.toLowerCase().includes(t.toLowerCase()))) {
-      if (trend === 'improving') trend = 'declining'
-      else if (trend === 'declining') trend = 'improving'
-      else if (trend === 'rapid_decline') { trend = 'rapid_decline' } // rapid increase of bad marker is still bad
+      // Use changePercent directly so rapid increases of bad markers become rapid_decline
+      if (changePercent !== null && changePercent > 20) {
+        trend = 'rapid_decline' // rapid rise of bad marker
+      } else if (changePercent !== null && changePercent > 5) {
+        trend = 'declining' // moderate rise of bad marker
+      } else if (changePercent !== null && changePercent < -5) {
+        trend = 'improving' // drop of bad marker is good
+      }
+      // stable stays stable (Math.abs(changePercent) < 5 already handled above)
     }
   }
 
@@ -176,7 +182,7 @@ export function analyzeTrend(results: LabResult[]): TrendAnalysis | null {
     trend,
     current_value: current.value,
     previous_value: previous?.value ?? null,
-    change_percent: changePercent ? Math.round(changePercent * 10) / 10 : null,
+    change_percent: changePercent !== null ? Math.round(changePercent * 10) / 10 : null,
     values,
     alerts,
     prediction_7d: prediction7d,
@@ -189,7 +195,7 @@ export function analyzeTrend(results: LabResult[]): TrendAnalysis | null {
 export function analyzeAllTrends(labResults: LabResult[]): {
   trends: TrendAnalysis[]
   red_flags: string[]
-  overall_status: 'critical' | 'warning' | 'stable' | 'good'
+  overall_status: 'critical' | 'concerning' | 'monitor' | 'good'
 } {
   // Group by test name
   const grouped = new Map<string, LabResult[]>()
@@ -237,10 +243,10 @@ export function analyzeAllTrends(labResults: LabResult[]): {
   const hasWarning = trends.some(t => t.alerts.some(a => a.severity === 'warning'))
   const hasDecline = trends.some(t => t.trend === 'declining' || t.trend === 'rapid_decline')
 
-  let overallStatus: 'critical' | 'warning' | 'stable' | 'good' = 'good'
+  let overallStatus: 'critical' | 'concerning' | 'monitor' | 'good' = 'good'
   if (hasCritical) overallStatus = 'critical'
-  else if (hasWarning || redFlags.length > 0) overallStatus = 'warning'
-  else if (hasDecline) overallStatus = 'stable'
+  else if (hasWarning || redFlags.length > 0) overallStatus = 'concerning'
+  else if (hasDecline) overallStatus = 'monitor'
 
   return { trends, red_flags: redFlags, overall_status: overallStatus }
 }

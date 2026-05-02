@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useId } from 'react'
 import Link from 'next/link'
 import { LabTrendChart } from './LabTrendChart'
 
@@ -32,18 +32,20 @@ interface LabTrendsResponse {
   data: {
     trends: LabTrend[]
     red_flags: Array<{ message: string }>
-    overall_status: 'good' | 'monitor' | 'concerning' | 'critical'
+    overall_status: 'good' | 'monitor' | 'concerning' | 'critical' | 'warning' | 'stable'
   }
 }
 
 /* ─── Constants ─── */
 
-const STATUS_CONFIG = {
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   good: { label: 'Good', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
   monitor: { label: 'Monitor', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  stable: { label: 'Monitor', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
   concerning: { label: 'Concerning', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+  warning: { label: 'Concerning', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
   critical: { label: 'Critical', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
-} as const
+}
 
 const TREND_CONFIG = {
   improving: { label: 'Improving', color: '#10b981' },
@@ -121,6 +123,9 @@ function MiniSparkline({
   prediction7d: number | null
   trend: LabTrend['trend']
 }) {
+  // useId must be called unconditionally before any early return
+  const uid = useId()
+
   if (values.length < 2) {
     return (
       <div className="flex items-center justify-center h-10 text-[10px] text-[var(--text-muted,#64748b)]">
@@ -162,8 +167,8 @@ function MiniSparkline({
     predictionLine = `${lastX},${lastY} ${predX},${predY}`
   }
 
-  // Gradient fill
-  const gradientId = `sparkGrad-${trend}`
+  // Gradient fill — useId gives a stable unique ID per instance, preventing SVG gradient ID collisions
+  const gradientId = `sparkGrad-${uid.replace(/:/g, '')}`
   const fillPoints = [
     `${toX(0, values.length)},${height - padding}`,
     ...values.map((v, i) => `${toX(i, values.length)},${toY(v.value)}`),

@@ -9,6 +9,7 @@ type Filter = 'all' | 'abnormal' | 'recent'
 
 function formatDateHeading(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
+  if (isNaN(d.getTime())) return dateStr
   return d.toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -30,7 +31,9 @@ export function LabsView({ labResults }: { labResults: LabResult[] }) {
       case 'recent':
         return labResults.filter((r) => {
           if (!r.dateTaken) return false
-          return new Date(r.dateTaken) >= thirtyDaysAgo
+          // Append T00:00:00 so bare YYYY-MM-DD strings are parsed as local midnight, not UTC midnight
+          const d = new Date(r.dateTaken.includes('T') ? r.dateTaken : r.dateTaken + 'T00:00:00')
+          return !isNaN(d.getTime()) && d >= thirtyDaysAgo
         })
       default:
         return labResults

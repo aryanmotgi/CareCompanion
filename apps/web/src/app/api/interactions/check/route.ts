@@ -8,7 +8,7 @@ import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { validateCsrf } from '@/lib/csrf'
 import { db } from '@/lib/db'
 import { careProfiles, medications } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { rateLimit } from '@/lib/rate-limit'
 import { checkDrugInteractions, checkAllInteractions } from '@/lib/drug-interactions'
 import { apiSuccess, apiError, ApiErrors } from '@/lib/api-response'
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     const meds = await db
       .select({ name: medications.name, dose: medications.dose })
       .from(medications)
-      .where(eq(medications.careProfileId, profile.id))
+      .where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt)))
 
     const currentMeds = meds.map(m => ({ name: m.name, dose: m.dose }))
 
@@ -69,6 +69,18 @@ export async function POST(req: Request) {
 
     if (newMed.name.length > 200) {
       return ApiErrors.badRequest('Medication name too long (max 200 characters)')
+    }
+
+    if (currentMeds.length === 0) {
+      return apiSuccess({
+        interactions: [],
+        allergy_warnings: [],
+        summary: 'No current medications to check against.',
+        safe_to_combine: true,
+        checked_against: [],
+        new_medication: newMed.name,
+        disclaimer: 'This is for informational awareness only. Please confirm with your doctor or pharmacist before making any medication decisions.',
+      })
     }
 
     const result = await checkDrugInteractions(currentMeds, newMed, profile.allergies)
