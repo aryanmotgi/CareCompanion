@@ -96,9 +96,11 @@ export function QRCodePanel({
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
-            onClick={async () => {
+            onClick={() => {
               if (navigator.share) {
-                await navigator.share({ title: 'Join my Care Group', url })
+                navigator.share({ title: 'Join my Care Group', url }).catch(() => {
+                  // User cancelled or share failed — not an error
+                })
               }
             }}
             className="rounded-lg py-2 text-xs font-medium transition-colors"

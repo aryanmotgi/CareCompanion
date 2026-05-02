@@ -4,6 +4,10 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { QRCodePanel } from './QRCodePanel'
 import { ConnectedCelebration } from './ConnectedCelebration'
 
+function getCsrfToken(): string {
+  return document.cookie.match(/(^| )cc-csrf-token=([^;]+)/)?.[2] ?? ''
+}
+
 type Step = 'pick' | 'create-form' | 'qr' | 'join-form' | 'connected'
 
 export function CareGroupScreen({
@@ -42,9 +46,10 @@ export function CareGroupScreen({
     setError('')
     setLoading(true)
     try {
+      const csrfToken = getCsrfToken()
       const res = await fetch('/api/care-group', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
         body: JSON.stringify({ name: groupName, password }),
       })
       const data = await res.json()
@@ -54,7 +59,7 @@ export function CareGroupScreen({
 
       const inviteRes = await fetch('/api/care-group/invite', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
         body: JSON.stringify({ careGroupId: data.id }),
       })
       const inviteData = await inviteRes.json()
@@ -73,7 +78,7 @@ export function CareGroupScreen({
     try {
       const res = await fetch('/api/care-group/join', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': getCsrfToken() },
         body: JSON.stringify({ name: groupName, password }),
       })
       const data = await res.json()
@@ -117,7 +122,7 @@ export function CareGroupScreen({
     if (!careGroupId) return ''
     const res = await fetch('/api/care-group/invite', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': getCsrfToken() },
       body: JSON.stringify({ careGroupId }),
     })
     const data = await res.json()

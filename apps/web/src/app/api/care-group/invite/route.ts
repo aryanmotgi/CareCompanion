@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
+import { validateCsrf } from '@/lib/csrf'
 import { db } from '@/lib/db'
 import { careGroupInvites, careGroupMembers } from '@/lib/db/schema'
 import { eq, and, isNull, gt, count } from 'drizzle-orm'
@@ -10,6 +11,9 @@ const TOKEN_EXPIRY_DAYS = 7
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://carecompanionai.org'
 
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req)
+  if (!valid) return csrfError!
+
   try {
     const session = await auth()
     if (!session?.user?.id) {

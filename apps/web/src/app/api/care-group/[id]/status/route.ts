@@ -15,6 +15,17 @@ export async function GET(req: Request, { params }: Props) {
 
     const { id: careGroupId } = await params
 
+    // Verify the caller is actually a member of this group before revealing any data
+    const callerMembership = await db.query.careGroupMembers.findFirst({
+      where: and(
+        eq(careGroupMembers.careGroupId, careGroupId),
+        eq(careGroupMembers.userId, session.user.id),
+      ),
+    })
+    if (!callerMembership) {
+      return NextResponse.json({ error: 'Not a member of this group' }, { status: 403 })
+    }
+
     // Find any member that is NOT the current user
     const otherMembers = await db
       .select({ userId: careGroupMembers.userId, displayName: users.displayName })
