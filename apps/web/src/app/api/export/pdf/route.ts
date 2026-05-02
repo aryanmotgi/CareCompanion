@@ -21,6 +21,11 @@ import { ApiErrors } from '@/lib/api-response'
 import { rateLimit } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
 
+function escapeHtml(s: string | null | undefined): string {
+  if (!s) return ''
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+}
+
 export const maxDuration = 60
 
 const limiter = rateLimit({ interval: 60000, maxRequests: 5 })
@@ -60,7 +65,7 @@ export async function GET(req: Request) {
       db.select().from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))).orderBy(asc(doctors.name)).catch(() => []),
       db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(asc(appointments.dateTime)).catch(() => []),
       db.select().from(labResults).where(eq(labResults.userId, dbUser!.id)).orderBy(desc(labResults.dateTaken)).limit(30).catch(() => []),
-      db.select().from(claims).where(eq(claims.userId, dbUser!.id)).orderBy(desc(claims.serviceDate)).limit(20).catch(() => []),
+      db.select().from(claims).where(and(eq(claims.userId, dbUser!.id), isNull(claims.deletedAt))).orderBy(desc(claims.serviceDate)).limit(20).catch(() => []),
       db.select().from(wellnessCheckins)
         .where(and(eq(wellnessCheckins.careProfileId, profile.id), gte(wellnessCheckins.checkedInAt, sinceDate)))
         .orderBy(desc(wellnessCheckins.checkedInAt)).limit(100).catch(() => []),
@@ -105,7 +110,7 @@ export async function GET(req: Request) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Care Summary — ${profile.patientName || 'Patient'}</title>
+  <title>Care Summary — ${escapeHtml(profile.patientName) || 'Patient'}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1a1a2e; padding: 40px; max-width: 800px; margin: 0 auto; line-height: 1.5; }
@@ -140,21 +145,21 @@ export async function GET(req: Request) {
       <p class="subtitle">Generated ${dateStr} by CareCompanion</p>
     </div>
     <div class="patient-info">
-      <span><strong>${profile.patientName || 'Patient'}</strong></span>
-      ${profile.patientAge ? `<span>Age: ${profile.patientAge}</span>` : ''}
-      ${profile.relationship ? `<span>Caregiver relationship: ${profile.relationship}</span>` : ''}
+      <span><strong>${escapeHtml(profile.patientName) || 'Patient'}</strong></span>
+      ${profile.patientAge ? `<span>Age: ${escapeHtml(String(profile.patientAge))}</span>` : ''}
+      ${profile.relationship ? `<span>Caregiver relationship: ${escapeHtml(profile.relationship)}</span>` : ''}
     </div>
   </div>
 
   ${profile.cancerType || profile.cancerStage || profile.treatmentPhase ? `
   <div style="margin-bottom: 16px;">
-    ${profile.cancerType ? `<span class="badge badge-cancer">${profile.cancerType}</span>` : ''}
-    ${profile.cancerStage ? `<span class="badge badge-stage">Stage ${profile.cancerStage}</span>` : ''}
-    ${profile.treatmentPhase ? `<span class="badge badge-phase">${profile.treatmentPhase.replace(/_/g, ' ')}</span>` : ''}
+    ${profile.cancerType ? `<span class="badge badge-cancer">${escapeHtml(profile.cancerType)}</span>` : ''}
+    ${profile.cancerStage ? `<span class="badge badge-stage">Stage ${escapeHtml(profile.cancerStage)}</span>` : ''}
+    ${profile.treatmentPhase ? `<span class="badge badge-phase">${escapeHtml(profile.treatmentPhase).replace(/_/g, ' ')}</span>` : ''}
   </div>` : ''}
 
-  ${profile.conditions ? `<p style="margin-bottom: 8px; font-size: 14px;"><strong>Conditions:</strong> ${profile.conditions}</p>` : ''}
-  ${profile.allergies ? `<p style="margin-bottom: 16px; font-size: 14px; color: #dc2626;"><strong>Allergies:</strong> ${profile.allergies}</p>` : ''}
+  ${profile.conditions ? `<p style="margin-bottom: 8px; font-size: 14px;"><strong>Conditions:</strong> ${escapeHtml(profile.conditions)}</p>` : ''}
+  ${profile.allergies ? `<p style="margin-bottom: 16px; font-size: 14px; color: #dc2626;"><strong>Allergies:</strong> ${escapeHtml(profile.allergies)}</p>` : ''}
 
   <h2>Medications (${meds.length})</h2>
   ${meds.length > 0 ? `
@@ -162,11 +167,11 @@ export async function GET(req: Request) {
     <thead><tr><th>Medication</th><th>Dose</th><th>Frequency</th><th>Prescriber</th><th>Refill Date</th></tr></thead>
     <tbody>
       ${meds.map(m => `<tr>
-        <td>${m.name}</td>
-        <td>${m.dose || '—'}</td>
-        <td>${m.frequency || '—'}</td>
-        <td>${m.prescribingDoctor || '—'}</td>
-        <td>${m.refillDate || '—'}</td>
+        <td>${escapeHtml(m.name)}</td>
+        <td>${escapeHtml(m.dose) || '—'}</td>
+        <td>${escapeHtml(m.frequency) || '—'}</td>
+        <td>${escapeHtml(m.prescribingDoctor) || '—'}</td>
+        <td>${escapeHtml(m.refillDate) || '—'}</td>
       </tr>`).join('')}
     </tbody>
   </table>` : '<p class="empty">No medications recorded</p>'}
@@ -177,9 +182,9 @@ export async function GET(req: Request) {
     <thead><tr><th>Doctor</th><th>Specialty</th><th>Phone</th></tr></thead>
     <tbody>
       ${docs.map(d => `<tr>
-        <td>${d.name}</td>
-        <td>${d.specialty || '—'}</td>
-        <td>${d.phone || '—'}</td>
+        <td>${escapeHtml(d.name)}</td>
+        <td>${escapeHtml(d.specialty) || '—'}</td>
+        <td>${escapeHtml(d.phone) || '—'}</td>
       </tr>`).join('')}
     </tbody>
   </table>` : '<p class="empty">No doctors recorded</p>'}
@@ -191,9 +196,9 @@ export async function GET(req: Request) {
     <tbody>
       ${futureAppts.map(a => `<tr>
         <td>${a.dateTime ? new Date(a.dateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}</td>
-        <td>${a.doctorName || '—'}</td>
-        <td>${a.purpose || '—'}</td>
-        <td>${a.location || '—'}</td>
+        <td>${escapeHtml(a.doctorName) || '—'}</td>
+        <td>${escapeHtml(a.purpose) || '—'}</td>
+        <td>${escapeHtml(a.location) || '—'}</td>
       </tr>`).join('')}
     </tbody>
   </table>` : '<p class="empty">No upcoming appointments</p>'}
@@ -205,10 +210,10 @@ export async function GET(req: Request) {
     <thead><tr><th>Test</th><th>Value</th><th>Reference Range</th><th>Date</th><th>Status</th></tr></thead>
     <tbody>
       ${labs.map(l => `<tr>
-        <td>${l.testName}</td>
-        <td${l.isAbnormal ? ' class="abnormal"' : ''}>${l.value || '—'} ${l.unit || ''}</td>
-        <td>${l.referenceRange || '—'}</td>
-        <td>${l.dateTaken || '—'}</td>
+        <td>${escapeHtml(l.testName)}</td>
+        <td${l.isAbnormal ? ' class="abnormal"' : ''}>${escapeHtml(l.value) || '—'} ${escapeHtml(l.unit)}</td>
+        <td>${escapeHtml(l.referenceRange) || '—'}</td>
+        <td>${escapeHtml(l.dateTaken) || '—'}</td>
         <td${l.isAbnormal ? ' class="abnormal"' : ''}>${l.isAbnormal ? '⚠️ Abnormal' : 'Normal'}</td>
       </tr>`).join('')}
     </tbody>
@@ -220,10 +225,10 @@ export async function GET(req: Request) {
     <thead><tr><th>Date</th><th>Provider</th><th>Billed</th><th>Status</th></tr></thead>
     <tbody>
       ${claimsData.map(c => `<tr>
-        <td>${c.serviceDate || '—'}</td>
-        <td>${c.providerName || '—'}</td>
+        <td>${escapeHtml(c.serviceDate) || '—'}</td>
+        <td>${escapeHtml(c.providerName) || '—'}</td>
         <td>${c.billedAmount ? '$' + Number(c.billedAmount).toLocaleString() : '—'}</td>
-        <td>${c.status}</td>
+        <td>${escapeHtml(c.status)}</td>
       </tr>`).join('')}
     </tbody>
   </table>` : ''}
@@ -257,7 +262,7 @@ export async function GET(req: Request) {
     <tbody>
       ${checkins.slice(0, 14).map(c => {
         const d = new Date(c.checkedInAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-        return `<tr><td>${d}</td><td>${c.mood}/5</td><td>${c.pain}/10</td><td>${c.energy}</td><td>${c.sleep}</td><td>${c.notes || '—'}</td></tr>`
+        return `<tr><td>${d}</td><td>${c.mood}/5</td><td>${c.pain}/10</td><td>${escapeHtml(c.energy)}</td><td>${escapeHtml(c.sleep)}</td><td>${escapeHtml(c.notes) || '—'}</td></tr>`
       }).join('')}
     </tbody>
   </table>
@@ -266,13 +271,13 @@ export async function GET(req: Request) {
   ${insights.length > 0 ? `
   <h2>AI Insights</h2>
   <ul style="padding-left:18px;">
-    ${insights.map(i => `<li style="margin:6px 0;"><strong>${i.title}</strong> <span style="font-size:10px;font-weight:600;color:${i.severity === 'alert' ? '#dc2626' : i.severity === 'watch' ? '#d97706' : '#6366F1'};">[${i.severity}]</span><br/>${i.body}</li>`).join('')}
+    ${insights.map(i => `<li style="margin:6px 0;"><strong>${escapeHtml(i.title)}</strong> <span style="font-size:10px;font-weight:600;color:${i.severity === 'alert' ? '#dc2626' : i.severity === 'watch' ? '#d97706' : '#6366F1'};">[${escapeHtml(i.severity)}]</span><br/>${escapeHtml(i.body)}</li>`).join('')}
   </ul>
   ` : ''}
 
   ${profile.emergencyContactName ? `
   <h2>Emergency Contact</h2>
-  <p style="font-size: 14px;">${profile.emergencyContactName}${profile.emergencyContactPhone ? ` — ${profile.emergencyContactPhone}` : ''}</p>
+  <p style="font-size: 14px;">${escapeHtml(profile.emergencyContactName)}${profile.emergencyContactPhone ? ` — ${escapeHtml(profile.emergencyContactPhone)}` : ''}</p>
   ` : ''}
 
   <div class="disclaimer">

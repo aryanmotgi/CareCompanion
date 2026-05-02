@@ -3,7 +3,7 @@
  *
  * HIPAA-aligned retention rules:
  *   - Soft-deleted PHI records: hard-deleted after 90 days
- *   - Audit logs: retained for 1 year, then purged
+ *   - Audit logs: retained for 6 years (HIPAA 45 CFR §164.530(j)), then purged
  */
 import { NextResponse } from 'next/server'
 import { verifyCronRequest } from '@/lib/cron-auth'
@@ -36,8 +36,8 @@ export async function GET(req: Request) {
     results.lab_results = labsDeleted.length
     results.claims = claimsDeleted.length
 
-    // Purge old audit logs (keep 1 year per HIPAA minimum)
-    const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+    // Purge old audit logs (keep 6 years per HIPAA 45 CFR §164.530(j))
+    const oneYearAgo = new Date(Date.now() - 365 * 6 * 24 * 60 * 60 * 1000)
     const auditDeleted = await db.delete(auditLogs).where(lt(auditLogs.createdAt, oneYearAgo)).returning({ id: auditLogs.id })
     results.audit_logs = auditDeleted.length
 
@@ -50,7 +50,7 @@ export async function GET(req: Request) {
       total_purged: totalPurged,
       retention_policy: {
         soft_deleted_phi: '90 days',
-        audit_logs: '1 year',
+        audit_logs: '6 years',
       },
       timestamp: new Date().toISOString(),
     })

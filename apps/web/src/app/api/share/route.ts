@@ -108,7 +108,8 @@ export async function POST(request: Request) {
       ip_address: request.headers.get('x-forwarded-for') || undefined,
     });
 
-    const shareUrl = `https://carecompanionai.org/shared/${link.token}`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://carecompanionai.org'
+    const shareUrl = `${appUrl}/shared/${link.token}`;
     return apiSuccess({ url: shareUrl, expiresAt: expiresAt.toISOString(), token: link.token });
   } catch (err) {
     console.error('[share] POST error:', err);

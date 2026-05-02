@@ -1,12 +1,27 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { logAudit } from '@/lib/audit'
+import { rateLimit } from '@/lib/rate-limit'
 import { db } from '@/lib/db'
 import { careProfiles, medications, labResults, appointments, symptomEntries } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 
+const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 5 })
+
 export async function GET(req: Request) {
+  const ip = req.headers.get('x-forwarded-for') || 'unknown'
+  const { success } = await limiter.check(ip)
+  if (!success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+
   const { user: dbUser, error } = await getAuthenticatedUser()
   if (error) return error
+
+  await logAudit({
+    user_id: dbUser!.id,
+    action: 'export_data',
+    resource_type: 'csv',
+    ip_address: req.headers.get('x-forwarded-for') || undefined,
+  })
 
   const { searchParams } = new URL(req.url)
   const type = searchParams.get('type') || 'medications'
