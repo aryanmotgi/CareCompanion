@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     .from(careProfiles).where(eq(careProfiles.userId, user.id)).limit(1)
   if (!profile) return NextResponse.json({ matched: [], close: [], page, limit })
 
-  const staleThreshold = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+  const staleThreshold = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
   const whereClause = category && category !== 'all'
     ? and(eq(trialMatches.careProfileId, profile.id), eq(trialMatches.matchCategory, category))

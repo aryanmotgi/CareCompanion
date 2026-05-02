@@ -74,7 +74,7 @@ export function PriorityCard({
         <div className={`w-2 h-2 rounded-full ${s.dot} ${s.dotPulse ? 'animate-dot-pulse' : ''}`} />
         <span className={`text-xs font-semibold ${s.label}`}>{label}</span>
         {isPriority && (
-          <span className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#A78BFA]/15 text-[#A78BFA] border border-[#A78BFA]/20">
+          <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-[#A78BFA]/15 text-[#A78BFA] border border-[#A78BFA]/20">
             Priority
           </span>
         )}
@@ -112,7 +112,7 @@ export function PriorityCard({
         >
           {content}
           <div className="flex items-center justify-end mt-2 pt-1 gap-1">
-            <span className="text-[10px] text-[var(--text-muted)]">
+            <span className="text-xs text-[var(--text-muted)]">
               {expanded ? 'Less' : 'Action steps'}
             </span>
             <svg

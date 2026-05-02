@@ -23,10 +23,10 @@ type Props = {
 
 function ScoreBadge({ score }: { score: number }) {
   const color = score >= 80
-    ? 'bg-green-100 text-green-800'
+    ? 'bg-emerald-500/15 text-emerald-400'
     : score >= 60
-    ? 'bg-blue-100 text-blue-800'
-    : 'bg-yellow-100 text-yellow-800'
+    ? 'bg-indigo-500/15 text-indigo-300'
+    : 'bg-amber-500/15 text-amber-400'
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${color}`}>
       {score}% match
@@ -39,17 +39,17 @@ export function TrialMatchCard(props: Props) {
   const nearestSite = props.locations?.[0]
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-4 space-y-3">
       {/* Header row — always visible */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <button
             onClick={() => setExpanded(e => !e)}
-            className="text-sm font-medium text-blue-700 hover:underline text-left line-clamp-2 w-full"
+            className="text-sm font-semibold text-[var(--text)] hover:text-[#A78BFA] transition-colors text-left line-clamp-2 w-full"
           >
             {props.title}
           </button>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">
             {props.nctId} · {props.phase ?? 'Phase N/A'}
           </p>
         </div>
@@ -57,7 +57,7 @@ export function TrialMatchCard(props: Props) {
           <ScoreBadge score={props.matchScore} />
           <button
             onClick={() => setExpanded(e => !e)}
-            className="text-xs text-gray-400 hover:text-gray-600 px-1"
+            className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] px-1 transition-colors"
             aria-label={expanded ? 'Collapse' : 'Expand'}
           >
             {expanded ? '▲' : '▼'}
@@ -76,12 +76,12 @@ export function TrialMatchCard(props: Props) {
       {props.matchReasons.length > 0 && (
         <ul className="space-y-0.5">
           {props.matchReasons.slice(0, expanded ? undefined : 2).map((r, i) => (
-            <li key={i} className="text-xs text-gray-600 flex gap-1.5">
-              <span className="text-green-500 flex-shrink-0">✓</span>{r}
+            <li key={i} className="text-xs text-[var(--text-secondary)] flex gap-1.5">
+              <span className="text-emerald-400 flex-shrink-0">✓</span>{r}
             </li>
           ))}
           {!expanded && props.matchReasons.length > 2 && (
-            <li className="text-xs text-gray-400 pl-4">+{props.matchReasons.length - 2} more — expand to see all</li>
+            <li className="text-xs text-[var(--text-muted)] pl-4">+{props.matchReasons.length - 2} more — expand to see all</li>
           )}
         </ul>
       )}
@@ -89,7 +89,7 @@ export function TrialMatchCard(props: Props) {
       {props.disqualifyingFactors.length > 0 && !expanded && (
         <ul className="space-y-0.5">
           {props.disqualifyingFactors.slice(0, 1).map((f, i) => (
-            <li key={i} className="text-xs text-gray-600 flex gap-1.5">
+            <li key={i} className="text-xs text-[var(--text-secondary)] flex gap-1.5">
               <span className="text-red-400 flex-shrink-0">✗</span>{f}
             </li>
           ))}
@@ -97,10 +97,14 @@ export function TrialMatchCard(props: Props) {
       )}
 
       {nearestSite && !expanded && (
-        <p className="text-xs text-gray-500">
-          📍 {nearestSite.city}, {nearestSite.state}
+        <p className="text-xs text-[var(--text-muted)] flex items-center gap-1">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+            <circle cx="12" cy="9" r="2.5" />
+          </svg>
+          {nearestSite.city}, {nearestSite.state}
           {props.enrollmentStatus === 'RECRUITING' && (
-            <span className="ml-2 text-green-600 font-medium">· Currently recruiting</span>
+            <span className="ml-2 text-emerald-400 font-medium">· Currently recruiting</span>
           )}
         </p>
       )}
@@ -110,19 +114,20 @@ export function TrialMatchCard(props: Props) {
         <div className="flex gap-2 pt-1 flex-wrap">
           <button
             onClick={() => setExpanded(true)}
-            className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="text-xs px-3 py-1.5 rounded-lg text-white font-semibold transition-colors"
+            style={{ background: '#6366F1' }}
           >
             View details &amp; contact →
           </button>
           <button
             onClick={() => props.onShare(props.nctId, props.title, props.trialUrl ?? '')}
-            className="text-xs px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50"
+            className="text-xs px-3 py-1.5 border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-white/[0.04] transition-colors"
           >
             Share
           </button>
           <button
             onClick={() => props.onDismiss(props.nctId)}
-            className="text-xs px-3 py-1.5 text-gray-500 hover:text-gray-700 ml-auto"
+            className="text-xs px-3 py-1.5 text-[var(--text-muted)] hover:text-[var(--text)] ml-auto transition-colors"
           >
             Dismiss
           </button>
@@ -142,22 +147,22 @@ export function TrialMatchCard(props: Props) {
       )}
 
       {expanded && (
-        <div className="flex gap-2 pt-1 border-t border-gray-100 flex-wrap">
+        <div className="flex gap-2 pt-1 border-t border-[var(--border)] flex-wrap">
           <button
             onClick={() => props.onShare(props.nctId, props.title, props.trialUrl ?? '')}
-            className="text-xs px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50"
+            className="text-xs px-3 py-1.5 border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-white/[0.04] transition-colors"
           >
             Share with oncologist
           </button>
           <button
             onClick={() => props.onDismiss(props.nctId)}
-            className="text-xs px-3 py-1.5 text-gray-500 hover:text-gray-700"
+            className="text-xs px-3 py-1.5 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
           >
             Dismiss
           </button>
           <button
             onClick={() => setExpanded(false)}
-            className="text-xs text-gray-400 hover:text-gray-600 ml-auto"
+            className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] ml-auto transition-colors"
           >
             Collapse ▲
           </button>

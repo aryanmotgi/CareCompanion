@@ -72,6 +72,7 @@ export function TrialsTab({
   const [close, setClose]           = useState<TrialMatch[]>([])
   const [saved, setSaved]           = useState<Record<string, string>>({})
   const [loading, setLoading]       = useState(true)
+  const [loadError, setLoadError]   = useState(false)
   const [liveRunning, setLiveRunning] = useState(false)
   const [liveError, setLiveError]     = useState<string | null>(null)
   const [livePhase, setLivePhase]     = useState(0)
@@ -87,9 +88,11 @@ export function TrialsTab({
 
   // D3 — load cached results instantly on mount
   useEffect(() => {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
     Promise.all([
-      fetch('/api/trials/matches').then(r => r.json()),
-      fetch('/api/trials/saved').then(r => r.json()),
+      fetch('/api/trials/matches', { signal: controller.signal }).then(r => r.json()),
+      fetch('/api/trials/saved', { signal: controller.signal }).then(r => r.json()),
     ])
       .then(([matchData, savedData]) => {
         const m: TrialMatch[] = matchData.matched ?? []
@@ -109,11 +112,13 @@ export function TrialsTab({
         }
         setSaved(savedMap)
       })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+      .catch(() => { setLoadError(true) })
+      .finally(() => { clearTimeout(timeout); setLoading(false) })
+    return () => { clearTimeout(timeout); controller.abort() }
   }, [])
 
   async function runLive() {
+    if (liveRunning) return
     setLiveRunning(true)
     setLiveError(null)
     try {
@@ -126,6 +131,7 @@ export function TrialsTab({
       setHasSearched(true)
     } catch (e) {
       setLiveError(e instanceof Error ? e.message : 'Search failed — try again')
+      setHasSearched(true)
     } finally {
       setLiveRunning(false)
     }
@@ -159,11 +165,26 @@ export function TrialsTab({
     return <div className="py-12 text-center text-sm" style={{ color: 'rgba(255,255,255,0.40)' }}>Loading trial matches…</div>
   }
 
+  if (loadError) {
+    return (
+      <div className="py-12 flex flex-col items-center gap-3 text-center px-4">
+        <p className="text-sm text-red-400">Could not load trial matches. Check your connection and try again.</p>
+        <button
+          onClick={() => { setLoadError(false); setLoading(true); window.location.reload() }}
+          className="text-xs px-4 py-2 rounded-xl text-white font-semibold"
+          style={{ background: '#6366F1' }}
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
+
   // Full-screen loading overlay during live search
   if (liveRunning) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
-        style={{ background: 'linear-gradient(135deg, #0a0814 0%, #110d24 100%)' }}>
+        style={{ background: '#0C0E1A' }}>
         <div className="relative flex items-center justify-center mb-10">
           <div className="absolute w-32 h-32 rounded-full opacity-20 animate-ping"
             style={{ background: 'radial-gradient(circle, #7C3AED, transparent)', animationDuration: '2s' }} />
@@ -242,7 +263,7 @@ export function TrialsTab({
           disabled={liveRunning || !cancerType}
           title={!cancerType ? 'Add cancer type above to search' : undefined}
           className="text-sm px-4 py-2 text-white font-semibold rounded-xl disabled:opacity-40"
-          style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+          style={{ background: '#6366F1' }}
         >
           {hasResults ? 'Refresh' : 'Find trials now'}
         </button>

@@ -306,7 +306,7 @@ export function ProfileCompleteness({
             <div className="min-w-0">
               {isComplete ? (
                 <>
-                  <h3 className="text-sm font-semibold text-[#10b981]">Profile complete!</h3>
+                  <h3 className="text-sm font-semibold text-[#10b981]">Profile complete</h3>
                   <p className="text-xs text-[var(--text-muted)] mt-0.5">
                     Your care team has everything they need.
                   </p>

@@ -180,7 +180,7 @@ export function DashboardView({
                   {med.pharmacyPhone && (
                     <a
                       href={`tel:${med.pharmacyPhone}`}
-                      className="block w-full text-center py-2 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-xs font-semibold"
+                      className="block w-full text-center py-2 rounded-lg bg-[#6366F1] hover:bg-[#4F46E5] text-white text-xs font-semibold transition-colors"
                     >
                       Call Pharmacy
                     </a>
@@ -278,7 +278,7 @@ export function DashboardView({
                         style={{ width: `${Math.min(parsed.progressPercent, 100)}%` }}
                       />
                     </div>
-                    <div className="flex justify-between text-[10px] text-[#64748b] mt-1">
+                    <div className="flex justify-between text-[10px] text-[var(--text-muted)] mt-1">
                       <span>0</span>
                       <span>{parsed.referenceMax ? `Normal: <${parsed.referenceMax}` : ''}</span>
                     </div>
@@ -415,7 +415,7 @@ export function DashboardView({
             <AnimatedNumber value={actionCount} /> {actionCount === 1 ? 'item needs' : 'items need'} attention
           </>
         ) : (
-          `Looking good, ${(userName || 'there').split(' ')[0]}!`
+          `${(userName || 'there').split(' ')[0]}'s care is up to date.`
         )}
       </h2>
       {(cancerType || treatmentPhase) && (
@@ -441,13 +441,22 @@ export function DashboardView({
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <div className="text-[var(--text)] text-lg font-semibold mb-1">All clear!</div>
-          <div className="text-[var(--text-muted)] text-sm">No items need your attention right now.</div>
+          {onboardingComplete && (medications.length > 0 || appointments.length > 0) ? (
+            <>
+              <div className="text-[var(--text)] text-lg font-semibold mb-1">Nothing needs attention</div>
+              <div className="text-[var(--text-muted)] text-sm">No items need your attention right now.</div>
+            </>
+          ) : (
+            <>
+              <div className="text-[var(--text)] text-lg font-semibold mb-1">Get started</div>
+              <div className="text-[var(--text-muted)] text-sm">Add your medications and appointments to get personalized care alerts.</div>
+            </>
+          )}
 
           {/* Quick-start cards for empty data */}
           {(medications.length === 0 || appointments.length === 0 || labResults.length === 0) && (
             <div className="w-full mt-8 space-y-3 text-left">
-              <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2 text-center">Get Started</div>
+              <div className="text-[var(--text-muted)] text-[11px] uppercase tracking-wider mb-2 text-center">Get Started</div>
               {medications.length === 0 && (
                 <a
                   href="/care?tab=meds"
@@ -537,7 +546,7 @@ export function DashboardView({
       {/* Quick-ask prompts */}
       {actionCount > 0 && (
         <div className="mt-6 relative" id="quick-ask-section" data-tour="quick-ask">
-          <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2">Quick Ask</div>
+          <div className="text-[var(--text-muted)] text-[11px] uppercase tracking-wider mb-2">Quick Ask</div>
           <div className="flex flex-wrap gap-2">
             {quickAskPrompts.map((prompt) => (
               <a
@@ -614,7 +623,7 @@ export function DashboardView({
                   .then(() => { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000) })
                   .catch(() => {})
               }}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-xs font-semibold text-white hover:opacity-90 transition-opacity"
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#6366F1] hover:bg-[#4F46E5] text-xs font-semibold text-white transition-colors"
             >
               {copiedLink ? (
                 <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>Copied!</>
@@ -634,7 +643,15 @@ export function DashboardView({
         </div>
       )}
       {weeklyUpdateError && (
-        <p className="text-xs text-[var(--text-muted)] mb-4 px-1">Weekly update unavailable — check back later.</p>
+        <div className="mb-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 flex items-center justify-between gap-3">
+          <p className="text-xs text-[var(--text-muted)]">Weekly update unavailable.</p>
+          <button
+            onClick={() => { window.location.reload() }}
+            className="text-xs text-[#A78BFA] hover:text-white transition-colors flex-shrink-0"
+          >
+            Retry
+          </button>
+        </div>
       )}
 
       {/* Treatment Cycle Tracker */}

@@ -1,6 +1,6 @@
 import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
-import { searchTrials, searchByEligibility } from './tools'
+import { searchTrials } from './tools'
 import { buildScoringSystemPrompt, isCloseTrial } from './gapAnalysis'
 import type { PatientProfile, EligibilityGap } from './assembleProfile'
 
@@ -31,26 +31,13 @@ export async function runTrialsAgent(profile: PatientProfile): Promise<AgentMatc
   // Strip test/seed suffixes so CT.gov gets a clean search term
   const condition = (profile.cancerType ?? 'cancer').replace(/\s*\(TEST[^)]*\)/gi, '').trim() || 'cancer'
 
-  // Fetch trials from CT.gov in parallel — eliminates the sequential agentic tool-call loop.
-  // Two searches: broad condition search + eligibility-filtered RECRUITING-only search.
-  console.log('[trials-agent] starting parallel CT.gov fetch')
-  const [broadResult, eligResult] = await Promise.all([
-    searchTrials({ condition, location: locationFilter, status: 'RECRUITING', pageSize: 20 }),
-    searchByEligibility({ condition, age: profile.age ?? undefined, location: locationFilter }),
-  ])
+  // Single CT.gov search — searchByEligibility passed age but tools.ts ignored it,
+  // making it identical to the broad search. One call with pageSize 40 is cleaner.
+  console.log('[trials-agent] starting CT.gov fetch')
+  const result = await searchTrials({ condition, location: locationFilter, status: 'RECRUITING', pageSize: 40 })
   console.log(`[trials-agent] CT.gov fetch done in ${Date.now() - t0}ms`)
 
-  // Deduplicate by nct_id
-  const seen = new Set<string>()
-  const allTrials: object[] = []
-  const sources = [
-    ...('trials' in broadResult ? broadResult.trials : []),
-    ...('trials' in eligResult ? eligResult.trials : []),
-  ]
-  for (const t of sources) {
-    const id = (t as Record<string, unknown>).nct_id as string
-    if (id && !seen.has(id)) { seen.add(id); allTrials.push(t) }
-  }
+  const allTrials: object[] = 'trials' in result ? result.trials : []
 
   if (allTrials.length === 0) {
     console.log('[trials-agent] no trials found from CT.gov')
@@ -105,9 +92,16 @@ ${JSON.stringify(allTrials, null, 2)}`,
     .map(t => {
       const rawCat = String(t.matchCategory ?? '').toLowerCase()
       const gaps   = Array.isArray(t.eligibilityGaps) ? (t.eligibilityGaps as EligibilityGap[]) : null
-      // Trust Haiku's classification first; fall back to gap analysis.
-      let category: 'matched' | 'close' = rawCat === 'close' ? 'close' : 'matched'
-      if (gaps && isCloseTrial(gaps)) category = 'close'
+      // Trust Haiku's classification. Only use gap analysis as fallback when
+      // Haiku returned an unrecognised category (neither 'matched' nor 'close').
+      let category: 'matched' | 'close'
+      if (rawCat === 'close') {
+        category = 'close'
+      } else if (rawCat === 'matched') {
+        category = 'matched'
+      } else {
+        category = gaps && isCloseTrial(gaps) ? 'close' : 'matched'
+      }
       return {
         nctId:                String(t.nct_id ?? t.nctId ?? '').trim(),
         title:                String(t.title ?? ''),
@@ -120,7 +114,7 @@ ${JSON.stringify(allTrials, null, 2)}`,
         phase:                t.phase ? String(t.phase) : null,
         enrollmentStatus:     String(t.status ?? ''),
         locations:            Array.isArray(t.locations) ? t.locations : [],
-        trialUrl:             String(t.url ?? ''),
+        trialUrl:             t.url ? String(t.url) : null,
       }
     })
 

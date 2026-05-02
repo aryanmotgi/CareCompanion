@@ -214,6 +214,7 @@ export const labResults = pgTable('lab_results', {
   unit: text('unit'),
   referenceRange: text('reference_range'),
   isAbnormal: boolean('is_abnormal').default(false),
+  directionIsGood: boolean('direction_is_good'),
   dateTaken: date('date_taken'),
   source: text('source'),
   healthkitFhirId: text('healthkit_fhir_id').unique(),
