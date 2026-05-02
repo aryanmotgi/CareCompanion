@@ -85,4 +85,17 @@ describe('buildScoringSystemPrompt', () => {
     const prompt = buildScoringSystemPrompt(profile)
     expect(prompt).toContain('Carboplatin/Pemetrexed')
   })
+
+  it('strips TEST suffix from cancerType in prompt', () => {
+    const profileWithTestSuffix = { ...profile, cancerType: 'NSCLC (TEST abc)' }
+    const prompt = buildScoringSystemPrompt(profileWithTestSuffix)
+    expect(prompt).not.toContain('(TEST')
+    expect(prompt).toContain('NSCLC')
+  })
+
+  it('shows Unknown when cancerType is null', () => {
+    const profileNoType = { ...profile, cancerType: null }
+    const prompt = buildScoringSystemPrompt(profileNoType)
+    expect(prompt).toContain('Unknown')
+  })
 })

@@ -51,7 +51,7 @@ beforeEach(() => {
   ;(searchByEligibility as ReturnType<typeof vi.fn>).mockResolvedValue({ trials: [trialB] })
 })
 
-// ── CT.gov fetch + dedup ──────────────────────────────────────────────────────
+// ── CT.gov fetch and error handling ──────────────────────────────────────────
 describe('CT.gov fetch and dedup', () => {
   it('returns empty when no trials from CT.gov', async () => {
     ;(searchTrials as ReturnType<typeof vi.fn>).mockResolvedValue({ trials: [] })
@@ -59,6 +59,29 @@ describe('CT.gov fetch and dedup', () => {
     const result = await runTrialsAgent(mockProfile)
     expect(result).toEqual({ matched: [], close: [] })
     expect(generateText).not.toHaveBeenCalled()
+  })
+
+  it('calls searchTrials once with pageSize 40 and RECRUITING status', async () => {
+    ;(generateText as ReturnType<typeof vi.fn>).mockResolvedValue({ text: '[]' })
+    await runTrialsAgent(mockProfile)
+    expect(searchTrials).toHaveBeenCalledTimes(1)
+    expect(searchTrials).toHaveBeenCalledWith(
+      expect.objectContaining({ pageSize: 40, status: 'RECRUITING' })
+    )
+    expect(searchByEligibility).not.toHaveBeenCalled()
+  })
+
+  it('throws when CT.gov returns an error object', async () => {
+    ;(searchTrials as ReturnType<typeof vi.fn>).mockResolvedValue({ error: 'rate limited' })
+    await expect(runTrialsAgent(mockProfile)).rejects.toThrow('CT.gov search failed: rate limited')
+  })
+
+  it('strips TEST suffix from cancerType before CT.gov search', async () => {
+    ;(generateText as ReturnType<typeof vi.fn>).mockResolvedValue({ text: '[]' })
+    await runTrialsAgent({ ...mockProfile, cancerType: 'NSCLC (TEST abc)' })
+    expect(searchTrials).toHaveBeenCalledWith(
+      expect.objectContaining({ condition: 'NSCLC' })
+    )
   })
 
   it('deduplicates trials with same nct_id across both searches', async () => {
@@ -202,5 +225,16 @@ describe('matched vs close split', () => {
     const result = await runTrialsAgent(mockProfile)
     expect(result.matched).toHaveLength(1)
     expect(result.close).toHaveLength(0)
+  })
+
+  it('output includes matchCategory and phase fields', async () => {
+    ;(isCloseTrial as ReturnType<typeof vi.fn>).mockReturnValue(false)
+    const withPhase = { ...scoredMatch, phase: 'Phase 3', matchCategory: 'matched' }
+    ;(generateText as ReturnType<typeof vi.fn>).mockResolvedValue({
+      text: JSON.stringify([withPhase]),
+    })
+    const result = await runTrialsAgent(mockProfile)
+    expect(result.matched[0].matchCategory).toBe('matched')
+    expect(result.matched[0].phase).toBe('Phase 3')
   })
 })
