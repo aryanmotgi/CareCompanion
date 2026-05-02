@@ -112,6 +112,36 @@ Date: 2026-05-02
 
 ---
 
+## Dashboard Flow Audit — 2026-05-02 (preview/trials-impeccable)
+
+### FIXED
+
+- [x] **[SECURITY] `GET /api/checkins` missing careProfileId ownership check** — `checkins/route.ts:241` — Any authenticated user could read any care profile's check-in data and streak by passing an arbitrary `careProfileId`. Fixed: verify caller owns profile (`careProfiles.userId === dbUser.id`) or is a care team member before returning data.
+
+- [x] **[BUG/HIGH] Energy enum mismatch — `CheckinModal` sends `'med'`, server validates `'medium'`** — `CheckinModal.tsx:22`, `checkin-validation.ts:6` — `ENERGY_OPTIONS = ['low', 'med', 'high']` but server schema is `z.enum(['low', 'medium', 'high'])`. Every check-in with Med energy returned 400 Validation error. Fixed: changed modal value to `'medium'`, display still reads `'Med'`. Also added `med: 2` to `SymptomRadarCard.ENERGY_MAP` for backward compat with any existing DB rows.
+
+- [x] **[BUG] Appointment cards showed past same-day appointments as "Today"** — `DashboardView.tsx:206` — `daysUntil = Math.ceil(...)` rounds negative fractions up to 0, so a 2-hour-past appointment shows as "Today at X". Fixed: added `if (apptDate.getTime() <= now.getTime()) return` guard before the daysUntil check.
+
+- [x] **[BUG] Analytics page `session.user.email!` non-null assertion** — `analytics/page.tsx:15` — Apple Sign-In users can have a null email; the `!` assertion caused DB query with `undefined`, returning no user and silently redirecting. Fixed: added `if (!userEmail) redirect('/login?error=session')` guard.
+
+- [x] **[UX] CheckinCard returned `null` during loading, causing layout shift** — `CheckinCard.tsx:59` — The 200–500ms fetch for today's check-in status rendered nothing, causing the dashboard to jump when the card appeared. Fixed: replaced `null` with an animated skeleton placeholder matching the card's dimensions.
+
+- [x] **[BUG] NotificationsView dismiss not rolled back on API error** — `NotificationsView.tsx:57` — Optimistic removal fired before fetch; on failure the notification was gone from UI but still unread in DB (would reappear on next page load inconsistently). Fixed: snapshot previous state, restore on non-ok response, show toast.
+
+### OPEN
+
+- [ ] **[BUG] MorningSummaryCard `medicationCount` shows total active meds, not today's scheduled** — `DashboardView.tsx:122` — `todayMedCount = medications.filter(m => !m.deletedAt).length` counts all active meds. Morning card shows "Meds: 5 scheduled" but some may be weekly or PRN. Fix: cross-reference with `reminderLogsData` (already fetched in page.tsx) to count today's scheduled reminders, pass as `medicationCount` to `DashboardView`.
+
+- [ ] **[UX] MorningSummaryCard `dismissed: true` default causes pop-in** — `MorningSummaryCard.tsx:21` — Initial state is `true` (hidden); useEffect sets `false` after localStorage check. Users on fast connections see a layout pop on every page load. Fix: render a fixed-height placeholder while `useEffect` hasn't run, or use a CSS `visibility: hidden` approach so space is reserved.
+
+- [ ] **[DEAD CODE] `CheckinModal` milestone overlay never triggers** — `CheckinModal.tsx:67` — Client checks `data.data?.milestone` but the POST `/api/checkins` response never includes `milestone`. `MilestoneCelebration` component is unreachable. Either implement milestone calculation in the API (e.g., streak milestones at 7/30/100 days) or remove the dead branch.
+
+- [ ] **[BUG] `CheckinModal.handleMilestoneClose` hardcodes streak=0** — `CheckinModal.tsx:115` — When milestone closes, calls `onComplete(null, 0)` — streak momentarily shows 0 until `fetchStatus()` corrects it. Fix: once milestone API is implemented, return `streak` in milestone response and pass it through.
+
+- [ ] **[SECURITY] POST-only mutation endpoints missing CSRF check** — Already tracked in Onboarding Audit open items. Applies to `POST /api/checkins` as well — it validates body but has no `validateCsrf` call unlike `notifications/read`.
+
+---
+
 ## Already fixed this session (do not re-open)
 
 - ~~Dashboard layout contract: action cards first, secondary surfaces below fold~~
