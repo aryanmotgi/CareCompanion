@@ -147,13 +147,19 @@ export function TrialsTab({
   }
 
   async function dismissTrial(nctId: string) {
-    await fetch(`/api/trials/saved/${nctId}`, {
+    const prevMatched = matched
+    const prevClose = close
+    setMatched(m => m.filter(t => t.nctId !== nctId))
+    setClose(c => c.filter(t => t.nctId !== nctId))
+    const res = await fetch(`/api/trials/saved/${nctId}`, {
       method: 'PATCH',
       body: JSON.stringify({ interestStatus: 'dismissed' }),
       headers: { 'Content-Type': 'application/json' },
-    }).catch(() => {})
-    setMatched(m => m.filter(t => t.nctId !== nctId))
-    setClose(c => c.filter(t => t.nctId !== nctId))
+    }).catch(() => null)
+    if (!res?.ok) {
+      setMatched(prevMatched)
+      setClose(prevClose)
+    }
   }
 
   function shareTrial(nctId: string, title: string, url: string) {

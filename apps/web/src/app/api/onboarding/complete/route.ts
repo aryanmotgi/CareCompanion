@@ -13,7 +13,8 @@ export async function POST(req: Request) {
   if (!careProfileId) return NextResponse.json({ error: 'careProfileId required' }, { status: 400 })
 
   // Verify the profile belongs to this user before marking complete
-  const [dbUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, session.user.email!)).limit(1)
+  // Use session.user.id (not email!) — Apple Sign-In users may have null email
+  const [dbUser] = await db.select({ id: users.id }).from(users).where(eq(users.id, session.user.id)).limit(1)
   if (!dbUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const owned = await db.query.careProfiles.findFirst({
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
 
     // Fetch care group name
     const membership = await db.query.careGroupMembers.findFirst({
-      where: eq(careGroupMembers.userId, session.user.id),
+      where: eq(careGroupMembers.userId, dbUser.id),
     })
     let careGroupName: string | null = null
     if (membership) {

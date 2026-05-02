@@ -6,14 +6,23 @@ import { saveMatchResults } from '@/lib/trials/matchingQueue'
 import { db } from '@/lib/db'
 import { careProfiles } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+import { rateLimit } from '@/lib/rate-limit'
 
 // Claude agent + ClinicalTrials.gov calls easily exceed 10s default
 export const maxDuration = 300
+
+// 3 live searches per user per hour — prevents LLM cost-amplification attacks
+const trialsSearchLimiter = rateLimit({ interval: 60 * 60 * 1000, maxRequests: 3 })
 
 export async function POST() {
   try {
     const { user, error } = await getAuthenticatedUser()
     if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { success: rateLimitOk } = await trialsSearchLimiter.check(user.id)
+    if (!rateLimitOk) {
+      return NextResponse.json({ error: 'Too many searches. Try again in an hour.' }, { status: 429 })
+    }
 
     const [profile] = await db.select({ id: careProfiles.id })
       .from(careProfiles).where(eq(careProfiles.userId, user.id)).limit(1)
