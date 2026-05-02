@@ -590,6 +590,7 @@ export const trialMatches = pgTable('trial_matches', {
   disqualifyingFactors: text('disqualifying_factors').array().default(sql`'{}'`),
   uncertainFactors:     text('uncertain_factors').array().default(sql`'{}'`),
   eligibilityGaps:      jsonb('eligibility_gaps'),
+  phase:                text('phase'),
   enrollmentStatus:     text('enrollment_status'),
   locations:            jsonb('locations'),
   trialUrl:             text('trial_url'),

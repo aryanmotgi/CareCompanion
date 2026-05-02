@@ -2,6 +2,7 @@
  * Medication refill status endpoint.
  * Returns refill status for all medications with urgency levels.
  */
+export const dynamic = 'force-dynamic'
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { db } from '@/lib/db'
 import { careProfiles } from '@/lib/db/schema'

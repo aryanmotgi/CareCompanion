@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 type Contact = { name: string | null; phone: string | null; email: string | null }
 
@@ -65,12 +65,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-function ContactBlock({ contact }: { contact: Contact | null }) {
+function ContactBlock({ contact, trialUrl }: { contact: Contact | null; trialUrl?: string }) {
   if (!contact || (!contact.name && !contact.email && !contact.phone)) {
     return (
       <p className="text-sm text-gray-500 italic">
         Contact information not listed —{' '}
-        <a href="#" className="text-blue-600 underline">visit the trial page directly</a>.
+        {trialUrl
+          ? <a href={trialUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">visit the trial page directly</a>
+          : <span className="text-gray-500">visit the trial page directly</span>
+        }.
       </p>
     )
   }
@@ -105,15 +108,16 @@ function CopyButton({ text, label }: { text: string; label: string }) {
 
 export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainFactors, onSave, savedStatus }: Props) {
   const [content, setContent]   = useState<DetailContent | null>(null)
-  const [loading, setLoading]   = useState(false)
+  const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState<string | null>(null)
   const [emailExpanded, setEmailExpanded]   = useState(false)
   const [scriptExpanded, setScriptExpanded] = useState(false)
   const [eligExpanded, setEligExpanded]     = useState(false)
 
-  // Fetch on first mount of this panel
-  if (!content && !loading && !error) {
+  useEffect(() => {
+    let cancelled = false
     setLoading(true)
+    setError(null)
     fetch(`/api/trials/${nctId}/detail`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -121,12 +125,18 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
     })
       .then(r => r.json())
       .then(data => {
+        if (cancelled) return
         if (data.error) { setError(data.error); setLoading(false); return }
         setContent(data as DetailContent)
         setLoading(false)
       })
-      .catch(e => { setError((e as Error).message); setLoading(false) })
-  }
+      .catch(e => {
+        if (cancelled) return
+        setError((e as Error).message)
+        setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [nctId, isCloseMatch])
 
   if (loading) {
     return (
@@ -214,7 +224,7 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
           </p>
         ) : (
           <div className="space-y-3">
-            {all_contacts.map((c, i) => <ContactBlock key={i} contact={c} />)}
+            {all_contacts.map((c, i) => <ContactBlock key={i} contact={c} trialUrl={trial.url} />)}
           </div>
         )}
       </Section>

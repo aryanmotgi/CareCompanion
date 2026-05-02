@@ -10,6 +10,9 @@ export async function GET(
   if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { nctId } = await params
+  if (!/^NCT\d{4,}$/.test(nctId)) {
+    return NextResponse.json({ error: 'Invalid NCT ID' }, { status: 400 })
+  }
   const detail = await getTrialDetails(nctId)
   if ('error' in detail) return NextResponse.json({ error: detail.error }, { status: 502 })
 

@@ -116,7 +116,7 @@ export async function assembleProfile(careProfileId: string): Promise<PatientPro
         testName:     l.testName,
         numericValue: isNaN(numeric) ? null : numeric,
         unit:         l.unit ?? null,
-        resultDate:   l.dateTaken ?? '',
+        resultDate:   l.dateTaken ?? 'Date unknown',
         isAbnormal:   l.isAbnormal ?? false,
       }
     }),

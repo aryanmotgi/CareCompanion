@@ -24,6 +24,9 @@ export async function PATCH(
   if (!profile) return NextResponse.json({ error: 'No care profile' }, { status: 404 })
 
   const { nctId } = await params
+  if (!/^NCT\d{4,}$/.test(nctId)) {
+    return NextResponse.json({ error: 'Invalid NCT ID' }, { status: 400 })
+  }
   const [row] = await db.update(savedTrials)
     .set({ interestStatus: body.data.interestStatus })
     .where(and(eq(savedTrials.careProfileId, profile.id), eq(savedTrials.nctId, nctId)))

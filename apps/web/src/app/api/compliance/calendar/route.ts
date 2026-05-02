@@ -6,6 +6,7 @@
  *   year  – 4-digit year  (default: current year)
  *   month – 1-12          (default: current month)
  */
+export const dynamic = 'force-dynamic'
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { db } from '@/lib/db'
 import { reminderLogs } from '@/lib/db/schema'

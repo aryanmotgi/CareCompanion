@@ -2,6 +2,7 @@
  * Medication compliance report endpoint.
  * Returns adherence stats, streaks, and per-medication breakdown.
  */
+export const dynamic = 'force-dynamic'
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { generateComplianceReport } from '@/lib/compliance-tracker'
 import { apiSuccess, ApiErrors } from '@/lib/api-response'

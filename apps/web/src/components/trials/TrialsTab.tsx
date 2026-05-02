@@ -90,29 +90,34 @@ export function TrialsTab({
   useEffect(() => {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 10000)
-    Promise.all([
+    Promise.allSettled([
       fetch('/api/trials/matches', { signal: controller.signal }).then(r => r.json()),
       fetch('/api/trials/saved', { signal: controller.signal }).then(r => r.json()),
     ])
-      .then(([matchData, savedData]) => {
-        const m: TrialMatch[] = matchData.matched ?? []
-        const c: TrialMatch[] = matchData.close ?? []
-        setMatched(m)
-        setClose(c)
-        // Derive last updated from most recent updatedAt across results
-        const allUpdates = [...m, ...c]
-          .map(t => t.updatedAt)
-          .filter(Boolean) as string[]
-        if (allUpdates.length > 0) {
-          setLastUpdated(allUpdates.sort().at(-1)!)
+      .then(([matchResult, savedResult]) => {
+        if (matchResult.status === 'fulfilled') {
+          const matchData = matchResult.value
+          const m: TrialMatch[] = matchData.matched ?? []
+          const c: TrialMatch[] = matchData.close ?? []
+          setMatched(m)
+          setClose(c)
+          const allUpdates = [...m, ...c]
+            .map(t => t.updatedAt)
+            .filter(Boolean) as string[]
+          if (allUpdates.length > 0) {
+            setLastUpdated(allUpdates.sort().at(-1)!)
+          }
+        } else {
+          setLoadError(true)
         }
-        const savedMap: Record<string, string> = {}
-        for (const s of (savedData as SavedTrial[])) {
-          savedMap[s.nctId] = s.interestStatus
+        if (savedResult.status === 'fulfilled') {
+          const savedMap: Record<string, string> = {}
+          for (const s of (savedResult.value as SavedTrial[])) {
+            savedMap[s.nctId] = s.interestStatus
+          }
+          setSaved(savedMap)
         }
-        setSaved(savedMap)
       })
-      .catch(() => { setLoadError(true) })
       .finally(() => { clearTimeout(timeout); setLoading(false) })
     return () => { clearTimeout(timeout); controller.abort() }
   }, [])
@@ -138,12 +143,16 @@ export function TrialsTab({
   }
 
   async function saveTrial(nctId: string) {
-    await fetch('/api/trials/save', {
+    const prevSaved = saved
+    setSaved(s => ({ ...s, [nctId]: 'interested' }))
+    const res = await fetch('/api/trials/save', {
       method: 'POST',
       body: JSON.stringify({ nctId }),
       headers: { 'Content-Type': 'application/json' },
-    }).catch(() => {})
-    setSaved(s => ({ ...s, [nctId]: 'interested' }))
+    }).catch(() => null)
+    if (!res?.ok) {
+      setSaved(prevSaved)
+    }
   }
 
   async function dismissTrial(nctId: string) {

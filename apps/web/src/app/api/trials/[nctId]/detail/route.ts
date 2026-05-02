@@ -27,6 +27,9 @@ export async function POST(
   const isCloseMatch = body.success ? body.data.isCloseMatch : false
 
   const { nctId } = await params
+  if (!/^NCT\d{4,}$/.test(nctId)) {
+    return NextResponse.json({ error: 'Invalid NCT ID' }, { status: 400 })
+  }
 
   const [profileRow] = await db.select({ id: careProfiles.id })
     .from(careProfiles).where(eq(careProfiles.userId, user.id)).limit(1)

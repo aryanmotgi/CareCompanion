@@ -284,3 +284,50 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 - ~~Phase field: added to Claude scoring output spec~~
 - ~~LoginForm: window.location.href instead of router.push after signIn~~
 - ~~AnalyticsDashboard: unused `changeStr` variable removed (ESLint)~~
+
+---
+
+## Clinical Trials Full Audit — 2026-05-02 (preview/trials-impeccable)
+
+Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
+
+### REACT / FRONTEND
+
+- ✅ [C] **TrialDetailPanel: fetch() in render body** — `TrialDetailPanel.tsx:115` — Direct `setLoading(true)` + `fetch()` inside render function violates React rules; fires twice per mount in Strict Mode, leaks request on unmount. Fixed: moved to `useEffect` with `cancelled` flag and `[nctId, isCloseMatch]` deps.
+- ✅ [H] **saveTrial: no rollback on API error** — `TrialsTab.tsx:140` — Optimistic `setSaved` fired before request; `.catch(()=>{})` swallowed failures. UI showed trial as saved even when save failed. Fixed: snapshot prev state, rollback on `!res?.ok` (mirrors existing dismissTrial pattern).
+- ✅ [H] **TrialsTab initial load: `Promise.all` fails both on single fetch error** — `TrialsTab.tsx:92` — If saved-trials fetch threw, trial matches were also discarded and error screen shown even if matches loaded fine. Fixed: `Promise.allSettled` with graceful degradation (saved badges simply absent on failure).
+- ✅ [M] **TrialMatchCard: city/state renders "undefined, undefined"** — `TrialMatchCard.tsx:105` — `{nearestSite.city}, {nearestSite.state}` renders literal "undefined, undefined" when CT.gov omits location fields. Fixed: `[city, state].filter(Boolean).join(', ') || 'Location not listed'`.
+- ✅ [M] **CloseMatchCard: empty eligibilityGaps renders broken UI** — `CloseMatchCard.tsx:72` — `eligibilityGaps = []` shows "What's blocking eligibility" header with nothing below it. Fixed: added empty-state message.
+- ✅ [M] **ContactBlock: dead `href="#"` fallback link** — `TrialDetailPanel.tsx:73` — `<a href="#">visit the trial page directly</a>` navigates nowhere. Fixed: thread `trialUrl` prop through; render external link or plain text.
+- ⬜ [M] **TrialDetailPanel uses hardcoded light-theme colors** — `TrialDetailPanel.tsx` throughout — `text-gray-700`, `bg-gray-50`, `border-gray-200` hardcoded against the dark design system. Rest of app uses `var(--text)`, `var(--bg-card)`. Fix: replace with CSS variable equivalents.
+- ⬜ [M] **Retry on initial load does full page reload** — `TrialsTab.tsx:178` — "Retry" button calls `window.location.reload()` instead of re-running the fetch function. Fix: extract load logic into a function, call on retry without full reload.
+- ⬜ [L] **TrialsTab: cancerStage, patientAge, patientName props unused** — `TrialsTab.tsx:37` — Props accepted but never destructured or used inside the component. Fix: either wire them into display hints or remove from Props type.
+
+### BACKEND — SECURITY
+
+- ✅ [H] **No NCT ID validation in 4 API endpoints** — `save/route.ts`, `saved/[nctId]/route.ts`, `[nctId]/route.ts`, `[nctId]/detail/route.ts` — `nctId` accepted as any string; passed directly to CT.gov API and DB queries. Fixed: `/^NCT\d{4,}$/` regex check, returns 400 for invalid IDs.
+- ⬜ [M] **LLM prompt injection surface** — `clinicalTrialsAgent.ts:62` — CT.gov trial data embedded raw into Claude prompt via `JSON.stringify`. CT.gov is trusted, but adversarially-crafted trial records could inject instructions. Fix: add system-prompt-level instruction to ignore embedded directives; strip known injection patterns from trial text before embedding.
+- ⬜ [L] **`/api/trials/matches` category param unvalidated** — `matches/route.ts:14` — `category` query param used in where-clause condition with no enum check. Falls through to "all" for unknown values — functionally OK but leaks query structure in logs. Fix: validate against `['matched', 'close', 'all']` or ignore unknown values explicitly.
+
+### BACKEND — CORRECTNESS
+
+- ✅ [C] **trialMatches schema missing `phase` column** — `schema.ts:582` — `phase` existed in `TrialMatchResult` and in-memory objects but was never persisted to `trial_matches`. Cached results (GET `/api/trials/matches`) always returned `phase: undefined`, showing "Phase N/A" even when phase was known. Fixed: added `phase text` column to schema, updated `upsertTrial` to persist it, created migration `002-trial-matches-phase.sql`.
+  - **⚠️ ACTION REQUIRED**: Run `apps/web/src/lib/db/migrations/002-trial-matches-phase.sql` against production DB.
+- ✅ [M] **assembleProfile: empty string for missing lab date** — `assembleProfile.ts:119` — `resultDate: l.dateTaken ?? ''` sent blank string to LLM as a date field. Fixed: `l.dateTaken ?? 'Date unknown'`.
+- ⬜ [M] **triggerMatchingRun blocks caller for 2s** — `matchingQueue.ts:36` — `await new Promise(r => setTimeout(r, 2000))` adds 2s latency to every awaiting caller. Comment says "fire-and-forget" but function is awaitable. Fix: callers should `void triggerMatchingRun(...)`. Or remove the sleep and let the cron handle debouncing.
+
+### CRON / NOTIFICATIONS
+
+- ✅ [H] **cron/trials-match: no LIMIT on close-trials query** — `cron/trials-match/route.ts:54` — `db.select().from(trialMatches).where(matchCategory='close')` loaded all close-match rows. At scale this is an OOM risk in a 300s function. Fixed: `.limit(200)`.
+- ✅ [H] **cron/trials-status: no dedup on status-change notifications** — `cron/trials-status/route.ts:44` — Inserted new notification on every status-change detection without any 24h dedup. A trial oscillating between statuses would spam user. Fixed: 24h dedup check on `userId + type + nctId`, matching the pattern in `matchingQueue.ts`. Message now includes NCT ID and new status.
+- ⬜ [M] **Gap-closure cron skips profiles silently on LLM error** — `cron/trials-match/route.ts:97` — `catch { /* skip profile, continue */ }` swallows all LLM errors with no logging. Profile never gets gap-checked until next cron. Fix: `console.error(profileId, err)` at minimum.
+- ⬜ [M] **`Output.object` structured output may throw on malformed LLM response** — `cron/trials-match/route.ts:72` — If `output.resolved` is undefined (model returns wrong shape), the `for...of` throws. Currently caught by the profile-level try/catch. Fix: add `output?.resolved ?? []` defensively.
+
+### PRODUCT / UX
+
+- ⬜ [M] **Trial search only fetches 40 results from CT.gov** — `clinicalTrialsAgent.ts:37` — `pageSize: 40` may miss relevant trials for common cancers (Breast, Lung Cancer). CT.gov supports up to 1000. Tradeoff: more results = higher LLM cost + latency. Consider 100 with condition-specific pre-filtering.
+- ⬜ [L] **searchByEligibility is dead code** — `tools.ts:128` — Function exists but ignores its `age` and `sex` params; calls same endpoint as `searchTrials`. No callers since the agent was refactored to a single search. Safe to delete.
+
+### KNIP / DEAD CODE
+
+- ✅ Created `knip.json` ignoring `.claude/**`, `.clone/**`, `.context/**` — reduced false-positive "unused files" from 20 → 5.

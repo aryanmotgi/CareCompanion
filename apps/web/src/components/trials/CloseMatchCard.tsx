@@ -71,6 +71,9 @@ export function CloseMatchCard(props: Props) {
       {/* Gap summary — always visible */}
       <div className="space-y-2">
         <p className="text-xs font-medium text-gray-700">What&apos;s blocking eligibility</p>
+        {props.eligibilityGaps.length === 0 && (
+          <p className="text-xs text-gray-500 italic">No specific gaps identified — ask your oncologist to review eligibility criteria.</p>
+        )}
         {props.eligibilityGaps.map((gap, i) => (
           <div key={i} className="bg-white border border-purple-100 rounded p-2.5 space-y-1">
             <span className="text-xs font-medium text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">

@@ -102,7 +102,7 @@ export function TrialMatchCard(props: Props) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
             <circle cx="12" cy="9" r="2.5" />
           </svg>
-          {nearestSite.city}, {nearestSite.state}
+          {[nearestSite.city, nearestSite.state].filter(Boolean).join(', ') || 'Location not listed'}
           {props.enrollmentStatus === 'RECRUITING' && (
             <span className="ml-2 text-emerald-400 font-medium">· Currently recruiting</span>
           )}

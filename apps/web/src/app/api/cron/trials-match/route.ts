@@ -51,7 +51,10 @@ export async function GET(req: Request) {
   }
 
   // 5. Re-check close trials for gap closure (per profile, not per trial)
-  const closeTrials = await db.select().from(trialMatches).where(eq(trialMatches.matchCategory, 'close'))
+  // Limit to 200 rows per run to avoid loading the entire table into memory.
+  const closeTrials = await db.select().from(trialMatches)
+    .where(eq(trialMatches.matchCategory, 'close'))
+    .limit(200)
   const byProfile = new Map<string, typeof closeTrials>()
   for (const t of closeTrials) {
     byProfile.set(t.careProfileId, [...(byProfile.get(t.careProfileId) ?? []), t])

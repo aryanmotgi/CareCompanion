@@ -5,8 +5,9 @@ import { savedTrials, careProfiles } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
+const NCT_RE = /^NCT\d{4,}$/
 const schema = z.object({
-  nctId:          z.string().min(1),
+  nctId:          z.string().regex(NCT_RE, 'Invalid NCT ID format'),
   interestStatus: z.enum(['interested', 'applied', 'enrolled', 'dismissed']).default('interested'),
 })
 
