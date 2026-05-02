@@ -60,6 +60,58 @@ Date: 2026-05-02
 
 ---
 
+## Auth Audit — 2026-05-02 (preview/trials-impeccable)
+
+- [x] **[AUTH] `consent/accept` used email instead of user ID** — `consent/accept/route.ts:27` — `eq(users.email, session.user.email!)` silently fails for Apple users where email may be null. Fixed to `eq(users.id, session.user.id)`.
+
+- [x] **[AUTH] Open redirect via `//evil.com` callbackUrl** — `middleware.ts:90` — `cb.startsWith('/')` allows `//evil.com`. Fixed: added `!cb.startsWith('//')` guard.
+
+- [x] **[AUTH] No rate limiting on `/api/auth/register`** — `register/route.ts` — attacker could create unlimited accounts. Fixed: 5 registrations/hour per IP.
+
+- [x] **[AUTH] `set-role` session update used raw fetch with no error check** — `set-role/page.tsx` — `fetch('/api/auth/session', {})` not checked for failure; could leave JWT stale (role=null), causing middleware to redirect back to `/set-role` loop. Fixed: use `useSession().update()` from `next-auth/react`; check result before navigating.
+
+- [x] **[AUTH] Hardcoded personal email in debug-auth** — `debug-auth/route.ts:13` — `'aryan.motgi1@gmail.com'` as default. Fixed: require `?email=` param; removed from `PUBLIC_PATHS`.
+
+- [ ] **[AUTH] `pending_role` cookie dead code** — `auth.ts:94-104` — Cookie never set by any web UI. New Google/Apple users correctly land on `/set-role` via middleware redirect. Safe to remove the cookie-check branch when cleaning up.
+
+- [ ] **[AUTH] Consent redirect loses original destination** — `consent/page.tsx:37` — Always redirects to `/dashboard` after acceptance. Store original URL in `sessionStorage` before consent redirect; restore after.
+
+- [ ] **[AUTH] `debug-auth` route should be deleted** — `app/api/debug-auth/route.ts` — Marked TEMP. Self-gates on `NODE_ENV !== 'development'`. Delete when no longer needed.
+
+- [ ] **[AUTH] Care group login lacks rate limiting** — `auth.ts:46-88` — No brute-force protection on the care-group Credentials provider. Add limiter by groupName.
+
+---
+
+## Onboarding Audit — 2026-05-02 (preview/trials-impeccable)
+
+### FIXED
+
+- [x] **[SECURITY] `join/page.tsx` careGroupId URL param not verified against invite** — `join/page.tsx:50` — Attacker could craft `/join?group=VICTIM_GROUP_ID&token=VALID_TOKEN_FOR_DIFFERENT_GROUP` to join any group using any valid token. Fixed: verify `invite.careGroupId === careGroupId` before processing; use `invite.careGroupId` (not URL param) for all member inserts.
+
+- [x] **[SECURITY] `POST /api/onboarding/complete` no ownership check on careProfileId** — `onboarding/complete/route.ts:16` — Any authenticated user could mark any care profile as `onboardingCompleted: true` by sending a foreign `careProfileId`. Fixed: look up `dbUser` by email and verify `careProfiles.userId === dbUser.id` before update.
+
+- [x] **[BUG] PatientWizard manual entry: medications and appointment never saved** — `PatientWizard.tsx:201` — `manualMeds` (array of 3 inputs) and `manualAppt` (date) collected but excluded from `patchProfile` call. Only `manualDiagnosis` was saved. Fixed: filter non-empty `manualMeds`, join as comma-separated text, save to `conditions` field with `fieldOverrides.conditions=true`. (Note: `nextAppointment` has no column in `careProfiles` — data was unrecoverable per schema; tracked below.)
+
+- [x] **[BUG] Care profile creation failure silently redirects to dashboard → redirect loop** — `OnboardingShell.tsx:119` — When `/api/care-profiles` POST fails or returns no `id`, `wizardProfileId` is `null`; phase-complete fallback fires `window.location.href='/dashboard'`; `AppLayout` finds no completed profile and redirects back to `/onboarding`. Fixed: set `profileCreateError` state on failure; render actionable error with "Try again" instead of redirecting.
+
+- [x] **[BUG] QR polling interval leaks on unmount** — `CareGroupScreen.tsx:79` — `setInterval` (3s) and `setTimeout` (30s) created in `startPolling` never cleared if component unmounts before timeout. Fixed: store refs in `pollingRef`; `useEffect` cleanup clears both on unmount; interval self-cleans on successful join.
+
+### OPEN
+
+- [ ] **[BUG] PatientWizard confirm screen: `nextAppointment` collected but never saved** — `PatientWizard.tsx:140-152` — Confirm screen shows "Next appointment" editable field, user edits it, patchProfile call (line 160) omits it. `careProfiles` has no `nextAppointment` column — needs schema column + PATCH allowlist entry.
+
+- [ ] **[BUG] PatientWizard manual entry: `manualAppt` collected but not saveable** — `PatientWizard.tsx:197` — Same root cause as above. Date input appears but has nowhere to persist until `nextAppointment` column is added.
+
+- [ ] **[BUG] PatientWizard "Connect Apple Health" button is misleading on web** — `PatientWizard.tsx:102` — Button says "Connect Apple Health" but on web it just fetches existing profile data from DB (HealthKit requires the iOS app). Label should read "Check my health data" or "Review profile data". No logic change needed.
+
+- [ ] **[BUG] `self` role treated identically to `patient` in OnboardingWizard** — `OnboardingWizard.tsx:17` — Both go to `PatientWizard`. If `self` users are meant to track their own health proactively (not cancer patients), the caregiver wizard steps about patient name / relationship don't apply. No dedicated `self` wizard path exists — intentional gap or missing feature.
+
+- [ ] **[SECURITY] `POST /api/auth/set-role`, `/api/care-group`, `/api/care-group/join`, `/api/onboarding/complete` have no CSRF token check** — Unlike `consent/accept` which uses `validateCsrf`. Session cookie is `sameSite: lax` so cross-site POSTs from attacker-controlled pages could trigger these on behalf of a victim. Either validate the `cc-csrf-token` header on all mutation endpoints or confirm `sameSite: strict` on session cookie.
+
+- [ ] **[UX] Returning user who visits `/onboarding` re-enters wizard on completed profile** — `OnboardingShell.tsx:48` — If user has a completed profile and navigates to `/onboarding`, phase starts as `'wizard'` and the wizard opens on the completed profile. Should redirect to `/dashboard` or show "You're all set" state.
+
+---
+
 ## Already fixed this session (do not re-open)
 
 - ~~Dashboard layout contract: action cards first, secondary surfaces below fold~~
