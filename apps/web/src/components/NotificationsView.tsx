@@ -5,6 +5,30 @@ import Link from 'next/link'
 import { useToast } from './ToastProvider'
 import type { Notification } from '@/lib/types'
 
+const csrfToken = () => document.cookie.match(/(^| )cc-csrf-token=([^;]+)/)?.[2] ?? ''
+
+function getChatPromptForType(type: string): string {
+  switch (type) {
+    case 'refill_overdue':
+    case 'refill_soon':
+      return 'Help me manage my medication refills'
+    case 'appointment_prep':
+    case 'appointment_today':
+      return 'Help me prepare for my upcoming appointment'
+    case 'abnormal_lab':
+    case 'lab_result':
+      return 'Explain my recent lab results'
+    case 'prior_auth_expiring':
+      return 'Help me understand my prior authorization status'
+    case 'claim_denied':
+      return 'Help me understand my insurance claim status'
+    case 'low_balance':
+      return 'Help me manage my FSA or HSA account'
+    default:
+      return 'Help me understand my care updates'
+  }
+}
+
 const TYPE_ICONS: Record<string, string> = {
   refill_overdue: '\u{1F534}',
   refill_soon: '\u{1F48A}',
@@ -59,7 +83,7 @@ export function NotificationsView({ notifications: initial }: NotificationsViewP
     setNotifications((n) => n.filter((x) => x.id !== id))
     const res = await fetch('/api/notifications/read', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken() },
       body: JSON.stringify({ id }),
     })
     if (!res.ok) {
@@ -69,13 +93,19 @@ export function NotificationsView({ notifications: initial }: NotificationsViewP
   }
 
   const markAllRead = async () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
-    await fetch('/api/notifications/read', {
+    const prev = notifications
+    setNotifications((n) => n.map((x) => ({ ...x, isRead: true })))
+    const res = await fetch('/api/notifications/read', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken() },
       body: JSON.stringify({ all: true }),
     })
-    showToast('All notifications marked as read', 'success')
+    if (!res.ok) {
+      setNotifications(prev)
+      showToast('Failed to mark notifications as read', 'error')
+    } else {
+      showToast('All notifications marked as read', 'success')
+    }
   }
 
   const unreadCount = notifications.filter((n) => !n.isRead).length
@@ -142,7 +172,7 @@ export function NotificationsView({ notifications: initial }: NotificationsViewP
                   )}
                   <div className="flex items-center gap-3 mt-2.5">
                     <Link
-                      href={`/chat?prompt=${encodeURIComponent(`Tell me more about: ${n.title}`)}`}
+                      href={`/chat?prompt=${encodeURIComponent(getChatPromptForType(n.type))}`}
                       className="text-xs text-[var(--lavender)] hover:text-[#C4B5FD] font-medium transition-colors"
                     >
                       Ask AI

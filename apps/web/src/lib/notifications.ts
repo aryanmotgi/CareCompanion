@@ -3,7 +3,7 @@ import {
   careProfiles, userSettings, medications, appointments,
   priorAuths, labResults, fsaHsa, notifications, pushSubscriptions,
 } from '@/lib/db/schema';
-import { eq, and, gte, desc } from 'drizzle-orm';
+import { eq, and, gte, desc, isNull } from 'drizzle-orm';
 import { sendPushNotification } from '@/lib/push';
 import { generateAppointmentPrepForUser } from '@/lib/appointment-prep';
 
@@ -81,10 +81,10 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
     existingNotifs,
   ] = await Promise.all([
     prefs.refill_reminders
-      ? db.select().from(medications).where(eq(medications.careProfileId, profile.id))
+      ? db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt)))
       : Promise.resolve([]),
     prefs.appointment_reminders
-      ? db.select().from(appointments).where(eq(appointments.careProfileId, profile.id))
+      ? db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt)))
       : Promise.resolve([]),
     prefs.claim_updates
       ? db.select().from(priorAuths).where(eq(priorAuths.userId, userId))
@@ -367,11 +367,24 @@ export async function generateNotificationsForAllUsers(): Promise<{ total: numbe
 
   if (profiles.length === 0) return { total: 0, users: 0 };
 
+  const BATCH_SIZE = 10;
   let total = 0;
-  for (const p of profiles) {
-    const count = await generateNotificationsForUser(p.userId);
-    total += count;
+  let processed = 0;
+
+  for (let i = 0; i < profiles.length; i += BATCH_SIZE) {
+    const batch = profiles.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map((p) => generateNotificationsForUser(p.userId))
+    );
+    for (const result of results) {
+      processed++;
+      if (result.status === 'fulfilled') {
+        total += result.value;
+      } else {
+        console.error('[notifications] user generation failed:', result.reason);
+      }
+    }
   }
 
-  return { total, users: profiles.length };
+  return { total, users: processed };
 }

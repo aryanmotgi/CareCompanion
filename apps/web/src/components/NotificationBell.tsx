@@ -32,26 +32,27 @@ const TYPE_COLORS: Record<string, string> = {
   low_balance: 'bg-emerald-500/10',
 };
 
+const csrfToken = () => document.cookie.match(/(^| )cc-csrf-token=([^;]+)/)?.[2] ?? '';
+
 function getChatPrompt(notif: Notification): string {
   switch (notif.type) {
     case 'refill_overdue':
     case 'refill_soon':
-      return `Help me with the medication refill mentioned in this alert: ${notif.title}`;
+      return 'Help me manage my medication refills';
     case 'appointment_prep':
-      return `Help me prepare questions for my appointment: ${notif.title}`;
     case 'appointment_today':
-      return `What should I remember for today's appointment? ${notif.title}`;
+      return 'Help me prepare for my upcoming appointment';
     case 'abnormal_lab':
     case 'lab_result':
-      return `Explain this lab result: ${notif.title}`;
+      return 'Explain my recent lab results';
     case 'prior_auth_expiring':
-      return `Help me understand and renew this prior authorization: ${notif.title}`;
+      return 'Help me understand my prior authorization status';
     case 'claim_denied':
-      return `Help me understand this denied claim and how to appeal: ${notif.title}`;
+      return 'Help me understand my insurance claim status';
     case 'low_balance':
-      return `Help me plan my remaining FSA/HSA spending: ${notif.title}`;
+      return 'Help me manage my FSA or HSA account';
     default:
-      return `Tell me more about this: ${notif.title}`;
+      return 'Help me understand my care updates';
   }
 }
 
@@ -83,24 +84,37 @@ export function NotificationBell({ initialNotifications, initialCount }: Notific
   }, []);
 
   const dismiss = async (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    const prev = notifications;
+    const prevCount = count;
+    setNotifications((n) => n.filter((x) => x.id !== id));
     setCount((c) => Math.max(0, c - 1));
-    await fetch('/api/notifications/read', {
+    const res = await fetch('/api/notifications/read', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken() },
       body: JSON.stringify({ id }),
     });
+    if (!res.ok) {
+      setNotifications(prev);
+      setCount(prevCount);
+    }
   };
 
   const markAllRead = async () => {
+    const prev = notifications;
+    const prevCount = count;
     setNotifications([]);
     setCount(0);
     setOpen(false);
-    await fetch('/api/notifications/read', {
+    const res = await fetch('/api/notifications/read', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken() },
       body: JSON.stringify({ all: true }),
     });
+    if (!res.ok) {
+      setNotifications(prev);
+      setCount(prevCount);
+      setOpen(true);
+    }
   };
 
   return (

@@ -1,8 +1,26 @@
-fx# CareCompanion TODO
+# CareCompanion TODO
 
-Generated from: /plan-eng-review + /design-review + /qa  
+Generated from: /plan-eng-review + /design-review + /qa + /audit Chat+Notifications  
 Branch: preview/trials-impeccable  
 Date: 2026-05-02
+
+---
+
+## Chat AI & Notifications Audit — 2026-05-02 (all fixed ✅)
+
+Full plan: `docs/superpowers/plans/2026-05-02-chat-notifications-audit.md`
+
+- [x] **[SECURITY] CSRF missing in NotificationsView dismiss/markAllRead** — `NotificationsView.tsx:60,73` — POST to `/api/notifications/read` lacked `x-csrf-token` header; backend rejected all calls. Added CSRF header + error rollback.
+- [x] **[SECURITY] CSRF missing in NotificationBell dismiss/markAllRead** — `NotificationBell.tsx:88,99` — Same missing header; silent failures. Added CSRF header + rollback.
+- [x] **[BUG] "Ask AI" prompt never auto-sent from NotificationsView** — `NotificationsView.tsx:145` — Used `"Tell me more about: {title}"` which doesn't match `isAllowedPrompt()`. Changed to type-based prompts (`"Help me manage my medication refills"` etc) that all match allowlist.
+- [x] **[BUG] getChatPrompt() patterns in NotificationBell didn't match allowlist** — `NotificationBell.tsx:36-55` — Prompts like `"Explain this lab result: {title}"` never auto-sent. Replaced all with type-based allowlist-compatible patterns.
+- [x] **[SECURITY] PHI in chat URL params from notification links** — `NotificationsView.tsx:145`, `NotificationBell.tsx:162` — Notification titles (med names, lab values) were URL-encoded into `?prompt=`. Removed titles from URLs; now use generic type prompts.
+- [x] **[BUG] Soft-deleted medications/appointments generated spurious notifications** — `notifications.ts:84,87` — Missing `isNull(deletedAt)` filters. Added to both queries.
+- [x] **[BUG] markAllRead shows success toast on API failure** — `NotificationsView.tsx:71-79` — No `res.ok` check. Fixed: rollback state and show error toast on failure.
+- [x] **[BUG] NotificationBell dismiss had no error handling** — `NotificationBell.tsx:85-93` — Notification disappeared from UI but wasn't marked read on failure. Added rollback.
+- [x] **[RELIABILITY] generateNotificationsForAllUsers timed out for large user bases** — `notifications.ts:371-376` — Serial loop failed at 120+ users (Vercel 60s cron limit). Replaced with batched `Promise.allSettled` (10 parallel).
+- [x] **[BUG] Orchestrator rate limiter created new instance per request** — `orchestrator.ts:54` — `rateLimit()` called inside function body; per-process state never shared. Moved to module scope.
+- [x] **[BUG] Orchestrator polluted memories table with system telemetry** — `orchestrator.ts:131-143` — Multi-agent queries logged as `category: 'other'` memory facts; memory extraction LLM then "saw" these as patient facts. Removed the insert block.
 
 ---
 

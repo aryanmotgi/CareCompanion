@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => {
   const mockFrom = vi.fn(() => ({ where: mockWhere }))
   const mockUpdateWhere = vi.fn().mockResolvedValue(undefined)
   const mockUpdateSet = vi.fn(() => ({ where: mockUpdateWhere }))
-  const mockUpdate = vi.fn((_arg: unknown) => ({ set: mockUpdateSet }))
+  const mockUpdate = vi.fn(() => ({ set: mockUpdateSet }))
 
   return {
     validateCsrf: vi.fn().mockResolvedValue({ valid: true }),

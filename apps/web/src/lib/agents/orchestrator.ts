@@ -4,6 +4,8 @@ import { routeMessage } from './router';
 import { SPECIALISTS, type SpecialistType } from './specialists';
 import { rateLimit } from '@/lib/rate-limit';
 
+const agentLimiter = rateLimit({ interval: 60000, maxRequests: 10 });
+
 interface PatientContext {
   profile: Record<string, unknown> | null;
   medications: Record<string, unknown>[];
@@ -51,7 +53,6 @@ export async function orchestrate(
 
   // Step 2.5: Rate limit specialist calls (max 10 per user per minute)
   const agentRateKey = `agent:${userId}`
-  const agentLimiter = rateLimit({ interval: 60000, maxRequests: 10 })
   const agentRateResult = await agentLimiter.check(agentRateKey)
   if (!agentRateResult.success) {
     console.warn(`[orchestrator] Agent rate limit hit for user ${userId}`)
@@ -125,21 +126,6 @@ Provide your specialist analysis. Be specific, reference the patient's actual da
     synthesizedContext += '- Include all relevant disclaimers from each specialist\n';
     synthesizedContext += '- Maintain your warm, caring tone throughout\n';
     synthesizedContext += '- If specialists flag conflicting information, note it and recommend asking the doctor\n';
-  }
-
-  // Log multi-agent activity
-  if (specialistsUsed.length > 1) {
-    try {
-      const { db } = await import('@/lib/db');
-      const { memories } = await import('@/lib/db/schema');
-      await db.insert(memories).values({
-        userId,
-        category: 'other',
-        fact: `Multi-agent query handled by: ${specialistsUsed.map((s) => s.name).join(', ')}. Topic: ${userMessage.slice(0, 100)}`,
-        source: 'conversation',
-        confidence: 'high',
-      });
-    } catch { /* non-critical */ }
   }
 
   return {
