@@ -123,21 +123,27 @@ function WeeklySummaryPage({
         </div>
 
         {/* AI Narrative */}
-        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center">
-              <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-              </svg>
+        {weekly.narrative?.trim() ? (
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                </svg>
+              </div>
+              <span className="text-xs font-medium text-white/60">CareCompanion AI</span>
             </div>
-            <span className="text-xs font-medium text-white/60">CareCompanion AI</span>
+            <div className="space-y-3">
+              {weekly.narrative.split('\n\n').filter(Boolean).map((para, i) => (
+                <p key={i} className="text-sm text-white/80 leading-relaxed">{para}</p>
+              ))}
+            </div>
           </div>
-          <div className="space-y-3">
-            {weekly.narrative.split('\n\n').filter(Boolean).map((para, i) => (
-              <p key={i} className="text-sm text-white/80 leading-relaxed">{para}</p>
-            ))}
+        ) : (
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-8 text-center">
+            <p className="text-sm text-white/40">No summary available yet for this week.</p>
           </div>
-        </div>
+        )}
 
         {/* Stats grid */}
         {stats && (
@@ -280,6 +286,13 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
 
   const futureAppts = (data.appointments ?? []).filter(a => a.dateTime && new Date(a.dateTime) >= new Date());
 
+  const hasContent =
+    (data.patient && Object.values(data.patient).some(Boolean)) ||
+    (data.medications && data.medications.length > 0) ||
+    (data.lab_results && data.lab_results.length > 0) ||
+    futureAppts.length > 0 ||
+    (data.care_team && data.care_team.length > 0);
+
   return (
     <div className="min-h-screen" style={{ background: '#0c0c1a' }}>
       {/* Header */}
@@ -303,6 +316,13 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
           <h1 className="text-2xl font-bold text-white">{link.title || 'Health Summary'}</h1>
           {createdDate && <p className="text-sm text-white/40 mt-1">Shared on {createdDate}</p>}
         </div>
+
+        {/* Empty state — no data sections populated */}
+        {!hasContent && (
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-8 text-center">
+            <p className="text-sm text-white/40">No health data has been added to this profile yet.</p>
+          </div>
+        )}
 
         {/* Patient overview */}
         {data.patient && Object.values(data.patient).some(Boolean) && (
