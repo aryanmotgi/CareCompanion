@@ -40,32 +40,38 @@ export async function POST(req: Request) {
       )
     }
 
-    // Check already a member
-    const existing = await db.query.careGroupMembers.findFirst({
-      where: and(
-        eq(careGroupMembers.careGroupId, matchedGroup.id),
-        eq(careGroupMembers.userId, session.user.id),
-      ),
+    // Wrap membership check + insert in a transaction to prevent concurrent double-joins
+    let joinError: 'ALREADY_MEMBER' | 'GROUP_FULL' | null = null
+    await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select({ userId: careGroupMembers.userId })
+        .from(careGroupMembers)
+        .where(and(
+          eq(careGroupMembers.careGroupId, matchedGroup!.id),
+          eq(careGroupMembers.userId, session.user!.id),
+        ))
+        .limit(1)
+      if (existing) { joinError = 'ALREADY_MEMBER'; return }
+
+      const [{ value: memberCount }] = await tx
+        .select({ value: count() })
+        .from(careGroupMembers)
+        .where(eq(careGroupMembers.careGroupId, matchedGroup!.id))
+      if (memberCount >= MAX_MEMBERS) { joinError = 'GROUP_FULL'; return }
+
+      await tx.insert(careGroupMembers).values({
+        careGroupId: matchedGroup!.id,
+        userId: session.user!.id,
+        role: 'member',
+      })
     })
-    if (existing) {
+
+    if (joinError === 'ALREADY_MEMBER') {
       return NextResponse.json({ error: 'You are already in this Care Group.' }, { status: 409 })
     }
-
-    // Check member limit
-    const [{ value: memberCount }] = await db
-      .select({ value: count() })
-      .from(careGroupMembers)
-      .where(eq(careGroupMembers.careGroupId, matchedGroup.id))
-
-    if (memberCount >= MAX_MEMBERS) {
+    if (joinError === 'GROUP_FULL') {
       return NextResponse.json({ error: 'This Care Group is full (max 10 members).' }, { status: 400 })
     }
-
-    await db.insert(careGroupMembers).values({
-      careGroupId: matchedGroup.id,
-      userId: session.user.id,
-      role: 'member',
-    })
 
     return NextResponse.json({ id: matchedGroup.id, name: matchedGroup.name }, { status: 200 })
   } catch (err) {

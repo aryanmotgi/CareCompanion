@@ -67,7 +67,7 @@ Security hardening, Care Tab reliability, dashboard fixes, trials engine improve
 - **Care profile creation failure shows an error, not a redirect loop** — silent dashboard redirect with no completed profile caused AppLayout to bounce back to onboarding
 - **QR polling interval cleaned up on unmount** — `setInterval` and `setTimeout` in CareGroupScreen leaked when the user navigated away before the 30s timeout
 - **Trials search surfaces CT.gov API errors** — timeouts and rate-limit responses silently returned empty results; errors now shown in the UI with retry
-- **CT.gov search now fetches up to 100 results** — was capped at 20 despite the higher limit request
+- **CT.gov search now fetches up to 40 results** — was capped at 20; CT.gov API cap raised to 100 for future use
 - **TEST suffix stripped from cancerType in Claude scoring prompt** — the system prompt was seeing raw test strings after CT.gov search already stripped them
 - **Trial phase field propagates to UI** — Haiku scoring output now includes the phase value
 - **Dark design system applied to TrialMatchCard** — all color tokens rewritten; cards were rendering with light-mode colors in the dark app
@@ -75,7 +75,7 @@ Security hardening, Care Tab reliability, dashboard fixes, trials engine improve
 
 ### Changed
 - **staleThreshold reduced from 90 to 30 days** — trial match results older than 30 days are flagged as stale (enrollment status changes frequently)
-- **Trials agent refactored to single-call search** — removed duplicate `searchByEligibility` call; single search with `pageSize: 100` is faster and avoids dedup overhead
+- **Trials agent refactored to single-call search** — removed duplicate `searchByEligibility` call; single search with `pageSize: 40` is faster and avoids dedup overhead
 
 ## [0.3.0.0] - 2026-04-29
 

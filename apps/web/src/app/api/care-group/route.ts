@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import { validateCsrf } from '@/lib/csrf'
 import { db } from '@/lib/db'
 import { careGroups, careGroupMembers } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 
 export async function POST(req: Request) {
+  const { valid, error: csrfError } = await validateCsrf(req)
+  if (!valid) return csrfError!
   try {
     const session = await auth()
     if (!session?.user?.id) {

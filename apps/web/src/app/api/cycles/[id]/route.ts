@@ -25,7 +25,7 @@ export async function DELETE(req: Request, { params }: Props) {
   const { valid, error: csrfError } = await validateCsrf(req);
   if (!valid) return csrfError!;
 
-  const ip = req.headers.get('x-forwarded-for') || 'unknown';
+  const ip = req.headers.get('x-real-ip')?.trim() ?? req.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() ?? 'unknown';
   const { success } = await limiter.check(ip);
   if (!success) return ApiErrors.rateLimited();
 
@@ -65,7 +65,7 @@ export async function PATCH(req: Request, { params }: Props) {
   const { valid, error: csrfError } = await validateCsrf(req);
   if (!valid) return csrfError!;
 
-  const ip = req.headers.get('x-forwarded-for') || 'unknown';
+  const ip = req.headers.get('x-real-ip')?.trim() ?? req.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() ?? 'unknown';
   const { success } = await limiter.check(ip);
   if (!success) {
     return ApiErrors.rateLimited();

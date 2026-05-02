@@ -56,7 +56,12 @@ Only report real, documented interactions. Do NOT invent interactions.
 If no interactions exist, return empty arrays and safe_to_combine=true.`,
   })
 
-  return output
+  return output ?? {
+    interactions: [],
+    allergy_warnings: [],
+    summary: 'Unable to complete interaction check. Please consult your pharmacist.',
+    safe_to_combine: false,
+  }
 }
 
 /**
@@ -92,5 +97,10 @@ Classify severity: major (serious harm), moderate (monitor/adjust), minor (be aw
 Only report real, documented interactions. Do NOT invent interactions.`,
   })
 
-  return output
+  return output ?? {
+    interactions: [],
+    allergy_warnings: [],
+    summary: 'Unable to complete interaction check. Please consult your pharmacist.',
+    safe_to_combine: false,
+  }
 }

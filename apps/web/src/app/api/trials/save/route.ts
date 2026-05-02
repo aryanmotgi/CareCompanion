@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { validateCsrf } from '@/lib/csrf'
 import { db } from '@/lib/db'
 import { savedTrials, careProfiles } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -12,6 +13,8 @@ const schema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  const { valid, error: csrfError } = await validateCsrf(req)
+  if (!valid) return csrfError!
   const { user, error } = await getAuthenticatedUser()
   if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

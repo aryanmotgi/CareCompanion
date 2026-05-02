@@ -33,8 +33,8 @@ export async function GET(req: Request) {
     await enqueueMatchingRun(row.careProfileId, 'retry')
   }
 
-  // 3. Enqueue all active profiles for nightly run
-  const profiles = await db.select({ id: careProfiles.id }).from(careProfiles)
+  // 3. Enqueue all active profiles for nightly run (capped to prevent OOM at scale)
+  const profiles = await db.select({ id: careProfiles.id }).from(careProfiles).limit(500)
   for (const p of profiles) {
     await enqueueMatchingRun(p.id, 'nightly')
   }

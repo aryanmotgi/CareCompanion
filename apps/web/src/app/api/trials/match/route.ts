@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { validateCsrf } from '@/lib/csrf'
 import { assembleProfile } from '@/lib/trials/assembleProfile'
 import { runTrialsAgent } from '@/lib/trials/clinicalTrialsAgent'
 import { saveMatchResults } from '@/lib/trials/matchingQueue'
@@ -14,7 +15,9 @@ export const maxDuration = 300
 // 3 live searches per user per hour — prevents LLM cost-amplification attacks
 const trialsSearchLimiter = rateLimit({ interval: 60 * 60 * 1000, maxRequests: 3 })
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const { valid, error: csrfError } = await validateCsrf(req)
+  if (!valid) return csrfError!
   try {
     const { user, error } = await getAuthenticatedUser()
     if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
