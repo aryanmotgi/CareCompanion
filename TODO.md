@@ -142,6 +142,30 @@ Date: 2026-05-02
 
 ---
 
+## Adversarial Review — 2026-05-02 (preview/trials-impeccable)
+
+### FIXED
+
+- [x] **[SECURITY] `POST /api/onboarding/complete` used `email!` in new ownership-check code** — `onboarding/complete/route.ts:16` — The ownership-check fix that was just applied looked up `dbUser` using `session.user.email!` — the same null-assertion pattern fixed in analytics and consent. Apple Sign-In users get 404 and can never complete onboarding. Fixed: changed to `WHERE id = session.user.id`.
+
+- [x] **[SECURITY] `POST /api/trials/match` had no rate limit** — Any authenticated user could loop this endpoint to drain Anthropic API budget; `maxDuration = 300` and scoring 100 trials per call. Fixed: added `rateLimit({ interval: 3600000, maxRequests: 3 })` per user ID.
+
+- [x] **[BUG] `dismissTrial` had no rollback on API failure** — Trial removed from UI optimistically; fetch error swallowed silently; trial permanently gone until next page load (clinical data loss). Fixed: snapshot arrays before mutation, restore on non-ok response.
+
+- [x] **[SECURITY] `POST /api/onboarding/complete` used `session.user.id` not `dbUser.id` for care group lookup** — Line 36 used the JWT claim, not the DB-resolved ID; care group email may fail for migrated accounts. Fixed: changed to `dbUser.id`.
+
+### OPEN
+
+- [ ] **[SECURITY] In-memory rate limiter per-serverless-instance** — `rate-limit.ts:25` — `buckets = new Map()` is per-function-instance in Vercel serverless. Without Redis env vars, 5-registration limit is not enforced globally across cold starts. Verify `KV_REST_API_URL` and `KV_REST_API_TOKEN` are set in Vercel production.
+
+- [ ] **[BUG] `set-role` page: `update()` null check may block valid Apple Sign-In flow** — `set-role/page.tsx:35` — NextAuth `update()` can legitimately return null if the JWT wasn't expired; the `if (!updated)` guard would show an error to users who successfully set their role. Verify behavior with Apple Sign-In in staging.
+
+- [ ] **[BUG] Join page TOCTOU on invite token** — `join/page.tsx:38-64` — `usedBy` check and insert are three separate DB ops with no transaction; two simultaneous joins could both pass the check. Wrap in a transaction or use conditional UPDATE.
+
+- [ ] **[BUG] LLM JSON extraction regex matches wrong array on truncated response** — `clinicalTrialsAgent.ts:76` — Greedy regex picks first `[...]` in response; truncated output silently returns 0 trials. Add logging when fallback fires; test with pre-result example arrays.
+
+---
+
 ## Already fixed this session (do not re-open)
 
 - ~~Dashboard layout contract: action cards first, secondary surfaces below fold~~

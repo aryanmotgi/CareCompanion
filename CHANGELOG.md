@@ -4,25 +4,38 @@ All notable changes to CareCompanion will be documented in this file.
 
 ## [0.3.1.0] - 2026-05-02
 
-Bug fixes across security, onboarding, trials search, and dashboard design polish.
+Security hardening, dashboard reliability fixes, trials engine improvements, and design system polish.
+
+### Security
+- **Check-in API now verifies ownership** — `GET /api/checkins` returned any profile's check-in data to any authenticated user; fixed: caller must own the profile or be a care team member
+- **Consent route uses user ID not email** — `POST /api/consent/accept` used `WHERE email =` which silently skips Apple Sign-In users with null email; fixed to use `WHERE id =` matching session user ID
+- **Open redirect in login callback URL blocked** — `//evil.com` passed the `/` startsWith check; added `!startsWith('//')` guard
+- **Registration rate limited** — `POST /api/auth/register` now enforces 5 attempts/hour per IP, returning 429 on excess
+- **Trials search rate limited** — `POST /api/trials/match` now enforces 3 live searches/hour per user; unguarded endpoint was an LLM cost-amplification attack vector
+- **Onboarding complete uses user ID throughout** — `POST /api/onboarding/complete` looked up the user by email (breaking Apple Sign-In) and used `session.user.id` instead of the DB-resolved ID for care group membership lookup; both fixed
+- **Care group join validates token ownership** — `/join` page used the URL `group` param for inserts; an attacker with a valid token for one group could join any group by crafting the URL; now uses `invite.careGroupId`
+- **Onboarding complete route verifies profile ownership** — any authenticated user could mark any care profile as complete by sending a foreign `careProfileId`; ownership check added
 
 ### Fixed
-- **Care group join no longer accepts cross-group tokens** — `/join` page verified the invite token but used the `group` URL param (not the invite's stored group ID) for membership inserts; an attacker with a valid token could join any group by crafting the URL. Fixed: invite's `careGroupId` must match the URL param, and inserts now use `invite.careGroupId`
-- **Onboarding complete route verifies profile ownership** — `POST /api/onboarding/complete` accepted any authenticated user's `careProfileId`, allowing one user to mark another's profile as complete. Fixed: ownership check added before the update
-- **Manual health entry in patient wizard now saves medications** — the "Enter manually" step collected medication names and appointment date but never included them in the API call; medications now save to the `conditions` field
-- **Care profile creation failure no longer causes a redirect loop** — if `POST /api/care-profiles` failed during onboarding, the shell fell through to a dashboard redirect with no completed profile, which AppLayout bounced back to onboarding. Fixed: error state shown with "Try again" instead of silent redirect
-- **QR code polling interval cleaned up on unmount** — `setInterval` and `setTimeout` in CareGroupScreen were never cleared if the user navigated away before the 30s timeout; refs now clean up on unmount
-- **Settings "Edit Profile" now opens the profile wizard directly** — was always showing the Care Group setup screen; the onboarding shell now initializes to the wizard phase when the user has completed profiles
-- **Completed onboarding no longer re-triggers** — layout gate used a non-deterministic query (`.limit(1)` without ORDER BY) that could return an incomplete secondary profile, redirecting users back to onboarding; now checks for any completed profile
-- **Trials search surfaces CT.gov API errors** — timeouts and rate-limit responses were silently returning "No matching trials found"; errors now surface in the UI with a visible error message
-- **CT.gov search now fetches up to 100 results** — was capped at 20 despite requesting 40; raised to 100 for better match coverage
-- **TEST suffix stripped from cancerType in Claude scoring prompt** — the CT.gov search already stripped it but the Haiku system prompt was still seeing the raw test string
-- **Trial phase field included in scoring output** — Haiku now returns the phase value so it propagates to the UI
-- **Dark design system applied to TrialMatchCard** — all color tokens rewritten for the dark theme; cards were rendering with light-mode colors
-- **Dashboard layout and microcopy polish** — gradient CTAs removed, celebratory copy replaced with clinical-register language, analytics hero metrics simplified, symptom pills use neutral styling
+- **Daily check-in "Med" energy always returned 400** — `CheckinModal` sent `energy: 'med'` but the server validates `z.enum(['low', 'medium', 'high'])`; every medium-energy check-in silently failed since launch
+- **Appointment cards no longer show past same-day visits** — `Math.ceil()` on a small negative fraction rounds to 0, so a 2-hour-past appointment showed as "Today at X"
+- **Analytics page null email guard** — `session.user.email!` non-null assertion caused DB query with `undefined` for Apple Sign-In users, silently redirecting them away
+- **Notification dismiss rolls back on API error** — optimistic removal fired before the fetch; on failure the notification was gone from the UI but still unread in the DB
+- **CheckinCard skeleton during load** — card previously returned `null` while fetching today's status, causing a layout shift when it appeared
+- **dismissTrial rolls back on API failure** — trial was removed from the UI immediately; on fetch error it now restores the previous matched/close arrays
+- **Manual health entry in patient wizard now saves medications** — medications collected in "Enter manually" step were excluded from the API call
+- **Care profile creation failure shows an error, not a redirect loop** — silent dashboard redirect with no completed profile caused AppLayout to bounce back to onboarding
+- **QR polling interval cleaned up on unmount** — `setInterval` and `setTimeout` in CareGroupScreen leaked when the user navigated away before the 30s timeout
+- **Trials search surfaces CT.gov API errors** — timeouts and rate-limit responses silently returned empty results; errors now shown in the UI with retry
+- **CT.gov search now fetches up to 100 results** — was capped at 20 despite the higher limit request
+- **TEST suffix stripped from cancerType in Claude scoring prompt** — the system prompt was seeing raw test strings after CT.gov search already stripped them
+- **Trial phase field propagates to UI** — Haiku scoring output now includes the phase value
+- **Dark design system applied to TrialMatchCard** — all color tokens rewritten; cards were rendering with light-mode colors in the dark app
+- **Dashboard microcopy** — gradient CTAs replaced with solid tokens, celebratory language replaced with clinical register, symptom pills use neutral styling
 
 ### Changed
-- **staleThreshold reduced from 90 to 30 days** — trial match results older than 30 days are now flagged as stale (was 89 days, too permissive for enrollment status changes)
+- **staleThreshold reduced from 90 to 30 days** — trial match results older than 30 days are flagged as stale (enrollment status changes frequently)
+- **Trials agent refactored to single-call search** — removed duplicate `searchByEligibility` call; single search with `pageSize: 100` is faster and avoids dedup overhead
 
 ## [0.3.0.0] - 2026-04-29
 
