@@ -67,7 +67,7 @@ export async function runTrialsAgent(profile: PatientProfile): Promise<AgentMatc
     system: systemPrompt,
     prompt: `Score each of the following clinical trials for this patient. Output one JSON array (no markdown fencing) containing ALL trials with matchCategory "matched" or "close". Skip "excluded" trials entirely.
 
-Each object must have: nct_id, title, matchCategory, matchScore (0-100), matchReasons (string[]), disqualifyingFactors (string[]), uncertainFactors (string[]), eligibilityGaps (array or null), status, locations (array), url.
+Each object must have: nct_id, title, matchCategory, matchScore (0-100), matchReasons (string[]), disqualifyingFactors (string[]), uncertainFactors (string[]), eligibilityGaps (array or null), phase (string or null, pass through from input), status, locations (array), url.
 
 Trials to score:
 ${JSON.stringify(allTrials, null, 2)}`,
