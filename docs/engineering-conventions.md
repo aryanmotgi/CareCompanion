@@ -59,6 +59,7 @@ It sets `deletedAt = now()` and verifies ownership before mutating.
 - `doctors` — filter by `careProfileId` + `isNull(doctors.deletedAt)`
 - `labResults` — filter by `userId` + `isNull(labResults.deletedAt)`
 - `claims` — filter by `userId` + `isNull(claims.deletedAt)`
+- `documents` — filter by `careProfileId` + `isNull(documents.deletedAt)`
 
 ---
 
