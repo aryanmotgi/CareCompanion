@@ -52,7 +52,7 @@ export async function searchTrials(params: SearchTrialsParams): Promise<{ count:
           'filter.geo':           params.location,
           'filter.overallStatus': params.status,
           'filter.phase':         params.phase,
-          pageSize:               Math.min(params.pageSize ?? 20, 20),
+          pageSize:               Math.min(params.pageSize ?? 20, 100),
           format:                 'json',
         },
       })

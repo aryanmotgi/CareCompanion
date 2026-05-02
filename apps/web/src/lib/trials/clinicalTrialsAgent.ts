@@ -37,7 +37,11 @@ export async function runTrialsAgent(profile: PatientProfile): Promise<AgentMatc
   const result = await searchTrials({ condition, location: locationFilter, status: 'RECRUITING', pageSize: 40 })
   console.log(`[trials-agent] CT.gov fetch done in ${Date.now() - t0}ms`)
 
-  const allTrials: object[] = 'trials' in result ? result.trials : []
+  if ('error' in result) {
+    throw new Error(`CT.gov search failed: ${result.error}`)
+  }
+
+  const allTrials: object[] = result.trials
 
   if (allTrials.length === 0) {
     console.log('[trials-agent] no trials found from CT.gov')

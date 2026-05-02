@@ -26,12 +26,12 @@ describe('searchTrials', () => {
     expect(result).toHaveProperty('error')
   })
 
-  it('caps pageSize at 20', async () => {
+  it('caps pageSize at 100', async () => {
     mockGet.mockResolvedValueOnce({ data: { studies: [], totalCount: 0 } })
-    await searchTrials({ condition: 'cancer', pageSize: 100 })
+    await searchTrials({ condition: 'cancer', pageSize: 200 })
     expect(mockGet).toHaveBeenCalledWith(
       '/studies',
-      expect.objectContaining({ params: expect.objectContaining({ pageSize: 20 }) })
+      expect.objectContaining({ params: expect.objectContaining({ pageSize: 100 }) })
     )
   })
 })

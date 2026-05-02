@@ -44,7 +44,9 @@ export function OnboardingShell({
     string | null | undefined
   >(allProfiles.length === 1 ? allProfiles[0].id : undefined);
 
-  const [phase, setPhase] = useState<Phase>('care-group');
+  const [phase, setPhase] = useState<Phase>(
+    allProfiles.some(p => p.onboardingCompleted === true) ? 'wizard' : 'care-group'
+  );
   const [careGroupId, setCareGroupId] = useState<string | undefined>();
   const [createdProfileId, setCreatedProfileId] = useState<string | null>(null);
 
