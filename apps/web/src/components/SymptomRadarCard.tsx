@@ -12,7 +12,7 @@ interface SymptomRadarCardProps {
   adherencePercent: number
 }
 
-const ENERGY_MAP: Record<string, number> = { low: 1, medium: 2, high: 3 }
+const ENERGY_MAP: Record<string, number> = { low: 1, med: 2, medium: 2, high: 3 }
 
 function energyToNum(e: string): number {
   return ENERGY_MAP[e] ?? 2
