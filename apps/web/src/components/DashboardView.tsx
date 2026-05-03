@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { PriorityCard } from './PriorityCard'
 import { TreatmentCycleTracker } from './TreatmentCycleTracker'
 import { AnimatedNumber } from './AnimatedNumber'
@@ -80,12 +80,17 @@ export function DashboardView({
     }
   }, [])
 
-  useEffect(() => {
+  const fetchWeeklyUpdate = useCallback(() => {
+    setWeeklyUpdateError(false)
     fetch('/api/share/weekly')
       .then(r => r.json())
       .then(d => { if (d.data?.token) setWeeklyUpdate(d.data) })
       .catch(() => { setWeeklyUpdateError(true) })
   }, [])
+
+  useEffect(() => {
+    fetchWeeklyUpdate()
+  }, [fetchWeeklyUpdate])
 
   const dismissTooltip = () => {
     setShowTourTooltip(false)
@@ -165,7 +170,7 @@ export function DashboardView({
           variant: 'urgent',
           label: 'URGENT',
           title: `${med.name} refill ${daysLeft <= 0 ? 'overdue' : daysLeft === 1 ? 'due tomorrow' : `due in ${daysLeft} days`}`,
-          subtitle: `${med.prescribingDoctor || 'Unknown doctor'} · refill needed`,
+          subtitle: `${med.prescribingDoctor || 'Your care team'} · refill needed`,
           priority: 1,
           expandedContent: (
             <AlertInsights
@@ -229,6 +234,7 @@ export function DashboardView({
                         href={`https://maps.google.com/?q=${encodeURIComponent(appt.location)}`}
                         target="_blank"
                         rel="noopener noreferrer"
+                        aria-label={`Get directions to ${appt.location} (opens in Maps)`}
                         className="flex-1 text-center py-2 rounded-lg bg-white/[0.06] border border-white/[0.1] text-[#e2e8f0] text-xs font-semibold"
                       >
                         Get Directions
@@ -254,12 +260,17 @@ export function DashboardView({
     labResults.forEach((lab) => {
       if (!lab.isAbnormal) return
       const parsed = parseLabValue(lab.value, lab.referenceRange || '')
+      const labDirection = (
+        parsed.numericValue !== null &&
+        parsed.referenceMin !== null &&
+        parsed.numericValue < parsed.referenceMin
+      ) ? 'Below normal' : 'Above normal'
       result.push({
         id: `lab-${lab.id}`,
         variant: 'alert',
         label: 'ALERT',
         title: `${lab.testName} — ${lab.value} ${lab.unit}`,
-        subtitle: `${lab.isAbnormal ? 'Above normal' : 'Normal'} range (${lab.referenceRange}) · ${lab.source || ''}`,
+        subtitle: `${labDirection} (${lab.referenceRange}) · ${lab.source || ''}`,
         priority: 3,
         expandedContent: (
           <AlertInsights
@@ -288,7 +299,7 @@ export function DashboardView({
               </div>
             }
             insights={[
-              { text: `Your ${lab.testName} is ${lab.value} ${lab.unit}, above the normal range of ${lab.referenceRange}. Schedule a follow-up to discuss this result.` },
+              { text: `Your ${lab.testName} is ${lab.value} ${lab.unit} — ${labDirection.toLowerCase()} the normal range of ${lab.referenceRange}. It's worth discussing this with your care team.` },
               { text: `Track this value over time — a single reading can be a fluke, but a trend tells the real story.` },
               { text: `Ask your doctor what lifestyle changes (diet, exercise, sleep) could help bring this number into range.` },
               { text: `If you're on medication for this, ask whether your dosage needs adjusting based on this result.` },
@@ -444,20 +455,19 @@ export function DashboardView({
           </div>
           {onboardingComplete && (medications.length > 0 || appointments.length > 0) ? (
             <>
-              <div className="text-[var(--text)] text-lg font-semibold mb-1">Nothing needs attention</div>
-              <div className="text-[var(--text-muted)] text-sm">No items need your attention right now.</div>
+              <div className="text-[var(--text)] text-lg font-semibold mb-1">You&apos;re all caught up</div>
+              <div className="text-[var(--text-muted)] text-sm">Nothing urgent right now — take a breath.</div>
             </>
           ) : (
             <>
-              <div className="text-[var(--text)] text-lg font-semibold mb-1">Get started</div>
-              <div className="text-[var(--text-muted)] text-sm">Add your medications and appointments to get personalized care alerts.</div>
+              <div className="text-[var(--text)] text-lg font-semibold mb-1">Let&apos;s personalize your care</div>
+              <div className="text-[var(--text-muted)] text-sm">Add your medications and upcoming appointments to get personalized reminders and alerts.</div>
             </>
           )}
 
           {/* Quick-start cards for empty data */}
           {(medications.length === 0 || appointments.length === 0 || labResults.length === 0) && (
             <div className="w-full mt-8 space-y-3 text-left">
-              <div className="text-[var(--text-muted)] text-[11px] uppercase tracking-wider mb-2 text-center">Get Started</div>
               {medications.length === 0 && (
                 <a
                   href="/care?tab=meds"
@@ -544,10 +554,9 @@ export function DashboardView({
         </div>
       )}
 
-      {/* Quick-ask prompts */}
-      {actionCount > 0 && (
-        <div className="mt-6 relative" id="quick-ask-section" data-tour="quick-ask">
-          <div className="text-[var(--text-muted)] text-[11px] uppercase tracking-wider mb-2">Quick Ask</div>
+      {/* Quick-ask prompts — always visible */}
+      <div className="mt-6 relative" id="quick-ask-section" data-tour="quick-ask">
+          <div className="text-[var(--text-secondary)] text-[11px] uppercase tracking-wider mb-2">Quick Ask</div>
           <div className="flex flex-wrap gap-2">
             {quickAskPrompts.map((prompt) => (
               <a
@@ -575,7 +584,6 @@ export function DashboardView({
             </div>
           )}
         </div>
-      )}
 
       {/* Care Timeline shortcut — always visible */}
       <a
@@ -645,9 +653,9 @@ export function DashboardView({
       )}
       {weeklyUpdateError && (
         <div className="mb-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 flex items-center justify-between gap-3">
-          <p className="text-xs text-[var(--text-muted)]">Weekly update unavailable.</p>
+          <p className="text-xs text-[var(--text-muted)]">Couldn&apos;t load this week&apos;s update.</p>
           <button
-            onClick={() => { window.location.reload() }}
+            onClick={fetchWeeklyUpdate}
             className="text-xs text-[#A78BFA] hover:text-white transition-colors flex-shrink-0"
           >
             Retry
@@ -722,24 +730,6 @@ export function DashboardView({
         </a>
       )}
 
-      {/* Tooltip for quick-ask card when no action items */}
-      {actionCount === 0 && showTourTooltip && (
-        <div className="relative mt-6">
-          <div className="flex justify-center">
-            <div className="relative bg-[#6366F1] text-white rounded-xl px-4 py-3 shadow-lg max-w-[260px] text-center">
-              <p className="text-sm font-medium mb-2">Tap here to ask your AI care companion anything</p>
-              <button
-                onClick={dismissTooltip}
-                className="text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-lg px-3 py-1 transition-colors"
-              >
-                Got it
-              </button>
-              {/* Arrow pointing down */}
-              <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-[#6366F1]" />
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
     </>

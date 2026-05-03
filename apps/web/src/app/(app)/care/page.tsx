@@ -23,6 +23,7 @@ async function CareContent() {
     .select({ id: careProfiles.id, patientName: careProfiles.patientName })
     .from(careProfiles)
     .where(eq(careProfiles.userId, dbUser.id))
+    .orderBy(asc(careProfiles.createdAt))
     .limit(1);
 
   if (!profile) redirect('/setup');

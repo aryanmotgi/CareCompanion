@@ -182,7 +182,7 @@ export default function CareHubView({ careProfileId, patientName, careGroupName 
 
   const hasCheckins = data.recentCheckins.length > 0
   const status = getStatusBadge(data.todayCheckin)
-  const adherencePercent = data.medications.length > 0 ? Math.round((data.medications.length / data.medications.length) * 100) : 0
+  const adherencePercent = 0
 
   // Empty state
   if (!hasCheckins && data.medications.length === 0 && data.insights.length === 0) {
@@ -196,13 +196,13 @@ export default function CareHubView({ careProfileId, patientName, careGroupName 
           </div>
           <h2 className="text-lg font-bold text-white mb-2">Welcome to Care Hub</h2>
           <p className="text-sm text-[var(--text-muted)] mb-5">
-            Your family command center. Complete your first check-in to start tracking wellness.
+            Your family&apos;s care command center. Start with a daily check-in on the Home tab to track wellness over time.
           </p>
           <Link
             href="/dashboard"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
           >
-            Complete First Check-in
+            Do today&apos;s check-in
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
             </svg>
@@ -223,7 +223,9 @@ export default function CareHubView({ careProfileId, patientName, careGroupName 
             color: 'rgba(255,255,255,0.7)',
           }}
         >
-          <span>👨‍👩‍👧</span>
+          <svg className="w-4 h-4 text-[#c4b5fd] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+          </svg>
           <span>Care Group: <strong style={{ color: '#c4b5fd' }}>{careGroupName}</strong></span>
         </div>
       )}
@@ -262,7 +264,7 @@ export default function CareHubView({ careProfileId, patientName, careGroupName 
 
         {/* Meds Today Card */}
         <div className="glass card-hover-glow rounded-xl p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-3">
             Medications
           </h3>
           {data.medications.length === 0 ? (
@@ -290,7 +292,7 @@ export default function CareHubView({ careProfileId, patientName, careGroupName 
 
         {/* AI Insights Card (full width) */}
         <div className="glass card-hover-glow rounded-xl p-4 md:col-span-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-3">
             AI Insights
           </h3>
           {data.insights.length === 0 ? (
@@ -320,7 +322,7 @@ export default function CareHubView({ careProfileId, patientName, careGroupName 
 
         {/* Care Team Activity Card */}
         <div className="glass card-hover-glow rounded-xl p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-3">
             Care Team Activity
           </h3>
           {data.activity.length === 0 ? (
@@ -353,7 +355,7 @@ export default function CareHubView({ careProfileId, patientName, careGroupName 
 
         {/* Upcoming Card */}
         <div className="glass card-hover-glow rounded-xl p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-3">
             Upcoming
           </h3>
           {data.upcoming.length === 0 ? (

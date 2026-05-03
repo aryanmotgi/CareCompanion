@@ -64,9 +64,10 @@ export function ExpandableCard({
         bg-white/[0.04] rounded-xl p-4 cursor-pointer
         border border-white/[0.06]
         transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0C0E1A]
         ${className}
       `}
-      style={{ outline: 'none', boxShadow: 'none', WebkitTapHighlightColor: 'transparent', ...style }}
+      style={{ WebkitTapHighlightColor: 'transparent', ...style }}
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">{children}</div>

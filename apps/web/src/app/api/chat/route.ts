@@ -12,6 +12,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { ApiErrors } from '@/lib/api-response';
 import { withMetrics } from '@/lib/api-metrics';
 import { logAudit } from '@/lib/audit';
+import { validateCsrf } from '@/lib/csrf';
 
 const ipLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 30 });
 const userLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 10 });
@@ -41,6 +42,10 @@ async function handler(req: Request) {
     return ApiErrors.rateLimited();
   }
 
+  // CSRF validation — client sends x-csrf-token header via DefaultChatTransport
+  const { valid: csrfValid, error: csrfError } = await validateCsrf(req);
+  if (!csrfValid) return csrfError!;
+
   // Demo mode: skip the full pipeline and return a brief response with signup CTA
   if (dbUser!.isDemo === true) {
     const { messages: msgs }: { messages: UIMessage[] } = await req.json();
@@ -50,7 +55,7 @@ async function handler(req: Request) {
       : '';
 
     const demoResult = streamText({
-      model: anthropic('claude-sonnet-4-6'),
+      model: anthropic('claude-sonnet-4.6'),
       maxOutputTokens: 512,
       system: `You are CareCompanion AI. The user is in demo mode exploring the app.
 Give a short, helpful 1-2 sentence answer about their question as it relates to cancer care.
@@ -215,7 +220,7 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
   const tools = buildTools(dbUser!.id, profile?.id || null);
 
   const result = streamText({
-    model: anthropic('claude-sonnet-4-6'),
+    model: anthropic('claude-sonnet-4.6'),
     maxOutputTokens: 4096,
     system: fullSystemPrompt,
     messages: conversationMessages,

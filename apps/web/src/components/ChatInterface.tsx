@@ -22,6 +22,7 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
   const [mounted, setMounted] = useState(false);
   const [promptSent, setPromptSent] = useState(false);
   const [, setIsNewChat] = useState(false);
+  const [confirmingNewChat, setConfirmingNewChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const searchParams = useSearchParams();
@@ -38,10 +39,24 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
     }),
   });
 
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
+    if (messages.length === 0) return;
+    if (!confirmingNewChat) {
+      setConfirmingNewChat(true);
+      setTimeout(() => setConfirmingNewChat(false), 3000);
+      return;
+    }
+    setConfirmingNewChat(false);
     setMessages([]);
     setIsNewChat(true);
     setInput('');
+    // Clear conversation from DB (best-effort, non-blocking)
+    fetch('/api/chat/history', {
+      method: 'DELETE',
+      headers: {
+        'x-csrf-token': document.cookie.match(/(^| )cc-csrf-token=([^;]+)/)?.[2] ?? '',
+      },
+    }).catch(() => {});
   };
 
   const isStreaming = status === 'streaming';
@@ -164,13 +179,18 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
         </button>
         <button
           onClick={handleNewChat}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[var(--text-secondary)] text-xs hover:bg-white/[0.08] hover:text-[var(--text)] transition-colors"
-          title="Start a new conversation"
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-colors ${
+            confirmingNewChat
+              ? 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20'
+              : 'bg-white/[0.04] border-white/[0.08] text-[var(--text-secondary)] hover:bg-white/[0.08] hover:text-[var(--text)]'
+          }`}
+          aria-label={confirmingNewChat ? 'Click again to clear conversation' : 'Start a new conversation'}
+          title={confirmingNewChat ? 'Click again to confirm' : 'Start a new conversation'}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          New Chat
+          {confirmingNewChat ? 'Confirm?' : 'New Chat'}
         </button>
       </div>
       {/* Chat search overlay */}
@@ -181,7 +201,7 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
         onScrollToMessage={handleScrollToMessage}
       />
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto chat-scroll px-4 sm:px-6 lg:px-8 py-6">
+      <div className="flex-1 overflow-y-auto chat-scroll px-4 sm:px-6 lg:px-8 py-6" role="log" aria-label="Conversation" aria-live="polite">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             {/* Hero icon with glow */}
@@ -204,10 +224,10 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
               </svg>
             </div>
             <h2 className="font-display text-3xl font-bold text-[var(--text)] mb-2.5" style={{ letterSpacing: '-0.02em' }}>
-              Hi, how can I help?
+              Hi, I&apos;m here for you.
             </h2>
             <p className="text-[var(--text-secondary)] mb-8 text-[15px] leading-relaxed">
-              Ask me anything about your care, medications, or records.
+              Ask me anything — managing side effects, understanding your labs, or preparing for your next appointment.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
               {starterPrompts.map((prompt) => (
@@ -265,11 +285,11 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
 
       {/* Error banner */}
       {error && (
-        <div className="px-4 sm:px-6 lg:px-8 py-3 bg-red-500/10 border-t border-red-500/20">
+        <div className="px-4 sm:px-6 lg:px-8 py-3 bg-red-500/10 border-t border-red-500/20" role="alert" aria-live="assertive">
           <div className="max-w-5xl mx-auto flex items-center justify-between">
-            <p className="text-sm text-red-400">Something went wrong.</p>
-            <button onClick={() => regenerate()} className="text-sm font-medium text-red-400 hover:text-red-800 underline">
-              Retry
+            <p className="text-sm text-red-400">Having trouble connecting. You can try again below.</p>
+            <button onClick={() => regenerate()} className="text-sm font-medium text-red-400 hover:text-red-300 underline">
+              Try again
             </button>
           </div>
         </div>
@@ -302,6 +322,7 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
                       ? 'text-red-400 animate-pulse'
                       : 'text-[var(--text-secondary)] hover:text-[var(--text)]'
                   }`}
+                  aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
                   title={isListening ? 'Stop listening' : 'Voice input'}
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -315,14 +336,16 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about care, medications, side effects..."
+              placeholder="Ask about your care, how you're feeling, or what to expect…"
+              aria-label="Message CareCompanion AI"
               className="flex-1 bg-transparent text-[#e2e8f0] text-sm outline-none placeholder:text-[#64748b] min-h-[32px]"
             />
             {isStreaming ? (
               <button
                 onClick={() => stop()}
                 className="w-8 h-8 rounded-full bg-white/[0.08] flex items-center justify-center text-[var(--text-secondary)] hover:bg-white/[0.12] transition-colors flex-shrink-0"
-                title="Stop"
+                aria-label="Stop response"
+                title="Stop response"
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <rect x="6" y="6" width="12" height="12" rx="2" />
@@ -333,7 +356,8 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
                 onClick={() => handleSend()}
                 disabled={!input.trim() || isLoading}
                 className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-white disabled:opacity-40 transition-opacity animate-press flex-shrink-0"
-                title="Send"
+                aria-label="Send message"
+                title="Send message"
               >
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />

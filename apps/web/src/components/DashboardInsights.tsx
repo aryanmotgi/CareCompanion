@@ -20,7 +20,7 @@ export function DashboardInsights() {
     <div className="space-y-3">
       {/* Section header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+        <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
           Insights
         </h3>
       </div>
@@ -30,13 +30,14 @@ export function DashboardInsights() {
         {TABS.map((tab) => (
           <button
             key={tab.key}
+            id={`insights-tab-${tab.key}`}
             role="tab"
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 min-h-[44px] rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 ${
               activeTab === tab.key
                 ? 'bg-gradient-to-r from-[#6366F1]/20 to-[#A78BFA]/20 text-[#A78BFA] shadow-sm'
-                : 'text-[var(--text-muted)] hover:bg-white/[0.04]'
+                : 'text-[var(--text-secondary)] hover:bg-white/[0.04]'
             }`}
           >
             <span className="hidden sm:inline">{tab.label}</span>
@@ -46,7 +47,7 @@ export function DashboardInsights() {
       </div>
 
       {/* Tab content */}
-      <div className="min-h-[200px]" role="tabpanel">
+      <div className="min-h-[200px]" role="tabpanel" aria-labelledby={`insights-tab-${activeTab}`}>
         {activeTab === 'trends' && <LabTrends />}
         {activeTab === 'refills' && <RefillStatusCard />}
         {activeTab === 'wellness' && <CaregiverWellness />}
