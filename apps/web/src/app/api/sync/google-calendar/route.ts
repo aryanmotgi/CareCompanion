@@ -2,34 +2,39 @@ import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { validateCsrf } from '@/lib/csrf';
 import { db } from '@/lib/db';
 import { connectedApps, careProfiles, appointments } from '@/lib/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
+import { decryptToken, encryptToken } from '@/lib/token-encryption';
 
 export async function POST(req: Request) {
-  const { valid, error: csrfError } = await validateCsrf(req);
-  if (!valid) return csrfError!;
+  // Internal server-to-server calls (OAuth callback → initial sync) carry x-internal-secret
+  // and have no browser session/CSRF cookie — check secret first to skip CSRF for those.
+  const internalSecret = req.headers.get('x-internal-secret');
+  const cronSecret = process.env.CRON_SECRET;
+  const isInternalCall = !!(cronSecret && internalSecret === cronSecret);
+
+  if (!isInternalCall) {
+    const { valid, error: csrfError } = await validateCsrf(req);
+    if (!valid) return csrfError!;
+  }
 
   const body = await req.json();
-  const { user_id } = body;
+  let { user_id } = body as { user_id?: string };
+
+  if (!isInternalCall) {
+    const { user: dbUser, error: authError } = await getAuthenticatedUser();
+    if (authError || !dbUser) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    // Browser callers don't need to send user_id — derive it from session.
+    // If they do send it, it must match the session to prevent IDOR.
+    if (user_id && dbUser.id !== user_id) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    user_id = dbUser.id;
+  }
 
   if (!user_id) {
     return Response.json({ error: 'user_id required' }, { status: 400 });
-  }
-
-  // Auth: either (a) authenticated user session, or (b) server-side OAuth callback
-  const { user: dbUser, error: authError } = await getAuthenticatedUser();
-
-  if (!authError && dbUser) {
-    // Session present — verify ownership
-    if (dbUser.id !== user_id) {
-      return Response.json({ error: 'Forbidden' }, { status: 403 });
-    }
-  } else {
-    // No session — verify internal secret
-    const internalSecret = req.headers.get('x-internal-secret');
-    const cronSecret = process.env.CRON_SECRET;
-    if (!cronSecret || internalSecret !== cronSecret) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
   }
 
   const [connection] = await db
@@ -42,10 +47,22 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Not connected' }, { status: 400 });
   }
 
-  let accessToken = connection.accessToken;
+  let accessToken: string;
+  try {
+    accessToken = decryptToken(connection.accessToken);
+  } catch {
+    return Response.json({ error: 'Token decryption failed, reconnect required' }, { status: 401 });
+  }
+
   if (connection.expiresAt && new Date(connection.expiresAt) < new Date()) {
     if (!connection.refreshToken) {
       return Response.json({ error: 'Token expired, reconnect required' }, { status: 401 });
+    }
+    let decryptedRefresh: string;
+    try {
+      decryptedRefresh = decryptToken(connection.refreshToken);
+    } catch {
+      return Response.json({ error: 'Refresh token decryption failed, reconnect required' }, { status: 401 });
     }
     const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -53,7 +70,7 @@ export async function POST(req: Request) {
       body: new URLSearchParams({
         client_id: process.env.GOOGLE_CLIENT_ID!,
         client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-        refresh_token: connection.refreshToken,
+        refresh_token: decryptedRefresh,
         grant_type: 'refresh_token',
       }),
     });
@@ -64,7 +81,7 @@ export async function POST(req: Request) {
     accessToken = tokens.access_token;
 
     await db.update(connectedApps).set({
-      accessToken: tokens.access_token,
+      accessToken: encryptToken(tokens.access_token),
       expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
     }).where(eq(connectedApps.id, connection.id));
   }
@@ -116,6 +133,7 @@ export async function POST(req: Request) {
       .where(and(
         eq(appointments.careProfileId, profile.id),
         eq(appointments.doctorName, event.summary || ''),
+        dateTime ? eq(appointments.dateTime, dateTime) : isNull(appointments.dateTime),
       ))
       .limit(1);
 
