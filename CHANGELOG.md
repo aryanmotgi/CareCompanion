@@ -4,7 +4,27 @@ All notable changes to CareCompanion will be documented in this file.
 
 ## [0.3.1.0] - 2026-05-02
 
-Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, and Insurance/Financial/Compliance/HIPAA security audit.
+Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, and Google Calendar / HealthKit Integrations audit.
+
+### Added (Integrations)
+- **Google Calendar integration UI** — Settings page now shows a connected apps section: connect, sync now, and disconnect buttons for Google Calendar; last-synced timestamp; expired-token warning banner
+- **Disconnect endpoint** — `DELETE /api/integrations/[source]` revokes a connected app connection with CSRF protection, session auth, and audit log
+- **`decryptToken()` function** — AES-256-GCM decrypt counterpart for stored OAuth tokens; previously tokens were stored encrypted but never decrypted before use, making Google Calendar sync permanently broken
+- **Re-authentication flow** — sync errors that indicate token expiry now show a specific toast and orange banner prompting the user to reconnect
+- **Token encryption test suite** — 9 tests covering encrypt/decrypt round-trip, legacy plaintext passthrough, malformed ciphertext rejection, HMAC state sign/verify, and tamper detection
+
+### Fixed (Integrations)
+- **Google Calendar sync always returned 401** — sync route passed the encrypted token string as a Bearer header to Google API; every API call failed. Fixed by calling `decryptToken()` before use
+- **Token refresh stored plaintext** — refreshed access token written to DB without re-encrypting. Fixed with `encryptToken()` on the new value
+- **Initial post-OAuth sync never ran** — CSRF check rejected all internal server-to-server calls (OAuth callback → sync); internal secret bypass now runs before CSRF validation
+- **Calendar dedup matched title only, not date** — recurring events with the same summary were permanently deduplicated after first import. Fixed: dedup now matches on `doctorName + dateTime`
+- **OAuth state unsigned in production** — missing `OAUTH_STATE_SECRET` silently returned unsigned state; OAuth CSRF protection was absent. Changed to throw in production
+- **Status route leaked encrypted tokens to client** — `GET /api/sync/status` returned full rows including token fields. Fixed with explicit column projection
+- **Sync route IDOR** — `user_id` body param was not validated against session for browser callers. Fixed: browser calls derive user from session
+
+### Removed
+- **`TimelineEvent` / `CheckinInput` / `EligibilityGap` unused re-exports** — removed from `TreatmentTimeline.tsx`, `checkin-validation.ts`, and `gapAnalysis.ts`
+- **`babel.config.js` + `babel-preset-expo`** — unused Babel config and dependency removed from mobile app
 
 ### Fixed (Insurance, Financial, Compliance, HIPAA)
 - **Account deletion no-op** — `DELETE /api/delete-account` queried `WHERE providerSub = userId` (wrong column); deletes silently matched nothing for most users; PHI was never actually removed. Changed to `WHERE id = userId`

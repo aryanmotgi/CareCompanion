@@ -1,8 +1,46 @@
 # CareCompanion TODO
 
-Generated from: /plan-eng-review + /design-review + /qa + /audit Chat+Notifications  
+Generated from: /plan-eng-review + /design-review + /qa + /audit Chat+Notifications + /audit Integrations  
 Branch: preview/trials-impeccable  
 Date: 2026-05-02
+
+---
+
+## Integrations Audit — 2026-05-02 (all fixed ✅)
+
+Full audit: Google Calendar OAuth, HealthKit sync, connected apps management, disconnect/revoke, token refresh, error handling.
+
+- [x] **[CRITICAL] `decryptToken` missing — Google Calendar sync always 401** — `token-encryption.ts` — `encryptToken` stored tokens as `enc:v1:...` but no decrypt function existed. Sync route passed the encrypted string as a Bearer token to Google API; every Calendar API call failed with 401. Added `decryptToken()` using AES-256-GCM and applied it at `sync/google-calendar/route.ts:45,56`.
+
+- [x] **[CRITICAL] Token refresh stored plaintext after decrypt** — `sync/google-calendar/route.ts:67` — After a successful token refresh, the new `access_token` (plaintext from Google) was written to DB without re-encrypting. Next refresh attempt would call `decryptToken()` on a plaintext string, bypassing the `enc:v1:` prefix check. Fixed: wrap with `encryptToken()` before the DB update.
+
+- [x] **[CRITICAL] Initial post-OAuth sync always failed (CSRF deadlock)** — `sync/google-calendar/route.ts:8` — OAuth callback called sync route server-side with `x-internal-secret`. CSRF check ran first (before auth check) and rejected all server-side calls with 403 — so the initial calendar import never ran after connecting. Fixed: check `x-internal-secret` before CSRF; skip CSRF for validated internal calls only.
+
+- [x] **[CRITICAL] Calendar dedup matched on event title only** — `sync/google-calendar/route.ts:116` — Dedup query matched `doctorName = event.summary` with no date check. Recurring events (e.g. weekly "Doctor checkup") all share the same summary — only the first occurrence was ever imported; all later dates silently skipped. Fixed: added `dateTime` to dedup `WHERE` clause using `eq(appointments.dateTime, dateTime)` + `isNull` fallback for all-day events.
+
+- [x] **[SECURITY] `signState` silently unsigned in production** — `token-encryption.ts:88` — If `OAUTH_STATE_SECRET` env var was missing in production, `signState()` only logged a warning and returned unsigned state. OAuth CSRF protection was completely absent without any visible failure. Changed `console.warn` → `throw Error` so a missing secret hard-fails instead of silently degrading.
+
+- [x] **[SECURITY] `/api/sync/status` leaked encrypted access/refresh tokens to client** — `sync/status/route.ts:11` — `db.select()` without column projection returned full rows including `accessToken` and `refreshToken` fields (encrypted but still sensitive). Fixed: explicit column selection — `id`, `source`, `lastSynced`, `expiresAt`, `createdAt`, `metadata` only.
+
+- [x] **[SECURITY] Sync route IDOR — `user_id` in body not validated for browser callers** — `sync/google-calendar/route.ts` — Previous code checked session ownership only when a session existed; unauthenticated paths fell through to the internal-secret branch. Restructured: browser callers always go through session auth; `user_id` body param is optional and overridden by session (prevents IDOR); internal calls bypass session only.
+
+- [x] **[MISSING] No disconnect/revoke endpoint** — No API route existed to remove a connected app. Users had no way to revoke Google Calendar access. Created `DELETE /api/integrations/[source]/route.ts` — validates CSRF, verifies session ownership, deletes the `connectedApps` row, writes audit log.
+
+- [x] **[MISSING] No Integrations UI in Settings** — `SettingsPage.tsx` had no section for connected apps. Users couldn't connect, disconnect, or sync Google Calendar from the web app. Added full Integrations section: connect button for unauthenticated state, sync + disconnect buttons for connected state, last-synced timestamp, expired-token warning banner, Apple Health (informational — iOS only).
+
+- [x] **[MISSING] Re-auth flow on token expiry** — When `expiresAt` is in the past (expired token, no refresh), the UI now shows an orange "Token expired — reconnect to resume syncing" warning. `handleSyncGoogle` also catches `reconnect` in the error message and shows a specific toast prompting the user to reconnect.
+
+- [x] **[BUG] `handleSyncGoogle` sent connectedApp row ID as `user_id`** — `SettingsPage.tsx` — Sync call sent `user_id: googleCalendar?.id` (the UUID of the `connectedApps` row) not the user's ID. Fixed the sync route to derive `user_id` from session when called from a browser; frontend no longer sends `user_id`.
+
+- [x] **[DEAD CODE] `TimelineEvent` unused re-export** — `TreatmentTimeline.tsx:16` — `export type { TimelineEvent }` re-exported a type no external consumer imported. Removed.
+
+- [x] **[DEAD CODE] `CheckinInput` unused export** — `checkin-validation.ts:11` — Type exported but imported nowhere outside the file. Changed to local `type`.
+
+- [x] **[DEAD CODE] `EligibilityGap` unused re-export** — `gapAnalysis.ts:3` — Re-exported from `assembleProfile` but no consumer imported it from `gapAnalysis`. Removed re-export line.
+
+- [x] **[DEAD CODE] `babel.config.js` + `babel-preset-expo`** — `apps/mobile/` — Config file and its package were unused (Expo no longer needs explicit Babel config). Deleted `babel.config.js`, removed `babel-preset-expo` from `package.json`.
+
+---
 
 ---
 
