@@ -45,6 +45,8 @@ export function TrialMatchCard(props: Props) {
         <div className="flex-1 min-w-0">
           <button
             onClick={() => setExpanded(e => !e)}
+            aria-expanded={expanded}
+            aria-label={`${props.title} — ${expanded ? 'collapse' : 'expand'} trial details`}
             className="text-sm font-semibold text-[var(--text)] hover:text-[#A78BFA] transition-colors text-left line-clamp-2 w-full"
           >
             {props.title}
@@ -57,8 +59,9 @@ export function TrialMatchCard(props: Props) {
           <ScoreBadge score={props.matchScore} />
           <button
             onClick={() => setExpanded(e => !e)}
-            className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] px-1 transition-colors"
-            aria-label={expanded ? 'Collapse' : 'Expand'}
+            className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] p-1.5 transition-colors"
+            aria-label={expanded ? 'Collapse trial details' : 'Expand trial details'}
+            aria-expanded={expanded}
           >
             {expanded ? '▲' : '▼'}
           </button>
@@ -68,7 +71,7 @@ export function TrialMatchCard(props: Props) {
       {props.stale && (
         <p className="text-xs px-2 py-1 rounded"
           style={{ color: 'rgba(251,191,36,0.80)', background: 'rgba(251,191,36,0.10)' }}>
-          Last matched{props.updatedAt ? ` ${new Date(props.updatedAt).toLocaleDateString()}` : ''} — tap Refresh to update
+          This match is from{props.updatedAt ? ` ${new Date(props.updatedAt).toLocaleDateString()}` : ' an earlier search'} — tap Refresh to check for updates
         </p>
       )}
 
@@ -77,11 +80,13 @@ export function TrialMatchCard(props: Props) {
         <ul className="space-y-0.5">
           {props.matchReasons.slice(0, expanded ? undefined : 2).map((r, i) => (
             <li key={i} className="text-xs text-[var(--text-secondary)] flex gap-1.5">
-              <span className="text-emerald-400 flex-shrink-0">✓</span>{r}
+              <span className="text-emerald-400 flex-shrink-0" aria-hidden="true">✓</span>{r}
             </li>
           ))}
           {!expanded && props.matchReasons.length > 2 && (
-            <li className="text-xs text-[var(--text-muted)] pl-4">+{props.matchReasons.length - 2} more — expand to see all</li>
+            <li className="text-xs text-[var(--text-muted)] pl-4">
+              +{props.matchReasons.length - 2} more — expand to see all
+            </li>
           )}
         </ul>
       )}
@@ -90,7 +95,7 @@ export function TrialMatchCard(props: Props) {
         <ul className="space-y-0.5">
           {props.disqualifyingFactors.slice(0, 1).map((f, i) => (
             <li key={i} className="text-xs text-[var(--text-secondary)] flex gap-1.5">
-              <span className="text-red-400 flex-shrink-0">✗</span>{f}
+              <span className="text-red-400 flex-shrink-0" aria-hidden="true">✗</span>{f}
             </li>
           ))}
         </ul>
@@ -114,20 +119,20 @@ export function TrialMatchCard(props: Props) {
         <div className="flex gap-2 pt-1 flex-wrap">
           <button
             onClick={() => setExpanded(true)}
-            className="text-xs px-3 py-1.5 rounded-lg text-white font-semibold transition-colors"
+            className="text-xs px-3 py-2 rounded-lg text-white font-semibold transition-colors"
             style={{ background: '#6366F1' }}
           >
             View details &amp; contact →
           </button>
           <button
             onClick={() => props.onShare(props.nctId, props.title, props.trialUrl ?? '')}
-            className="text-xs px-3 py-1.5 border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-white/[0.04] transition-colors"
+            className="text-xs px-3 py-2 border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-white/[0.04] transition-colors"
           >
             Share
           </button>
           <button
             onClick={() => props.onDismiss(props.nctId)}
-            className="text-xs px-3 py-1.5 text-[var(--text-muted)] hover:text-[var(--text)] ml-auto transition-colors"
+            className="text-xs px-3 py-2 text-[var(--text-muted)] hover:text-[var(--text)] ml-auto transition-colors"
           >
             Dismiss
           </button>
@@ -150,19 +155,20 @@ export function TrialMatchCard(props: Props) {
         <div className="flex gap-2 pt-1 border-t border-[var(--border)] flex-wrap">
           <button
             onClick={() => props.onShare(props.nctId, props.title, props.trialUrl ?? '')}
-            className="text-xs px-3 py-1.5 border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-white/[0.04] transition-colors"
+            className="text-xs px-3 py-2 border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text)] hover:bg-white/[0.04] transition-colors"
           >
             Share with oncologist
           </button>
           <button
             onClick={() => props.onDismiss(props.nctId)}
-            className="text-xs px-3 py-1.5 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
+            className="text-xs px-3 py-2 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
           >
             Dismiss
           </button>
           <button
             onClick={() => setExpanded(false)}
-            className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] ml-auto transition-colors"
+            className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] ml-auto transition-colors px-2 py-2"
+            aria-label="Collapse trial details"
           >
             Collapse ▲
           </button>

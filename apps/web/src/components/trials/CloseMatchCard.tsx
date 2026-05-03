@@ -40,27 +40,27 @@ export function CloseMatchCard(props: Props) {
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <div className="rounded-lg border border-purple-200 bg-purple-50/30 p-4 space-y-3">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-4 space-y-3">
       {/* Header */}
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
           <button
             onClick={() => setExpanded(e => !e)}
-            className="text-sm font-medium text-blue-700 hover:underline text-left line-clamp-2 w-full"
+            className="text-sm font-medium text-[var(--text)] hover:text-[#A78BFA] transition-colors text-left line-clamp-2 w-full"
           >
             {props.title}
           </button>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">
             {props.nctId} · {props.phase ?? 'Phase N/A'}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-xs text-purple-700 bg-purple-100 px-2 py-0.5 rounded font-medium">
-            Close match
+          <span className="text-xs text-violet-300 bg-violet-500/15 px-2 py-0.5 rounded font-medium">
+            Almost there
           </span>
           <button
             onClick={() => setExpanded(e => !e)}
-            className="text-xs text-gray-400 hover:text-gray-600 px-1"
+            className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] px-1 transition-colors"
             aria-label={expanded ? 'Collapse' : 'Expand'}
           >
             {expanded ? '▲' : '▼'}
@@ -70,19 +70,27 @@ export function CloseMatchCard(props: Props) {
 
       {/* Gap summary — always visible */}
       <div className="space-y-2">
-        <p className="text-xs font-medium text-gray-700">What&apos;s blocking eligibility</p>
+        <p className="text-xs font-medium text-[var(--text-secondary)]">What would need to change</p>
         {props.eligibilityGaps.length === 0 && (
-          <p className="text-xs text-gray-500 italic">No specific gaps identified — ask your oncologist to review eligibility criteria.</p>
+          <p className="text-xs text-[var(--text-muted)] italic">
+            No specific gaps identified — ask your oncologist to review the eligibility criteria.
+          </p>
         )}
         {props.eligibilityGaps.map((gap, i) => (
-          <div key={i} className="bg-white border border-purple-100 rounded p-2.5 space-y-1">
-            <span className="text-xs font-medium text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">
+          <div key={i} className="bg-white/[0.03] border border-[var(--border)] rounded-lg p-2.5 space-y-1">
+            <span className="text-xs font-medium text-violet-300 bg-violet-500/10 px-1.5 py-0.5 rounded">
               {getGapLabel(gap)}
             </span>
-            <p className="text-xs text-gray-700 mt-1">{gap.description}</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">{gap.description}</p>
+            {gap.gapType === 'measurable' && gap.metric && (
+              <p className="text-xs text-[var(--text-muted)]">
+                {gap.currentValue && <span>Current: {gap.currentValue}{gap.unit ? ` ${gap.unit}` : ''} · </span>}
+                {gap.requiredValue && <span>Target: {gap.requiredValue}{gap.unit ? ` ${gap.unit}` : ''}</span>}
+              </p>
+            )}
             {!gap.verifiable && (
-              <p className="text-xs text-amber-600 italic">
-                We can&apos;t verify this automatically — ask your care team
+              <p className="text-xs text-amber-400/80 italic">
+                We can&apos;t verify this automatically — worth asking your care team
               </p>
             )}
           </div>
@@ -94,20 +102,21 @@ export function CloseMatchCard(props: Props) {
         <div className="flex gap-2">
           <button
             onClick={() => setExpanded(true)}
-            className="text-xs px-3 py-1.5 border border-purple-300 text-purple-700 rounded hover:bg-purple-50"
+            className="text-xs px-3 py-1.5 rounded-lg text-white font-semibold transition-colors"
+            style={{ background: '#6366F1' }}
           >
-            View details &amp; contact →
+            View details →
           </button>
           <button
             onClick={() => props.onDismiss(props.nctId)}
-            className="text-xs px-3 py-1.5 text-gray-500 hover:text-gray-700 ml-auto"
+            className="text-xs px-3 py-1.5 text-[var(--text-muted)] hover:text-[var(--text)] ml-auto transition-colors"
           >
             Dismiss
           </button>
         </div>
       )}
 
-      {/* Expanded detail panel — isCloseMatch=true changes email framing */}
+      {/* Expanded detail panel */}
       {expanded && (
         <>
           <TrialDetailPanel
@@ -118,16 +127,16 @@ export function CloseMatchCard(props: Props) {
             onSave={props.onSave}
             savedStatus={props.savedStatus}
           />
-          <div className="flex gap-2 pt-1 border-t border-purple-100">
+          <div className="flex gap-2 pt-1 border-t border-[var(--border)]">
             <button
               onClick={() => props.onDismiss(props.nctId)}
-              className="text-xs px-3 py-1.5 text-gray-500 hover:text-gray-700"
+              className="text-xs px-3 py-1.5 text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
             >
               Dismiss
             </button>
             <button
               onClick={() => setExpanded(false)}
-              className="text-xs text-gray-400 hover:text-gray-600 ml-auto"
+              className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] ml-auto transition-colors"
             >
               Collapse ▲
             </button>
