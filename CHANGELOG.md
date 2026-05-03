@@ -4,7 +4,45 @@ All notable changes to CareCompanion will be documented in this file.
 
 ## [0.3.1.0] - 2026-05-03
 
-Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, Community Forum + Sharing Links full security audit, and Cron Jobs / Production Monitor / Admin Routes security audit.
+Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, Community Forum + Sharing Links full security audit, Cron Jobs / Production Monitor / Admin Routes security audit, and medium/low-priority follow-up fixes across all audit sections.
+
+### Added (UX)
+- **Active share links management** — Settings page now shows all active share links with per-link revoke buttons; no more need to hunt for links created earlier
+- **Share confirmation gate** — `ShareHealthCard` now shows a two-step confirm before generating a new link, preventing accidental shares from a misclick
+- **Refill status last-updated timestamp** — `RefillStatusCard` shows the time data was last fetched so caregivers know how fresh the information is
+- **Lab trend units in AI chat** — "Tell me about my WBC trend" prompts now include the unit (e.g. `5000 cells/mcL`), making AI responses clinically accurate instead of unitless
+
+### Fixed (Cron Jobs — follow-up)
+- **`/api/cron/weekly-summary` only processed first 200 users** — replaced `.limit(200)` hard cap with cursor-based pagination using `cronState` table; all users now receive weekly summaries across successive Sunday runs
+- **`/api/cron/radar` N+1 query in caregiver-awareness loop** — per-profile queries for `careTeamMembers` and per-member queries for `careTeamActivityLog` inside the cron loop; replaced with two bulk pre-fetch queries and in-memory Maps before the loop
+- **`/api/cron/trials-match` gap-closure swallowed all LLM errors** — empty `catch {}` meant a misconfigured Anthropic key silently skipped every profile every night; now logs `console.error` with profileId and error
+- **`/api/cron/trials-match` malformed LLM response crashed gap-closure** — `output.resolved` was not guarded; an undefined value would throw; fixed with `output?.resolved ?? []`
+
+### Fixed (Security — follow-up)
+- **Doctor phone numbers exposed on public share page** — `buildShareData` included `phone` in the `care_team` payload; phone numbers rendered as `<a href="tel:...">` on an unauthenticated public URL; phone now omitted from all share payloads
+- **`/api/share/` middleware path matched nothing** — trailing slash caused `startsWith('/api/share//')` double-slash check that never matched `/api/share/abc123`; changed to `/api/share` so public token routes are correctly exempted from the auth redirect
+- **`/api/admin/provision-reviewer` returned generated password in response body** — temporary password logged server-side (Vercel logs only) and response now returns `'[see server logs]'`
+
+### Fixed (Dead code, config)
+- **`/api/cron/sync` stub still scheduled** — placeholder cron that always returned `{synced: 0}` was firing daily and burning a cron invocation; removed from `vercel.json`
+- **`/api/notifications/generate` and `/api/reminders/check` undocumented POST handlers** — both routes exposed an undocumented `POST` that just called `GET(req)`; POST handlers removed
+- **`searchByEligibility` dead code** — function in `lib/trials/tools.ts` ignored its `age` and `sex` params and called the same endpoint as `searchTrials`; no callers since the agent refactor; deleted
+- **`TrialsTab` carried 3 unused props** — `cancerStage`, `patientAge`, `patientName` were declared in `Props` type and passed at call site but never used in the component body; removed
+
+### Fixed (UX — follow-up)
+- **`DocumentScanner` forced camera on mobile** — `capture="environment"` attribute opened camera instead of file picker, conflicting with PDF support added in the scan flow; attribute removed
+- **Re-categorize menu showed current category** — `DocumentOrganizer` bulk re-categorize dropdown included the document's current category; now filters it out when viewing a single-category tab
+- **Grid view "Scanned" label hardcoded** — all grid cards showed "Scanned" regardless of source; label removed (no source column exists to show accurate data)
+- **Lab trend `chatPrompt` sent value without unit** — clicking "Ask AI" on a trend card sent `"WBC is currently declining at 3500"` with no unit; fixed to `"3500 cells/mcL"`
+- **Conditions not trimmed/deduped after scan extraction** — extracted condition strings could include leading/trailing whitespace and duplicates; now trimmed and deduped with `Set` before insert
+- **Insurance "Unknown" provider silently saved** — OCR fallback wrote `provider: 'Unknown'` to the DB when extraction failed; changed to `undefined` so the field is left blank instead
+- **`fsaHsa.accountType` case-insensitive FSA check** — `=== 'fsa'` comparison missed `'FSA'` from uppercase storage; changed to `.toLowerCase() === 'fsa'`
+- **`RefillStatus` double-fallback on API response shape** — `json.data?.medications ?? json.data ?? []` could silently accept a non-array; normalized to `json.data?.medications ?? []`
+- **Community replies returned no pagination signal** — `GET /api/community/[id]` capped replies at 100 with no `hasMoreReplies` or `totalReplies` field; clients couldn't show a "load more" indicator; both fields now returned
+
+### Fixed (Schema & DB)
+- **`refillDate` column typed as `text` not `date`** — Drizzle schema declared `text('refill_date')` but the field stores ISO dates; changed to `date()` with a safe migration that casts valid date strings and nulls malformed values
+- **`claims.userId` missing index** — full table scan on every insurance page load for users with many claims; index added via migration `004`
 
 ### Fixed (Cron Jobs, Production Monitor & Admin Routes)
 - **`/api/health` detail leak when `CRON_SECRET` unset** — In production, full diagnostic details (DB columns, env var presence, memory) were exposed to any caller when `CRON_SECRET` was not configured. Now production requires the secret to be both present and matched; dev behavior unchanged

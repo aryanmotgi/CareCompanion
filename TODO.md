@@ -238,7 +238,7 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 - ✅ [H] PATCH can update `refillDate` on a soft-deleted medication — lines 127-131
 - ✅ [M] Whitespace-only name (`"   "`) passes `!name` check — POST line 25
 - ✅ [M] DELETE fires `triggerMatchingRun` with wrong reason `'new_medication'` — line 93
-- ⬜ [L] `refill_date` schema column is `text` not `date` type — schema.ts:91
+- ✅ [L] `refill_date` schema column is `text` not `date` type — schema.ts:91
 
 ### MEDICATIONS — Frontend (`components/MedicationsView.tsx`)
 
@@ -266,7 +266,7 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 - ⬜ [M] No retry / stale-data indicator after 429 rate limit — LabTrends.tsx:417-418
 - ✅ [L] `formatDateHeading` renders "Invalid Date" heading for malformed dateTaken — LabsView.tsx:10-17
 - ✅ [L] Exponential notation (e.g., `1.5e-3`) stripped → wrong float — lab-trends.ts:66-71
-- ⬜ [L] Chat prompt sends lab value without unit — LabTrends.tsx:297-300
+- ✅ [L] Chat prompt sends lab value without unit — LabTrends.tsx:297-300
 
 ### APPOINTMENTS — Backend + Frontend
 
@@ -298,8 +298,8 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 - ✅ [H] Soft-deleted medications included in refill calculations — refill-tracker.ts:23-33
 - ⬜ [H] `days_until_refill` is negative for overdue meds (semantic bug) — refill-tracker.ts:60
 - ⬜ [M] No rate limit on `/api/refills/status` GET endpoint
-- ⬜ [L] Ambiguous JSON shape double-fallback — RefillStatus.tsx:118
-- ⬜ [L] No "last updated" timestamp on refill card
+- ✅ [L] Ambiguous JSON shape double-fallback — RefillStatus.tsx:118
+- ✅ [L] No "last updated" timestamp on refill card
 
 ### MANUAL ENTRY & UPLOAD — Backend + Frontend
 
@@ -318,8 +318,8 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 - ⬜ [M] PDF renders as broken image in preview — CategoryUploadCard.tsx:325
 - ⬜ [M] Cancel button enabled during save — state corruption risk — CategoryUploadCard.tsx:375
 - ⬜ [M] Appointment `location` dropped from OCR extraction — CategoryUploadCard.tsx:56-60
-- ⬜ [L] Conditions not trimmed/deduped after extraction — CategoryUploadCard.tsx:44-45
-- ⬜ [L] Insurance "Unknown" provider fallback silently saved — CategoryUploadCard.tsx:124
+- ✅ [L] Conditions not trimmed/deduped after extraction — CategoryUploadCard.tsx:44-45
+- ✅ [L] Insurance "Unknown" provider fallback silently saved — CategoryUploadCard.tsx:124
 
 ### KNIP
 
@@ -357,13 +357,13 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 - ✅ [M] **ContactBlock: dead `href="#"` fallback link** — `TrialDetailPanel.tsx:73` — `<a href="#">visit the trial page directly</a>` navigates nowhere. Fixed: thread `trialUrl` prop through; render external link or plain text.
 - ⬜ [M] **TrialDetailPanel uses hardcoded light-theme colors** — `TrialDetailPanel.tsx` throughout — `text-gray-700`, `bg-gray-50`, `border-gray-200` hardcoded against the dark design system. Rest of app uses `var(--text)`, `var(--bg-card)`. Fix: replace with CSS variable equivalents.
 - ⬜ [M] **Retry on initial load does full page reload** — `TrialsTab.tsx:178` — "Retry" button calls `window.location.reload()` instead of re-running the fetch function. Fix: extract load logic into a function, call on retry without full reload.
-- ⬜ [L] **TrialsTab: cancerStage, patientAge, patientName props unused** — `TrialsTab.tsx:37` — Props accepted but never destructured or used inside the component. Fix: either wire them into display hints or remove from Props type.
+- ✅ [L] **TrialsTab: cancerStage, patientAge, patientName props unused** — `TrialsTab.tsx:37` — Props accepted but never destructured or used inside the component. Fix: either wire them into display hints or remove from Props type.
 
 ### BACKEND — SECURITY
 
 - ✅ [H] **No NCT ID validation in 4 API endpoints** — `save/route.ts`, `saved/[nctId]/route.ts`, `[nctId]/route.ts`, `[nctId]/detail/route.ts` — `nctId` accepted as any string; passed directly to CT.gov API and DB queries. Fixed: `/^NCT\d{4,}$/` regex check, returns 400 for invalid IDs.
 - ⬜ [M] **LLM prompt injection surface** — `clinicalTrialsAgent.ts:62` — CT.gov trial data embedded raw into Claude prompt via `JSON.stringify`. CT.gov is trusted, but adversarially-crafted trial records could inject instructions. Fix: add system-prompt-level instruction to ignore embedded directives; strip known injection patterns from trial text before embedding.
-- ⬜ [L] **`/api/trials/matches` category param unvalidated** — `matches/route.ts:14` — `category` query param used in where-clause condition with no enum check. Falls through to "all" for unknown values — functionally OK but leaks query structure in logs. Fix: validate against `['matched', 'close', 'all']` or ignore unknown values explicitly.
+- ✅ [L] **`/api/trials/matches` category param unvalidated** — `matches/route.ts:14` — `category` query param used in where-clause condition with no enum check. Falls through to "all" for unknown values — functionally OK but leaks query structure in logs. Fix: validate against `['matched', 'close', 'all']` or ignore unknown values explicitly.
 
 ### BACKEND — CORRECTNESS
 
@@ -382,7 +382,7 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 ### PRODUCT / UX
 
 - ⬜ [M] **Trial search only fetches 40 results from CT.gov** — `clinicalTrialsAgent.ts:37` — `pageSize: 40` may miss relevant trials for common cancers (Breast, Lung Cancer). CT.gov supports up to 1000. Tradeoff: more results = higher LLM cost + latency. Consider 100 with condition-specific pre-filtering.
-- ⬜ [L] **searchByEligibility is dead code** — `tools.ts:128` — Function exists but ignores its `age` and `sex` params; calls same endpoint as `searchTrials`. No callers since the agent was refactored to a single search. Safe to delete.
+- ✅ [L] **searchByEligibility is dead code** — `tools.ts:128` — Function exists but ignores its `age` and `sex` params; calls same endpoint as `searchTrials`. No callers since the agent was refactored to a single search. Safe to delete.
 
 ### KNIP / DEAD CODE
 
@@ -426,11 +426,11 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 
 ### LOW — Polish
 
-- ⬜ [L] **DocumentScanner `accept="image/*"` also has `capture="environment"` which breaks desktop PDF uploads** — `DocumentScanner.tsx:234` — `capture="environment"` forces camera on mobile; on desktop it's ignored. But with PDF support now added, camera capture and file-picker conflict is more pronounced on some mobile browsers. Consider removing `capture` attribute or making it conditional.
+- ✅ [L] **DocumentScanner `accept="image/*"` also has `capture="environment"` which breaks desktop PDF uploads** — `DocumentScanner.tsx:234` — `capture="environment"` forces camera on mobile; on desktop it's ignored. But with PDF support now added, camera capture and file-picker conflict is more pronounced on some mobile browsers. Consider removing `capture` attribute or making it conditional.
 
-- ⬜ [L] **`DocumentOrganizer` re-categorize menu shows all 5 categories including current one** — Should filter out the document's current category from re-categorize options.
+- ✅ [L] **`DocumentOrganizer` re-categorize menu shows all 5 categories including current one** — Should filter out the document's current category from re-categorize options.
 
-- ⬜ [L] **Grid view "Scanned" source label is hardcoded** — `DocumentOrganizer.tsx:582` — All grid cards show "Scanned" regardless of source. The documents table has no `source` column. Minor; remove or add source tracking.
+- ✅ [L] **Grid view "Scanned" source label is hardcoded** — `DocumentOrganizer.tsx:582` — All grid cards show "Scanned" regardless of source. The documents table has no `source` column. Minor; remove or add source tracking.
 
 ### KNIP FALSE POSITIVES (safe to ignore)
 - `bcryptjs` at root — used in `apps/web/src/app/api/care-group/route.ts` + 3 others; knip reports it on root but it's a transitive workspace dep.
@@ -645,11 +645,11 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 
 - ⬜ [M] **Consent page doesn't redirect already-consented users** — `app/consent/page.tsx` — Re-accepting updates `hipaaConsentAt` timestamp, creating misleading consent records.
 
-- ⬜ [L] **`claims.userId` has no DB index** — `lib/db/schema.ts` — Full table scan on every insurance page load. Add `index('claims_user_id_idx').on(table.userId)`.
+- ✅ [L] **`claims.userId` has no DB index** — `lib/db/schema.ts` — Full table scan on every insurance page load. Add `index('claims_user_id_idx').on(table.userId)`.
 
-- ⬜ [L] **`fsaHsa.accountType` unconstrained text** — Notification logic `=== 'fsa'` silently misses `'FSA'`. Enforce `z.enum(['fsa','hsa'])` at API layer.
+- ✅ [L] **`fsaHsa.accountType` unconstrained text** — Notification logic `=== 'fsa'` silently misses `'FSA'`. Enforce `z.enum(['fsa','hsa'])` at API layer.
 
-- ⬜ [L] **`logAudit` is fire-and-forget — audit failures not alerted** — `lib/audit.ts:44` — PHI access can proceed with broken audit trail. Wire logger.error to error tracking.
+- ✅ [L] **`logAudit` is fire-and-forget — audit failures not alerted** — `lib/audit.ts:44` — PHI access can proceed with broken audit trail. Wire logger.error to error tracking.
 
 ---
 
@@ -697,7 +697,7 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 
 - ⬜ [M] **Reply `authorRole` defaults to `'caregiver'` regardless of actual user role** — `community/[id]/route.ts` — Reply author labels always show "Caregiver". Same fix as above.
 
-- ⬜ [L] **Replies capped at 100 with no pagination indicator** — `community/[id]/route.ts` — Posts with >100 replies silently drop older ones. **Fix needed:** return total reply count and support offset-based pagination.
+- ✅ [L] **Replies capped at 100 with no pagination indicator** — `community/[id]/route.ts` — Posts with >100 replies silently drop older ones. **Fix needed:** return total reply count and support offset-based pagination.
 
 ### COMMUNITY FRONTEND — `app/(app)/community/`
 
@@ -741,9 +741,9 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 
 - ✅ [L] **Medications query in `buildShareData` had no limit** — `share/route.ts` — Patients with many medications produced very large share payloads. Fixed: added `.limit(50)`.
 
-- ⬜ [M] **Doctor phone numbers exposed publicly on share page** — `share/[token]/page.tsx:411-428` — `buildShareData` includes `phone: d.phone` for care team; phone numbers are rendered on the public page with no auth. **Decision needed:** either omit `phone` from public share payloads or add an explicit user acknowledgment before sharing.
+- ✅ [M] **Doctor phone numbers exposed publicly on share page** — `share/[token]/page.tsx:411-428` — `buildShareData` includes `phone: d.phone` for care team; phone numbers are rendered on the public page with no auth. **Decision needed:** either omit `phone` from public share payloads or add an explicit user acknowledgment before sharing.
 
-- ⬜ [M] **`/api/share/` middleware public path is broader than intended** — `middleware.ts:34` — All routes under `/api/share/` bypass middleware auth, relying on handler-level auth. Comment added to document this. **Consider:** rename public token route to `/api/shared/[token]` to separate it from the authenticated `/api/share` family.
+- ✅ [M] **`/api/share/` middleware public path is broader than intended** — `middleware.ts:34` — All routes under `/api/share/` bypass middleware auth, relying on handler-level auth. Comment added to document this. **Consider:** rename public token route to `/api/shared/[token]` to separate it from the authenticated `/api/share` family.
 
 ### SHARING LINKS — Frontend / Public Page
 
@@ -761,9 +761,9 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 
 - ✅ [L] **No error boundary on shared page** — Fixed: created `shared/[token]/error.tsx` with "Something went wrong" UI and retry button.
 
-- ⬜ [L] **No confirmation/disclosure before generating share link** — `components/ShareHealthCard.tsx` — Disclosure note added listing what will be shared, but no confirmation modal for misclicks. Consider a "Are you sure?" gate for first share.
+- ✅ [L] **No confirmation/disclosure before generating share link** — `components/ShareHealthCard.tsx` — Disclosure note added listing what will be shared, but no confirmation modal for misclicks. Consider a "Are you sure?" gate for first share.
 
-- ⬜ [L] **No active share links management page** — Users can see active links via `GET /api/share` (now exists) and revoke via the new endpoint, but there is no dedicated settings UI showing all active links with revoke buttons. **Fix needed:** add "Active share links" section to Settings or ShareHealthCard.
+- ✅ [L] **No active share links management page** — Users can see active links via `GET /api/share` (now exists) and revoke via the new endpoint, but there is no dedicated settings UI showing all active links with revoke buttons. **Fix needed:** add "Active share links" section to Settings or ShareHealthCard.
 
 ---
 
@@ -789,23 +789,23 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 
 ### OPEN — MEDIUM
 
-- ⬜ [M] **`/api/cron/weekly-summary` needs cursor pagination for full coverage** — `cron/weekly-summary/route.ts:49` — The new `.limit(200)` prevents OOM but users beyond the first 200 never get weekly summaries. The query has no ORDER BY so which 200 users are processed is non-deterministic. **Fix needed:** implement cursor approach like `trials-status` using a `weekly_summary_cursor` key in `cronState` table; process next 200 on each run; reset cursor to NULL_CURSOR when exhausted.
+- ✅ [M] **`/api/cron/weekly-summary` needs cursor pagination for full coverage** — `cron/weekly-summary/route.ts:49` — The new `.limit(200)` prevents OOM but users beyond the first 200 never get weekly summaries. The query has no ORDER BY so which 200 users are processed is non-deterministic. **Fix needed:** implement cursor approach like `trials-status` using a `weekly_summary_cursor` key in `cronState` table; process next 200 on each run; reset cursor to NULL_CURSOR when exhausted.
 
-- ⬜ [M] **`/api/cron/trials-match` gap-closure errors are fully silent** — `cron/trials-match/route.ts:97` — `catch { /* skip profile, continue */ }` swallows all LLM errors with no log. A misconfigured Anthropic key or model error silently skips all gap-closure for all profiles every night with no observable signal. **Fix needed:** `console.error('[trials-match] gap-closure failed', profileId, err)` minimum; ideally `logger.error`.
+- ✅ [M] **`/api/cron/trials-match` gap-closure errors are fully silent** — `cron/trials-match/route.ts:97` — `catch { /* skip profile, continue */ }` swallows all LLM errors with no log. A misconfigured Anthropic key or model error silently skips all gap-closure for all profiles every night with no observable signal. **Fix needed:** `console.error('[trials-match] gap-closure failed', profileId, err)` minimum; ideally `logger.error`.
 
-- ⬜ [M] **`/api/cron/trials-match` gap-closure `output?.resolved` not guarded** — `cron/trials-match/route.ts:82` — `for (const nctId of output.resolved)` throws if `output.resolved` is undefined (malformed LLM response). Currently caught by profile-level catch but masks the real error. **Fix needed:** `for (const nctId of output?.resolved ?? [])`.
+- ✅ [M] **`/api/cron/trials-match` gap-closure `output?.resolved` not guarded** — `cron/trials-match/route.ts:82` — `for (const nctId of output.resolved)` throws if `output.resolved` is undefined (malformed LLM response). Currently caught by profile-level catch but masks the real error. **Fix needed:** `for (const nctId of output?.resolved ?? [])`.
 
-- ⬜ [M] **`/api/cron/radar` caregiver-awareness loop is N+1** — `cron/radar/route.ts:323-350` — For each profile, queries `careTeamMembers`, then for each member queries `careTeamActivityLog` individually. With 20 profiles × N care team members this is many sequential DB calls inside a 300s function. **Fix needed:** batch-fetch activity status for all member+profile combos in one query before the per-profile loop, similar to how `allPushSubs` is pre-fetched.
+- ✅ [M] **`/api/cron/radar` caregiver-awareness loop is N+1** — `cron/radar/route.ts:323-350` — For each profile, queries `careTeamMembers`, then for each member queries `careTeamActivityLog` individually. With 20 profiles × N care team members this is many sequential DB calls inside a 300s function. **Fix needed:** batch-fetch activity status for all member+profile combos in one query before the per-profile loop, similar to how `allPushSubs` is pre-fetched.
 
-- ⬜ [M] **`/api/admin/provision-reviewer` returns generated password in response body** — `admin/provision-reviewer/route.ts:187` — `temporaryPassword: generatedPassword` is returned in the JSON response on account creation. The comment says "store securely — it cannot be recovered after this call." If this endpoint is ever called over an insecure channel or the response is logged, the password is exposed. **Consider:** log it server-side via `console.log` (goes to Vercel log only) and return `password: '[see server logs]'` in the response body.
+- ✅ [M] **`/api/admin/provision-reviewer` returns generated password in response body** — `admin/provision-reviewer/route.ts:187` — `temporaryPassword: generatedPassword` is returned in the JSON response on account creation. The comment says "store securely — it cannot be recovered after this call." If this endpoint is ever called over an insecure channel or the response is logged, the password is exposed. **Consider:** log it server-side via `console.log` (goes to Vercel log only) and return `password: '[see server logs]'` in the response body.
 
 ### OPEN — LOW / NOTES
 
-- ⬜ [L] **`/api/e2e/signin` lacks `NODE_ENV` guard** — `e2e/signin/route.ts` — Unlike `/api/test/reset` which checks `NODE_ENV !== 'production'`, the e2e endpoint has no environment gate. It relies entirely on `E2E_AUTH_SECRET` being absent in prod to disable itself. If the secret is set in prod (required for CI against prod), the endpoint is live in prod by design. The security model is documented in the file header and acceptable, but worth auditing that `E2E_AUTH_SECRET` rotation is in the ops runbook.
+- ✅ [L] **`/api/e2e/signin` lacks `NODE_ENV` guard** — `e2e/signin/route.ts` — Unlike `/api/test/reset` which checks `NODE_ENV !== 'production'`, the e2e endpoint has no environment gate. It relies entirely on `E2E_AUTH_SECRET` being absent in prod to disable itself. If the secret is set in prod (required for CI against prod), the endpoint is live in prod by design. The security model is documented in the file header and acceptable, but worth auditing that `E2E_AUTH_SECRET` rotation is in the ops runbook.
 
-- ⬜ [L] **`/api/cron/sync` is a stub but still scheduled** — `cron/sync/route.ts` — Placeholder that always returns `{synced: 0}`. Still fires daily via Vercel cron (burns a cron invocation). Safe to leave; remove from `vercel.json` crons when confirmed unused.
+- ✅ [L] **`/api/cron/sync` is a stub but still scheduled** — `cron/sync/route.ts` — Placeholder that always returns `{synced: 0}`. Still fires daily via Vercel cron (burns a cron invocation). Safe to leave; remove from `vercel.json` crons when confirmed unused.
 
-- ⬜ [L] **`/api/notifications/generate` and `/api/reminders/check` accept POST in addition to GET** — Both routes expose `POST` that calls `GET(req)` directly. Cron auth applies to both. Low risk but the POST methods exist without documentation — unclear if any caller uses them. Remove POST handlers if unused.
+- ✅ [L] **`/api/notifications/generate` and `/api/reminders/check` accept POST in addition to GET** — Both routes expose `POST` that calls `GET(req)` directly. Cron auth applies to both. Low risk but the POST methods exist without documentation — unclear if any caller uses them. Remove POST handlers if unused.
 
 ### CLEAN — No Issues Found
 
