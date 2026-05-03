@@ -816,3 +816,56 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 - `/api/demo/start` — rate-limited (10/min/IP); inserts with `isDemo=true` flag; session minted correctly with `maxAge=1h`; Cognito not required by design.
 - `/lib/cron-auth.ts` — correct: dev bypasses only when `CRON_SECRET` unset; prod requires both presence and match; returns 500 (not 401) when secret missing in prod to distinguish misconfiguration from unauthorized access.
 - `/lib/soft-delete.ts` — `purgeExpiredRecords` uses parameterized Drizzle queries; ownership enforced in `softDelete`/`restore` by userId/profileId; no user-controlled SQL.
+
+---
+
+## Auth Flow Review — 2026-05-03 (eng + design review)
+
+Branch: preview/trials-impeccable
+Reviewed: LoginForm, SignupForm, ResetRequestForm, ResetConfirmForm, RoleSelector, OnboardingShell, login/signup/reset-password pages
+
+### SHIPPED — fixes applied this session ✅
+
+- ✅ **[DX] Shared `AuthPageBackground` component** — auth page background HTML (glow orbs, dot grid, vignette) was duplicated verbatim across login/signup/reset-password pages. Extracted to `AuthPageBackground.tsx`. All 3 pages now import it.
+- ✅ **[A11Y] `tabIndex={-1}` on password show/hide buttons** — keyboard users couldn't toggle password visibility; the button was skipped in tab order. Changed to `tabIndex={0}` in LoginForm, SignupForm, ResetConfirmForm.
+- ✅ **[A11Y] Missing `role="alert"` + `aria-live` on reset form states** — ResetRequestForm and ResetConfirmForm had no ARIA announcements on error or success. Screen readers were silent. Added `role="alert" aria-live="polite"` to all error and success state divs. Added `aria-hidden="true"` to all decorative icons.
+- ✅ **[A11Y] Error moved above submit button in LoginForm** — error was rendered below trust badges, forcing scroll to see it. Moved above submit button so it's visible without scrolling.
+- ✅ **[COPY] 🤒 emoji removed from Patient role** — `RoleSelector.tsx` — using a sick-face emoji for cancer patients is inappropriate and unkind. Changed to 💙. Self-care changed from 👤 to 🌟.
+- ✅ **[COPY] Role descriptions warmed up** — "Helping someone I love" → "Caring for someone I love", "Managing my own care, with a caregiver" → "Getting support from a loved one", "Managing my own care independently" → "Managing my care on my own".
+- ✅ **[COPY] Cold page headlines replaced** — login page h1 "CareCompanion" → "Welcome back", subtitle "AI-powered cancer care for patients & caregivers" → "We're here whenever you need us." Signup h1 → "You're in good hands", subtitle → "Let's set up your account — it only takes a minute." Reset page h1 → "Forgot your password?", subtitle → "No problem — we'll send a reset link right away."
+- ✅ **[COPY] Error messages warmed up** — "Invalid email or password. Please try again." → "That doesn't look right — please check your email and password." Care Group error → "We couldn't find that Care Group — double-check the name and password." Server errors warmed throughout.
+- ✅ **[COPY] Reset success copy warmed** — ResetRequest sent state: added "Check your spam folder too." subtext. ResetConfirm success: "You're all set! Your password has been updated. Sign in to continue where you left off."
+- ✅ **[UX] Spinner added to ResetRequestForm and ResetConfirmForm** — both forms showed only "Sending…" / "Resetting…" text during loading; now show animated spinner matching LoginForm/SignupForm.
+- ✅ **[UX] Success state animations** — ResetRequestForm and ResetConfirmForm success screens snap-replaced with no animation. Added `loginFadeUp 0.4s ease both` on success card render.
+- ✅ **[UX] Social login (Apple + Google) added to SignupForm** — LoginForm had Apple/Google buttons; SignupForm had email-only. Users on the signup page had no way to discover OAuth options. Added both buttons above the form with callbackUrl → `/onboarding`.
+- ✅ **[UX] Error icon + support link parity in SignupForm** — LoginForm error showed icon + "Having trouble? Contact support" link. SignupForm had icon but no support link. Now consistent.
+- ✅ **[DX] RoleSelector inline `<style>` tag removed** — responsive grid was implemented via a `<style>` tag with a media query. Replaced with Tailwind responsive classes.
+- ✅ **[LINT] Unused `trialB` variable removed** — `clinicalTrialsAgent.test.ts:32`.
+
+### OPEN — HIGH
+
+- [ ] **[DRY] Extract FloatingInput + PasswordInput to shared component** — `LoginForm.tsx`, `SignupForm.tsx`, `ResetRequestForm.tsx`, `ResetConfirmForm.tsx` all contain identical copy-paste of `FloatingInput` and `PasswordInput`. Any change to label animation, focus ring, or placeholder must be made 4 times. Extract to `@/components/ui/FloatingInput.tsx` and `@/components/ui/PasswordInput.tsx`. **Why:** next time floating label behavior needs to change (e.g. for new form), it will be done incorrectly in at least one copy. **Start:** copy from LoginForm, replace all 4 imports, run lint.
+
+- [ ] **[DRY] Extract shared `FormError` component** — Error display (icon + red message + optional support link) is copy-pasted across all 4 forms with slight inconsistencies. Extract to `@/components/ui/FormError.tsx`. **Props:** `message: string`, `showSupport?: boolean`. **Why:** ensures ARIA attributes, icon, and support link are always present and consistent.
+
+- [ ] **[A11Y] Floating label contrast at `rgba(255,255,255,0.3)` fails WCAG AA** — inactive label is ~3:1 on `#05060F` background. WCAG 2.1 AA requires 4.5:1 for normal text. Bump to at least `rgba(255,255,255,0.5)` for inactive state. **Affects:** FloatingInput in all 4 auth forms.
+
+### OPEN — MEDIUM
+
+- [ ] **[UX] "Resend reset email" CTA on password reset sent screen** — ResetRequestForm success state has no way for the user to re-trigger the email if they didn't receive it. Add a "Resend email" button with a 60s cooldown. **Why:** cancer patients may be on mobile with unreliable email delivery; they'll hit Back and try again repeatedly otherwise, each attempt silently creating a new token.
+
+- [ ] **[UX] Role collection for social (OAuth) signup** — When a new user signs up via Apple/Google, they hit `/onboarding` without a `role` set on their user record. `OnboardingShell` derives role from `userRoleProp` (null for OAuth users) and falls back to relationship — also null for brand-new users. The Care Group screen renders with `careGroupRole = 'patient'` as a hardcoded fallback. Add a role-selection step for new OAuth users before the Care Group screen. **Blocked by:** requires a small `set-role` API endpoint or inline wizard step.
+
+- [ ] **[UX] Progress indicator on onboarding wizard** — `OnboardingShell` moves through phases (care-group → wizard → complete) with no visual indication of where the user is. For patients/caregivers who are anxious about setup time, a simple "Step 1 of 3" or progress bar reduces abandonment. **Depends on:** knowledge of total wizard steps from `OnboardingWizard`.
+
+- [ ] **[UX] `window.location.href` in OnboardingShell should be documented** — `OnboardingShell.tsx:167` uses hard navigation to `/dashboard` on completion. This is intentional (full session refresh needed post-onboarding) but looks like a bug to a future reader. Add a one-line comment: `// Full reload to flush session state after onboarding`.
+
+### OPEN — LOW
+
+- [ ] **[COPY] Signup consent checkbox copy could be warmer** — "I agree to the Terms and Privacy Policy, and I understand CareCompanion will access and process my health information to provide the service." The second clause ("access and process") sounds clinical/legal. Consider: "…and I'm comfortable with CareCompanion storing my health information to provide personalized support."
+
+- [ ] **[COPY] Care Group tab inputs lack `required` attribute** — `LoginForm.tsx:242-261` — group name and group password inputs have no `required` attribute. Client-side validation fires nothing when submitted empty; the server returns a generic credential error. Add `required` to both inputs for immediate feedback.
+
+- [ ] **[A11Y] `RoleSelector` error message needs `role="alert"`** — `RoleSelector.tsx:92` — `<p className="mt-1 text-xs text-red-400">{error}</p>` has no ARIA role. Screen readers won't announce "Please select your role to continue" when it appears. Add `role="alert"`.
+
+- [ ] **[DESIGN] Password strength labels feel clinical** — "Weak / Fair / Good / Strong" is neutral but cold for a cancer care app. Consider: "Keep going… / Almost there / Looking good / Strong ✓". Low priority — password strength is a functional concern, but the micro-copy still touches the user experience.

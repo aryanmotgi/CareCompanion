@@ -4,7 +4,25 @@ All notable changes to CareCompanion will be documented in this file.
 
 ## [0.3.1.0] - 2026-05-03
 
-Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, Community Forum + Sharing Links full security audit, Cron Jobs / Production Monitor / Admin Routes security audit, and medium/low-priority follow-up fixes across all audit sections.
+Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, Community Forum + Sharing Links full security audit, Cron Jobs / Production Monitor / Admin Routes security audit, auth UX polish, and medium/low-priority follow-up fixes across all audit sections.
+
+### Added (Auth UX)
+- **Apple and Google sign-in on the signup page** — social login buttons are now available on `/signup` (matching `/login`), so users can create an account with Apple or Google without navigating to the login page first
+- **Shared `AuthPageBackground` component** — all four auth pages (`/login`, `/signup`, `/reset-password`, `/reset-password/confirm`) now use a single shared background component; eliminates ~60 lines of duplicated layout markup
+
+### Changed (Auth UX)
+- **Warmer page headlines and copy across auth flow** — "CareCompanion" → "Welcome back" on login, "Create your account" → "You're in good hands" on signup, "Reset Password" → "Forgot your password?" on reset, "Set New Password" → "Set your new password" on confirm; subtitles updated throughout
+- **Warmer error messages** — "Invalid email or password" → "That doesn't look right — please check your email and password"; "Invalid Care Group name or password" → "We couldn't find that Care Group — double-check the name and password"; server error messages made human and specific
+- **Role selector updated for cancer patients** — removed 🤒 sick-face emoji from the Patient role (replaced with 💙); 👤 self-care replaced with 🌟; role descriptions reworded to be warmer ("Caring for someone I love", "Getting support from a loved one", "Managing my care on my own")
+- **Error appears above submit button** — `LoginForm` previously showed errors below trust badges, requiring scroll to see; error now displays immediately before the submit button
+- **Password reset success screens warmed** — "Your password has been reset successfully" → "You're all set! Your password has been updated. Sign in to continue where you left off."; reset-sent screen adds "Can't find it? Check your spam folder too."
+- **`xs` breakpoint added to Tailwind** — `xs: 480px` registered in `tailwind.config.ts`; unblocks the role selector and `BottomTabBar` responsive layout (both used `xs:` classes that were silently dropped before this fix)
+
+### Fixed (Auth UX)
+- **Password show/hide button keyboard-inaccessible** — `tabIndex={-1}` on the show/hide toggle in all password inputs meant keyboard users could not reveal their password; changed to `tabIndex={0}` in `LoginForm`, `SignupForm`, and `ResetConfirmForm`
+- **`role="alert"` + `aria-live="polite"` conflict** — `role="alert"` implicitly sets `aria-live="assertive"`; the redundant `aria-live="polite"` was contradictory and could confuse assistive technology; removed from all four auth form error divs
+- **Social login `callbackUrl` not sanitized** — Apple/Google `signIn()` calls in `LoginForm` passed the raw `callbackUrl` query param; now uses the same `safeCallback` guard as the credentials flow
+- **`reset-password/confirm` page not using `AuthPageBackground`** — the confirm page retained ~15 lines of inline background markup; migrated to the shared component
 
 ### Added (UX)
 - **Active share links management** — Settings page now shows all active share links with per-link revoke buttons; no more need to hunt for links created earlier
