@@ -37,7 +37,7 @@ beforeEach(() => vi.clearAllMocks())
 describe('GET /api/care-group/[id]/status', () => {
   it('returns 401 when unauthenticated', async () => {
     const { auth } = await import('@/lib/auth')
-    vi.mocked(auth).mockResolvedValueOnce(null)
+    vi.mocked(auth).mockResolvedValueOnce(null as never)
 
     const { GET } = await import('../[id]/status/route')
     const res = await GET(

@@ -62,21 +62,21 @@ describe('POST /api/onboarding/complete', () => {
     })
     const { POST } = await import('../complete/route')
     const res = await POST(makeRequest({ careProfileId: 'cp-1' }))
-    expect(res.status).toBe(403)
+    expect(res!.status).toBe(403)
   })
 
   it('returns 401 when unauthenticated', async () => {
     const { auth } = await import('@/lib/auth')
-    vi.mocked(auth).mockResolvedValueOnce(null)
+    vi.mocked(auth).mockResolvedValueOnce(null as never)
     const { POST } = await import('../complete/route')
     const res = await POST(makeRequest({ careProfileId: 'cp-1' }))
-    expect(res.status).toBe(401)
+    expect(res!.status).toBe(401)
   })
 
   it('returns 400 when careProfileId is missing', async () => {
     const { POST } = await import('../complete/route')
     const res = await POST(makeRequest({}))
-    expect(res.status).toBe(400)
+    expect(res!.status).toBe(400)
   })
 
   it('returns 404 when profile does not belong to user (IDOR guard)', async () => {
@@ -93,8 +93,8 @@ describe('POST /api/onboarding/complete', () => {
 
     const { POST } = await import('../complete/route')
     const res = await POST(makeRequest({ careProfileId: 'cp-owned-by-other-user' }))
-    expect(res.status).toBe(404)
-    const json = await res.json()
+    expect(res!.status).toBe(404)
+    const json = await res!.json()
     expect(json.error).toBe('Not found')
   })
 
@@ -117,8 +117,8 @@ describe('POST /api/onboarding/complete', () => {
 
     const { POST } = await import('../complete/route')
     const res = await POST(makeRequest({ careProfileId: 'cp-1' }))
-    expect(res.status).toBe(200)
-    const json = await res.json()
+    expect(res!.status).toBe(200)
+    const json = await res!.json()
     expect(json.success).toBe(true)
   })
 })
