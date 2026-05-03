@@ -10,6 +10,7 @@ import { ProfileCompleteness } from './ProfileCompleteness'
 import { MorningSummaryCard } from './MorningSummaryCard'
 import { AppealGenerator } from './AppealGenerator'
 import { CheckinCard } from './CheckinCard'
+import GuidedTour from './GuidedTour'
 import { parseLabValue } from '@/lib/lab-parsing'
 import type { Medication, Appointment, LabResult, Claim } from '@/lib/types'
 
@@ -43,6 +44,24 @@ const PHASE_LABELS: Record<string, { label: string; color: string }> = {
   remission: { label: 'In Remission', color: 'text-emerald-400 bg-emerald-500/10' },
   unsure: { label: 'Evaluating', color: 'text-violet-400 bg-violet-500/10' },
 }
+
+const TOUR_STEPS = [
+  {
+    target: 'tab-chat',
+    title: 'Your care assistant',
+    body: "This is your care assistant. Ask anything — medications, appointments, what to expect next. I'll remember everything.",
+  },
+  {
+    target: 'tab-care',
+    title: 'Everything about care',
+    body: "Everything about [patient name] lives here — medications, appointments, lab results, and your care team.",
+  },
+  {
+    target: 'emergency-card',
+    title: 'Emergency card',
+    body: "Your emergency card is always ready. Share it with family or save it to your phone — it works without a login.",
+  },
+]
 
 export function DashboardView({
   patientName,
@@ -415,6 +434,7 @@ export function DashboardView({
 
   return (
     <>
+    <GuidedTour steps={TOUR_STEPS} patientName={patientName} />
     <div className="px-4 sm:px-5 py-5 sm:py-6">
       <MorningSummaryCard
         medicationCount={todayMedCount}
