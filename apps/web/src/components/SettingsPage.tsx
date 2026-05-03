@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useToast } from './ToastProvider'
 import { useCsrfToken } from './CsrfProvider'
 import { ThemeToggle } from './ThemeToggle'
@@ -85,6 +85,33 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
   const [integrations, setIntegrations] = useState<ConnectedApp[]>(initialIntegrations)
   const [disconnecting, setDisconnecting] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
+
+  interface ShareLink { token: string; type: string; title: string; expiresAt: string; createdAt: string }
+  const [shareLinks, setShareLinks] = useState<ShareLink[]>([])
+  const [revokingToken, setRevokingToken] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/share')
+      .then((r) => r.ok ? r.json() : null)
+      .then((json) => { if (json?.data?.links) setShareLinks(json.data.links) })
+      .catch(() => {})
+  }, [])
+
+  const handleRevokeLink = async (token: string) => {
+    setRevokingToken(token)
+    try {
+      const res = await fetch(`/api/share/${token}/revoke`, {
+        method: 'POST',
+        headers: { 'x-csrf-token': csrfToken },
+      })
+      if (res.ok) setShareLinks((prev) => prev.filter((l) => l.token !== token))
+      else showToast('Failed to revoke link', 'error')
+    } catch {
+      showToast('Failed to revoke link', 'error')
+    } finally {
+      setRevokingToken(null)
+    }
+  }
 
   const isTestMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true'
   const showTestTools = isTestMode
@@ -512,6 +539,29 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
           </div>
         </div>
       )}
+
+      <SectionLabel>Active Share Links</SectionLabel>
+      <SettingsGroup>
+        {shareLinks.length === 0 ? (
+          <div className="px-4 py-3.5 text-sm text-[#64748b]">No active share links</div>
+        ) : shareLinks.map((link) => (
+          <div key={link.token} className="px-4 py-3.5 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm text-[#e2e8f0] truncate">{link.title || link.type}</p>
+              <p className="text-xs text-[#64748b] mt-0.5">
+                Expires {new Date(link.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+            </div>
+            <button
+              onClick={() => handleRevokeLink(link.token)}
+              disabled={revokingToken === link.token}
+              className="flex-shrink-0 text-xs text-[#ef4444] font-medium hover:opacity-70 disabled:opacity-40 transition-opacity"
+            >
+              {revokingToken === link.token ? 'Revoking…' : 'Revoke'}
+            </button>
+          </div>
+        ))}
+      </SettingsGroup>
 
       <SectionLabel>About</SectionLabel>
       <SettingsGroup>
