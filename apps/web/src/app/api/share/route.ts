@@ -52,7 +52,7 @@ async function buildShareData(type: string, profileId: string) {
         },
         medications: meds.map(m => ({ name: m.name, dose: m.dose, frequency: m.frequency, prescribingDoctor: m.prescribingDoctor, notes: m.notes })),
         appointments: appts.map(a => ({ doctorName: a.doctorName, specialty: a.specialty, dateTime: a.dateTime, location: a.location, purpose: a.purpose })),
-        care_team: docs.map(d => ({ name: d.name, specialty: d.specialty, phone: d.phone })),
+        care_team: docs.map(d => ({ name: d.name, specialty: d.specialty })),
       };
     }
   }

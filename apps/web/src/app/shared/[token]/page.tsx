@@ -11,7 +11,7 @@ interface SharedData {
   medications?: { name: string; dose?: string | null; frequency?: string | null; prescribingDoctor?: string | null; notes?: string | null }[];
   lab_results?: { name: string; value?: string | null; unit?: string | null; referenceRange?: string | null; date?: string | null; status?: string | null }[];
   appointments?: { doctorName?: string | null; specialty?: string | null; dateTime?: string | null; location?: string | null; purpose?: string | null }[];
-  care_team?: { name: string; specialty?: string | null; phone?: string | null }[];
+  care_team?: { name: string; specialty?: string | null }[];
 }
 
 interface WeeklyData {
@@ -457,11 +457,6 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
                     <p className="text-sm text-white">{member.name}</p>
                     {member.specialty && <p className="text-xs text-white/40">{member.specialty}</p>}
                   </div>
-                  {member.phone && (
-                    <a href={`tel:${member.phone}`} className="text-xs text-[#A78BFA] hover:underline">
-                      {member.phone}
-                    </a>
-                  )}
                 </div>
               ))}
             </div>

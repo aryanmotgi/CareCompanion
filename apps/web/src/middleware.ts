@@ -31,8 +31,9 @@ const PUBLIC_PATHS = [
   '/api/cron',               // Cron jobs (protected by verifyCronRequest internally)
   '/api/notifications/generate', // Notification cron
   '/api/reminders/check',    // Reminder cron
-  // Public: token-based access — auth is enforced at handler level for /weekly
-  '/api/share/',             // Public share links with token (e.g. /api/share/abc123) — POST /api/share itself is protected
+  // Public: token-based GET /api/share/[token] has no auth (rate-limited).
+  // POST /api/share (create) and GET /api/share (list) enforce auth at handler level.
+  '/api/share',              // Covers /api/share/[token], /api/share/weekly, and the base route
   '/api/demo/start',         // Demo session creation — no auth needed to start a demo
   '/api/feedback',           // Bug report submissions — works without auth
   // '/api/debug-auth' intentionally omitted — dev-only, requires NODE_ENV check internally

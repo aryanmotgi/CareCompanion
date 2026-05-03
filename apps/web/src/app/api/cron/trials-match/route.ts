@@ -83,7 +83,7 @@ export async function GET(req: Request) {
         prompt: `Given this patient profile:\n${JSON.stringify(profile, null, 2)}\n\nCheck which trials now have all gaps resolved:\n${gapCheckPrompt}\n\nReturn only NCT IDs where the patient NOW meets all previously blocking criteria.`,
       })
 
-      for (const nctId of output.resolved) {
+      for (const nctId of output?.resolved ?? []) {
         const trial = trials.find(t => t.nctId === nctId)
         if (!trial) continue
 
@@ -102,7 +102,7 @@ export async function GET(req: Request) {
           })
         }
       }
-    } catch { /* skip profile, continue */ }
+    } catch (err) { console.error('[trials-match] gap-closure failed', profileId, err); }
   }
 
   return NextResponse.json({ ok: true, processed, elapsed: Date.now() - start })

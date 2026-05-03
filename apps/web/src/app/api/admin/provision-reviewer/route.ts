@@ -177,13 +177,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to seed reviewer data' }, { status: 500 });
   }
 
-  console.log(`[provision-reviewer] Created reviewer account: ${REVIEWER_EMAIL} (${newUser.id})`);
+  console.log(`[provision-reviewer] Created reviewer account: ${REVIEWER_EMAIL} (${newUser.id}) password: ${generatedPassword}`);
   return NextResponse.json({
     success: true,
     status: 'created',
     email: REVIEWER_EMAIL,
     userId: newUser.id,
-    temporaryPassword: generatedPassword, // Only returned once at creation — store securely
+    temporaryPassword: '[see server logs]',
   });
 }
 
