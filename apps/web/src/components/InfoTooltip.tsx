@@ -69,9 +69,9 @@ export function InfoTooltip({ content, patientName }: InfoTooltipProps) {
         ref={buttonRef}
         onClick={() => setOpen((v) => !v)}
         aria-label="Info"
-        className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#E5E7EB] text-xs font-bold text-[#6B7280] hover:bg-[#D1D5DB]"
+        style={{ width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
       >
-        ?
+        <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#E5E7EB', color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, lineHeight: 1 }}>?</span>
       </button>
 
       {open &&

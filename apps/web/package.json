@@ -24,6 +24,7 @@
     "@aws-sdk/client-rds-data": "^3.1030.0",
     "@carecompanion/types": "workspace:*",
     "@carecompanion/utils": "workspace:*",
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@sentry/nextjs": "^10.50.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.37.0",

@@ -303,7 +303,7 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
             {/* Scan button */}
             <button
               onClick={() => setShowScanner(true)}
-              className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors flex-shrink-0"
+              className="flex items-center justify-center w-11 h-11 text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors flex-shrink-0"
               title="Upload document to chat"
               aria-label="Upload document to chat"
             >
@@ -313,11 +313,11 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
               </svg>
             </button>
             {/* Voice input button — wrapper always rendered to prevent layout shift */}
-            <div style={{ width: '2rem', visibility: (mounted && voiceSupported) ? 'visible' : 'hidden', flexShrink: 0 }}>
+            <div style={{ width: '2.75rem', visibility: (mounted && voiceSupported) ? 'visible' : 'hidden', flexShrink: 0 }}>
               {mounted && voiceSupported && (
                 <button
                   onClick={toggleListening}
-                  className={`p-1.5 transition-colors ${
+                  className={`flex items-center justify-center w-11 h-11 transition-colors ${
                     isListening
                       ? 'text-red-400 animate-pulse'
                       : 'text-[var(--text-secondary)] hover:text-[var(--text)]'
@@ -343,7 +343,7 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
             {isStreaming ? (
               <button
                 onClick={() => stop()}
-                className="w-8 h-8 rounded-full bg-white/[0.08] flex items-center justify-center text-[var(--text-secondary)] hover:bg-white/[0.12] transition-colors flex-shrink-0"
+                className="w-11 h-11 rounded-full bg-white/[0.08] flex items-center justify-center text-[var(--text-secondary)] hover:bg-white/[0.12] transition-colors flex-shrink-0"
                 aria-label="Stop response"
                 title="Stop response"
               >
@@ -355,7 +355,7 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
               <button
                 onClick={() => handleSend()}
                 disabled={!input.trim() || isLoading}
-                className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-white disabled:opacity-40 transition-opacity animate-press flex-shrink-0"
+                className="w-11 h-11 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-white disabled:opacity-40 transition-opacity animate-press flex-shrink-0"
                 aria-label="Send message"
                 title="Send message"
               >

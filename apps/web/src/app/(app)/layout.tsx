@@ -10,7 +10,6 @@ import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { TestModeBanner } from '@/components/TestModeBanner'
 import { BugReportButton } from '@/components/BugReportButton'
 import { ChecklistVersionNotice } from '@/components/ChecklistVersionNotice'
-import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
 import { CsrfProvider } from '@/components/CsrfProvider'
 import { SessionProvider } from '@/components/providers/SessionProvider'
 import { getActiveProfile, getAllProfiles } from '@/lib/active-profile'
@@ -121,7 +120,6 @@ export default async function AppLayout({
       <TestModeBanner />
       <BugReportButton />
       <ChecklistVersionNotice />
-      <ServiceWorkerRegistration />
       <AppShell
         patientName={profile?.patientName || 'your loved one'}
         patientAge={profile?.patientAge ?? undefined}
