@@ -138,9 +138,8 @@ export function BottomTabBar() {
               href={tab.href}
               onClick={() => handlePress(tab.href)}
               aria-current={active ? 'page' : undefined}
-              {...(tab.label === 'Care' ? { 'data-tour': 'tab-care' } : {})}
-              {...(tab.label === 'Scan' ? { 'data-tour': 'tab-scan' } : {})}
-              {...(tab.label === 'Settings' ? { 'data-tour': 'tab-settings' } : {})}
+              {...(tab.href === "/chat" ? { "data-tour": "tab-chat" } : {})}
+              {...(tab.href === "/care-hub" ? { "data-tour": "tab-care" } : {})}
               style={{
                 display: 'flex',
                 flexDirection: 'column',

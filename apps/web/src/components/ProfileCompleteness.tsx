@@ -348,6 +348,7 @@ export function ProfileCompleteness({
                 href={item.href}
                 className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.07] hover:border-[var(--lavender)]/20 transition-all animate-press group"
                 style={{ animationDelay: `${i * 50}ms` }}
+                data-tour={item.key === 'emergency_contact' ? 'emergency-card' : undefined}
               >
                 <div className="w-8 h-8 rounded-lg bg-[var(--lavender)]/10 flex items-center justify-center text-[var(--lavender)] flex-shrink-0 group-hover:bg-[var(--lavender)]/15 transition-colors">
                   {item.icon}
