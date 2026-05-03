@@ -2,9 +2,24 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
-## [0.3.1.0] - 2026-05-02
+## [0.3.1.0] - 2026-05-03
 
-Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, Community Forum + Sharing Links full security audit, Cron Jobs / Production Monitor / Admin Routes security audit, auth UX polish, Clinical Trials full UX+a11y+security pass, and medium/low-priority follow-up fixes across all audit sections.
+Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, Community Forum + Sharing Links full security audit, Cron Jobs / Production Monitor / Admin Routes security audit, auth UX polish, Clinical Trials full UX+a11y+security pass, and full onboarding flow UX+a11y+bug-fix pass.
+
+### Added (Onboarding)
+- **Step transition animations** — wizard steps now fade in with a gentle upward slide (250ms) instead of hard-cutting; every advance feels intentional
+- **Saving spinner on wizard buttons** — all wizard primary action buttons show an animated spinner while saving; eliminates double-tap on mobile
+- **Priority limit feedback** — when 3 priorities are selected in the wizard, remaining items show "(limit reached)" inline instead of silently not responding
+- **Spinner fallback in OnboardingShell** — the blank-screen edge case is replaced with a loading spinner for the rare race where the phase state doesn't match any render condition
+
+### Changed (Onboarding)
+- **Social sign-up (Google/Apple) now requires role selection** — clicking "Continue with Apple/Google" without choosing a role shows an inline error; role is passed via `?role=` to the onboarding page and saved to DB; previously social users always landed in the PatientWizard regardless of intent
+- **Wizard save errors surface to users** — `patchProfile()` calls in PatientWizard and CaregiverWizard now check for failure and show a styled `role="alert"` error message; previously a network failure silently dropped data and continued
+- **Welcome banner now fires** — `OnboardingShell` sets `onboarding_just_completed` in localStorage before redirecting to `/dashboard`; the welcome banner with personalized action cards was never shown to newly onboarded users
+- **Warm, human copy throughout** — "About your patient" → "About the person you're caring for", "Waiting for your patient to join…" → "Waiting for them to join — this may take a moment.", "Stay informed" → "You're almost set up", "Maybe later" buttons use consistent phrasing, all loading states show context-appropriate copy ("Creating your group…", "Joining…")
+- **Care Group form accessibility** — group name and password inputs now have proper `id`/`htmlFor` pairs; error messages use `role="alert"`; back button has `aria-label="Go back"`; password field labels distinguish create vs join context
+- **Caregiver wizard labels** — select elements for relationship, cancer type, stage, and treatment phase now have `id` attributes with matching `htmlFor`; select placeholder text reads "Select if known" instead of "Select..."
+- **Role selector copy** — "Getting support from a loved one" → "Managing my care with loved ones" (more empowering); "Managing my care on my own" → "Managing my own care journey"
 
 ### Added (Clinical Trials)
 - **Animated loading skeleton** — initial page load shows a skeleton matching the real card layout instead of a plain "Loading…" string; eliminates layout shift

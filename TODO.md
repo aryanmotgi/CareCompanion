@@ -111,6 +111,50 @@ Date: 2026-05-02
 
 ---
 
+## Chat AI Flow Review — 2026-05-02
+
+### Fixed ✅ (implemented this session)
+
+- [x] **[BUG/DESIGN] TypingIndicator was light-mode** — `TypingIndicator.tsx` — `bg-slate-100` + `bg-slate-400` dots rendered as a white/gray box inside the dark app — completely broken. Migrated to match AI message bubble: `bg-white/[0.06] border border-white/[0.08]` container, `bg-[#A78BFA]` dots, AI avatar added for layout consistency. Added `role="status"` + `aria-label="CareCompanion is thinking"`.
+- [x] **[SECURITY] CSRF validation missing on POST /api/chat** — `app/api/chat/route.ts` — Client sent `x-csrf-token` header via `DefaultChatTransport` but server never called `validateCsrf()`. Missed in commit d7ef525. Added `validateCsrf(req)` after user rate limit check.
+- [x] **[BUG] Model slug used hyphens for version** — `app/api/chat/route.ts:54,219` — `claude-sonnet-4-6` → `claude-sonnet-4.6` (SDK requires dot notation).
+- [x] **[UX/BUG] New Chat only cleared client state** — `ChatInterface.tsx:handleNewChat` — `setMessages([])` cleared the UI but DB messages persisted; refreshing brought them all back. Added two-click confirmation (turns red, "Confirm?", auto-cancels after 3s) + calls `DELETE /api/chat/history` on confirm.
+- [x] **[COPY] Empty state heading generic** — `ChatInterface.tsx:206` — "Hi, how can I help?" is wrong for cancer patients. Changed to "Hi, I'm here for you." with subtext "Ask me anything — managing side effects, understanding your labs, or preparing for your next appointment."
+- [x] **[COPY] Error banner was cold/clinical** — `ChatInterface.tsx` — "Something went wrong." + "Retry" is too blunt for vulnerable users. Changed to "Having trouble connecting. You can try again below." + "Try again". Added `role="alert"` + `aria-live="assertive"`.
+- [x] **[A11Y] Messages region had no ARIA role** — `ChatInterface.tsx:184` — Scrollable container had no `role="log"`, `aria-label`, or `aria-live`. Added `role="log" aria-label="Conversation" aria-live="polite"`.
+- [x] **[A11Y] Chat input had no accessible label** — `ChatInterface.tsx:313` — Input used placeholder only. Added `aria-label="Message CareCompanion AI"`. Updated placeholder to warmer copy.
+- [x] **[A11Y] Send/stop/voice buttons relied on title only** — `ChatInterface.tsx` — `title` is tooltip-only. Added `aria-label` to send ("Send message"), stop ("Stop response"), voice ("Start/Stop voice input").
+- [x] **[UX/DESIGN] Copy button added to AI responses** — `MessageBubble.tsx` — No way to copy medical info. Added clipboard copy button (hover-visible, 2s "Copied!" confirmation).
+- [x] **[CODE] AI SDK v6 tool part type** — `MessageBubble.tsx:80,105` — `'tool-invocation'` removed in v6. Updated filter to `type.startsWith('tool-')`. Tool pending copy: "Working on it…" → "Looking up your information…" with `role="status"`.
+
+### Deferred (TODO)
+
+- [ ] **[UX] No message history pagination** — `chat/page.tsx` always loads last 50 messages. History API already supports `before` cursor pagination but nothing uses it. Long-term patients lose older messages.
+  - **Why:** Patients in extended treatment accumulate months of conversation context that can't be accessed.
+  - **Fix:** Add "Load earlier messages" button at scroll top calling `GET /api/chat/history?before={timestamp}&limit=20`.
+  - **Where to start:** `ChatInterface.tsx` — add `loadMore` state + button + fetch.
+
+- [ ] **[MISSING] Export conversation as PDF** — No way to share AI conversation with oncologist. Cancer patients want to bring AI-prepared summaries to appointments.
+  - **Why:** High-value touchpoint — AI-assisted appointment prep is a core use case.
+  - **Effort:** Human ~3 days / CC ~20 min. Use `@react-pdf/renderer` or server-side Puppeteer.
+  - **Where to start:** Add "Export" button in header → `GET /api/chat/export?format=pdf`.
+
+- [ ] **[A11Y] No skip navigation in chat** — Keyboard users must tab through header buttons before reaching the input. WCAG 2.4.1 Level A.
+  - **Fix:** Add `<a href="#chat-input" className="sr-only focus:not-sr-only">Skip to message input</a>` at top of `ChatInterface`. Add `id="chat-input"` to input.
+  - **Where to start:** `ChatInterface.tsx` — two lines.
+
+- [ ] **[UX] Markdown doesn't handle multi-line code blocks** — `MessageBubble.tsx:renderMarkdown` — Only handles single-line fences. Multi-line blocks (lab tables, JSON) render as garbled text with backticks.
+  - **Fix:** Rewrite `renderMarkdown` with block-level state machine, or swap in `react-markdown`.
+  - **Where to start:** `MessageBubble.tsx:renderMarkdown`.
+
+- [ ] **[UX] Guest chat page a11y parity** — Guest chat (`/chat/guest`) has same gaps as main chat before today's fixes (no `role="log"`, no input `aria-label`, cold error copy).
+  - **Where to start:** `apps/web/src/app/chat/guest/page.tsx` — apply same pattern as `ChatInterface.tsx` fixes above.
+
+- [ ] **[A11Y] Color contrast on starter prompt icons needs audit** — Icon colors (`#A78BFA`, `#34D399`, `#60A5FA`, `#F472B6`) at 20% opacity on dark card may not meet WCAG AA at small sizes.
+  - **Where to start:** Run axe DevTools on `/chat` empty state, fix by bumping icon opacity to 40%+ if failing.
+
+---
+
 ## Integrations Audit — 2026-05-02 (all fixed ✅)
 
 Full audit: Google Calendar OAuth, HealthKit sync, connected apps management, disconnect/revoke, token refresh, error handling.
@@ -1046,3 +1090,102 @@ Reviewed: LoginForm, SignupForm, ResetRequestForm, ResetConfirmForm, RoleSelecto
 - [ ] **[MISSING FEATURE] No medication taken/skipped logging from Care tab** — `CareView.tsx` meds tab shows meds but has no "Mark taken" / "Mark skipped" action.
   - **Why:** The daily check-in tracks mood/pain/energy but not medication adherence directly from the care tab. Users wanting to log a med should be able to do it without going through the AI chat.
   - **Where to start:** Add a "Logged" button to each med card's expanded content that writes to `reminderLogs`. Show today's log status as a pill badge on the med card header.
+
+---
+
+## Onboarding Flow Review — 2026-05-03 (preview/trials-impeccable)
+
+Reviewer: /plan-eng-review + /plan-design-review
+
+### Fixed ✅ (implemented this session)
+
+- [x] **[BUG/P1] Social auth (Google/Apple) bypass role selection** — `SignupForm.tsx` — Clicking "Continue with Apple/Google" before selecting a role silently created users with `role: null` in DB. `OnboardingWizard` then always routed them to `PatientWizard` regardless of caregiver intent. Fixed: added role validation before `signIn()` call; social auth now requires role selection first and passes `?role=caregiver|patient|self` in callbackUrl. `OnboardingPage` (server component) writes the role to DB on first onboarding load.
+  - **Files:** `SignupForm.tsx`, `onboarding/page.tsx`
+
+- [x] **[BUG/P1] `patchProfile()` swallowed errors silently** — `PatientWizard.tsx`, `CaregiverWizard.tsx` — Both wizards called `patchProfile()` (a fire-and-forget fetch with no `try/catch`). If the save failed (network error, 5xx), users continued through the wizard unaware, completing onboarding with no data saved. Fixed: `patchProfile` now returns `boolean`; each advance checks the result and shows a styled error message if it fails.
+  - **Files:** `PatientWizard.tsx`, `CaregiverWizard.tsx`
+
+- [x] **[BUG/P2] `OnboardingWelcomeBanner` never showed** — `OnboardingShell.tsx` — Banner reads `onboarding_just_completed` from localStorage but nothing ever wrote it. Newly onboarded users never saw the welcome banner with action cards. Fixed: `OnboardingShell` sets `onboarding_just_completed = 'true'` and clears `welcome_banner_dismissed` before redirecting to `/dashboard`. Storage errors in private browsing are caught silently.
+  - **File:** `OnboardingShell.tsx`
+
+- [x] **[UX/P2] `OnboardingShell` null-screen edge case** — `OnboardingShell.tsx` — Final `return null` at the bottom of the component rendered a blank screen if none of the phase conditions matched (e.g., `phase=wizard`, `wizardProfileId=null` after profile creation race). Fixed: replaced with a spinner loading state.
+  - **File:** `OnboardingShell.tsx`
+
+- [x] **[A11Y/P2] `CareGroupScreen` inputs had no id/htmlFor pairing** — `CareGroupScreen.tsx` — Both group name and group password inputs were visually labelled but labels had no `htmlFor` and inputs had no `id`. Screen readers couldn't associate labels with inputs. Fixed: added `id="care-group-name"` / `id="care-group-password"` and matching `htmlFor`. Also added `autoComplete` attributes.
+  - **File:** `CareGroupScreen.tsx`
+
+- [x] **[DESIGN/P2] `CareGroupScreen` error display was unstyled** — `CareGroupScreen.tsx` — Errors showed as bare `<p style={{color:'#ef4444'}}>` — mismatched with the red error box pattern used in `LoginForm` and `SignupForm`. Fixed: replaced with proper `role="alert"` error box (icon + message).
+  - **File:** `CareGroupScreen.tsx`
+
+- [x] **[DESIGN/P2] No step transition animation in wizard** — `PatientWizard.tsx`, `CaregiverWizard.tsx` — Each wizard step change was an instant hard-cut. For a premium app serving cancer patients, this felt jarring. Fixed: added `wizardStepIn` CSS keyframe (`opacity 0→1, translateY 10px→0, 250ms ease`) keyed by step number so animation re-fires on every advance.
+  - **Files:** `PatientWizard.tsx`, `CaregiverWizard.tsx`
+
+- [x] **[UX/P2] Wizard advance buttons showed no loading feedback** — Both wizards had buttons that said "Saving..." on load but had no spinner. Easy to double-tap on mobile. Fixed: all primary wizard action buttons now show an animated spinner + context-appropriate copy ("Saving…") while disabled.
+  - **Files:** `PatientWizard.tsx`, `CaregiverWizard.tsx`
+
+- [x] **[COPY/P2] Clinical/cold copy throughout wizard** — Multiple files — Several headings and messages used language inappropriate for cancer patients and caregivers. Fixed:
+  - `CaregiverWizard` step 1: "About your patient" → "About the person you're caring for" (a caregiver may be a spouse, not a clinical caregiver)
+  - `CaregiverWizard` step 1: patient name label "Patient name *" → "Their name *"  
+  - `CaregiverWizard` step 2: challenge framing → "What's weighing on you most right now?"
+  - `CaregiverWizard` step 3: "Ask your patient to connect" → "Ask {name} to connect" (uses actual name)
+  - `CaregiverWizard` step 4: "About the diagnosis" → richer subtext with "You can always edit it later"
+  - `CaregiverWizard` step 5: "Your priorities" → "What matters most to you?"
+  - `CaregiverWizard` notifications: "Stay informed" → "You're almost set up" with warmer description
+  - `PatientWizard` notifications: "Stay on top of your care" → "You're almost there" with warmer copy
+  - `CareGroupScreen`: "Set up your Care Group 👨‍👩‍👧" → "Your Care Group 💜"
+  - `CareGroupScreen`: "Waiting for your patient to join..." → "Waiting for them to join — this may take a moment."
+  - `CareGroupScreen`: "Create a new Care Group" → "Create a Care Group" (cleaner)
+  - `CareGroupScreen`: "Skip for now" → "Skip for now — I'll set this up later"
+  - `CareGroupScreen` loading: "Loading..." → "Creating your group…" / "Joining…" (context-specific)
+  - `RoleSelector` descriptions: "Getting support from a loved one" → "Managing my care with loved ones" (more empowering for patients)
+  - **Files:** `CaregiverWizard.tsx`, `PatientWizard.tsx`, `CareGroupScreen.tsx`, `RoleSelector.tsx`
+
+- [x] **[A11Y/P2] Wizard `select` elements had no `id`/`label` pairing** — `CaregiverWizard.tsx` — Native `<select>` elements for relationship, cancer type, stage, and treatment phase had visual labels but no `id` attributes, so `htmlFor` on the labels had nothing to point to. Fixed: added `id="cg-relationship"`, `id="cg-cancer-type"`, `id="cg-stage"`, `id="cg-phase"` with matching `htmlFor`.
+  - **File:** `CaregiverWizard.tsx`
+
+- [x] **[UX/P3] Priority selection: no visual feedback when 3-item limit hit** — `PatientWizard.tsx`, `CaregiverWizard.tsx` — After selecting 3 priorities, remaining items just didn't respond to clicks with no explanation. Fixed: unselectable items become 50% opacity and show "(limit reached)" inline label.
+  - **Files:** `PatientWizard.tsx`, `CaregiverWizard.tsx`
+
+- [x] **[A11Y/P3] `CareGroupScreen` "Back" button had no accessible label** — `CareGroupScreen.tsx` — "← Back" was plain text, not a semantic button with `aria-label`. Replaced with chevron icon + "Back" text and proper `aria-label="Go back"`.
+  - **File:** `CareGroupScreen.tsx`
+
+### Open (TODO)
+
+- [ ] **[DRY/P3] `FloatingInput` and `PasswordInput` duplicated in `LoginForm.tsx` and `SignupForm.tsx`** — Byte-for-byte identical (95+ lines each). Extract to `@/components/ui/FloatingInput.tsx` and `@/components/ui/PasswordInput.tsx`.
+  - **Why:** Any change to input behavior (focus ring, animation, error state) must be made twice. Already diverged: `SignupForm` has `showStrength` prop that `LoginForm` doesn't know about.
+  - **Where to start:** Create `apps/web/src/components/ui/FloatingInput.tsx`; import in both forms.
+
+- [ ] **[BUG/P2] `nextAppointment` in PatientWizard confirm + manual steps collected but not saved** — `PatientWizard.tsx:140-152` — Confirm screen "Next appointment" field and manual entry date input are shown to patients but `careProfiles` has no `nextAppointment` column. Both are silently dropped.
+  - **Why:** Patients entering this during onboarding reasonably expect it to appear in their care timeline.
+  - **Fix:** Add `nextAppointmentDate` timestamptz to `careProfiles`; add to PATCH allowlist; save in both wizard paths.
+
+- [ ] **[MISSING FEATURE/P2] No onboarding progress persistence** — If a user refreshes mid-wizard, they restart from step 1. For a cancer patient who may be interrupted or low-energy, losing wizard progress is painful.
+  - **Why:** Onboarding can take 5–10 minutes for caregivers (6 steps). A page refresh loses all selections.
+  - **Fix:** Save wizard step + field values to `sessionStorage` on each advance; restore on mount if `careProfileId` matches.
+  - **Where to start:** `CaregiverWizard.tsx`, `PatientWizard.tsx` — add `useEffect` on each `step` state change.
+
+- [ ] **[MISSING FEATURE/P2] Returning user visits `/onboarding` and re-enters wizard** — `OnboardingShell.tsx:48` — If `onboardingCompleted = true` and a user navigates to `/onboarding` (e.g., from a bookmark), they re-enter the wizard on their completed profile. Should redirect to `/dashboard` with a "You're already set up" message.
+  - **Fix:** In `onboarding/page.tsx`, check if all profiles have `onboardingCompleted = true`; if so, redirect to `/dashboard`.
+
+- [ ] **[UX/P3] QR invite polling silently stops at 30s** — `CareGroupScreen.tsx:114` — After 30 seconds with no join, the polling interval clears and the waiting state persists forever with no feedback. User doesn't know whether to keep waiting or give up.
+  - **Fix:** On timeout, replace "Waiting for them to join…" with "Still waiting — they can join later using the invite link." and change the pulsing dot to static.
+
+- [ ] **[BUG/P3] `self` role routes to `PatientWizard`** — `OnboardingWizard.tsx:17` — Both `patient` and `self` fall through to `PatientWizard`. If `self` is meant for users managing their own care proactively (not a diagnosed cancer patient), the HealthKit and diagnosis steps don't apply. Intentional or missing `SelfWizard`?
+  - **Where to start:** Confirm intended behavior with product. If different, add `SelfWizard` or a simplified 2-step version.
+
+- [ ] **[SECURITY/P2] CSRF missing on `/api/auth/set-role`, `/api/care-group`, `/api/care-group/join`** — Already tracked in Auth Audit. These onboarding mutation endpoints lack `validateCsrf()`. Session cookie is `sameSite: lax` which does not prevent cross-site POSTs from non-GET redirects.
+
+- [ ] **[SECURITY/P3] Role-via-URL param can be crafted for new social sign-up users** — `onboarding/page.tsx:23` — An attacker can craft a link `https://app.com/onboarding?role=caregiver` and any new OAuth user completing sign-up via that link will have their role set to `caregiver` without seeing the role-selection UI. Not a privilege escalation (all roles have identical access); the user will see the wrong wizard immediately and be confused. Pre-existing risk: before this fix, social users had `role: null` entirely.
+  - **Fix:** Move role assignment to the NextAuth JWT/session callback using a signed state parameter passed through the OAuth flow, rather than reading from an unprotected searchParam. Alternatively, prompt new users whose role was set via URL to confirm their role on the onboarding first screen.
+  - **Where to start:** `apps/web/src/lib/auth.config.ts` — NextAuth `signIn` callback can read `account.state` if role is signed into the OAuth state param.
+
+- [ ] **[TEST/P2] Zero test coverage for onboarding UI** — `LoginForm`, `SignupForm`, `PatientWizard`, `CaregiverWizard`, `CareGroupScreen`, `OnboardingShell` have no tests. The social-auth role bypass (now fixed) had no regression test — and was a real P1 bug.
+  - **Highest priority tests to add:**
+    - `SignupForm`: social auth with no role shows error; with role passes role to callbackUrl
+    - `PatientWizard`: patchProfile failure shows error, does not advance step
+    - `CareGroupScreen`: create group shows spinner; error shows styled alert
+  - **Where to start:** `apps/web/src/__tests__/auth/` — follow `clinicalTrialsAgent.test.ts` pattern using `vi.mock`.
+
+- [ ] **[COPY/P3] PatientWizard "Connect Apple Health" button is misleading on web** — Already tracked in Onboarding Audit (see above). Label should read "Review my health data" or "Check what we know" since no real HealthKit connection happens on web.
+
+---
