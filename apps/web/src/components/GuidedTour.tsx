@@ -81,6 +81,7 @@ export default function GuidedTour({ steps, patientName }: GuidedTourProps) {
   }, [])
 
   const close = useCallback(() => {
+    clearTimeout(transitionRef.current ?? undefined)
     setVisible(false)
     transitionRef.current = setTimeout(() => {
       setActive(false)
@@ -95,6 +96,7 @@ export default function GuidedTour({ steps, patientName }: GuidedTourProps) {
       return
     }
     // Transition: fade out → advance → fade in
+    clearTimeout(transitionRef.current ?? undefined)
     setVisible(false)
     transitionRef.current = setTimeout(() => {
       setStepIndex((i) => i + 1)
@@ -105,6 +107,16 @@ export default function GuidedTour({ steps, patientName }: GuidedTourProps) {
   const handleOverlayClick = useCallback(() => {
     close()
   }, [close])
+
+  // Escape key closes the tour
+  useEffect(() => {
+    if (!active) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close()
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [active, close])
 
   if (!mounted || !active) return null
 
@@ -165,6 +177,9 @@ export default function GuidedTour({ steps, patientName }: GuidedTourProps) {
     cursor: 'pointer',
   }
 
+  const portalTarget = typeof document !== 'undefined' ? document.body : null
+  if (!portalTarget) return null
+
   return createPortal(
     <>
       {/* Clickable overlay to close */}
@@ -187,9 +202,9 @@ export default function GuidedTour({ steps, patientName }: GuidedTourProps) {
           style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 12 }}
           aria-label={`Step ${stepIndex + 1} of ${steps.length}`}
         >
-          {steps.map((_, i) => (
+          {steps.map((step, i) => (
             <div
-              key={i}
+              key={step.target}
               style={{
                 width: 8,
                 height: 8,
@@ -245,6 +260,6 @@ export default function GuidedTour({ steps, patientName }: GuidedTourProps) {
         </div>
       </div>
     </>,
-    document.body
+    portalTarget
   )
 }

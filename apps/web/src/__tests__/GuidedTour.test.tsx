@@ -31,8 +31,6 @@ const localStorageMock = (() => {
   }
 })()
 
-Object.defineProperty(window, 'localStorage', { value: localStorageMock, writable: false })
-
 function setup(lsOverrides: Record<string, string> = {}) {
   localStorageMock.clear()
   for (const [k, v] of Object.entries(lsOverrides)) {
@@ -42,10 +40,12 @@ function setup(lsOverrides: Record<string, string> = {}) {
 
 beforeEach(() => {
   vi.useFakeTimers()
+  vi.stubGlobal('localStorage', localStorageMock)
   localStorageMock.clear()
 })
 
 afterEach(() => {
+  vi.unstubAllGlobals()
   vi.useRealTimers()
   document.body.style.overflow = ''
 })
@@ -172,5 +172,22 @@ describe('GuidedTour', () => {
     act(() => vi.advanceTimersByTime(250))
 
     expect(document.body.style.overflow).toBe('')
+  })
+
+  it('closes the tour when Escape key is pressed', () => {
+    setup({ onboarding_just_completed: '1' })
+    const { container } = render(
+      <GuidedTour steps={DEFAULT_STEPS} patientName="Alice" />
+    )
+
+    // Tour should be visible
+    expect(screen.getByTestId('tour-card')).toBeDefined()
+
+    // Fire Escape key on document
+    fireEvent.keyDown(document, { key: 'Escape' })
+    act(() => vi.advanceTimersByTime(250))
+
+    // Tour should be gone
+    expect(container.firstChild).toBeNull()
   })
 })
