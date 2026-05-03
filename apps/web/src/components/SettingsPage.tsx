@@ -8,11 +8,19 @@ import { ReminderManager } from './ReminderManager'
 import { NotificationPreferences } from './NotificationPreferences'
 import type { UserSettings, MedicationReminder, Medication } from '@/lib/types'
 
+interface ConnectedApp {
+  id: string
+  source: string
+  lastSynced: Date | null
+  expiresAt: Date | null
+}
+
 interface SettingsPageProps {
   settings: UserSettings | null
   medicationReminders?: MedicationReminder[]
   medications?: Medication[]
   isDemo?: boolean
+  integrations?: ConnectedApp[]
 }
 
 function SettingsRow({
@@ -61,7 +69,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function SettingsPage({ settings: initialSettings, medicationReminders = [], medications = [] }: SettingsPageProps) {
+export function SettingsPage({ settings: initialSettings, medicationReminders = [], medications = [], integrations: initialIntegrations = [] }: SettingsPageProps) {
   const { showToast } = useToast()
   const csrfToken = useCsrfToken()
   const [settings, setSettings] = useState<UserSettings | null>(initialSettings)
@@ -74,9 +82,67 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
   const [importing, setImporting] = useState(false)
   const [showCsvMenu, setShowCsvMenu] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [integrations, setIntegrations] = useState<ConnectedApp[]>(initialIntegrations)
+  const [disconnecting, setDisconnecting] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
 
   const isTestMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true'
   const showTestTools = isTestMode
+
+  const googleCalendar = integrations.find((a) => a.source === 'google_calendar')
+
+  const handleConnectGoogle = () => {
+    window.location.href = '/api/auth/google-calendar'
+  }
+
+  const handleDisconnect = async (source: string) => {
+    setDisconnecting(source)
+    try {
+      const res = await fetch(`/api/integrations/${source}`, {
+        method: 'DELETE',
+        headers: { 'x-csrf-token': csrfToken ?? '' },
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as { error?: string }).error || 'Disconnect failed')
+      }
+      setIntegrations((prev) => prev.filter((a) => a.source !== source))
+      showToast('Disconnected', 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to disconnect', 'error')
+    } finally {
+      setDisconnecting(null)
+    }
+  }
+
+  const handleSyncGoogle = async () => {
+    setSyncing(true)
+    try {
+      const res = await fetch('/api/sync/google-calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken ?? '' },
+        body: JSON.stringify({}),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as { error?: string }).error || 'Sync failed')
+      }
+      const data = await res.json() as { imported?: number }
+      showToast(`Synced — ${data.imported ?? 0} new events imported`, 'success')
+      setIntegrations((prev) => prev.map((a) =>
+        a.source === 'google_calendar' ? { ...a, lastSynced: new Date() } : a
+      ))
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Sync failed'
+      if (msg.includes('reconnect')) {
+        showToast('Google Calendar token expired — reconnect to continue syncing', 'error')
+      } else {
+        showToast(msg, 'error')
+      }
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const handleResetTestData = async () => {
     setResetting(true)
@@ -132,7 +198,7 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
         const json = JSON.parse(text)
         const res = await fetch('/api/import-data', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
+          headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken ?? ''},
           body: JSON.stringify(json),
         })
         if (!res.ok) {
@@ -161,7 +227,7 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
     try {
       const res = await fetch('/api/account/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken ?? ''},
         body: JSON.stringify({ currentPassword, password: newPassword }),
       })
       if (!res.ok) {
@@ -183,7 +249,7 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
     try {
       const res = await fetch('/api/delete-account', {
         method: 'POST',
-        headers: { 'x-csrf-token': csrfToken },
+        headers: { 'x-csrf-token': csrfToken ?? ''},
       })
       if (!res.ok) throw new Error('Delete failed')
       window.location.href = '/login'
@@ -239,6 +305,57 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
         <ReminderManager reminders={medicationReminders} medications={medications} />
       </div>
 
+      <SectionLabel>Integrations</SectionLabel>
+      <SettingsGroup>
+        <div className="px-4 py-3.5 flex items-center justify-between">
+          <div>
+            <div className="text-sm text-[#e2e8f0]">Google Calendar</div>
+            <div className="text-[11px] text-[#64748b] mt-0.5">
+              {googleCalendar
+                ? `Connected · Last synced ${googleCalendar.lastSynced ? new Date(googleCalendar.lastSynced).toLocaleDateString() : 'never'}`
+                : 'Import health appointments automatically'}
+            </div>
+            {googleCalendar?.expiresAt && new Date(googleCalendar.expiresAt) < new Date() && (
+              <div className="text-[11px] text-[#f97316] mt-1">Token expired — reconnect to resume syncing</div>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0 ml-4">
+            {googleCalendar ? (
+              <>
+                <button
+                  onClick={handleSyncGoogle}
+                  disabled={syncing}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] text-[#e2e8f0] hover:bg-white/[0.1] transition-colors disabled:opacity-40"
+                >
+                  {syncing ? 'Syncing…' : 'Sync now'}
+                </button>
+                <button
+                  onClick={() => handleDisconnect('google_calendar')}
+                  disabled={disconnecting === 'google_calendar'}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] text-[#ef4444] hover:bg-white/[0.1] transition-colors disabled:opacity-40"
+                >
+                  {disconnecting === 'google_calendar' ? '…' : 'Disconnect'}
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleConnectGoogle}
+                className="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white font-semibold hover:opacity-90 transition-opacity"
+              >
+                Connect
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="px-4 py-3.5 flex items-center justify-between">
+          <div>
+            <div className="text-sm text-[#e2e8f0]">Apple Health</div>
+            <div className="text-[11px] text-[#64748b] mt-0.5">Available in the iOS app — syncs medications, labs, and appointments from Health Records</div>
+          </div>
+          <span className="text-[11px] text-[#64748b] shrink-0 ml-4">iOS only</span>
+        </div>
+      </SettingsGroup>
+
       <SectionLabel>App Preferences</SectionLabel>
       <SettingsGroup>
         <div className="px-4 py-3.5">
@@ -261,7 +378,7 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
                 setSettings({ ...settings, aiPersonality: val })
                 await fetch('/api/records/settings', {
                   method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
+                  headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken ?? ''},
                   body: JSON.stringify({ ai_personality: val }),
                 })
               }}

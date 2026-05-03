@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db';
-import { users, userSettings, medicationReminders, medications } from '@/lib/db/schema';
+import { users, userSettings, medicationReminders, medications, connectedApps } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { getActiveProfile } from '@/lib/active-profile'
 import { SettingsPage } from '@/components/SettingsPage'
@@ -28,11 +28,17 @@ async function SettingsContent() {
     settings = newSettings;
   }
 
-  const [reminders, meds] = await Promise.all([
+  const [reminders, meds, integrations] = await Promise.all([
     db.select().from(medicationReminders).where(eq(medicationReminders.userId, dbUser.id)).orderBy(desc(medicationReminders.createdAt)).catch(() => []),
     profile
       ? db.select().from(medications).where(eq(medications.careProfileId, profile.id)).catch(() => [])
       : Promise.resolve([]),
+    db.select({
+      id: connectedApps.id,
+      source: connectedApps.source,
+      lastSynced: connectedApps.lastSynced,
+      expiresAt: connectedApps.expiresAt,
+    }).from(connectedApps).where(eq(connectedApps.userId, dbUser.id)).catch(() => []),
   ]);
 
   return (
@@ -41,6 +47,7 @@ async function SettingsContent() {
       medicationReminders={reminders}
       medications={meds}
       isDemo={dbUser.isDemo ?? false}
+      integrations={integrations}
     />
   )
 }
