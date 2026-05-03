@@ -13,7 +13,7 @@ export default async function MedicationsPage() {
   if (!dbUser) redirect('/login?error=session');
 
   const [profile] = await db
-    .select({ id: careProfiles.id })
+    .select({ id: careProfiles.id, patientName: careProfiles.patientName })
     .from(careProfiles)
     .where(eq(careProfiles.userId, dbUser.id))
     .limit(1);
@@ -28,7 +28,7 @@ export default async function MedicationsPage() {
 
   return (
     <div className="max-w-3xl">
-      <MedicationsView medications={meds} profileId={profile.id} />
+      <MedicationsView medications={meds} profileId={profile.id} patientName={profile.patientName ?? 'your loved one'} />
     </div>
   );
 }
