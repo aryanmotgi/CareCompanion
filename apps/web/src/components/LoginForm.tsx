@@ -77,7 +77,7 @@ function PasswordInput({
           onClick={() => setShow(!show)}
           className="text-white/30 hover:text-white/60 transition-colors p-1"
           aria-label={show ? 'Hide password' : 'Show password'}
-          tabIndex={-1}
+          tabIndex={0}
         >
           {show ? (
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -104,6 +104,8 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(initialError)
 
+  const safeCallback = callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//') && !callbackUrl.startsWith('/\\') ? callbackUrl : '/dashboard'
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
@@ -116,7 +118,7 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
         redirect: false,
       })
       if (result?.error) {
-        setError('Invalid Care Group name or password.')
+        setError("We couldn't find that Care Group — double-check the name and password.")
         setLoading(false)
         return
       }
@@ -136,10 +138,9 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
     })
 
     if (result?.error) {
-      setError('Invalid email or password. Please try again.')
+      setError("That doesn't look right — please check your email and password.")
       setLoading(false)
     } else if (result?.ok) {
-      const safeCallback = callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//') && !callbackUrl.startsWith('/\\') ? callbackUrl : '/dashboard'
       window.location.href = safeCallback
     } else {
       setError('Something went wrong. Please try again.')
@@ -164,7 +165,7 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
         <form onSubmit={handleSubmit} className="space-y-4">
 
           <p className="text-xs font-medium uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>
-            Sign in
+            Sign in to your account
           </p>
 
           {/* Tab toggle */}
@@ -190,7 +191,7 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
               {/* Social sign-in buttons */}
               <button
                 type="button"
-                onClick={() => signIn('apple', { callbackUrl: callbackUrl || '/dashboard' })}
+                onClick={() => signIn('apple', { callbackUrl: safeCallback || '/dashboard' })}
                 className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.98] hover:opacity-90"
                 style={{ background: '#FFFFFF', color: '#000000' }}
               >
@@ -202,7 +203,7 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
 
               <button
                 type="button"
-                onClick={() => signIn('google', { callbackUrl: callbackUrl || '/dashboard' })}
+                onClick={() => signIn('google', { callbackUrl: safeCallback || '/dashboard' })}
                 className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.98] hover:opacity-90"
                 style={{ background: '#FFFFFF', color: '#1F1F1F' }}
               >
@@ -262,6 +263,22 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
             </div>
           )}
 
+          {error && (
+            <div role="alert" className="flex items-start gap-2 rounded-lg px-3 py-2.5"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
+              <svg className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+              </svg>
+              <div>
+                <p className="text-xs text-red-400/90">{error}</p>
+                <p className="text-[10px] text-red-400/50 mt-1">
+                  Having trouble?{' '}
+                  <a href="mailto:support@carecompanionai.org" className="underline">Contact support</a>
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Sign in button */}
           <button
             type="submit"
@@ -274,11 +291,11 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
-                <svg className="w-4 h-4 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
-                Signing in...
+                Signing in…
               </span>
             ) : (
               'Sign In'
@@ -292,22 +309,6 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
               Create one
             </a>
           </p>
-
-          {error && (
-            <div role="alert" className="flex items-start gap-2 rounded-lg px-3 py-2.5"
-              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
-              <svg className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-              </svg>
-              <div>
-                <p className="text-xs text-red-400/90">{error}</p>
-                <p className="text-[10px] text-red-400/50 mt-1">
-                  Having trouble?{' '}
-                  <a href="mailto:support@carecompanionai.org" className="underline">Contact support</a>
-                </p>
-              </div>
-            </div>
-          )}
 
           {/* Trust badges */}
           <div className="flex items-center justify-center gap-5 pt-1">

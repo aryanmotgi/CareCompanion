@@ -29,7 +29,6 @@ const mockProfile = {
 }
 
 const trialA = { nct_id: 'NCT00000001', title: 'Trial A', status: 'RECRUITING', locations: [], url: 'https://ct.gov/NCT00000001' }
-const trialB = { nct_id: 'NCT00000002', title: 'Trial B', status: 'RECRUITING', locations: [], url: 'https://ct.gov/NCT00000002' }
 
 const scoredMatch = {
   nct_id: 'NCT00000001', title: 'Trial A', matchCategory: 'matched',

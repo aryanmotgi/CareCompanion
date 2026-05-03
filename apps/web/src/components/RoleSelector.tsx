@@ -3,9 +3,9 @@
 type Role = 'caregiver' | 'patient' | 'self'
 
 const ROLES: { value: Role; emoji: string; label: string; description: string }[] = [
-  { value: 'caregiver', emoji: '🧑‍⚕️', label: 'Caregiver', description: 'Helping someone I love' },
-  { value: 'patient', emoji: '🤒', label: 'Patient', description: 'Managing my own care, with a caregiver' },
-  { value: 'self', emoji: '👤', label: 'Self-care', description: 'Managing my own care independently' },
+  { value: 'caregiver', emoji: '🧑‍⚕️', label: 'Caregiver', description: 'Caring for someone I love' },
+  { value: 'patient', emoji: '💙', label: 'Patient', description: 'Getting support from a loved one' },
+  { value: 'self', emoji: '🌟', label: 'Self-care', description: 'Managing my care on my own' },
 ]
 
 export function RoleSelector({
@@ -21,10 +21,8 @@ export function RoleSelector({
     <div>
       <p className="text-xs text-white/40 mb-2">Who are you joining as? <span className="text-red-400">*</span></p>
 
-      {/* Desktop: 3-column grid. Mobile (<480px): vertical stack */}
       <div
-        className="grid gap-2"
-        style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}
+        className="grid grid-cols-1 xs:grid-cols-3 gap-2"
         role="radiogroup"
         aria-label="Account role"
       >
@@ -37,7 +35,7 @@ export function RoleSelector({
               role="radio"
               aria-checked={selected}
               onClick={() => onChange(role.value)}
-              className="relative rounded-xl p-3 text-center transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-violet-500/60"
+              className="relative rounded-xl p-3 xs:text-center flex xs:block items-center gap-3 xs:gap-0 text-left xs:text-center transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-violet-500/60"
               style={{
                 background: selected ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.04)',
                 border: selected ? '2px solid #7c3aed' : '1px solid rgba(255,255,255,0.1)',
@@ -46,15 +44,17 @@ export function RoleSelector({
                   : 'none',
               }}
             >
-              <div className="text-2xl mb-1">{role.emoji}</div>
-              <div
-                className="text-xs font-semibold"
-                style={{ color: selected ? '#c4b5fd' : '#f1f5f9' }}
-              >
-                {role.label}
-              </div>
-              <div className="text-[9px] mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                {role.description}
+              <div className="text-2xl xs:mb-1 flex-shrink-0">{role.emoji}</div>
+              <div className="flex-1 xs:flex-none">
+                <div
+                  className="text-xs font-semibold"
+                  style={{ color: selected ? '#c4b5fd' : '#f1f5f9' }}
+                >
+                  {role.label}
+                </div>
+                <div className="text-[9px] xs:mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                  {role.description}
+                </div>
               </div>
               {selected && (
                 <div
@@ -69,25 +69,6 @@ export function RoleSelector({
           )
         })}
       </div>
-
-      <style>{`
-        @media (max-width: 479px) {
-          [role="radiogroup"] {
-            grid-template-columns: 1fr !important;
-          }
-          [role="radiogroup"] button {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            text-align: left;
-            padding: 12px 16px;
-          }
-          [role="radiogroup"] button .text-2xl {
-            margin-bottom: 0;
-            flex-shrink: 0;
-          }
-        }
-      `}</style>
 
       {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
     </div>
