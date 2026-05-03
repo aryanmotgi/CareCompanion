@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 type Contact = { name: string | null; phone: string | null; email: string | null }
 
@@ -53,13 +53,14 @@ type Props = {
   matchReasons:         string[]
   uncertainFactors:     string[]
   onSave:    (nctId: string) => void
-  savedStatus: string | null   // null = not saved, otherwise the interestStatus
+  savedStatus: string | null
 }
+
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{title}</h4>
+      <h4 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{title}</h4>
       {children}
     </div>
   )
@@ -68,25 +69,25 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function ContactBlock({ contact, trialUrl }: { contact: Contact | null; trialUrl?: string }) {
   if (!contact || (!contact.name && !contact.email && !contact.phone)) {
     return (
-      <p className="text-sm text-gray-500 italic">
+      <p className="text-sm text-[var(--text-muted)] italic">
         Contact information not listed —{' '}
         {trialUrl
-          ? <a href={trialUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">visit the trial page directly</a>
-          : <span className="text-gray-500">visit the trial page directly</span>
+          ? <a href={trialUrl} target="_blank" rel="noopener noreferrer" className="text-[#A78BFA] hover:underline">visit the trial page directly</a>
+          : <span>visit the trial page directly</span>
         }.
       </p>
     )
   }
   return (
     <div className="space-y-0.5">
-      {contact.name  && <p className="text-sm text-gray-800">{contact.name}</p>}
+      {contact.name  && <p className="text-sm text-[var(--text)]">{contact.name}</p>}
       {contact.email && (
-        <a href={`mailto:${contact.email}`} className="text-sm text-blue-600 hover:underline block">
+        <a href={`mailto:${contact.email}`} className="text-sm text-[#A78BFA] hover:underline block">
           {contact.email}
         </a>
       )}
       {contact.phone && (
-        <a href={`tel:${contact.phone}`} className="text-sm text-blue-600 hover:underline block">
+        <a href={`tel:${contact.phone}`} className="text-sm text-[#A78BFA] hover:underline block">
           {contact.phone}
         </a>
       )}
@@ -99,7 +100,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
   return (
     <button
       onClick={() => { void navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-      className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
+      className="text-xs px-2 py-1 border border-[var(--border)] rounded-lg hover:bg-white/[0.04] text-[var(--text-secondary)] transition-colors"
     >
       {copied ? '✓ Copied' : label}
     </button>
@@ -113,6 +114,8 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
   const [emailExpanded, setEmailExpanded]   = useState(false)
   const [scriptExpanded, setScriptExpanded] = useState(false)
   const [eligExpanded, setEligExpanded]     = useState(false)
+  const [justSaved, setJustSaved] = useState(false)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -138,12 +141,19 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
     return () => { cancelled = true }
   }, [nctId, isCloseMatch])
 
+  function handleSave() {
+    onSave(nctId)
+    setJustSaved(true)
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => setJustSaved(false), 3000)
+  }
+
   if (loading) {
     return (
-      <div className="border-t border-gray-100 pt-4 pb-2 px-1">
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <span className="animate-spin">⏳</span>
-          Generating summary and contact details…
+      <div className="border-t border-[var(--border)] pt-4 pb-2 px-1" aria-busy="true" aria-live="polite">
+        <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+          <div className="w-4 h-4 rounded-full border-2 border-[#6366F1] border-t-transparent animate-spin flex-shrink-0" />
+          Getting everything ready…
         </div>
       </div>
     )
@@ -151,8 +161,13 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
 
   if (error) {
     return (
-      <div className="border-t border-gray-100 pt-4">
-        <p className="text-sm text-red-600">Could not load trial details. <a href={`https://clinicaltrials.gov/study/${nctId}`} target="_blank" rel="noopener noreferrer" className="underline">View on ClinicalTrials.gov →</a></p>
+      <div className="border-t border-[var(--border)] pt-4" role="alert">
+        <p className="text-sm text-[var(--text-secondary)]">
+          We couldn&apos;t load the details right now. You can still view this trial directly:{' '}
+          <a href={`https://clinicaltrials.gov/study/${nctId}`} target="_blank" rel="noopener noreferrer" className="text-[#A78BFA] underline">
+            ClinicalTrials.gov →
+          </a>
+        </p>
       </div>
     )
   }
@@ -165,13 +180,13 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
   const topLocations = (recruitingLocations.length > 0 ? recruitingLocations : trial.locations).slice(0, 3)
 
   return (
-    <div className="border-t border-gray-100 pt-4 space-y-5">
+    <div className="border-t border-[var(--border)] pt-4 space-y-5">
 
       {/* 1. Plain language summary */}
       <Section title="What is this trial?">
-        <p className="text-sm text-gray-700 leading-relaxed">{summary}</p>
+        <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{summary}</p>
         {visit_frequency && (
-          <p className="text-sm text-gray-600 italic">{visit_frequency}</p>
+          <p className="text-sm text-[var(--text-muted)] italic">{visit_frequency}</p>
         )}
       </Section>
 
@@ -186,8 +201,8 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
             ['Age range',    trial.min_age && trial.max_age ? `${trial.min_age} – ${trial.max_age}` : 'Not listed'],
           ].map(([k, v]) => (
             <div key={k} className="flex flex-col">
-              <dt className="text-xs text-gray-400">{k}</dt>
-              <dd className="text-sm text-gray-800">{v}</dd>
+              <dt className="text-xs text-[var(--text-muted)]">{k}</dt>
+              <dd className="text-sm text-[var(--text)]">{v}</dd>
             </div>
           ))}
         </dl>
@@ -196,17 +211,24 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
       {/* 3. Nearest locations */}
       <Section title="Nearest locations">
         {topLocations.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">No location data available — <a href={trial.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">check ClinicalTrials.gov</a>.</p>
+          <p className="text-sm text-[var(--text-muted)] italic">
+            No location data available —{' '}
+            <a href={trial.url} target="_blank" rel="noopener noreferrer" className="text-[#A78BFA] underline">
+              check ClinicalTrials.gov
+            </a>.
+          </p>
         ) : (
           <ul className="space-y-2">
             {topLocations.map((loc, i) => (
               <li key={i} className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-gray-800 font-medium">{loc.facility ?? 'Unknown facility'}</p>
-                  <p className="text-xs text-gray-500">{[loc.city, loc.state, loc.country].filter(Boolean).join(', ')}</p>
+                  <p className="text-sm text-[var(--text)] font-medium">{loc.facility ?? 'Unknown facility'}</p>
+                  <p className="text-xs text-[var(--text-muted)]">{[loc.city, loc.state, loc.country].filter(Boolean).join(', ')}</p>
                 </div>
                 <span className={`text-xs px-1.5 py-0.5 rounded flex-shrink-0 ml-2 ${
-                  loc.status === 'RECRUITING' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                  loc.status === 'RECRUITING'
+                    ? 'bg-emerald-500/15 text-emerald-400'
+                    : 'bg-white/[0.06] text-[var(--text-muted)]'
                 }`}>
                   {loc.status === 'RECRUITING' ? 'Recruiting' : (loc.status ?? 'Status unknown')}
                 </span>
@@ -219,8 +241,11 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
       {/* 4. Contact information */}
       <Section title="Contact information">
         {all_contacts.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">
-            Contact information not listed — <a href={trial.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">visit the trial page directly</a>.
+          <p className="text-sm text-[var(--text-muted)] italic">
+            Contact information not listed —{' '}
+            <a href={trial.url} target="_blank" rel="noopener noreferrer" className="text-[#A78BFA] underline">
+              visit the trial page directly
+            </a>.
           </p>
         ) : (
           <div className="space-y-3">
@@ -234,12 +259,12 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
         <Section title="Why you match">
           <ul className="space-y-1">
             {matchReasons.map((r, i) => (
-              <li key={i} className="text-sm text-gray-700 flex gap-2">
-                <span className="text-green-500 flex-shrink-0 mt-0.5">✓</span>{r}
+              <li key={i} className="text-sm text-[var(--text-secondary)] flex gap-2">
+                <span className="text-emerald-400 flex-shrink-0 mt-0.5">✓</span>{r}
               </li>
             ))}
             {uncertainFactors.map((u, i) => (
-              <li key={i} className="text-sm text-amber-700 flex gap-2">
+              <li key={i} className="text-sm text-amber-400/80 flex gap-2">
                 <span className="flex-shrink-0 mt-0.5">?</span>{u}
               </li>
             ))}
@@ -252,12 +277,13 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
         <Section title="Eligibility criteria">
           <button
             onClick={() => setEligExpanded(e => !e)}
-            className="text-xs text-blue-600 hover:underline"
+            className="text-xs text-[#A78BFA] hover:underline"
+            aria-expanded={eligExpanded}
           >
             {eligExpanded ? 'Hide full criteria ▲' : 'Show full criteria ▼'}
           </button>
           {eligExpanded && (
-            <pre className="text-xs text-gray-600 whitespace-pre-wrap font-sans leading-relaxed mt-2 max-h-64 overflow-y-auto border border-gray-100 rounded p-3 bg-gray-50">
+            <pre className="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-sans leading-relaxed mt-2 max-h-64 overflow-y-auto border border-[var(--border)] rounded-lg p-3 bg-white/[0.03]">
               {trial.eligibility_criteria}
             </pre>
           )}
@@ -265,21 +291,24 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
       )}
 
       {/* 7. Pre-drafted email */}
-      <Section title="Pre-drafted email">
-        <div className="rounded-lg border border-gray-200 bg-gray-50">
+      <Section title="Pre-drafted email to coordinator">
+        <div className="rounded-xl border border-[var(--border)] bg-white/[0.03]">
           <button
             onClick={() => setEmailExpanded(e => !e)}
             className="w-full text-left px-3 py-2.5 flex items-center justify-between"
+            aria-expanded={emailExpanded}
           >
             <div>
-              <p className="text-xs font-medium text-gray-700">To: {email.to ?? <span className="italic text-gray-400">No email found — add manually</span>}</p>
-              <p className="text-xs text-gray-500">Subject: {email.subject}</p>
+              <p className="text-xs font-medium text-[var(--text-secondary)]">
+                To: {email.to ?? <span className="italic text-[var(--text-muted)]">No email found — add manually</span>}
+              </p>
+              <p className="text-xs text-[var(--text-muted)]">Subject: {email.subject}</p>
             </div>
-            <span className="text-xs text-gray-400 ml-2">{emailExpanded ? '▲' : '▼'}</span>
+            <span className="text-xs text-[var(--text-muted)] ml-2">{emailExpanded ? '▲' : '▼'}</span>
           </button>
           {emailExpanded && (
-            <div className="px-3 pb-3 border-t border-gray-200">
-              <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed mt-3">
+            <div className="px-3 pb-3 border-t border-[var(--border)]">
+              <pre className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap font-sans leading-relaxed mt-3">
                 {email.body}
               </pre>
               <div className="flex gap-2 mt-3 flex-wrap">
@@ -287,14 +316,16 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
                 {email.to && (
                   <a
                     href={`mailto:${email.to}?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`}
-                    className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    className="text-xs px-2 py-1 rounded-lg text-white font-semibold transition-colors"
+                    style={{ background: '#6366F1' }}
                   >
                     Open in email app →
                   </a>
                 )}
                 {!email.to && (
-                  <p className="text-xs text-amber-700 italic self-center">
-                    No coordinator email found — find contact on <a href={trial.url} target="_blank" rel="noopener noreferrer" className="underline">ClinicalTrials.gov</a>.
+                  <p className="text-xs text-amber-400/80 italic self-center">
+                    No coordinator email found — find contact on{' '}
+                    <a href={trial.url} target="_blank" rel="noopener noreferrer" className="text-[#A78BFA] underline">ClinicalTrials.gov</a>.
                   </p>
                 )}
               </div>
@@ -304,23 +335,24 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
       </Section>
 
       {/* 8. Phone call script */}
-      <Section title="Phone call script">
-        <div className="rounded-lg border border-gray-200 bg-gray-50">
+      <Section title="What to say when you call">
+        <div className="rounded-xl border border-[var(--border)] bg-white/[0.03]">
           <button
             onClick={() => setScriptExpanded(s => !s)}
             className="w-full text-left px-3 py-2.5 flex items-center justify-between"
+            aria-expanded={scriptExpanded}
           >
-            <p className="text-xs font-medium text-gray-700">Read this when you call the trial site</p>
-            <span className="text-xs text-gray-400 ml-2">{scriptExpanded ? '▲' : '▼'}</span>
+            <p className="text-xs font-medium text-[var(--text-secondary)]">Read this when you call the trial site</p>
+            <span className="text-xs text-[var(--text-muted)] ml-2">{scriptExpanded ? '▲' : '▼'}</span>
           </button>
           {scriptExpanded && (
-            <div className="px-3 pb-3 border-t border-gray-200">
+            <div className="px-3 pb-3 border-t border-[var(--border)]">
               {contact?.phone && (
-                <p className="text-xs text-gray-500 mt-2">
-                  Call: <a href={`tel:${contact.phone}`} className="text-blue-600 hover:underline">{contact.phone}</a>
+                <p className="text-xs text-[var(--text-muted)] mt-2">
+                  Call: <a href={`tel:${contact.phone}`} className="text-[#A78BFA] hover:underline">{contact.phone}</a>
                 </p>
               )}
-              <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed mt-3">
+              <pre className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap font-sans leading-relaxed mt-3">
                 {phone_script}
               </pre>
               <div className="mt-3">
@@ -333,22 +365,22 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
 
       {/* 9. Share with oncologist — clinical summary */}
       {clinical_summary && (
-        <Section title="Share with oncologist">
-          <div className="rounded-lg border border-gray-200 bg-gray-50">
+        <Section title="Note for your oncologist">
+          <div className="rounded-xl border border-[var(--border)] bg-white/[0.03]">
             <div className="px-3 py-2.5 flex items-start justify-between gap-2">
-              <p className="text-xs text-gray-600 leading-relaxed">
-                Clinical referral note — written for your oncologist, not the trial coordinator.
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                Written for your oncologist — explains the trial and why it may be relevant.
               </p>
             </div>
-            <div className="px-3 pb-3 border-t border-gray-200">
-              <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed mt-3">
+            <div className="px-3 pb-3 border-t border-[var(--border)]">
+              <pre className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap font-sans leading-relaxed mt-3">
                 {clinical_summary}
               </pre>
               <div className="flex gap-2 mt-3 flex-wrap">
                 <CopyButton text={clinical_summary} label="Copy for oncologist" />
                 <a
                   href={`mailto:?subject=Clinical Trial for Review: ${trial.nct_id}&body=${encodeURIComponent(clinical_summary.replace(/[\r\n]+/g, ' '))}`}
-                  className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
+                  className="text-xs px-2 py-1 border border-[var(--border)] rounded-lg hover:bg-white/[0.04] text-[var(--text-secondary)] transition-colors"
                 >
                   Email to oncologist →
                 </a>
@@ -359,25 +391,27 @@ export function TrialDetailPanel({ nctId, isCloseMatch, matchReasons, uncertainF
       )}
 
       {/* 10. Save and track */}
-      <div className="flex items-center gap-3 pt-1 border-t border-gray-100">
-        {savedStatus === null ? (
+      <div className="flex items-center gap-3 pt-1 border-t border-[var(--border)]">
+        {savedStatus === null && !justSaved ? (
           <button
-            onClick={() => onSave(nctId)}
-            className="text-sm px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            onClick={handleSave}
+            className="text-sm px-4 py-2 rounded-xl text-white font-semibold transition-colors"
+            style={{ background: '#6366F1' }}
           >
-            Save &amp; track this trial
+            Save this trial
           </button>
         ) : (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-green-700 font-medium">✓ Saved — tracking status changes</span>
-            <span className="text-xs text-gray-400 capitalize">({savedStatus})</span>
+            <span className="text-sm text-emerald-400 font-medium">
+              ✓ Saved — we&apos;ll notify you if this trial&apos;s status changes
+            </span>
           </div>
         )}
         <a
           href={trial.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-blue-600 hover:underline"
+          className="text-sm text-[#A78BFA] hover:underline ml-auto"
         >
           View on ClinicalTrials.gov →
         </a>
