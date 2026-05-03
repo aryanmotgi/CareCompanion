@@ -764,3 +764,55 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 - ⬜ [L] **No confirmation/disclosure before generating share link** — `components/ShareHealthCard.tsx` — Disclosure note added listing what will be shared, but no confirmation modal for misclicks. Consider a "Are you sure?" gate for first share.
 
 - ⬜ [L] **No active share links management page** — Users can see active links via `GET /api/share` (now exists) and revoke via the new endpoint, but there is no dedicated settings UI showing all active links with revoke buttons. **Fix needed:** add "Active share links" section to Settings or ShareHealthCard.
+
+---
+
+## Cron Jobs, Production Monitor & Admin Routes Audit — 2026-05-03 (preview/trials-impeccable)
+
+Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
+
+**Scope:** All 9 cron routes, `/api/health`, `/api/e2e/signin`, `/api/test/reset`, `/api/demo/start`, `/api/admin/provision-reviewer`, `/api/notifications/generate`, `/api/reminders/check`.
+
+### FIXED — CRITICAL / HIGH
+
+- ✅ [C] **`/api/health` leaks full diagnostic details when `CRON_SECRET` not set** — `health/route.ts:105` — `isAuthed = !cronSecret || ...` means any caller gets full DB column names, env var presence, memory usage when `CRON_SECRET` is unset. In production, an accidental missing secret would expose the entire check payload publicly. Fixed: in production, both `cronSecret` must be set AND must match — `isProd ? (!!cronSecret && auth === Bearer ${secret}) : (!cronSecret || auth === Bearer ${secret})`. Dev behavior unchanged.
+
+- ✅ [C] **`/api/health` schema check used `sql.raw()` on table names** — `health/route.ts:59` — `sql.raw(tableNames.map(t => \`'${t}'\`).join(','))` interpolated strings directly into raw SQL. Table names are hardcoded so not directly exploitable, but the pattern is unsafe; any future change making `tableNames` dynamic would create an injection vector. Fixed: replaced with parameterized `${tableNames}` array binding.
+
+- ✅ [H] **`/api/test/reset` environment guard used `NEXT_PUBLIC_TEST_MODE`** — `test/reset/route.ts:28` — `NEXT_PUBLIC_*` variables are bundled into the client-side JavaScript; every visitor can inspect the value. If `NEXT_PUBLIC_TEST_MODE=true` in a production deployment, the guard is bypassed for any authenticated `@test.carecompanionai.org` account. Fixed: changed to server-only `TEST_MODE` env var. **ACTION REQUIRED:** rename env var in Vercel dashboard from `NEXT_PUBLIC_TEST_MODE` to `TEST_MODE`.
+
+- ✅ [H] **`/api/e2e/signin` GET liveness probe required no auth** — `e2e/signin/route.ts:29` — `GET /api/e2e/signin` returned `{ready:true, v:19}` with zero authentication. Any external scanner could confirm this endpoint exists in production, enabling targeted session-minting attacks. Fixed: GET now requires same `x-e2e-secret` header as POST; returns 401 without it. CI scripts that hit the GET probe must add the header.
+
+- ✅ [H] **`/api/cron/weekly-summary` had no limit on profiles query** — `cron/weekly-summary/route.ts:49` — `db.select().from(careProfiles).where(onboardingCompleted=true)` with no `.limit()` loaded every user. Cron fans out a Claude call per user; at scale (1 000+ users) this would exhaust the 300s `maxDuration`, cause OOM, and flood Anthropic with concurrent requests. Fixed: added `.limit(200)`. **TODO:** implement cursor-based pagination like `trials-status` for full coverage at scale.
+
+- ✅ [H] **`/api/cron/trials-match` enqueued all profiles including incomplete onboarding** — `cron/trials-match/route.ts:37` — `db.select().from(careProfiles).limit(500)` with no `onboardingCompleted` filter. Incomplete profiles have no cancer type, stage, or treatment data; the matching agent sends empty/garbage prompts to Claude for them, wasting budget and polluting `matchingQueue`. Fixed: added `.where(eq(careProfiles.onboardingCompleted, true))`.
+
+### OPEN — MEDIUM
+
+- ⬜ [M] **`/api/cron/weekly-summary` needs cursor pagination for full coverage** — `cron/weekly-summary/route.ts:49` — The new `.limit(200)` prevents OOM but users beyond the first 200 never get weekly summaries. The query has no ORDER BY so which 200 users are processed is non-deterministic. **Fix needed:** implement cursor approach like `trials-status` using a `weekly_summary_cursor` key in `cronState` table; process next 200 on each run; reset cursor to NULL_CURSOR when exhausted.
+
+- ⬜ [M] **`/api/cron/trials-match` gap-closure errors are fully silent** — `cron/trials-match/route.ts:97` — `catch { /* skip profile, continue */ }` swallows all LLM errors with no log. A misconfigured Anthropic key or model error silently skips all gap-closure for all profiles every night with no observable signal. **Fix needed:** `console.error('[trials-match] gap-closure failed', profileId, err)` minimum; ideally `logger.error`.
+
+- ⬜ [M] **`/api/cron/trials-match` gap-closure `output?.resolved` not guarded** — `cron/trials-match/route.ts:82` — `for (const nctId of output.resolved)` throws if `output.resolved` is undefined (malformed LLM response). Currently caught by profile-level catch but masks the real error. **Fix needed:** `for (const nctId of output?.resolved ?? [])`.
+
+- ⬜ [M] **`/api/cron/radar` caregiver-awareness loop is N+1** — `cron/radar/route.ts:323-350` — For each profile, queries `careTeamMembers`, then for each member queries `careTeamActivityLog` individually. With 20 profiles × N care team members this is many sequential DB calls inside a 300s function. **Fix needed:** batch-fetch activity status for all member+profile combos in one query before the per-profile loop, similar to how `allPushSubs` is pre-fetched.
+
+- ⬜ [M] **`/api/admin/provision-reviewer` returns generated password in response body** — `admin/provision-reviewer/route.ts:187` — `temporaryPassword: generatedPassword` is returned in the JSON response on account creation. The comment says "store securely — it cannot be recovered after this call." If this endpoint is ever called over an insecure channel or the response is logged, the password is exposed. **Consider:** log it server-side via `console.log` (goes to Vercel log only) and return `password: '[see server logs]'` in the response body.
+
+### OPEN — LOW / NOTES
+
+- ⬜ [L] **`/api/e2e/signin` lacks `NODE_ENV` guard** — `e2e/signin/route.ts` — Unlike `/api/test/reset` which checks `NODE_ENV !== 'production'`, the e2e endpoint has no environment gate. It relies entirely on `E2E_AUTH_SECRET` being absent in prod to disable itself. If the secret is set in prod (required for CI against prod), the endpoint is live in prod by design. The security model is documented in the file header and acceptable, but worth auditing that `E2E_AUTH_SECRET` rotation is in the ops runbook.
+
+- ⬜ [L] **`/api/cron/sync` is a stub but still scheduled** — `cron/sync/route.ts` — Placeholder that always returns `{synced: 0}`. Still fires daily via Vercel cron (burns a cron invocation). Safe to leave; remove from `vercel.json` crons when confirmed unused.
+
+- ⬜ [L] **`/api/notifications/generate` and `/api/reminders/check` accept POST in addition to GET** — Both routes expose `POST` that calls `GET(req)` directly. Cron auth applies to both. Low risk but the POST methods exist without documentation — unclear if any caller uses them. Remove POST handlers if unused.
+
+### CLEAN — No Issues Found
+
+- `/api/cron/purge` — `verifyCronRequest` auth first; `purgeExpiredRecords` scoped to records with `deletedAt < 30 days ago`; no user-controlled input; error caught and returned as 500.
+- `/api/cron/retention` — HIPAA-correct 90-day PHI + 6-year audit log retention; auth first; parallel deletes correct.
+- `/api/cron/trials-status` — cursor-based pagination prevents OOM; 24h notification dedup correct; AT.gov errors isolated per-row.
+- `/api/seed-demo` — requires auth + CSRF + `@test.carecompanionai.org` email; deletes only records tagged `notes='Demo data'` (scoped delete, not full wipe).
+- `/api/demo/start` — rate-limited (10/min/IP); inserts with `isDemo=true` flag; session minted correctly with `maxAge=1h`; Cognito not required by design.
+- `/lib/cron-auth.ts` — correct: dev bypasses only when `CRON_SECRET` unset; prod requires both presence and match; returns 500 (not 401) when secret missing in prod to distinguish misconfiguration from unauthorized access.
+- `/lib/soft-delete.ts` — `purgeExpiredRecords` uses parameterized Drizzle queries; ownership enforced in `softDelete`/`restore` by userId/profileId; no user-controlled SQL.

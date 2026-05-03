@@ -28,12 +28,14 @@ jobs:
         run: cd apps/web && bunx playwright install --with-deps chromium
 
       - name: Wait for Vercel deployment to be live
+        env:
+          E2E_AUTH_SECRET: ${{ secrets.E2E_AUTH_SECRET }}
         run: |
           echo "Waiting up to 4 minutes for the new deployment to go live..."
           # GET /api/e2e/signin returns {"ready":true,"v":19} in this version.
           # Poll until we see v=19 so we know the exact code we expect is live.
           for i in $(seq 1 24); do
-            BODY=$(curl -s --max-time 10 https://carecompanionai.org/api/e2e/signin 2>/dev/null || echo "")
+            BODY=$(curl -s --max-time 10 -H "x-e2e-secret: $E2E_AUTH_SECRET" https://carecompanionai.org/api/e2e/signin 2>/dev/null || echo "")
             if echo "$BODY" | grep -q '"v":19'; then
               echo "New deployment is live (attempt $i)"
               break

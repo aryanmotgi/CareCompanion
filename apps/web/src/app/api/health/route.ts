@@ -56,7 +56,7 @@ export async function GET(req: Request) {
       SELECT table_name, column_name
       FROM information_schema.columns
       WHERE table_schema = 'public'
-        AND table_name = ANY(ARRAY[${sql.raw(tableNames.map(t => `'${t}'`).join(','))}])
+        AND table_name = ANY(${tableNames})
     `)
     const found = new Set(
       (rows as unknown as { table_name: string; column_name: string }[]).map(r => `${r.table_name}.${r.column_name}`)
@@ -102,7 +102,12 @@ export async function GET(req: Request) {
   // Without CRON_SECRET auth, return only the status (no details about which keys are missing)
   const cronSecret = process.env.CRON_SECRET
   const authHeader = req.headers.get('authorization')
-  const isAuthed = !cronSecret || authHeader === `Bearer ${cronSecret}`
+  // In production, require the secret to be both set and matched.
+  // In dev (no CRON_SECRET), allow full details for easier debugging.
+  const isProd = process.env.NODE_ENV === 'production'
+  const isAuthed = isProd
+    ? (!!cronSecret && authHeader === `Bearer ${cronSecret}`)
+    : (!cronSecret || authHeader === `Bearer ${cronSecret}`)
 
   if (!isAuthed) {
     return Response.json(

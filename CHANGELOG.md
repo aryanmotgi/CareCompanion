@@ -4,7 +4,16 @@ All notable changes to CareCompanion will be documented in this file.
 
 ## [0.3.1.0] - 2026-05-03
 
-Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, and Community Forum + Sharing Links full security audit.
+Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, Community Forum + Sharing Links full security audit, and Cron Jobs / Production Monitor / Admin Routes security audit.
+
+### Fixed (Cron Jobs, Production Monitor & Admin Routes)
+- **`/api/health` detail leak when `CRON_SECRET` unset** — In production, full diagnostic details (DB columns, env var presence, memory) were exposed to any caller when `CRON_SECRET` was not configured. Now production requires the secret to be both present and matched; dev behavior unchanged
+- **`/api/health` `sql.raw()` footgun** — Schema integrity check interpolated table names via `sql.raw()`; replaced with parameterized array binding
+- **`/api/test/reset` used client-visible env var as security gate** — Guard checked `NEXT_PUBLIC_TEST_MODE` which is bundled into client JS; changed to server-only `TEST_MODE` env var
+- **`/api/e2e/signin` GET liveness probe unauthenticated** — `GET /api/e2e/signin` returned `{ready:true}` to any caller with no auth, confirming the session-minting endpoint exists in production; now requires `x-e2e-secret` header matching `E2E_AUTH_SECRET`
+- **`/api/cron/weekly-summary` unbounded profile query** — No `.limit()` meant all onboarded users were loaded and fanned out to Claude on every Sunday run; capped at 200 per run to prevent OOM and Anthropic rate exhaustion
+- **`/api/cron/trials-match` queued incomplete profiles** — Nightly matching enqueued all care profiles regardless of `onboardingCompleted`; incomplete profiles have no cancer data, generating empty/garbage Claude prompts; now filtered to completed profiles only
+- **CI liveness probes sent unauthenticated GET** — `production-monitor.yml` and `api-health-ping.yml` polled `GET /api/e2e/signin` without the `x-e2e-secret` header; both updated to pass the secret
 
 ### Added (Community Forum)
 - **Community forum rate limiting** — post creation (5/min), reply creation (10/min), and upvote toggle (30/min) are now rate-limited per user via Redis/in-memory limiter

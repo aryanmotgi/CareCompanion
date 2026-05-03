@@ -34,7 +34,9 @@ export async function GET(req: Request) {
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const sevenDaysAhead = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  // Only process users with a completed onboarding
+  // Only process users with a completed onboarding.
+  // Cap at 200 per run to prevent unbounded Claude fan-out and OOM on large user bases.
+  // Future: use cursor-based pagination like trials-status for full coverage.
   const profiles = await db
     .select({
       id: careProfiles.id,
@@ -46,7 +48,8 @@ export async function GET(req: Request) {
       relationship: careProfiles.relationship,
     })
     .from(careProfiles)
-    .where(eq(careProfiles.onboardingCompleted, true));
+    .where(eq(careProfiles.onboardingCompleted, true))
+    .limit(200);
 
   if (profiles.length === 0) return Response.json({ message: 'No profiles', summaries: 0 });
 
