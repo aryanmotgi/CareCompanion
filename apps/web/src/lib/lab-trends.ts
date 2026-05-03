@@ -7,6 +7,7 @@ import type { LabResult } from './types'
 
 interface TrendAnalysis {
   test_name: string
+  unit: string | null
   trend: 'improving' | 'stable' | 'declining' | 'rapid_decline' | 'insufficient_data'
   current_value: number | null
   previous_value: number | null
@@ -179,6 +180,7 @@ export function analyzeTrend(results: LabResult[]): TrendAnalysis | null {
 
   return {
     test_name: testName,
+    unit: results[results.length - 1].unit ?? null,
     trend,
     current_value: current.value,
     previous_value: previous?.value ?? null,

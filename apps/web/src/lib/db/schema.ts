@@ -88,7 +88,7 @@ export const medications = pgTable('medications', {
   dose: text('dose'),
   frequency: text('frequency'),
   prescribingDoctor: text('prescribing_doctor'),
-  refillDate: text('refill_date'),
+  refillDate: date('refill_date'),
   notes: text('notes'),
   pharmacyPhone: text('pharmacy_phone'),
   healthkitFhirId: text('healthkit_fhir_id').unique(),
@@ -177,7 +177,9 @@ export const claims = pgTable('claims', {
   eobUrl: text('eob_url'),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-})
+}, (table) => ({
+  userIdIdx: index('claims_user_id_idx').on(table.userId),
+}))
 
 // ── Prior Authorizations ──────────────────────────────────────────────────────
 export const priorAuths = pgTable('prior_auths', {

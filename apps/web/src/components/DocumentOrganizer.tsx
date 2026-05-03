@@ -366,7 +366,9 @@ export function DocumentOrganizer({ documents, onScanNew, onDocumentsChanged }: 
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowRecategorize(false)} />
                 <div className="absolute right-0 top-full mt-1 z-20 bg-[#1e293b] border border-white/[0.08] rounded-xl shadow-xl shadow-black/40 py-1 min-w-[160px]">
-                  {(Object.keys(CATEGORY_CONFIG) as Array<Exclude<DocCategory, 'all'>>).map((catId) => {
+                  {(Object.keys(CATEGORY_CONFIG) as Array<Exclude<DocCategory, 'all'>>).filter(
+                    (catId) => activeTab === 'all' || catId !== activeTab
+                  ).map((catId) => {
                     const cfg = CATEGORY_CONFIG[catId]
                     return (
                       <button
@@ -598,9 +600,8 @@ function DocumentGridCard({
         {cfg.label}
       </span>
 
-      {/* Date + source */}
+      {/* Date */}
       <div className="text-[#64748b] text-xs">{formatDate(doc.document_date)}</div>
-      <div className="text-[#475569] text-[10px] mt-0.5">Scanned</div>
     </div>
   )
 }

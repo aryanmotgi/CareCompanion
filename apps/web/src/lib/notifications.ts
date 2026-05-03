@@ -231,7 +231,7 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
           userId,
           type: 'low_balance',
           title,
-          message: `Your ${(account.accountType || 'account').toUpperCase()} with ${account.provider} has $${balance} remaining out of $${limit}.${account.accountType === 'fsa' ? ' FSA funds typically expire at year-end — plan your spending.' : ''}`,
+          message: `Your ${(account.accountType || 'account').toUpperCase()} with ${account.provider} has $${balance} remaining out of $${limit}.${account.accountType?.toLowerCase() === 'fsa' ? ' FSA funds typically expire at year-end — plan your spending.' : ''}`,
         });
       }
     }

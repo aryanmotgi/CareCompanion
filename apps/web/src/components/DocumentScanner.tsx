@@ -243,7 +243,6 @@ export function DocumentScanner({ onClose, onSaved }: DocumentScannerProps) {
                   ref={fileRef}
                   type="file"
                   accept="image/*,.pdf,application/pdf"
-                  capture="environment"
                   className="hidden"
                   onChange={handleFileChange}
                 />

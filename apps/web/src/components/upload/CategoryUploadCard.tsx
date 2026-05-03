@@ -43,7 +43,7 @@ function extractItems(categoryId: UploadCategoryId, scanResult: Record<string, u
   }
   if (categoryId === 'conditions') {
     const conds = (scanResult.conditions as string[] | undefined) ?? [];
-    return conds.map((c) => ({ name: c }));
+    return [...new Set(conds.map((c) => c.trim()).filter(Boolean))].map((c) => ({ name: c }));
   }
   if (categoryId === 'allergies') {
     const allergies = (scanResult.allergies as Record<string, unknown>[] | undefined) ?? [];
@@ -122,7 +122,7 @@ function buildSaveBody(categoryId: UploadCategoryId, items: Record<string, strin
   if (categoryId === 'insurance') {
     const i = items[0] ?? {};
     return {
-      provider: i.provider || 'Unknown',
+      provider: i.provider || undefined,
       member_id: i.member_id || undefined,
       group_number: i.group_number || undefined,
       plan_type: i.plan_type || undefined,

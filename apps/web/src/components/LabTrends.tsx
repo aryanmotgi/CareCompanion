@@ -19,6 +19,7 @@ interface TrendAlert {
 
 interface LabTrend {
   test_name: string
+  unit: string | null
   trend: 'improving' | 'stable' | 'declining' | 'rapid_decline' | 'insufficient_data'
   current_value: number | null
   previous_value: number | null
@@ -300,7 +301,7 @@ function TrendCard({ trend }: { trend: LabTrend }) {
   const changeColor = isPositive ? 'text-emerald-400' : isNegative ? 'text-red-400' : 'text-[var(--text-secondary,#94a3b8)]'
 
   const chatPrompt = `Tell me about my ${trend.test_name} trend. It is currently ${trend.trend}${
-    trend.current_value !== null ? ` at ${trend.current_value}` : ''
+    trend.current_value !== null ? ` at ${trend.current_value}${trend.unit ? ` ${trend.unit}` : ''}` : ''
   }${trend.change_percent !== null ? ` with a ${trend.change_percent}% change` : ''}.`
 
   return (

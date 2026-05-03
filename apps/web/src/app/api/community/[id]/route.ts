@@ -66,9 +66,12 @@ export async function GET(request: Request, { params }: Props) {
       .where(and(eq(communityUpvotes.userId, user!.id), eq(communityUpvotes.targetId, id), eq(communityUpvotes.targetType, 'post')))
       .limit(1);
 
+    const totalReplies = post.replyCount ?? replies.length;
     return apiSuccess({
       post: { ...post, authorLabel: anonymousLabel(post.cancerType, post.authorRole), hasUpvoted: !!postUpvote },
       replies: replies.map((r) => ({ ...r, authorLabel: anonymousLabel(r.cancerType, r.authorRole) })),
+      totalReplies,
+      hasMoreReplies: totalReplies > replies.length,
     });
   } catch (err) {
     console.error('[community/id] GET error:', err);
