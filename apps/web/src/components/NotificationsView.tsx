@@ -143,14 +143,24 @@ export function NotificationsView({ notifications: initial }: NotificationsViewP
       </div>
 
       {/* Notification list */}
-      {filtered.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="text-4xl mb-3" aria-hidden="true">{activeFilter === 'all' ? '\u{1F389}' : '\u{1F50D}'}</div>
-          <p className="text-[var(--text-muted)] text-sm">
-            {activeFilter === 'all' ? 'All caught up! No notifications.' : `No ${activeFilter} notifications.`}
-          </p>
+      {filtered.length === 0 && activeFilter === 'all' && (
+        <div className="flex flex-col items-center py-10 text-center px-4">
+          <div className="w-14 h-14 rounded-2xl bg-[#6366F1]/10 border border-[#6366F1]/20 flex items-center justify-center mb-4">
+            <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#6366F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+            </svg>
+          </div>
+          <p className="text-sm font-semibold text-[#f1f5f9] mb-1">You won't miss a thing</p>
+          <p className="text-xs text-[#64748b] max-w-xs leading-relaxed">Turn on reminders for medications, appointments, and refills.</p>
         </div>
-      ) : (
+      )}
+      {filtered.length === 0 && activeFilter !== 'all' && (
+        <div className="text-center py-16">
+          <div className="text-4xl mb-3" aria-hidden="true">🔍</div>
+          <p className="text-[var(--text-muted)] text-sm">No {activeFilter} notifications.</p>
+        </div>
+      )}
+      {filtered.length > 0 && (
         <div className="space-y-2">
           {filtered.map((n) => (
             <div

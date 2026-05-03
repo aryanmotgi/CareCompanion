@@ -214,7 +214,7 @@ export default function CareHubView({ careProfileId, patientName, careGroupName 
 
   return (
     <div className="px-4 sm:px-5 py-5 sm:py-6">
-      {careGroupName && (
+      {careGroupName ? (
         <div
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl mb-4 text-sm"
           style={{
@@ -227,6 +227,25 @@ export default function CareHubView({ careProfileId, patientName, careGroupName 
             <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
           </svg>
           <span>Care Group: <strong style={{ color: '#c4b5fd' }}>{careGroupName}</strong></span>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center py-6 text-center px-4 mb-4 rounded-2xl" style={{ background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.15)' }}>
+          <div className="w-12 h-12 rounded-2xl bg-[#6366F1]/10 border border-[#6366F1]/20 flex items-center justify-center mb-3">
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#6366F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+            </svg>
+          </div>
+          <p className="text-sm font-semibold text-[#f1f5f9] mb-1">Caring is easier together</p>
+          <p className="text-xs text-[#64748b] max-w-[220px] leading-relaxed mb-3">
+            Invite family members to share updates, coordinate tasks, and stay in the loop.
+          </p>
+          <a
+            href="/settings"
+            className="text-xs font-semibold px-4 py-2 rounded-xl"
+            style={{ background: 'linear-gradient(135deg, #6366F1, #A78BFA)', color: 'white' }}
+          >
+            Invite family
+          </a>
         </div>
       )}
 

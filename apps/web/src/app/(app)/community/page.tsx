@@ -376,14 +376,20 @@ export default function CommunityPage() {
           ))}
         </div>
       ) : posts.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-4xl mb-3">💬</p>
-          <p className="font-medium" style={{ color: 'rgba(255,255,255,0.4)' }}>No posts yet</p>
-          <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>Be the first to share something with the community.</p>
+        <div className="flex flex-col items-center py-10 text-center px-4">
+          <div className="w-14 h-14 rounded-2xl bg-[#6366F1]/10 border border-[#6366F1]/20 flex items-center justify-center mb-4">
+            <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#6366F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+            </svg>
+          </div>
+          <p className="text-sm font-semibold mb-1" style={{ color: '#f1f5f9' }}>Connect with other caregivers</p>
+          <p className="text-xs mt-1 mb-5 max-w-xs leading-relaxed" style={{ color: '#64748b' }}>
+            Caring for someone is easier together. Be the first to share something with the community.
+          </p>
           <button
             onClick={() => setShowNewPost(true)}
-            className="mt-4 text-sm hover:opacity-80 transition-opacity"
-            style={{ color: '#c4b5fd' }}
+            className="text-sm font-semibold px-6 py-3 rounded-xl"
+            style={{ background: 'linear-gradient(135deg, #6366F1, #A78BFA)', color: 'white' }}
           >
             Write a post
           </button>
