@@ -44,6 +44,38 @@ function getEncryptionKey(): Buffer | null {
 }
 
 /**
+ * Decrypt a token previously encrypted with encryptToken.
+ * Handles legacy plaintext tokens (no enc:v1: prefix) transparently.
+ */
+export function decryptToken(ciphertext: string): string {
+  if (!ciphertext.startsWith(ENCRYPTED_PREFIX)) {
+    return ciphertext; // legacy plaintext — no key was set when stored
+  }
+
+  const key = getEncryptionKey();
+  if (!key) {
+    // Key not configured — can't decrypt; return raw so callers surface an auth error
+    return ciphertext;
+  }
+
+  const rest = ciphertext.slice(ENCRYPTED_PREFIX.length);
+  const parts = rest.split(':');
+  if (parts.length !== 3) {
+    throw new Error('[token-encryption] Invalid encrypted token format');
+  }
+
+  const [ivHex, authTagHex, encryptedHex] = parts;
+  const iv = Buffer.from(ivHex, 'hex');
+  const authTag = Buffer.from(authTagHex, 'hex');
+  const encrypted = Buffer.from(encryptedHex, 'hex');
+
+  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+  decipher.setAuthTag(authTag);
+
+  return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
+}
+
+/**
  * Encrypt a plaintext token string with AES-256-GCM.
  * Returns: "enc:v1:<iv_hex>:<authTag_hex>:<ciphertext_hex>"
  */
@@ -85,7 +117,7 @@ export function signState(payload: Record<string, string>): string {
 
   if (!secret) {
     if (process.env.NODE_ENV === 'production') {
-      console.warn('[token-encryption] OAUTH_STATE_SECRET not set — state is unsigned in production');
+      throw new Error('[token-encryption] OAUTH_STATE_SECRET is required in production. Set it to prevent OAuth CSRF attacks.');
     }
     return encoded;
   }

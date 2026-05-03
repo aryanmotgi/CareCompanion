@@ -28,6 +28,7 @@ type AuditAction =
   | 'sync_data'
   | 'view_records'
   | 'hipaa_consent_accepted'
+  | 'integration_disconnected'
 
 interface AuditEntry {
   user_id: string
