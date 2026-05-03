@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { TrialDetailPanel } from './TrialDetailPanel'
+import { InfoTooltip } from '../InfoTooltip'
 
 type Props = {
   nctId:                string
@@ -19,6 +20,7 @@ type Props = {
   onSave:    (nctId: string) => void
   onDismiss: (nctId: string) => void
   onShare:   (nctId: string, title: string, url: string) => void
+  patientName?: string
 }
 
 function ScoreBadge({ score }: { score: number }) {
@@ -56,7 +58,13 @@ export function TrialMatchCard(props: Props) {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <ScoreBadge score={props.matchScore} />
+          <div className="flex items-center gap-1">
+            <ScoreBadge score={props.matchScore} />
+            <InfoTooltip
+              content="Eligibility is estimated based on [patient name]'s profile. Always confirm with your oncologist before applying."
+              patientName={props.patientName}
+            />
+          </div>
           <button
             onClick={() => setExpanded(e => !e)}
             className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] p-1.5 transition-colors"

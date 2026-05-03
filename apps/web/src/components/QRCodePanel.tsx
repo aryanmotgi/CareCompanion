@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
+import { InfoTooltip } from './InfoTooltip'
 
 const QR_EXPIRY_SECONDS = 10 * 60  // 10 minutes
 
@@ -113,6 +114,10 @@ export function QRCodePanel({
         )}
 
         {/* Share buttons — Share only shown when Web Share API is available (mobile/supported browsers) */}
+        <div className="flex items-center gap-1.5 mb-2">
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Share invite</span>
+          <InfoTooltip content="Invited members can view updates and help coordinate care. They won't be able to edit medical information unless you give them permission." />
+        </div>
         <div className={`grid gap-2 ${canShare ? 'grid-cols-2' : 'grid-cols-1'}`}>
           {canShare && (
             <button

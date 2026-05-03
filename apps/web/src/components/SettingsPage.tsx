@@ -6,6 +6,7 @@ import { useCsrfToken } from './CsrfProvider'
 import { ThemeToggle } from './ThemeToggle'
 import { ReminderManager } from './ReminderManager'
 import { NotificationPreferences } from './NotificationPreferences'
+import { InfoTooltip } from './InfoTooltip'
 import type { UserSettings, MedicationReminder, Medication } from '@/lib/types'
 
 interface ConnectedApp {
@@ -365,12 +366,15 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
                 </button>
               </>
             ) : (
-              <button
-                onClick={handleConnectGoogle}
-                className="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white font-semibold hover:opacity-90 transition-opacity"
-              >
-                Connect
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleConnectGoogle}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white font-semibold hover:opacity-90 transition-opacity"
+                >
+                  Connect
+                </button>
+                <InfoTooltip content="Connecting your health system automatically imports appointments, lab results, and medications — no manual entry needed." />
+              </div>
             )}
           </div>
         </div>

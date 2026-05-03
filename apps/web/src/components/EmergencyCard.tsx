@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { InfoTooltip } from './InfoTooltip';
 
 interface EmergencyCardProps {
   patient: {
@@ -89,15 +90,18 @@ export function EmergencyCard({ patient, medications, doctors, insurance }: Emer
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-white">Emergency Card</h2>
-        <button
-          onClick={handleShare}
-          className="p-2 rounded-lg bg-white/[0.06] text-[var(--text-secondary)] hover:text-white transition-colors"
-          title="Share or copy"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.935-2.186 2.25 2.25 0 0 0-3.935-2.186Z" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={handleShare}
+            className="p-2 rounded-lg bg-white/[0.06] text-[var(--text-secondary)] hover:text-white transition-colors"
+            title="Share or copy"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.935-2.186 2.25 2.25 0 0 0-3.935-2.186Z" />
+            </svg>
+          </button>
+          <InfoTooltip content="This link works without a login — safe to share with family or save to your phone." />
+        </div>
       </div>
       <p className="text-xs text-[var(--text-muted)] mb-5">
         Show this to a paramedic, ER nurse, or first responder in an emergency.
