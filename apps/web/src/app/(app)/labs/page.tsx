@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db';
-import { users, labResults } from '@/lib/db/schema';
+import { users, labResults, careProfiles } from '@/lib/db/schema';
 import { and, eq, desc, isNull } from 'drizzle-orm';
 import type { LabResult } from '@/lib/types'
 import { LabsView } from './LabsView'
@@ -24,7 +24,13 @@ async function LabsContent() {
     .where(and(eq(labResults.userId, dbUser.id), isNull(labResults.deletedAt)))
     .orderBy(desc(labResults.dateTaken));
 
-  return <LabsView labResults={labs as LabResult[]} />
+  const [profile] = await db
+    .select({ patientName: careProfiles.patientName })
+    .from(careProfiles)
+    .where(eq(careProfiles.userId, dbUser.id))
+    .limit(1)
+
+  return <LabsView labResults={labs as LabResult[]} patientName={profile?.patientName ?? 'your loved one'} />
 }
 
 function LabsSkeleton() {
