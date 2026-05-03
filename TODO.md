@@ -1272,3 +1272,30 @@ Reviewer: /plan-eng-review + /plan-design-review
 - [ ] **[COPY/P3] PatientWizard "Connect Apple Health" button is misleading on web** — Already tracked in Onboarding Audit (see above). Label should read "Review my health data" or "Check what we know" since no real HealthKit connection happens on web.
 
 ---
+
+## In-App Guidance (Tour + Empty States + Tooltips) — 2026-05-03
+
+### Shipped ✅
+
+- [x] **GuidedTour** — 3-step spotlight tour (Chat tab → Care tab → Emergency Card row). Triggers once via `onboarding_just_completed` localStorage flag. Sets `tour_completed` immediately on mount. Escape key + overlay click dismiss. Portal-rendered with `box-shadow` cutout technique.
+- [x] **SectionEmptyState** — Shared component with icon, heading, body, patientName interpolation, action button/link.
+- [x] **Empty states updated** — Medications, Appointments, Labs (all-filter), Notifications (all-filter), Community, Care Hub (no care group) all show teaching copy with patient name.
+- [x] **InfoTooltip** — 20px circular `?` button. Portal popover, click-toggle, outside-mousedown dismiss. Used in Emergency Card share, Care Group invite, Google Calendar connect, and Clinical Trials score badge.
+
+### Deferred / Known Limitations
+
+- [ ] **[GUIDANCE/P2] TrialMatchCard patientName not threaded** — `TrialMatchCard.tsx` — `InfoTooltip` on the eligibility badge uses `[patient name]` literally as fallback because `patientName` is not passed through `TrialsTab.tsx` → `TrialMatchCard`. The `TrialsTab` only receives `profileId`, `hasZip`, and `cancerType`. To fix: fetch `patientName` from the profile in `TrialsTab` or pass it from the trials page, then thread it into `TrialMatchCard` and `CloseMatchCard`.
+
+- [ ] **[GUIDANCE/P3] GuidedTour spotlight doesn't reposition on scroll/resize** — `GuidedTour.tsx` — The spotlight rect is computed once per step. If the user resizes or scrolls while the tour is open, the highlight drifts. Fix: add passive `resize` and `scroll` event listeners in the step effect to recompute `getBoundingClientRect`.
+
+- [ ] **[GUIDANCE/P3] GuidedTour no focus trap** — `GuidedTour.tsx` — The tour card has `role="dialog" aria-modal="true"` but does not trap Tab focus inside the card. Screen reader users can Tab to obscured background elements. Fix: implement a focus trap using `useRef` on the card + intercept Tab/Shift-Tab.
+
+- [ ] **[GUIDANCE/P3] GuidedTour spotlight fallback is silent** — `GuidedTour.tsx` — If a `data-tour` element is not in the DOM (e.g. BottomTabBar hidden on desktop), the spotlight renders at 0,0 with zero size. Add a `console.warn` in dev mode and consider auto-advancing or skipping steps with missing targets.
+
+- [ ] **[GUIDANCE/P3] TrialsDashboardCard score tooltip** — `TrialsDashboardCard.tsx` — The eligibility disclaimer `InfoTooltip` only appears on the full trials tab. The dashboard card's match count doesn't have it. Consider adding one for consistency.
+
+- [ ] **[GUIDANCE/P4] No empty state for TrialsTab zero matches** — When `TrialsTab` returns no matched or close trials, there's no teaching empty state. Low priority since ProfileDataPrompt and ZipCodePrompt already handle the onboarding-incomplete case.
+
+- [ ] **[TEST/P3] GuidedTour visual behavior untestable in jsdom** — The spotlight positioning (`getBoundingClientRect` returns zeros in jsdom), scroll lock, and portal rendering can't be fully tested without a real browser. Manual QA needed on mobile + desktop.
+
+---

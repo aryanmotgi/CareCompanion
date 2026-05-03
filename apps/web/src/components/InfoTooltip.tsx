@@ -43,7 +43,6 @@ export function InfoTooltip({ content, patientName }: InfoTooltipProps) {
 
     const rect = buttonRef.current.getBoundingClientRect()
     const popoverWidth = 240
-    const popoverHeight = 100 // approximate
     const gap = 8 // space below button
     const marginX = 8 // viewport margin
 

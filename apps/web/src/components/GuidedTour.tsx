@@ -9,7 +9,7 @@ export interface TourStep {
   body: string   // shown in card
 }
 
-export interface GuidedTourProps {
+interface GuidedTourProps {
   steps: TourStep[]
   patientName: string
 }
