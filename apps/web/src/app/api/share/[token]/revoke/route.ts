@@ -3,11 +3,15 @@ import { sharedLinks } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { apiError, apiSuccess } from '@/lib/api-response'
+import { validateCsrf } from '@/lib/csrf'
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  const { valid, error: csrfError } = await validateCsrf(request)
+  if (!valid) return csrfError!
+
   const { user, error: authError } = await getAuthenticatedUser()
   if (authError) return authError
 
