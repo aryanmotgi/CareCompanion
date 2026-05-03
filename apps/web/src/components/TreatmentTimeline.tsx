@@ -12,9 +12,6 @@ interface TreatmentTimelineProps {
   events: TimelineEvent[];
 }
 
-// Re-export TimelineEvent so the page can use it
-export type { TimelineEvent };
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function isSameDay(a: Date, b: Date): boolean {

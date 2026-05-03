@@ -1,7 +1,5 @@
 import type { EligibilityGap, PatientProfile } from './assembleProfile'
 
-export type { EligibilityGap }
-
 export function isCloseTrial(gaps: EligibilityGap[]): boolean {
   if (gaps.length === 0) return false
   return gaps.every(g => g.gapType === 'measurable' || g.gapType === 'conditional')
