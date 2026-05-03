@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
+
+const REPLY_MIN = 5;
+const REPLY_MAX = 1000;
 
 interface Reply {
   id: string;
@@ -27,46 +29,71 @@ interface Post {
 
 export default function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
   const [post, setPost] = useState<Post | null>(null);
   const [replies, setReplies] = useState<Reply[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
   const [upvoting, setUpvoting] = useState(false);
 
   useEffect(() => {
     async function load() {
       try {
         const res = await fetch(`/api/community/${id}`);
+        if (!res.ok) {
+          setLoadError('Failed to load this post.');
+          return;
+        }
         const json = await res.json();
-        if (!json.ok) { router.push('/community'); return; }
+        if (!json.ok) {
+          setLoadError('Failed to load this post.');
+          return;
+        }
         setPost(json.data.post);
         setReplies(json.data.replies);
+      } catch {
+        setLoadError('Failed to load this post.');
       } finally {
         setLoading(false);
       }
     }
     load();
-  }, [id, router]);
+  }, [id]);
 
   async function handleUpvote() {
     if (!post || upvoting) return;
+    const prevPost = post;
+    // Optimistic update
+    setPost((p) => p ? ({
+      ...p,
+      hasUpvoted: !p.hasUpvoted,
+      upvotes: p.upvotes + (p.hasUpvoted ? -1 : 1),
+    }) : p);
     setUpvoting(true);
+    const csrfToken = document.cookie.split('; ').find(r => r.startsWith('csrf-token='))?.split('=')[1] ?? '';
     try {
       const res = await fetch(`/api/community/${id}/upvote`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+        },
         body: JSON.stringify({ targetType: 'post' }),
       });
+      if (!res.ok) throw new Error('Upvote failed');
       const json = await res.json();
-      if (json.ok) {
-        setPost((p) => p ? ({
-          ...p,
-          hasUpvoted: json.data.action === 'added',
-          upvotes: p.upvotes + (json.data.action === 'added' ? 1 : -1),
-        }) : p);
-      }
+      if (!json.ok) throw new Error('Upvote failed');
+      // Reconcile with server response
+      setPost((p) => p ? ({
+        ...p,
+        hasUpvoted: json.data.action === 'added',
+        upvotes: p.upvotes,
+      }) : p);
+    } catch {
+      // Revert on failure
+      setPost(prevPost);
     } finally {
       setUpvoting(false);
     }
@@ -74,20 +101,46 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
 
   async function handleReply(e: React.FormEvent) {
     e.preventDefault();
-    if (!replyText.trim() || submitting) return;
+    const trimmed = replyText.trim();
+    if (!trimmed || submitting) return;
+
+    if (trimmed.length < REPLY_MIN) {
+      setReplyError(`Reply must be at least ${REPLY_MIN} characters.`);
+      return;
+    }
+    if (trimmed.length > REPLY_MAX) {
+      setReplyError(`Reply must be ${REPLY_MAX} characters or fewer.`);
+      return;
+    }
+
+    const csrfToken = document.cookie.split('; ').find(r => r.startsWith('csrf-token='))?.split('=')[1] ?? '';
     setSubmitting(true);
+    setReplyError(null);
     try {
       const res = await fetch(`/api/community/${id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+        },
         body: JSON.stringify({ body: replyText }),
       });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setReplyError((json as { error?: string }).error ?? 'Failed to post reply. Please try again.');
+        return;
+      }
       const json = await res.json();
       if (json.ok) {
         setReplies((prev) => [json.data, ...prev]);
         setReplyText('');
+        setReplyError(null);
         setPost((p) => p ? { ...p, replyCount: p.replyCount + 1 } : p);
+      } else {
+        setReplyError(json.error ?? 'Failed to post reply. Please try again.');
       }
+    } catch {
+      setReplyError('Failed to post reply. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -103,7 +156,28 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  if (!post) return null;
+  if (loadError || !post) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <div
+          className="rounded-xl px-4 py-4 mb-5 text-sm"
+          style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', color: '#f87171' }}
+        >
+          {loadError ?? 'This post could not be found.'}
+        </div>
+        <Link
+          href="/community"
+          className="text-sm flex items-center gap-1 transition-colors hover:opacity-80"
+          style={{ color: 'rgba(255,255,255,0.4)' }}
+        >
+          ← Go back to community
+        </Link>
+      </div>
+    );
+  }
+
+  const replyTrimmedLen = replyText.trim().length;
+  const replyTooShort = replyTrimmedLen < REPLY_MIN;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -166,27 +240,40 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
       <form onSubmit={handleReply} className="mb-6">
         <textarea
           value={replyText}
-          onChange={(e) => setReplyText(e.target.value)}
+          onChange={(e) => {
+            setReplyText(e.target.value);
+            setReplyError(null);
+          }}
           placeholder="Share your experience or support…"
           rows={3}
           className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none placeholder:text-white/20"
           style={{
             background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.12)',
+            border: replyError ? '1px solid #f87171' : '1px solid rgba(255,255,255,0.12)',
             color: 'rgba(255,255,255,0.9)',
           }}
-          maxLength={1000}
+          maxLength={REPLY_MAX}
         />
-        <div className="flex items-center justify-between mt-2">
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>Your reply is anonymous</p>
-          <button
-            type="submit"
-            disabled={!replyText.trim() || submitting}
-            className="text-white text-sm px-4 py-2 rounded-lg font-semibold disabled:opacity-50 hover:opacity-90 transition-opacity"
-            style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
-          >
-            {submitting ? 'Posting…' : 'Reply'}
-          </button>
+        <div className="flex items-start justify-between mt-1.5 gap-3">
+          <div className="flex flex-col gap-1 min-w-0">
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>Your reply is anonymous</p>
+            {replyError && (
+              <p className="text-xs" style={{ color: '#f87171' }}>{replyError}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              {replyText.length}/{REPLY_MAX}
+            </p>
+            <button
+              type="submit"
+              disabled={replyTooShort || submitting}
+              className="text-white text-sm px-4 py-2 rounded-lg font-semibold disabled:opacity-50 hover:opacity-90 transition-opacity"
+              style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+            >
+              {submitting ? 'Posting…' : 'Reply'}
+            </button>
+          </div>
         </div>
       </form>
 

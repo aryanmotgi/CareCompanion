@@ -394,6 +394,7 @@ export const sharedLinks = pgTable('shared_links', {
   data: jsonb('data').notNull().default({}),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   viewCount: integer('view_count').default(0),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
@@ -462,7 +463,7 @@ export const communityPosts = pgTable('community_posts', {
   replyCount: integer('reply_count').notNull().default(0),
   isPinned: boolean('is_pinned').notNull().default(false),
   isModerated: boolean('is_moderated').notNull().default(false),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
 export const communityReplies = pgTable('community_replies', {
@@ -474,7 +475,7 @@ export const communityReplies = pgTable('community_replies', {
   body: text('body').notNull(),
   upvotes: integer('upvotes').notNull().default(0),
   isModerated: boolean('is_moderated').notNull().default(false),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
 export const communityUpvotes = pgTable('community_upvotes', {
@@ -482,8 +483,10 @@ export const communityUpvotes = pgTable('community_upvotes', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   targetId: uuid('target_id').notNull(), // postId or replyId
   targetType: text('target_type').notNull(), // 'post' | 'reply'
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-})
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('community_upvotes_user_target_unique').on(t.userId, t.targetId, t.targetType),
+])
 
 // ── Wellness Check-ins ────────────────────────────────────────────────────────
 export const wellnessCheckins = pgTable('wellness_checkins', {

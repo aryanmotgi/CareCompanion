@@ -248,7 +248,21 @@ function WeeklySummaryPage({
 
 export default async function SharedPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const [link] = await db.select().from(sharedLinks).where(eq(sharedLinks.token, token)).limit(1);
+  const [link] = await db
+    .select({
+      id: sharedLinks.id,
+      token: sharedLinks.token,
+      title: sharedLinks.title,
+      type: sharedLinks.type,
+      data: sharedLinks.data,
+      expiresAt: sharedLinks.expiresAt,
+      createdAt: sharedLinks.createdAt,
+      viewCount: sharedLinks.viewCount,
+      revokedAt: sharedLinks.revokedAt,
+    })
+    .from(sharedLinks)
+    .where(eq(sharedLinks.token, token))
+    .limit(1);
 
   if (!link) notFound();
 
@@ -268,11 +282,37 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
     );
   }
 
+  if (link.revokedAt) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: '#0c0c1a' }}>
+        <div className="text-center px-4">
+          <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-white/30" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-bold text-white mb-2">Link Revoked</h1>
+          <p className="text-sm text-white/40">This link has been revoked. Ask the sender to share it again.</p>
+        </div>
+      </div>
+    );
+  }
+
   // Increment view count (fire-and-forget)
   db.update(sharedLinks).set({ viewCount: sql`${sharedLinks.viewCount} + 1` }).where(eq(sharedLinks.token, token)).catch(() => {});
 
   // Weekly summary gets its own layout
   if (link.type === 'weekly_summary') {
+    if (!link.data || typeof link.data !== 'object') {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: '#0c0c1a' }}>
+          <div className="text-center px-4">
+            <h1 className="text-xl font-bold text-white mb-2">Data Unavailable</h1>
+            <p className="text-sm text-white/40">The health data for this link could not be loaded.</p>
+          </div>
+        </div>
+      );
+    }
     const weekly = link.data as WeeklyData;
     const stats = weekly.stats;
     return <WeeklySummaryPage link={link} weekly={weekly} stats={stats} />;

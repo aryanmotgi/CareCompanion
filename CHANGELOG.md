@@ -2,9 +2,43 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
-## [0.3.1.0] - 2026-05-02
+## [0.3.1.0] - 2026-05-03
 
-Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, and Google Calendar / HealthKit Integrations audit.
+Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, and Community Forum + Sharing Links full security audit.
+
+### Added (Community Forum)
+- **Community forum rate limiting** — post creation (5/min), reply creation (10/min), and upvote toggle (30/min) are now rate-limited per user via Redis/in-memory limiter
+- **Post deletion** — `DELETE /api/community/[id]` lets users retract their own posts with CSRF + ownership verification and cascade delete of replies
+- **Unique upvote constraint** — database-level `uniqueIndex` on `(userId, targetId, targetType)` prevents race-condition double-upvotes that were possible with concurrent requests
+- **Community forum error states** — feed and post detail pages now show inline error messages and retry affordances on fetch failures, replacing silent empty states
+- **Community pagination** — feed page has a load-more button that appends results via offset-based pagination; no more hard cut at 20 posts
+- **Reply character count and length validation** — client-side min/max enforcement matches backend Zod schema (min 5, max 1000); submit disabled when too short
+
+### Fixed (Community Forum)
+- **Reply POST leaked `userId` to caller** — bare `.returning()` on the reply insert returned every column including the user's ID; replaced with explicit column projection
+- **`replyCount` drift on DB error** — count increment and reply insert now run in a single transaction; previously the count could increment without a successful insert
+- **`cancerType` accepted arbitrary strings** — POST body now validates against the `CANCER_TYPES` enum; GET filter validates against the allowlist before DB query
+- **`offset` parameter accepted negative values** — clamped to `Math.max(0, ...)` to prevent unexpected Postgres OFFSET behavior
+- **UUID not validated on `id` path params** — non-UUID strings caused DB errors surfaced as 500; now returns 400 before reaching the database
+- **Upvote could target moderated/nonexistent posts** — added pre-transaction existence + `isModerated=false` check for both post and reply targets
+- **CSRF tokens missing on all community client mutations** — create post, upvote, and reply fetches now include `X-CSRF-Token` header
+- **Optimistic upvote not reverted on failure** — snapshot + revert pattern added; UI no longer shows wrong count on API error
+
+### Added (Sharing Links)
+- **Link revocation** — `POST /api/share/[token]/revoke` lets users invalidate a share link before expiry; revoked links return HTTP 410; public page renders "Link Revoked" state
+- **Active links list** — `GET /api/share` returns all non-revoked, non-expired links for the authenticated user; `ShareHealthCard` reuses existing active link instead of creating a new one on every click
+- **Share page loading + error boundaries** — `loading.tsx` with animated skeleton and `error.tsx` with retry button added for the public shared page
+
+### Fixed (Sharing Links)
+- **`userId`/`careProfileId` present in public API response** — `GET /api/share/[token]` used `db.select()` without column projection; owner identity was being fetched into memory and could appear in RSC stream; replaced with explicit projection
+- **Same issue on public page** — `shared/[token]/page.tsx` fetched all columns including PII; fixed with explicit projection
+- **`x-forwarded-for` not split on POST** — rate limiter keyed on full comma-chain header; attacker with different proxy chain got fresh bucket; fixed to use first segment only
+- **No per-user rate limit on share creation** — IP-only limit allowed 20 links/minute; added per-user limit of 5/min
+- **Token returned in POST response alongside URL** — raw token removed from response body (URL already contains it)
+- **Relative URL in weekly share response** — changed to use `NEXT_PUBLIC_APP_URL` base, consistent with the create endpoint
+- **Clipboard copy error silently swallowed** — `ShareHealthCard` now catches `navigator.clipboard.writeText` failures and shows a "copy manually" message
+- **`weekly_summary` data cast without runtime check** — added `typeof link.data !== 'object'` guard before cast to prevent crash on malformed DB data
+- **Unused `vi` import in token-encryption tests** — removed; unused `CheckinInput` type removed from checkin-validation
 
 ### Added (Integrations)
 - **Google Calendar integration UI** — Settings page now shows a connected apps section: connect, sync now, and disconnect buttons for Google Calendar; last-synced timestamp; expired-token warning banner

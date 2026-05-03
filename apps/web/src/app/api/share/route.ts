@@ -7,9 +7,10 @@ import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { sharedLinks, careProfiles, medications, appointments, labResults, doctors } from '@/lib/db/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, gt, desc } from 'drizzle-orm';
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 20 });
+const userShareLimiter = rateLimit({ interval: 60_000, maxRequests: 5 });
 
 const ShareSchema = z.object({
   type: z.enum(['health_summary', 'medications', 'lab_results', 'care_plan']).default('health_summary'),
@@ -19,7 +20,8 @@ async function buildShareData(type: string, profileId: string) {
   switch (type) {
     case 'medications': {
       const meds = await db.select().from(medications)
-        .where(and(eq(medications.careProfileId, profileId), isNull(medications.deletedAt)));
+        .where(and(eq(medications.careProfileId, profileId), isNull(medications.deletedAt)))
+        .limit(50);
       return { medications: meds.map(m => ({ name: m.name, dose: m.dose, frequency: m.frequency, prescribingDoctor: m.prescribingDoctor, refillDate: m.refillDate, notes: m.notes })) };
     }
     case 'lab_results': {
@@ -60,7 +62,7 @@ export async function POST(request: Request) {
   const { valid, error: csrfError } = await validateCsrf(request);
   if (!valid) return csrfError!;
 
-  const ip = request.headers.get('x-forwarded-for') || 'unknown';
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const { success } = await limiter.check(ip);
   if (!success) return apiError('Too many requests', 429);
 
@@ -68,7 +70,11 @@ export async function POST(request: Request) {
     const { user, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
 
-    const body = await request.json();
+    const userRl = await userShareLimiter.check(`share-create:${user!.id}`)
+    if (!userRl.success) return apiError('Too many requests', 429)
+
+    let body: unknown;
+    try { body = await request.json() } catch { return apiError('Invalid request body', 400) }
     const { data: validated, error: valError } = validateBody(ShareSchema, body);
     if (valError) return valError;
     const { type } = validated;
@@ -110,9 +116,36 @@ export async function POST(request: Request) {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://carecompanionai.org'
     const shareUrl = `${appUrl}/shared/${link.token}`;
-    return apiSuccess({ url: shareUrl, expiresAt: expiresAt.toISOString(), token: link.token });
+    return apiSuccess({ url: shareUrl, expiresAt: expiresAt.toISOString() });
   } catch (err) {
     console.error('[share] POST error:', err);
     return apiError('Internal server error', 500);
   }
+}
+
+export async function GET() {
+  const { user, error: authError } = await getAuthenticatedUser();
+  if (authError) return authError;
+
+  const now = new Date()
+  const links = await db
+    .select({
+      token: sharedLinks.token,
+      title: sharedLinks.title,
+      type: sharedLinks.type,
+      createdAt: sharedLinks.createdAt,
+      expiresAt: sharedLinks.expiresAt,
+      viewCount: sharedLinks.viewCount,
+    })
+    .from(sharedLinks)
+    .where(
+      and(
+        eq(sharedLinks.userId, user!.id),
+        isNull(sharedLinks.revokedAt),
+        gt(sharedLinks.expiresAt, now)
+      )
+    )
+    .orderBy(desc(sharedLinks.createdAt))
+
+  return apiSuccess({ links })
 }

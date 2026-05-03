@@ -5,6 +5,9 @@ import { db } from '@/lib/db';
 import { communityPosts, careProfiles } from '@/lib/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { z } from 'zod';
+import { rateLimit } from '@/lib/rate-limit';
+
+const communityPostLimiter = rateLimit({ interval: 60_000, maxRequests: 5 });
 
 const CANCER_TYPES = [
   'breast cancer', 'colorectal cancer', 'lung cancer', 'prostate cancer',
@@ -29,7 +32,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const cancerType = searchParams.get('cancerType') || null;
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50);
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0') || 0);
+
+    if (cancerType && !CANCER_TYPES.includes(cancerType)) {
+      return apiError('Invalid cancerType', 400);
+    }
 
     const where = cancerType
       ? and(eq(communityPosts.cancerType, cancerType), eq(communityPosts.isModerated, false))
@@ -70,7 +77,7 @@ export async function GET(request: Request) {
 const createPostSchema = z.object({
   title: z.string().min(5).max(200),
   body: z.string().min(10).max(2000),
-  cancerType: z.string().min(1),
+  cancerType: z.string().refine((v) => CANCER_TYPES.includes(v), { message: 'Invalid cancerType' }),
   authorRole: z.enum(['caregiver', 'patient']).optional().default('caregiver'),
 });
 
@@ -82,7 +89,15 @@ export async function POST(request: Request) {
     const { user, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
 
-    const body = await request.json();
+    const rl = await communityPostLimiter.check(`community-post:${user!.id}`);
+    if (!rl.success) return apiError('Too many requests', 429);
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return apiError('Invalid request body', 400);
+    }
     const parsed = createPostSchema.safeParse(body);
     if (!parsed.success) return apiError('Invalid input', 400);
 

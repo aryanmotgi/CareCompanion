@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 
 // Tested without real env vars so we can exercise all branches
 describe('token-encryption', () => {

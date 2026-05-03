@@ -650,3 +650,117 @@ Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
 - ⬜ [L] **`fsaHsa.accountType` unconstrained text** — Notification logic `=== 'fsa'` silently misses `'FSA'`. Enforce `z.enum(['fsa','hsa'])` at API layer.
 
 - ⬜ [L] **`logAudit` is fire-and-forget — audit failures not alerted** — `lib/audit.ts:44` — PHI access can proceed with broken audit trail. Wire logger.error to error tracking.
+
+---
+
+## Community Forum & Sharing Links Full Audit — 2026-05-03 (preview/trials-impeccable)
+
+Legend: ✅ Fixed | ⬜ Pending | [C] Critical | [H] High | [M] Med | [L] Low
+
+### COMMUNITY BACKEND — `app/api/community/`
+
+- ✅ [C] **Reply POST bare `.returning()` leaked `userId` + `postId` to caller** — `community/[id]/route.ts` — `.returning()` with no column projection returned every column including `userId`. Server returned the poster's own userId on every reply. Fixed: explicit column projection (`id`, `cancerType`, `authorRole`, `body`, `upvotes`, `createdAt` only).
+
+- ✅ [H] **No rate limiting on POST (create post)** — `community/route.ts` — Any authenticated user could flood the forum with unlimited posts. Fixed: `rateLimit({ interval: 60_000, maxRequests: 5 })` keyed on `user.id`.
+
+- ✅ [H] **No rate limiting on POST (create reply)** — `community/[id]/route.ts` — Same gap for replies. Fixed: `rateLimit({ interval: 60_000, maxRequests: 10 })` keyed on `user.id`.
+
+- ✅ [H] **No rate limiting on POST (upvote toggle)** — `community/[id]/upvote/route.ts` — Machine-speed toggle possible. Fixed: `rateLimit({ interval: 60_000, maxRequests: 30 })` keyed on `user.id`.
+
+- ✅ [H] **No DELETE handler — users cannot retract posts** — Cancer patients/caregivers sharing sensitive medical details had no way to remove posts. Fixed: added `DELETE /api/community/[id]` with auth + UUID validation + ownership check + cascade delete.
+
+- ✅ [H] **`communityUpvotes` missing unique DB constraint (race-condition double-upvote)** — `schema.ts:480-486` — Application-level SELECT-then-INSERT was not atomic; two concurrent requests could both pass the existence check and double-insert. Fixed: added `uniqueIndex('community_upvotes_user_target_unique').on(t.userId, t.targetId, t.targetType)` to schema.
+
+- ✅ [M] **`cancerType` not validated against enum in POST body** — `community/route.ts` — `z.string().min(1)` accepted any string. Fixed: added `.refine(v => CANCER_TYPES.includes(v))` to `createPostSchema`.
+
+- ✅ [M] **`cancerType` GET filter param not validated against allowlist** — `community/route.ts` — Arbitrary strings passed to DB WHERE clause. Fixed: added guard returning 400 for unknown `cancerType` values.
+
+- ✅ [M] **`offset` param not guarded against NaN/negative** — Both community routes. Fixed: `Math.max(0, parseInt(...) || 0)`.
+
+- ✅ [M] **`request.json()` parse failure produced 500 instead of 400** — Fixed in both `community/route.ts` and `community/[id]/route.ts`: wrapped in try/catch, returns `apiError('Invalid request body', 400)`.
+
+- ✅ [M] **`replyCount` increment ran outside transaction** — `community/[id]/route.ts` — If the increment failed after a successful insert, replyCount drifts. Fixed: wrapped insert + increment in `db.transaction()`.
+
+- ✅ [M] **UUID not validated on `id` URL param** — `community/[id]/route.ts` and `upvote/route.ts` — Non-UUID caused DB error → 500 instead of 400. Fixed: `z.string().uuid()` check returns 400 on invalid format.
+
+- ✅ [M] **Upvote did not verify target exists or is not moderated** — `community/[id]/upvote/route.ts` — Could upvote moderated (hidden) posts and phantom reply IDs. Fixed: pre-transaction existence + `isModerated=false` check for both post and reply targets.
+
+- ✅ [M] **`createdAt` missing `.notNull()` on community tables** — `schema.ts:465,477` — Could produce null timestamps → `new Date(null)` crash in frontend. Fixed: added `.notNull()` to `communityPosts.createdAt` and `communityReplies.createdAt`.
+
+- ⬜ [H] **No HTML/content sanitization on post/reply bodies** — No sanitization library (`sanitize-html`, `DOMPurify`, etc.) is called before storing or returning community content. A markdown renderer added in future would be vulnerable to stored XSS. **Fix needed:** install `sanitize-html` and strip HTML from `title` and `body` before DB insert in both community routes.
+
+- ⬜ [H] **No report/flag mechanism** — Users cannot flag harmful content. `isModerated` column exists but is set via direct DB only. **Fix needed:** (1) add `communityReports` table with `(postId|replyId, reportedByUserId, reason, createdAt)`; (2) add `POST /api/community/[id]/report` endpoint; (3) auto-hide at report threshold or admin review.
+
+- ⬜ [M] **No admin moderation API** — `isModerated` flag cannot be set via any API endpoint. **Fix needed:** add `POST /api/admin/community/[id]/moderate` gated by admin role/email check.
+
+- ⬜ [M] **`authorRole` is client-controlled** — `community/route.ts:74` — Post body can claim `authorRole: 'patient'` regardless of actual user role. A caregiver can post as "Breast Cancer Patient". **Fix needed:** resolve `authorRole` server-side from care profile instead of trusting request body.
+
+- ⬜ [M] **Reply `authorRole` defaults to `'caregiver'` regardless of actual user role** — `community/[id]/route.ts` — Reply author labels always show "Caregiver". Same fix as above.
+
+- ⬜ [L] **Replies capped at 100 with no pagination indicator** — `community/[id]/route.ts` — Posts with >100 replies silently drop older ones. **Fix needed:** return total reply count and support offset-based pagination.
+
+### COMMUNITY FRONTEND — `app/(app)/community/`
+
+- ✅ [M] **No error state on list fetch failure** — `community/page.tsx` — Fetch failure left posts array empty with no message. Fixed: added `error` state with inline banner and retry.
+
+- ✅ [M] **No CSRF token on POST (create post)** — `community/page.tsx` — Backend validates CSRF but client omitted header. Fixed: reads `csrf-token` cookie and sends `X-CSRF-Token` header.
+
+- ✅ [M] **POST submit failure silently swallowed** — `community/page.tsx` — Modal stayed open with no feedback. Fixed: added `submitError` state rendered inside the modal.
+
+- ✅ [M] **No error state on detail page load failure** — `community/[id]/page.tsx` — Returned `null` on failure → blank page. Fixed: added `loadError` state with error UI and "Go back" link.
+
+- ✅ [M] **No CSRF token on upvote or reply POST** — `community/[id]/page.tsx` — Both mutations omitted CSRF header. Fixed.
+
+- ✅ [M] **Reply submit failure silently swallowed** — `community/[id]/page.tsx` — Fixed: added `replyError` state with inline message.
+
+- ✅ [M] **Client-side length validation didn't match backend Zod schema** — Both pages. Fixed: enforced `title min 5 / max 200`, `body min 10 / max 2000`, `reply min 5 / max 1000` with inline error messages.
+
+- ✅ [M] **Optimistic upvote not reverted on failure** — `community/[id]/page.tsx` — Fixed: snapshot `prevPost` before update, restore in catch.
+
+- ✅ [L] **No pagination — only first 20 posts shown** — `community/page.tsx` — Fixed: added offset-based "Load more" button that appends results; hidden when fewer than page-limit returned.
+
+### SHARING LINKS — Schema
+
+- ✅ **Added `revokedAt` column to `sharedLinks` table** — `schema.ts:397` — Foundation for link revocation. Drizzle schema updated; run migration to apply.
+
+### SHARING LINKS — Backend
+
+- ✅ [H] **No link revocation mechanism** — Users could not cancel a mistaken share of PHI (cancer stage, medications, allergies, doctor contacts) before 7-day expiry. Fixed: (1) added `revokedAt` to schema; (2) created `POST /api/share/[token]/revoke` — auth + ownership check + sets `revokedAt`; (3) access check in `[token]/route.ts` now returns 410 Gone if `revokedAt` is set; (4) public page renders "Link Revoked" UI; (5) `GET /api/share` returns list of active non-revoked links.
+
+- ✅ [H] **`db.select()` fetched all columns including `userId`/`careProfileId` on public endpoint** — `share/[token]/route.ts` — Any expansion of the handler would have leaked owner identity. Fixed: explicit projection (`title`, `type`, `data`, `createdAt`, `expiresAt`, `revokedAt`, `viewCount` only).
+
+- ✅ [M] **`x-forwarded-for` not split on POST create route** — `share/route.ts` — Full comma-chain value used as rate limit key; same IP with different proxy chains got separate buckets. Fixed: `split(',')[0].trim()`.
+
+- ✅ [M] **No per-user rate limit on share creation** — `share/route.ts` — IP-only limit allowed 20 links/minute per IP. Fixed: added `userShareLimiter` keyed on `user.id` (5/min).
+
+- ✅ [M] **Raw `token` returned in POST response alongside URL** — `share/route.ts` — Token appeared twice; removed from response body (URL contains it).
+
+- ✅ [M] **`uniqueTokenPerInterval` missing on public token rate limiter** — `share/[token]/route.ts` — Added `uniqueTokenPerInterval: 500` to match POST route.
+
+- ✅ [M] **Weekly share URL was relative path** — `share/weekly/route.ts` — `/shared/${token}` would break in email notifications. Fixed: uses `NEXT_PUBLIC_APP_URL` base.
+
+- ✅ [L] **Medications query in `buildShareData` had no limit** — `share/route.ts` — Patients with many medications produced very large share payloads. Fixed: added `.limit(50)`.
+
+- ⬜ [M] **Doctor phone numbers exposed publicly on share page** — `share/[token]/page.tsx:411-428` — `buildShareData` includes `phone: d.phone` for care team; phone numbers are rendered on the public page with no auth. **Decision needed:** either omit `phone` from public share payloads or add an explicit user acknowledgment before sharing.
+
+- ⬜ [M] **`/api/share/` middleware public path is broader than intended** — `middleware.ts:34` — All routes under `/api/share/` bypass middleware auth, relying on handler-level auth. Comment added to document this. **Consider:** rename public token route to `/api/shared/[token]` to separate it from the authenticated `/api/share` family.
+
+### SHARING LINKS — Frontend / Public Page
+
+- ✅ [H] **No loading state on public shared page** — `shared/[token]/page.tsx` — Blank screen during server DB fetch. Fixed: added `loading.tsx` with animated-pulse skeleton.
+
+- ✅ [H] **`db.select()` on page fetched `userId`/`careProfileId` (present in RSC stream)** — `shared/[token]/page.tsx` — Fixed: explicit column projection excluding PII fields.
+
+- ✅ [M] **No revoked-link UI** — `shared/[token]/page.tsx` — Fixed: renders "Link Revoked" state matching the expired-link styling.
+
+- ✅ [M] **`weekly_summary` data cast unsafely** — `shared/[token]/page.tsx:276` — `link.data as WeeklyData` with no runtime check. Fixed: added `typeof link.data !== 'object'` guard with error UI fallback.
+
+- ✅ [M] **Clipboard `writeText` had no error handling in ShareHealthCard** — `components/ShareHealthCard.tsx:34` — Throws on non-HTTPS or permission-denied. Fixed: try/catch with `setError('Could not copy — please copy the link manually.')`.
+
+- ✅ [M] **ShareHealthCard created new link on every click with no dedup** — `components/ShareHealthCard.tsx` — Users accumulated many active links for the same data. Fixed: `useEffect` on mount calls `GET /api/share` and reuses existing active link if found; `handleShare` skips create if `existingLink` is set.
+
+- ✅ [L] **No error boundary on shared page** — Fixed: created `shared/[token]/error.tsx` with "Something went wrong" UI and retry button.
+
+- ⬜ [L] **No confirmation/disclosure before generating share link** — `components/ShareHealthCard.tsx` — Disclosure note added listing what will be shared, but no confirmation modal for misclicks. Consider a "Are you sure?" gate for first share.
+
+- ⬜ [L] **No active share links management page** — Users can see active links via `GET /api/share` (now exists) and revoke via the new endpoint, but there is no dedicated settings UI showing all active links with revoke buttons. **Fix needed:** add "Active share links" section to Settings or ShareHealthCard.
