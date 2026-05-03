@@ -177,7 +177,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to seed reviewer data' }, { status: 500 });
   }
 
-  console.log(`[provision-reviewer] Created reviewer account: ${REVIEWER_EMAIL} (${newUser.id}) password: ${generatedPassword}`);
+  console.log(`[provision-reviewer] Created reviewer account: ${REVIEWER_EMAIL} (${newUser.id})`);
   return NextResponse.json({
     success: true,
     status: 'created',

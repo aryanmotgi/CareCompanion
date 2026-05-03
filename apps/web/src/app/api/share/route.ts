@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   const { valid, error: csrfError } = await validateCsrf(request);
   if (!valid) return csrfError!;
 
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const ip = request.headers.get('x-real-ip')?.trim() ?? request.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() ?? 'unknown';
   const { success } = await limiter.check(ip);
   if (!success) return apiError('Too many requests', 429);
 

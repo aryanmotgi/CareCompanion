@@ -10,7 +10,7 @@ const careGroupLimiter = rateLimit({ interval: 60 * 60 * 1000, maxRequests: 5 })
 
 export async function POST(req: Request) {
   try {
-    const ip = (req.headers.get('x-forwarded-for') ?? '127.0.0.1').split(',')[0].trim()
+    const ip = req.headers.get('x-real-ip')?.trim() ?? req.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() ?? '127.0.0.1'
 
     // Parse body first so we can include groupName in the rate limit key.
     // This prevents a single IP exhausting attempts on one group and then

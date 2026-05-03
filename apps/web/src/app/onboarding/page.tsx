@@ -23,7 +23,7 @@ export default async function OnboardingPage({
   const session = await auth();
   if (!session?.user?.id) redirect('/login?error=session');
 
-  const [dbUser] = await db.select({ id: users.id, providerSub: users.providerSub, email: users.email, displayName: users.displayName, isDemo: users.isDemo, createdAt: users.createdAt, role: users.role }).from(users).where(eq(users.email, session.user.email!)).limit(1);
+  const [dbUser] = await db.select({ id: users.id, providerSub: users.providerSub, email: users.email, displayName: users.displayName, isDemo: users.isDemo, createdAt: users.createdAt, role: users.role }).from(users).where(eq(users.id, session.user.id)).limit(1);
   if (!dbUser) redirect('/login?error=session');
 
   // Social sign-up passes ?role=caregiver|patient|self in callbackUrl.

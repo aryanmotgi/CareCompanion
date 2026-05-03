@@ -114,7 +114,7 @@ Location: ${patient.city ?? ''} ${patient.state ?? ''}
   try {
     const cleaned = text.replace(/^```json\n?|\n?```$/g, '').trim()
     const parsed = JSON.parse(cleaned)
-    if (!isStr(parsed?.summary) || !isStr(parsed?.email_body) || !isStr(parsed?.phone_script)) {
+    if (!isStr(parsed?.summary) || !isStr(parsed?.email_body) || !isStr(parsed?.phone_script) || !isStr(parsed?.visit_frequency)) {
       throw new Error('LLM response missing required string fields')
     }
     generated = parsed

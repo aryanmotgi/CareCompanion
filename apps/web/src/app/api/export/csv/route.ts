@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server'
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 5 })
 
 export async function GET(req: Request) {
-  const ip = req.headers.get('x-forwarded-for') || 'unknown'
+  const ip = req.headers.get('x-real-ip')?.trim() ?? req.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() ?? 'unknown'
   const { success } = await limiter.check(ip)
   if (!success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
 
