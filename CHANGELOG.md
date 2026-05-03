@@ -2,9 +2,38 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
-## [0.3.1.0] - 2026-05-03
+## [0.3.1.0] - 2026-05-02
 
-Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, Community Forum + Sharing Links full security audit, Cron Jobs / Production Monitor / Admin Routes security audit, auth UX polish, and medium/low-priority follow-up fixes across all audit sections.
+Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, Community Forum + Sharing Links full security audit, Cron Jobs / Production Monitor / Admin Routes security audit, auth UX polish, Clinical Trials full UX+a11y+security pass, and medium/low-priority follow-up fixes across all audit sections.
+
+### Added (Clinical Trials)
+- **Animated loading skeleton** — initial page load shows a skeleton matching the real card layout instead of a plain "Loading…" string; eliminates layout shift
+- **Inline save confirmation** — "Save this trial" button now shows "✓ Saved — we'll notify you if this trial's status changes" for 3 seconds after clicking; users know the save worked
+- **Trials skeleton component** — `TrialsSkeleton` matches the real matched-trial card layout (header row, 2 cards with match reasons and action rows)
+
+### Changed (Clinical Trials)
+- **Dark theme unified across all trial components** — `CloseMatchCard` and `TrialDetailPanel` were using raw Tailwind light-mode classes (`bg-gray-50`, `text-gray-700`, `text-blue-600`) inside the dark app shell; all colors migrated to design system tokens (`var(--border)`, `var(--bg-card)`, `var(--text)`, `var(--text-muted)`, `#A78BFA` for links, `#6366F1` for CTAs)
+- **Microcopy rewritten for cancer patients and caregivers** — 15+ strings updated: "Tell us about the patient" → "Let's find the right trials", "No matching trials found" → "We didn't find a match right now — but trials open every week", "Trials You're Close To" → "Almost There — Trials Worth Watching", "What's blocking eligibility" → "What would need to change", "Close match" badge → "Almost there"
+- **Empty states with warmth and next steps** — both empty state variants (never searched / searched with no results) now include reassurance and specific guidance on what to do next
+- **TrialDetailPanel section headings** — "Phone call script" → "What to say when you call"; "Share with oncologist" → "Note for your oncologist"; error message now links directly to ClinicalTrials.gov
+- **ZipCodePrompt heading** — "Add your zip code to find trials near you" → "Where are you located?" with explanatory subtext
+
+### Fixed (Clinical Trials — Security)
+- **CSRF headers missing on all three trial mutations** — `runLive` (`POST /api/trials/match`), `saveTrial` (`POST /api/trials/save`), and `dismissTrial` (`PATCH /api/trials/saved/:nctId`) sent no `x-csrf-token` header; all would 403 in production; fixed to match the pattern used by all other mutations in the app
+- **PHI cache persisted across user sessions** — `TrialDetailPanel` previously cached AI-generated trial details (containing patient cancer type, stage, prior treatments) in a module-level Map that survived sign-out; a new user on the same tab could see a prior user's data; removed the cache entirely
+
+### Fixed (Clinical Trials — Bugs)
+- **Wrong profile served on trials page** — `trials/page.tsx` used `.limit(1)` without `ORDER BY`; for users with multiple profiles, an arbitrary profile was selected; fixed with `.orderBy(desc(careProfiles.createdAt))`
+- **Share email sent empty URL when trialUrl is null** — `shareTrial` passed `props.trialUrl ?? ''`, producing a malformed mailto body; now falls back to `https://clinicaltrials.gov/study/${nctId}`
+
+### Fixed (Clinical Trials — Accessibility)
+- **Error messages not announced to screen readers** — all error `<p>` elements in `ProfileDataPrompt`, `ZipCodePrompt`, and `TrialsTab` lacked `role="alert"`; added throughout
+- **Form labels not linked to inputs** — cancer type, stage, and age inputs in `ProfileDataPrompt` had visual labels with no `htmlFor`/`id` pairing; added `useId()` for each field pair; `ZipCodePrompt` input now has `aria-invalid` on error state
+- **Live search overlay not announced** — fullscreen search overlay lacked `role="status"` and `aria-label`; rotating phase text is now read aloud by screen readers
+- **Trial results area had no live region** — when live search completed, screen readers received no announcement; added `aria-live="polite"` on the results container
+- **Trial card expand/collapse not accessible** — title button lacked `aria-expanded` and a descriptive label; both the title button and chevron button now carry `aria-expanded` and `aria-label`
+- **Loading spinner used emoji** — `⏳` was announced as "hourglass" by screen readers; replaced with CSS `animate-spin` + `aria-busy="true"` container
+- **Section elements unlabeled** — matched trials and close match sections now have `aria-label`; page wrapper upgraded from `div` to `main`
 
 ### Added (Auth UX)
 - **Apple and Google sign-in on the signup page** — social login buttons are now available on `/signup` (matching `/login`), so users can create an account with Apple or Google without navigating to the login page first

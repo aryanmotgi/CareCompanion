@@ -1,8 +1,113 @@
 # CareCompanion TODO
 
-Generated from: /plan-eng-review + /design-review + /qa + /audit Chat+Notifications + /audit Integrations  
+Generated from: /plan-eng-review + /plan-design-review + /qa + /audit Chat+Notifications + /audit Integrations  
 Branch: preview/trials-impeccable  
 Date: 2026-05-02
+
+---
+
+## Clinical Trials Review — 2026-05-02
+
+### Fixed ✅ (implemented this session)
+
+- [x] **[CRITICAL BUG] Wrong profile served on trials page** — `trials/page.tsx:12` — `.limit(1)` without `ORDER BY` returned arbitrary profile for users with multiple profiles. Fixed: added `.orderBy(desc(careProfiles.createdAt))`. Same pattern existed in onboarding gate.
+- [x] **[BUG] Share button sent empty email when trialUrl is null** — `TrialsTab.tsx:shareTrial` — `props.trialUrl ?? ''` produced a malformed mailto body "I found this trial, can we discuss? ". Fixed: fallback to `https://clinicaltrials.gov/study/${nctId}`.
+- [x] **[DESIGN/CRITICAL] CloseMatchCard was entirely light-mode** — `CloseMatchCard.tsx` — `bg-purple-50/30`, `border-purple-200`, `text-blue-700`, `text-gray-500` throughout. Rendered as a white card island inside the dark app — completely broken on the dark theme. Migrated all colors to design system tokens (`var(--border)`, `var(--bg-card)`, `var(--text)`, `var(--text-muted)`, `var(--text-secondary)`) and indigo/violet accent palette.
+- [x] **[DESIGN/CRITICAL] TrialDetailPanel was entirely light-mode** — `TrialDetailPanel.tsx` — Every color used raw Tailwind light classes (`gray-50`, `gray-500`, `gray-700`, `blue-600`, `green-100`, etc). Full dark-theme migration: all grays → CSS tokens, blue links → `#A78BFA`, green badges → `emerald-500/15`, save button → `#6366F1`, CopyButton → dark-bordered.
+- [x] **[PERF] TrialDetailPanel re-fetched on every expand** — `TrialDetailPanel.tsx` — Each expand/collapse fired a new POST + AI call. Added module-level `Map` cache keyed by `nctId`; result stored on first fetch and reused on all subsequent expands.
+- [x] **[A11Y] Error messages not announced to screen readers** — `ProfileDataPrompt`, `ZipCodePrompt`, `TrialsTab` — All error `<p>` elements lacked `role="alert"`. Added `role="alert"` + `aria-describedby` linking to error IDs.
+- [x] **[A11Y] Form labels not programmatically linked to inputs** — `ProfileDataPrompt.tsx` — Cancer type, stage, and age inputs had visual labels but no `id`/`htmlFor` pairing. Added `useId()` for each field pair.
+- [x] **[A11Y] Loading overlay had no screen reader announcement** — `TrialsTab.tsx:liveRunning` — Fixed fullscreen overlay with `role="status"` and `aria-label={SEARCH_PHASES[livePhase]}`. Rotating phase text is now read aloud.
+- [x] **[A11Y] Trial results area had no live region** — `TrialsTab.tsx` — When live search completed, screen reader got no announcement that results changed. Added `aria-live="polite"` on the results container.
+- [x] **[A11Y] TrialMatchCard title button had no descriptive aria-label** — `TrialMatchCard.tsx:46` — Button text was just the trial title with no context that it expands. Added `aria-label="{title} — expand trial details"` + `aria-expanded`.
+- [x] **[A11Y] Expand/collapse chevron buttons lacked context** — `TrialMatchCard.tsx:58` — `aria-label="Expand"` existed but `aria-expanded` was missing. Now both the title button and chevron button carry `aria-expanded`.
+- [x] **[A11Y] Loading spinner used emoji** — `TrialDetailPanel.tsx:145` — `⏳` announced as "hourglass" to screen readers. Replaced with CSS spinner + `aria-busy="true"` on container + `aria-live="polite"`.
+- [x] **[UX] Initial load showed plain text instead of skeleton** — `TrialsTab.tsx:183` — "Loading trial matches…" with no animation. Replaced with animated `TrialsSkeleton` component matching real layout (header, 2 cards with match reasons and action buttons).
+- [x] **[UX] Save trial had no inline confirmation** — `TrialDetailPanel.tsx` — After clicking "Save & track this trial", nothing confirmed the save happened. Added `justSaved` state with 3-second inline "✓ Saved — we'll notify you if this trial's status changes" message.
+- [x] **[COPY] Microcopy rewrites — clinical → warm** — All 5 components — Rewrote 15+ copy strings to feel appropriate for cancer patients and caregivers. Key changes: "Tell us about the patient" → "Let's find the right trials", "No matching trials found" → "We didn't find a match right now — but trials open every week", "Trials You're Close To" → "Almost There — Trials Worth Watching", "What's blocking eligibility" → "What would need to change", empty state copy now offers next steps and reassurance, zip prompt now explains why it's being asked.
+- [x] **[COPY] 'Close match' badge changed to 'Almost there'** — `CloseMatchCard.tsx` — "Close match" badge was clinical and ambiguous. Changed to "Almost there" which is warmer and clearer about meaning.
+- [x] **[A11Y] Section elements given aria-label** — `TrialsTab.tsx` — Matched trials and close match sections now have `aria-label` for screen reader navigation. Page wrapper upgraded from `div` to `main`.
+- [x] **[A11Y] ZipCodePrompt sr-only label added** — `ZipCodePrompt.tsx` — Input had no visible label (just placeholder). Added `<label className="sr-only">` so screen readers still get a label, and `aria-invalid` on error state.
+
+### Deferred (TODO)
+
+- [ ] **[A11Y] No skip navigation on trials page** — Users must tab through all buttons on every trial card to reach the next card. On a page with 10+ trials (3 buttons each = 30+ tabs), this is painful.
+  - **Why:** WCAG 2.4.1 (Level A) requires a way to bypass repeating blocks of content.
+  - **Fix:** Add `<a href="#trial-results" className="sr-only focus:not-sr-only">Skip to results</a>` at the top of the page. Set `id="trial-results"` on the results region.
+  - **Where to start:** `TrialsTab.tsx` — add skip link before main content, apply `id` to results div.
+
+- [ ] **[A11Y] Color contrast audit needed on score badges** — `TrialMatchCard.tsx:ScoreBadge` — `text-emerald-400 bg-emerald-500/15` and `text-indigo-300 bg-indigo-500/15` on dark card backgrounds. Emerald-400 (#34D399) on `rgba(16,185,129,0.15)` over `#0C0E1A` composite may be marginal at small text sizes. Needs a real contrast audit with a tool like axe DevTools.
+  - **Fix if failing:** Bump text to `text-emerald-300` / `text-indigo-200` for higher contrast.
+
+- [ ] **[UX] No notification hook when "close match" becomes eligible** — `CloseMatchCard` explains "We're watching them for you" but there's no actual mechanism to re-check and notify. The cron at `/api/cron/trials-status` may handle status updates but not re-scoring for eligibility changes.
+  - **Why:** This is the most valuable feature for "close" matches — telling a patient when they cross a threshold.
+  - **Where to start:** `matchingQueue.ts` — add a re-score job for profiles with close matches after lab values update.
+
+- [ ] **[UX] TrialsDashboardCard not reviewed** — The dashboard card linking to trials was not part of this review. Visual consistency with updated CloseMatchCard dark theme should be verified.
+  - **Where to start:** `TrialsDashboardCard.tsx` — check for same light-mode color patterns.
+
+- [ ] **[MISSING] Saved trials view** — Users can save trials but there's no dedicated view to see all saved trials in one place. The "interested" status is stored in DB but only visible per-card on the main trials page.
+  - **Why:** Patients actively tracking multiple trials need to compare them, share them with oncologists, and monitor status changes in one place.
+  - **Where to start:** `/api/trials/saved` already returns all saved trials. Add a "Saved" filter/tab to `TrialsTab` or a `/trials/saved` route.
+
+- [ ] **[MISSING] Trial comparison feature** — No way to compare two or three trials side-by-side (phase, location, eligibility gaps, enrollment status). Cancer patients and oncologists making trial decisions need this.
+  - **Effort:** Human ~1 week / CC ~30min. High value, significant scope.
+
+---
+
+## Dashboard Flow Review — 2026-05-02
+
+### Fixed ✅ (implemented this session)
+
+- [x] **[BUG] Lab high/low direction always said "Above normal"** — `DashboardView.tsx:262` — All abnormal labs showed "Above normal" regardless of direction. For chemo patients with critically low WBC, hemoglobin, or platelets this was actively wrong. Fix: compute `labDirection` from `parseLabValue` min/max, show "Below normal" when `numericValue < referenceMin`.
+- [x] **[COPY] Empty state was cold/clinical** — `DashboardView.tsx:447` — "Nothing needs attention" / "No items need your attention right now." for cancer patients seeing a clear dashboard. Changed to "You're all caught up" / "Nothing urgent right now — take a breath." and "Let's personalize your care" for new users.
+- [x] **[COPY] "Unknown doctor" on medication refill card** — `DashboardView.tsx:169` — Changed to "Your care team" which is warmer and still accurate.
+- [x] **[COPY] "Weekly update unavailable." error was cold** — `DashboardView.tsx:648` — Changed to "Couldn't load this week's update." Also fixed retry button to re-fetch just that section instead of `window.location.reload()`.
+- [x] **[UX] Quick-ask chips hidden when no alerts** — `DashboardView.tsx:548` — Users who had nothing urgent (the best possible state) saw no quick-ask entry point. Removed `actionCount > 0` gate — chips always visible. Removed duplicate empty-state tour tooltip.
+- [x] **[A11Y] ExpandableCard focus ring invisible** — `ExpandableCard.tsx:69` — `outline: none` with no replacement. Keyboard users had zero visual feedback on focus. Replaced with `focus-visible:ring-2 focus-visible:ring-[#6366F1]`.
+- [x] **[A11Y] DashboardInsights tabpanel missing aria-labelledby** — `DashboardInsights.tsx` — `role="tabpanel"` div had no `aria-labelledby` connecting it to the active tab. Added `id` to each tab button and `aria-labelledby={insights-tab-${activeTab}}` to the panel.
+- [x] **[A11Y] Get Directions link missing accessible new-tab warning** — `DashboardView.tsx:228` — Opens Google Maps in new tab with no accessible label. Added `aria-label="Get directions to {location} (opens in Maps)"`.
+- [x] **[PERF/UX] DashboardSkeleton didn't match real layout** — `DashboardSkeleton.tsx` — Suspense fallback showed 3 plain bars; real layout has 10+ sections. Major layout shift on load. Updated skeleton to approximate real layout: morning card, heading, badges, 3 priority cards, quick-ask chips, timeline shortcut, check-in card.
+- [x] **[COPY] Lab first insight always said "above the normal range"** — `DashboardView.tsx:291` — Now uses `labDirection` variable: "above the normal range" or "below the normal range". Changed "Schedule a follow-up" to "It's worth discussing this with your care team" — warmer for patients.
+
+### Design fixes ✅ (implemented this session)
+
+- [x] **[A11Y/CONTRAST] DashboardInsights inactive tabs failed WCAG AA** — `DashboardInsights.tsx:40` — `--text-muted` (#5B6785) on dark background = 3.4:1 contrast at 12px (needs 4.5:1). Changed to `--text-secondary` (#A5B4CF = 9.2:1).
+- [x] **[A11Y/CONTRAST] DashboardInsights section header low contrast** — `DashboardInsights.tsx:23` — Same `--text-muted` issue on "Insights" section label. Changed to `--text-secondary`.
+- [x] **[A11Y/CONTRAST] Quick Ask section label low contrast** — `DashboardView.tsx` — "Quick Ask" uppercase label used `--text-muted`. Changed to `--text-secondary`.
+- [x] **[DESIGN] Emoji as design element in MorningSummaryCard** — `MorningSummaryCard.tsx:51` — "☀️ YOUR DAY" used emoji as header decoration (AI design slop pattern). Removed emoji, kept clean "YOUR DAY" label.
+- [x] **[COPY/DESIGN] Redundant "Get Started" label in empty state** — `DashboardView.tsx:471` — "Get Started" uppercase section label appeared directly below the heading "Let's personalize your care" — redundant and diluted hierarchy. Removed.
+
+### Deferred (TODO)
+
+- [ ] **[UX] Dashboard has no manual refresh** — Data is stale from server render. No refresh button or stale-data indicator. Users editing meds/appointments don't see updates without a full page reload. Suggested: router.refresh() button in the header, or optimistic updates from child forms.
+  - **Why:** Users frequently add appointments/meds then return to dashboard expecting updated counts.
+  - **Where to start:** `DashboardView.tsx` — add a refresh icon button near the action count heading that calls `router.refresh()`.
+
+- [ ] **[UX] Medication adherence streak missing from dashboard** — No sense of continuity for patients managing daily meds. The check-in card shows mood/pain but not "You've taken your meds 7 days in a row."
+  - **Why:** Streak/consistency signals are motivating for patients in active treatment and help caregivers confirm compliance.
+  - **Where to start:** `reminderLogs` table already tracks scheduled vs completed. Compute streak in dashboard page query, pass to a new `MedStreakBadge` component.
+
+- [ ] **[A11Y] ExpandableCard `aria-label` missing context** — Screen readers announce `role="button" aria-expanded="false"` with no description of what the card is. Users tabbing through cards hear "button, collapsed" with no indication of content type (medication refill, appointment, lab alert).
+  - **Why:** WCAG 2.1 AA requires interactive elements have descriptive accessible names.
+  - **Fix:** Pass `aria-label` prop through `ExpandableCard` → composed from card title + type, e.g. "Medication refill alert for Metformin, expand for action steps".
+
+- [ ] **[UX] MorningSummaryCard dismiss has no animation** — Card just disappears. On a page meant to feel premium for people managing a cancer journey, every interaction should feel considered.
+  - **Fix:** Add exit animation (fade + slight upward translate) using CSS transition on a wrapper div with a conditional `opacity-0 -translate-y-2` class.
+
+- [ ] **[UX] DashboardInsights tabs — no loading state on switch** — Switching between Lab Trends / Refills / Wellness briefly shows empty content while child components fetch their data. Users see a flash of blank space.
+  - **Fix:** Add a `Suspense` boundary around each tab panel content with a small skeleton.
+
+- [ ] **[COPY] Onboarding "Finish setting up your profile" banner** — `DashboardView.tsx:691` — "Add your diagnosis, medications, and priorities for a personalized experience" is OK but generic. Could be: "Tell us about [patientName]'s diagnosis so we can show relevant trials, alerts, and care tips."
+  - **Why:** Connecting the CTA to concrete outcomes (trials, alerts) drives completion. Uses the patient's name to make it personal.
+
+- [ ] **[COPY] Treatment phase badge "Evaluating"** — `DashboardView.tsx:44` — For `treatmentPhase: 'unsure'`, badge shows "Evaluating." This could feel isolating — many patients feel scared about being in an uncertain phase. Consider "Getting Answers" which frames uncertainty as an active process.
+
+- [ ] **[PERF] Two DB user lookups per dashboard page load** — `layout.tsx` and `dashboard/page.tsx` both query `users` by email on every request. One query should be eliminated by sharing user context via server component prop drilling or a shared data-fetch utility.
+  - **Why:** Aurora Serverless cold starts amplify this — two serial queries on first load. (Prior learning: `aurora-cold-start-uuid-type-error`)
+  - **Where to start:** Pass `dbUser` from `AppLayout` down through props or use React `cache()` to deduplicate within a single request.
+
+- [ ] **[A11Y] Tour tooltip has no focus management** — When `showTourTooltip` becomes true, focus stays on whatever was last focused. Screen reader users don't know the tooltip appeared. Should use `aria-live="polite"` on a visually hidden announcement, or move focus to the tooltip with a `useEffect`.
 
 ---
 
@@ -869,3 +974,75 @@ Reviewed: LoginForm, SignupForm, ResetRequestForm, ResetConfirmForm, RoleSelecto
 - [ ] **[A11Y] `RoleSelector` error message needs `role="alert"`** — `RoleSelector.tsx:92` — `<p className="mt-1 text-xs text-red-400">{error}</p>` has no ARIA role. Screen readers won't announce "Please select your role to continue" when it appears. Add `role="alert"`.
 
 - [ ] **[DESIGN] Password strength labels feel clinical** — "Weak / Fair / Good / Strong" is neutral but cold for a cancer care app. Consider: "Keep going… / Almost there / Looking good / Strong ✓". Low priority — password strength is a functional concern, but the micro-copy still touches the user experience.
+
+---
+
+## Care Tab Flow Review — 2026-05-02 (preview/trials-impeccable)
+
+/plan-eng-review + /plan-design-review — `CareHubView`, `CareView`, `care/page.tsx`, `care-hub/page.tsx`, `CareSkeleton`
+
+### Fixed ✅ (implemented this session)
+
+- [x] **[BUG] `adherencePercent` always 100%** — `CareHubView.tsx:185` — `(n/n)*100` = 100 regardless of actual adherence. Caregivers monitoring compliance saw misleading "100%" in the radar card. Zeroed until actual adherence tracking (logged vs scheduled) is implemented.
+  - **Why:** Clinical integrity — a caregiver seeing 100% adherence when none is tracked could falsely assume the patient is compliant.
+
+- [x] **[BUG] Appointment subtitle rendered "undefined · Mon, May 4"** — `CareView.tsx:270` — `{appt.specialty} · {dateStr}` when specialty is null rendered literal "undefined". Fixed: build `subtitleParts` array filtering null, join with ` · `.
+
+- [x] **[BUG] Profile query non-deterministic** — `care/page.tsx:22` — `.limit(1)` with no `ORDER BY`. Same pattern as `layout-onboarding-gate-non-deterministic` learning. Fixed: added `.orderBy(asc(careProfiles.createdAt))`.
+
+- [x] **[PERF] Dynamic imports had no loading fallback** — `CareView.tsx:16-18` — `LabsView`, `SymptomJournal`, `CareTeamView` loaded with no `loading` option. Tab switch showed flash of empty space while module loaded. Fixed: all three get a pulsing 3-card skeleton via `loading: () => <TabLoader />`.
+
+- [x] **[DESIGN] `CareSkeleton` didn't match real page structure** — `skeletons/CareSkeleton.tsx` — Showed segment bar + 3 cards + button. Real page has TreatmentCycleTracker, segment control, cards, AdherenceCalendar, ComplianceReport, CaregiverBurnoutCard — ~6 sections. Layout shift was significant. Fixed: updated skeleton to approximate all 6 sections.
+
+- [x] **[DESIGN/A11Y] CareHubView section headers low contrast** — `CareHubView.tsx:265,293,322,355` — `text-[var(--text-muted)]` (~3.4:1) on uppercase labels fails WCAG AA. Fixed: changed all 4 to `text-[var(--text-secondary)]`.
+
+- [x] **[DESIGN] Emoji in CareHub care group banner** — `CareHubView.tsx:227` — `👨‍👩‍👧` as UI element, same pattern flagged/fixed on dashboard. Fixed: replaced with inline SVG people icon.
+
+- [x] **[COPY] Appointment empty state was clinical** — `CareView.tsx:329` — "No appointments scheduled" with no CTA. Cold for a cancer patient's care tab. Fixed: "You're all clear — no upcoming appointments." + add-appointment button inline in the empty state.
+
+- [x] **[COPY] Delete confirmation cold/legal tone** — `CareView.tsx:444` — "Are you sure you want to delete...? This action cannot be undone." Fixed: "Remove this medication/appointment from your list? This can't be undone." Also changed "Delete" button to "Remove".
+
+- [x] **[COPY] CareHub empty state CTA misleading** — `CareHubView.tsx:202` — "Complete First Check-in" linked to `/dashboard` with no further guidance. Fixed: "Do today's check-in" + copy that explains check-in lives on Home tab.
+
+- [x] **[UX] No Enter key submit on form inputs** — `CareView.tsx` — Med and appointment form inputs had no keyboard submit. Mobile users had to reach for the save button. Fixed: all text inputs in both forms get `onKeyDown={(e) => e.key === 'Enter' && handleAdd...()}`.
+
+- [x] **[UX] Add Medication form missing prescribing doctor field** — `CareView.tsx` — Schema has `prescribingDoctor` column, displayed in the expanded card, but the form never collected it. Fixed: added "Prescribing doctor" input to the form, wired into the POST body.
+
+- [x] **[COPY] Appointment "Purpose" label was generic** — `CareView.tsx:422` — "Purpose" + placeholder "e.g., Annual checkup" felt routine/clinical. Fixed: label becomes "What's this visit for?" + placeholder "e.g., Chemo infusion, follow-up" which mirrors actual cancer care language.
+
+- [x] **[COPY] Appointment "Specialty" placeholder was generic** — `CareView.tsx:410` — "e.g., Cardiology" as specialty placeholder. Changed to "e.g., Oncology" — the most common specialty in this app.
+
+### Deferred (TODO)
+
+- [ ] **[BUG] `adherencePercent` still 0 — needs real adherence data** — `CareHubView.tsx:185` — Adherence should be computed from `reminderLogs` (scheduled vs completed today). The `SymptomRadarCard` receives this value. Right now it will always show 0.
+  - **Why:** Caregivers rely on adherence tracking to coordinate patient care.
+  - **Where to start:** Add adherence query to `/api/care-hub` endpoint: count `reminderLogs` where `scheduledTime >= todayStart AND loggedAt IS NOT NULL` vs total `scheduledTime >= todayStart`. Pass as `adherencePercent`.
+
+- [ ] **[BUG] CareHubView medications card shows checkmark for all meds (implies taken)** — `CareHubView.tsx:274` — All medications display a green checkmark regardless of whether they were actually logged. Clinically misleading for caregivers.
+  - **Why:** A caregiver seeing checkmarks may assume the patient took all meds when none were logged.
+  - **Fix:** Cross-reference `data.medications` against today's `reminderLogs` (already available in API response); only show checkmark if a log entry exists for that med today.
+
+- [ ] **[UX] No scroll-to-top on CareView tab switch** — `CareView.tsx:282` — Switching Meds → Labs keeps scroll position from the previous tab. If meds list is long, user lands partway down the labs tab.
+  - **Fix:** Call `window.scrollTo({ top: 0, behavior: 'smooth' })` in the `onChange` handler passed to `SegmentControl`.
+
+- [ ] **[UX] Medications "Edit" uses chat route instead of inline editing** — `CareView.tsx:193` — "Edit" button navigates to `/chat?prompt=Update my {med.name}...`. Not a real edit form. Users who want to fix a dose typo must use conversational AI.
+  - **Why:** Clinical data entry errors on medication records are common and need a direct correction path.
+  - **Fix:** Replace chat link with an inline edit form or a dedicated edit bottom sheet (mirrors the existing add form).
+
+- [ ] **[A11Y] ExpandableCard aria-label missing on Care tab cards** — `CareView.tsx:172,228` — Same issue as dashboard: screen readers announce "button, collapsed" with no description. Pass `aria-label` derived from med name / appointment doctor.
+  - **Fix:** Add optional `aria-label` prop to `ExpandableCard` and pass `"${med.name} medication details"` / `"Appointment with ${appt.doctorName}"`.
+
+- [ ] **[PERF] Serial care group queries** — `care-hub/page.tsx:44-53` — `careGroupMembers.findFirst` then `careGroups.findFirst` — sequential round-trips. Already simplified to conditional lookup; consider a single JOIN query for one DB round-trip.
+
+- [ ] **[UX] DashboardInsights tab switch no loading state** — `DashboardInsights.tsx:50` — Switching between Lab Trends / Refills / Wellness shows empty content while child fetches. Already tracked in Dashboard deferred section, relevant here too.
+
+- [ ] **[COPY] Treatment phase badge "Evaluating" isolates uncertain patients** — `DashboardView.tsx:44` — For `treatmentPhase: 'unsure'`, shows "Evaluating." Frames uncertainty passively. Consider "Getting Answers" to convey active engagement during a scary time.
+  - **Why:** Patients who don't yet have a clear diagnosis are often the most anxious — the label they see every session matters.
+
+- [ ] **[MISSING FEATURE] No visit summary / post-appointment note** — Care tab appointments expand to show visit prep, but no way to record what happened at the appointment (notes, next steps, what the doctor said).
+  - **Why:** Patients and caregivers often forget details from appointments. A simple notes field would dramatically improve continuity of care.
+  - **Where to start:** Add optional `notes` + `followUpDate` fields to the `appointments` schema. Show them in the expanded card with a quick inline editor.
+
+- [ ] **[MISSING FEATURE] No medication taken/skipped logging from Care tab** — `CareView.tsx` meds tab shows meds but has no "Mark taken" / "Mark skipped" action.
+  - **Why:** The daily check-in tracks mood/pain/energy but not medication adherence directly from the care tab. Users wanting to log a med should be able to do it without going through the AI chat.
+  - **Where to start:** Add a "Logged" button to each med card's expanded content that writes to `reminderLogs`. Show today's log status as a pill badge on the med card header.
