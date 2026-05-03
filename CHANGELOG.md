@@ -4,7 +4,39 @@ All notable changes to CareCompanion will be documented in this file.
 
 ## [0.3.1.0] - 2026-05-03
 
-Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, Community Forum + Sharing Links full security audit, Cron Jobs / Production Monitor / Admin Routes security audit, auth UX polish, Clinical Trials full UX+a11y+security pass, and full onboarding flow UX+a11y+bug-fix pass.
+Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, Community Forum + Sharing Links full security audit, Cron Jobs / Production Monitor / Admin Routes security audit, auth UX polish, Clinical Trials full UX+a11y+security pass, full onboarding flow UX+a11y+bug-fix pass, and Care Groups onboarding deep UX audit.
+
+### Fixed (Care Groups — Onboarding)
+- **QR polling timeout extended to 10 min** — previously stopped after 30s while the invite link stays valid for 7 days; partner who took longer than 30s to scan was never detected as joined
+- **Post-join loop fixed** — users who joined via QR were redirected back to the care-group creation screen; onboarding page now detects existing membership and skips to the wizard phase
+- **Invite error params shown** — `/join` error codes (invite-expired, group-full, invite-revoked, invite-not-found) now translate to warm, human-readable messages instead of a blank screen
+- **Null inviteUrl fallback** — if the invite API call failed after group creation, users saw nothing; now shows "Having trouble generating the invite link — tap to try again"
+- **Copy link feedback** — copy button now shows "✓ Copied!" with purple highlight for 2 seconds
+- **Password strength hint** — live indicator shows characters remaining while typing; submit disabled until ≥4 chars
+- **Role-aware QR copy** — patients see "Share with your caregiver"; caregivers see "Share with your patient"
+- **Enter key submits care group forms** — wrapped in `<form onSubmit>`; mobile keyboard "Go" button now works
+- **Share button hidden on desktop** — `navigator.share` is mobile-only; copy button expands to full width on desktop
+- **ConnectedName from real data** — celebration screen now fetches actual display name of the joined partner
+- **Focus rings restored** — `focus:outline-none` was hiding keyboard navigation; replaced with brand-colored focus rings
+- **Touch targets enlarged** — skip/continue links now have `py-2 px-3` padding for adequate mobile tap area
+- **Apple Sign-In onboarding lockout fixed** — user lookup used `session.user.email` (null for Apple users); changed to `session.user.id`
+
+### Added (Care Groups — Onboarding)
+- **Confetti celebration effect** — 28 CSS particles in brand colors fire from the avatar connection point when two people connect; marks a meaningful moment
+- **Password show/hide toggle** — eye icon with `aria-label` for accessibility and caregiver usability
+- **qr-timeout step** — after 10 min, shows "No rush — they can join later" with options to share a new link or continue alone
+- **Aria-live on waiting status** — screen readers now announce when a partner joins
+
+### Fixed (Security — Ship review)
+- **LLM `visit_frequency` field now type-checked** — `isStr()` guard applied to `visit_frequency` alongside the other required fields in the trials detail route
+- **Temporary password no longer logged** — `provision-reviewer` route removed password from `console.log`; it was being written to persistent server logs
+- **IP extraction hardened in 3 routes** — `export/csv`, `mobile-care-group-login`, and `share` now use `x-real-ip` with `x-forwarded-for` rightmost-hop fallback, consistent with other routes in the codebase
+
+### Added (Infrastructure)
+- **Migration 005** — `ALTER TABLE shared_links ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ` and same for `invites`; required for share token revocation feature
+
+### Added (Tests)
+- **25 new tests** — CSRF module validation, `care-group/[id]/status` IDOR guard, `onboarding/complete` ownership 404, invite error message map, `QRCodePanel` role-aware prompt and SSR guard
 
 ### Added (Onboarding)
 - **Step transition animations** — wizard steps now fade in with a gentle upward slide (250ms) instead of hard-cutting; every advance feels intentional
