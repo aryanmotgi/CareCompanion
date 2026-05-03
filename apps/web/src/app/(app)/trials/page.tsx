@@ -29,10 +29,7 @@ export default async function TrialsPage() {
     <TrialsTab
       profileId={profile.id}
       hasZip={hasZip}
-      patientName={profile.patientName ?? undefined}
       cancerType={profile.cancerType ?? undefined}
-      cancerStage={profile.cancerStage ?? undefined}
-      patientAge={profile.patientAge ?? undefined}
     />
   )
 }

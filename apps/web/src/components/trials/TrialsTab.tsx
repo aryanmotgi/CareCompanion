@@ -35,12 +35,9 @@ type TrialMatch = {
 type SavedTrial = { nctId: string; interestStatus: string }
 
 type Props = {
-  profileId:    string
-  hasZip:       boolean
-  cancerType?:  string
-  cancerStage?: string
-  patientAge?:  number
-  patientName?: string
+  profileId:   string
+  hasZip:      boolean
+  cancerType?: string
 }
 
 const SEARCH_PHASES = [

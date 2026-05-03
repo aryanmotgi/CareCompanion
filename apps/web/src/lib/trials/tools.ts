@@ -117,19 +117,3 @@ export async function getTrialDetails(nctId: string): Promise<Record<string, unk
   }
 }
 
-type SearchByEligibilityParams = {
-  condition: string
-  terms?:    string
-  age?:      number
-  sex?:      string
-  location?: string
-}
-
-export async function searchByEligibility(params: SearchByEligibilityParams) {
-  return searchTrials({
-    condition: params.condition,
-    terms:     params.terms,
-    location:  params.location,
-    status:    'RECRUITING',
-  })
-}

@@ -2,8 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 vi.mock('@/lib/trials/tools', () => ({
-  searchTrials:        vi.fn(),
-  searchByEligibility: vi.fn(),
+  searchTrials: vi.fn(),
 }))
 vi.mock('@/lib/trials/gapAnalysis', () => ({
   buildScoringSystemPrompt: vi.fn().mockReturnValue('system prompt'),
@@ -16,7 +15,7 @@ vi.mock('@ai-sdk/anthropic', () => ({
   anthropic: vi.fn().mockReturnValue('mock-model'),
 }))
 
-import { searchTrials, searchByEligibility } from '@/lib/trials/tools'
+import { searchTrials } from '@/lib/trials/tools'
 import { generateText } from 'ai'
 import { isCloseTrial } from '@/lib/trials/gapAnalysis'
 import { runTrialsAgent } from '@/lib/trials/clinicalTrialsAgent'
@@ -48,14 +47,12 @@ const scoredClose = {
 beforeEach(() => {
   vi.clearAllMocks()
   ;(searchTrials as ReturnType<typeof vi.fn>).mockResolvedValue({ trials: [trialA] })
-  ;(searchByEligibility as ReturnType<typeof vi.fn>).mockResolvedValue({ trials: [trialB] })
 })
 
 // ── CT.gov fetch and error handling ──────────────────────────────────────────
 describe('CT.gov fetch and dedup', () => {
   it('returns empty when no trials from CT.gov', async () => {
     ;(searchTrials as ReturnType<typeof vi.fn>).mockResolvedValue({ trials: [] })
-    ;(searchByEligibility as ReturnType<typeof vi.fn>).mockResolvedValue({ trials: [] })
     const result = await runTrialsAgent(mockProfile)
     expect(result).toEqual({ matched: [], close: [] })
     expect(generateText).not.toHaveBeenCalled()
@@ -68,7 +65,6 @@ describe('CT.gov fetch and dedup', () => {
     expect(searchTrials).toHaveBeenCalledWith(
       expect.objectContaining({ pageSize: 40, status: 'RECRUITING' })
     )
-    expect(searchByEligibility).not.toHaveBeenCalled()
   })
 
   it('throws when CT.gov returns an error object', async () => {
@@ -84,10 +80,8 @@ describe('CT.gov fetch and dedup', () => {
     )
   })
 
-  it('deduplicates trials with same nct_id across both searches', async () => {
-    // Both searches return trialA — should deduplicate to 1 trial
+  it('deduplicates trials with same nct_id across searches', async () => {
     ;(searchTrials as ReturnType<typeof vi.fn>).mockResolvedValue({ trials: [trialA] })
-    ;(searchByEligibility as ReturnType<typeof vi.fn>).mockResolvedValue({ trials: [trialA] })
     ;(generateText as ReturnType<typeof vi.fn>).mockResolvedValue({
       text: JSON.stringify([scoredMatch]),
     })

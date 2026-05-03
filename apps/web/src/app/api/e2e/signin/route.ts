@@ -12,6 +12,9 @@
  *  - Any email not in the DB gets 404; this is the only gate.
  *  - The E2E test account has no elevated privileges, so worst-case exposure
  *    is read-only access to one account's data.
+ *  - Unlike /api/test/reset, no NODE_ENV guard is used: this endpoint is
+ *    intentionally callable in production when E2E_AUTH_SECRET is set (CI
+ *    against prod requires it). Rotate E2E_AUTH_SECRET on each CI secret rotation.
  */
 import { db } from '@/lib/db'
 import { users, careProfiles } from '@/lib/db/schema'

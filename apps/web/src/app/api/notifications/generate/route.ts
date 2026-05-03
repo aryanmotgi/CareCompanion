@@ -12,6 +12,3 @@ export async function GET(req: Request) {
   return Response.json(result);
 }
 
-export async function POST(req: Request) {
-  return GET(req);
-}

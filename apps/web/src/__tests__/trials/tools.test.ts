@@ -5,7 +5,7 @@ vi.mock('axios', () => ({
   default: { create: vi.fn(() => ({ get: mockGet })), get: mockGet },
 }))
 
-import { searchTrials, getTrialDetails, searchByEligibility } from '@/lib/trials/tools'
+import { searchTrials, getTrialDetails } from '@/lib/trials/tools'
 
 describe('searchTrials', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -68,15 +68,3 @@ describe('getTrialDetails', () => {
   })
 })
 
-describe('searchByEligibility', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('calls searchTrials with RECRUITING status', async () => {
-    mockGet.mockResolvedValueOnce({ data: { studies: [], totalCount: 0 } })
-    await searchByEligibility({ condition: 'lung cancer', age: 55 })
-    expect(mockGet).toHaveBeenCalledWith(
-      '/studies',
-      expect.objectContaining({ params: expect.objectContaining({ 'filter.overallStatus': 'RECRUITING' }) })
-    )
-  })
-})

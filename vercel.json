@@ -1,10 +1,6 @@
 {
   "crons": [
     {
-      "path": "/api/cron/sync",
-      "schedule": "0 6 * * *"
-    },
-    {
       "path": "/api/notifications/generate",
       "schedule": "0 9 * * *"
     },
