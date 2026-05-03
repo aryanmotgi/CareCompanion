@@ -1,8 +1,91 @@
 # CareCompanion TODO
 
-Generated from: /plan-eng-review + /plan-design-review + /qa + /audit Chat+Notifications + /audit Integrations  
+Generated from: /plan-eng-review + /plan-design-review + /qa + /audit Chat+Notifications + /audit Integrations + Care Groups review  
 Branch: preview/trials-impeccable  
-Date: 2026-05-02
+Date: 2026-05-03
+
+---
+
+## Care Groups Review — 2026-05-03
+
+### Fixed ✅ (implemented this session)
+
+- [x] **[CRITICAL BUG] Polling timeout 30s vs QR validity 10min** — `CareGroupScreen.tsx` — Creator's partner scans QR, completes signup (>30s), polling had already stopped so creator never saw "connected." Extended polling to 10 minutes to match QR expiry. Added `qr-timeout` step with warm recovery UI: "Share a new invite link" or "Continue without them — I'll invite them later."
+
+- [x] **[CRITICAL BUG] Post-QR-join loop back to care-group step** — `onboarding/page.tsx` + `OnboardingShell.tsx` — `/join` route redirected to `/onboarding?careGroupId=X&joined=true` but page ignored those params. User B was re-shown the "Create or Join a Care Group" screen they'd already completed. Fixed: page now queries `care_group_members` on load; if user is already a member, `initialCareGroupId` prop skips the care-group phase in `OnboardingShell`.
+
+- [x] **[BUG] Invite error params silently dropped** — `onboarding/page.tsx` — `/join` route redirected with `?error=group-full/invite-expired/invite-used/invite-revoked/invite-not-found` but the onboarding page ignored all of them. Users saw a blank screen with no explanation. Fixed: `INVITE_ERROR_MESSAGES` map translates error codes to warm, human messages. `OnboardingShell` renders a `role="alert"` error banner above the flow.
+
+- [x] **[BUG] Silent blank screen when inviteUrl is null** — `CareGroupScreen.tsx` — After creating a group, if the invite API call failed, `step='qr'` with `inviteUrl=null` rendered nothing. Fixed: added fallback UI ("Having trouble generating the invite link — tap to try again").
+
+- [x] **[UX] Copy link had no feedback** — `QRCodePanel.tsx` — `navigator.clipboard.writeText(url)` silently succeeded. Users had no confirmation. Fixed: `copied` state shows "✓ Copied!" with purple highlight for 2 seconds.
+
+- [x] **[UX] Password min length not shown** — `CareGroupScreen.tsx` — API enforces 4-char min, UI showed no hint. Server error was the first indication. Fixed: `aria-describedby` hint "At least 4 characters. Share this with your care partner so they can join."
+
+- [x] **[A11Y] No password show/hide toggle** — `CareGroupScreen.tsx` — Critical for elderly patients and caregivers who need to confirm what they typed before sharing it. Fixed: eye icon toggle with `aria-label="Show/Hide password"`.
+
+- [x] **[COPY] QR panel hardcoded "Share with your patient"** — `QRCodePanel.tsx` — When a patient creates the group, the prompt was wrong. Fixed: role-aware — patients see "Share with your caregiver", everyone else sees "Share with your patient."
+
+- [x] **[A11Y] Waiting status not announced to screen readers** — `CareGroupScreen.tsx` — "Waiting for them to join" status had no `aria-live`. Fixed: `role="status" aria-live="polite"` on the waiting indicator.
+
+- [x] **[COPY] ConnectedCelebration CTA cold** — `ConnectedCelebration.tsx` — "Continue to setup →" felt transactional at a moment of real emotional significance. Changed to "Let's get started →" and subtitle from "Your care journey starts now." to "You're not doing this alone anymore."
+
+- [x] **[COPY] Subheadings warmed up** — `CareGroupScreen.tsx` — Caregiver: "Connect with your patient so you can support them and share their health journey." Patient/self: "Connect with a family member or caregiver so they can be part of your care." Card descriptions now explain what happens after joining.
+
+- [x] **[COPY] Error messages humanized** — `CareGroupScreen.tsx` — Join error fallback changed from "Something went wrong" to "We couldn't find that group. Double-check the name and password with whoever created it." All error copy now speaks to a person in a stressful situation, not a developer reading logs.
+
+- [x] **[BUG] invite API throw left user stuck after group creation** — `CareGroupScreen.tsx` — If the `/api/care-group/invite` fetch threw (network error), the group was created in the DB but the user stayed on `create-form` with no error and no navigation. Fixed: invite call wrapped in inner try/catch — group creation proceeds to `qr` step regardless, and the `inviteUrl=null` fallback UI already handles the missing link.
+
+- [x] **[UX] Enter key didn't submit care group forms** — `CareGroupScreen.tsx` — The form used `<div>` wrappers with `onClick` buttons. Pressing Enter after filling name + password did nothing. Fixed: wrapped in `<form onSubmit>` with `type="submit"` button. Both keyboard and mobile keyboard `Go` button now submit.
+
+- [x] **[UX] No inline password validation** — `CareGroupScreen.tsx` — API enforces 4-char minimum but users only found out after hitting the server error. Fixed: live indicator shows "2 more characters needed" while typing, turns green with "Good — share this with your care partner" at ≥4 chars. Submit button disabled until valid.
+
+- [x] **[UX] Share button silently failed on desktop** — `QRCodePanel.tsx` — `navigator.share` is mobile-only; clicking Share on desktop did nothing with no feedback. Other components in the codebase (HealthSummaryView, VisitPrepSheet) correctly check `typeof navigator.share === 'function'`. Fixed: Share button hidden when API unavailable; Copy button expands to full width as the primary share action on desktop.
+
+- [x] **[COPY] "the link is valid for 10 minutes" was wrong** — `CareGroupScreen.tsx:347` — Invite tokens expire in 7 days (`TOKEN_EXPIRY_DAYS = 7`). The QR code display blurs after 10 min for UX, but the URL itself stays valid much longer. Copy said "the link is valid for 10 minutes" which would cause users to panic if their partner didn't scan immediately. Fixed: changed to "Waiting for them to join…"
+
+- [x] **[UX] qr-timeout step broke visual continuity** — `CareGroupScreen.tsx` — The timeout state was an early return with a completely different container structure, losing the "Your Care Group" header and matching padding. Fixed: moved into the main return with conditional heading "No rush — they can join later" and consistent container layout.
+
+- [x] **[UX] connectedName always hardcoded 'Your care partner' in join flow** — `CareGroupScreen.tsx` — After joining a group, the celebration screen showed "Y" initial and "Your care partner" label. Fixed: after successful join, fetches `/api/care-group/[id]/status` to get the existing member's real display name. Falls back gracefully to group name if the status fetch fails.
+
+- [x] **[A11Y] No focus rings on inputs or buttons** — `CareGroupScreen.tsx`, `ConnectedCelebration.tsx` — `focus:outline-none` on inputs removed the browser's default focus indicator, making keyboard navigation invisible. Fixed: added `focus-within:ring-1 focus-within:ring-violet-400/40` on input containers and `focus-visible:ring-2 focus-visible:ring-violet-400/60` on primary buttons.
+
+- [x] **[A11Y] Touch targets too small on skip/continue links** — `CareGroupScreen.tsx` — "Skip for now", "Continue without waiting", and "Continue on my own" links had no padding (`text-xs text-center`), making them hard to tap on mobile (likely <30px hit area). Fixed: added `py-2 px-3 rounded-lg` for adequate touch target. Also bumped text opacity from 0.3 → 0.45 for better contrast.
+
+- [x] **[UX] ConnectedCelebration had no celebration effect** — `ConnectedCelebration.tsx` — The connected moment is emotionally significant: two people facing a cancer journey agreeing to face it together. The static emoji row didn't match that weight. Fixed: added a CSS burst confetti effect (28 particles in brand colors: violet, indigo, sky, emerald, amber, pink) that fires from the avatar connection point when the reveal animation starts. Pure CSS/React, no new dependencies.
+
+### Deferred (TODO)
+
+- [ ] **[MISSING] No way to manage care group after onboarding** — Users have no screen to view members, leave a group, or invite new people after completing onboarding. A patient who wants to add a second caregiver later has no path.
+  - **Why:** Care teams change — new family members come on board, caregivers rotate. This is especially true over a longer treatment journey.
+  - **Fix:** Add a "Care Group" section in Settings (`/settings` page). Show members list, role, joined date. Allow owner to invite new members (reuse QRCodePanel) and remove members. Allow any member to leave.
+  - **Where to start:** `apps/web/src/app/(app)/settings/page.tsx` — add a Care Group card. New `apps/web/src/components/CareGroupSettings.tsx` for the management UI.
+
+- [ ] **[MISSING] No revoke invite UI** — The invite API returns a 400 "You have too many pending invites. Revoke one to create a new one." error when the 5-invite limit is hit, but there's no UI to revoke. Users are stuck.
+  - **Why:** Power users who share many invite links (e.g. for a large family) will hit this and have no recourse.
+  - **Fix:** In `CareGroupSettings.tsx` (above), list active invites with a revoke button. Add `DELETE /api/care-group/invite/[id]` route that sets `revokedAt`.
+  - **Depends on:** Care group settings screen above.
+
+- [ ] **[A11Y] Skip navigation not present on care-group form** — No `<a href="#main-form">Skip to form</a>` link at top of `CareGroupScreen`. Not blocking for a focused 2-step flow but needed for full WCAG 2.4.1 (Level A) compliance.
+  - **Fix:** Low-effort — add sr-only skip link before the heading. Same pattern as trials page.
+
+- [ ] **[UX] No confirmation when re-entering onboarding while already in a group** — If a user who is already in a care group navigates to `/onboarding` manually, they land on the wizard phase (correctly skipping care-group), but there's no message saying "You're already in a care group." Could be confusing.
+  - **Fix:** When `initialCareGroupId` is set and `phase` starts as `wizard`, show a subtle "You're already in a care group 💜" note at the top of the wizard.
+  - **Where to start:** `OnboardingShell.tsx` — add a conditional note when `initialCareGroupId` and `phase === 'wizard'`.
+
+- [ ] **[PERF] `care_group_members` query on every onboarding page load** — `onboarding/page.tsx` now queries membership on every load to detect existing group. Fine at low scale but adds a DB round-trip to a high-frequency path (every auth'd user lands here on first login).
+  - **Why:** Worth noting if Aurora cold-start latency compounds with this extra query under load.
+  - **Fix if needed:** Cache the membership query result client-side (localStorage keyed by userId) for 5 minutes, then revalidate. Only worth doing if p99 onboarding load time degrades.
+
+- [ ] **[TEST] All care-group route tests are smoke tests of JS boolean logic** — `apps/web/src/app/api/care-group/__tests__/route.test.ts` — All 17 tests assert things like `expect('abc'.length).toBeLessThan(4)` and `expect([...].length >= MAX_MEMBERS).toBe(true)`. They test JavaScript, not the application. None touch the actual route handlers, DB, auth, or CSRF validation. The join flow has zero integration test coverage.
+  - **Why:** If the DB schema changes, the join/create/invite logic breaks silently — no test would catch it.
+  - **Fix:** Replace with integration tests using a real DB (vitest + local Aurora/PG). Test the full request path: auth → CSRF → DB insert → response. At minimum: create group (success, collision, validation), join (success, wrong name, wrong password, full, duplicate), invite (success, member cap hit, non-member rejected).
+  - **Note:** Tests should follow the existing pattern in `reset-password/__tests__/route.test.ts` which uses fetch mocks properly.
+
+- [ ] **[A11Y] profileCreateError retry bug in OnboardingShell** — `OnboardingShell.tsx:117` — The "try again" button in the profile create error state calls `setProfileCreateError(false)` which returns the user to the care-group screen, not to the profile creation retry. The user has to re-complete the care-group phase to trigger profile creation again.
+  - **Why:** Cancer patients in onboarding are already stressed. Hitting an error and then having to redo work erodes trust.
+  - **Fix:** Store `careGroupId` in state before attempting profile creation. The retry button should call the profile create API directly, not reset the whole flow.
+  - **Where to start:** `OnboardingShell.tsx` — separate the care-group completion callback from the profile create attempt. Store `pendingCareGroupId` and retry the `/api/care-profiles` call on retry.
 
 ---
 

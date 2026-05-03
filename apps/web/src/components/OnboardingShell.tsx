@@ -29,6 +29,11 @@ interface OnboardingShellProps {
   userEmail: string;
   userAvatar: string;
   userRole?: 'caregiver' | 'patient' | 'self' | null;
+  // Set when user arrived via QR invite join or is already a care group member.
+  // Causes the care-group phase to be skipped.
+  initialCareGroupId?: string;
+  // Error message from invite link validation (e.g. expired, used, full).
+  inviteError?: string;
 }
 
 type Phase = 'care-group' | 'wizard' | 'complete';
@@ -38,16 +43,22 @@ export function OnboardingShell({
   userName,
   userEmail,
   userRole: userRoleProp,
+  initialCareGroupId,
+  inviteError,
 }: OnboardingShellProps) {
   // undefined = not yet chosen; null = create new; string = edit existing
   const [selectedProfileId, setSelectedProfileId] = useState<
     string | null | undefined
   >(allProfiles.length === 1 ? allProfiles[0].id : undefined);
 
-  const [phase, setPhase] = useState<Phase>(
-    allProfiles.some(p => p.onboardingCompleted === true) ? 'wizard' : 'care-group'
-  );
-  const [careGroupId, setCareGroupId] = useState<string | undefined>();
+  const [phase, setPhase] = useState<Phase>(() => {
+    // Already completed onboarding → skip to wizard (editing/adding profile)
+    if (allProfiles.some(p => p.onboardingCompleted === true)) return 'wizard';
+    // Arrived via QR join / already a group member → skip care-group setup
+    if (initialCareGroupId) return 'wizard';
+    return 'care-group';
+  });
+  const [careGroupId, setCareGroupId] = useState<string | undefined>(initialCareGroupId);
   const [createdProfileId, setCreatedProfileId] = useState<string | null>(null);
   const [profileCreateError, setProfileCreateError] = useState(false);
 
@@ -102,25 +113,43 @@ export function OnboardingShell({
   if (profileCreateError) {
     return (
       <div className="flex flex-col gap-4 p-6 max-w-md mx-auto text-center">
-        <p className="text-sm text-red-400">Something went wrong setting up your profile. Please refresh the page and try again.</p>
+        <p className="text-sm text-red-400">We hit a snag setting up your profile. Please refresh and try again — your progress is safe.</p>
         <button type="button" onClick={() => { setProfileCreateError(false); }} className="text-xs underline" style={{ color: 'rgba(255,255,255,0.4)' }}>Try again</button>
       </div>
     );
   }
 
+  const errorBanner = inviteError ? (
+    <div
+      role="alert"
+      className="flex items-start gap-2 rounded-xl px-4 py-3 mb-4"
+      style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}
+    >
+      <svg className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+      </svg>
+      <p className="text-xs text-red-400/90">{inviteError}</p>
+    </div>
+  ) : null;
+
   if (shouldShowPicker) {
     return (
-      <OnboardingProfilePicker
-        profiles={pickerProfiles}
-        onSelect={setSelectedProfileId}
-      />
+      <>
+        {errorBanner}
+        <OnboardingProfilePicker
+          profiles={pickerProfiles}
+          onSelect={setSelectedProfileId}
+        />
+      </>
     );
   }
 
   // Phase: care-group
   if (phase === 'care-group') {
     return (
-      <CareGroupScreen
+      <>
+        {errorBanner}
+        <CareGroupScreen
         userRole={careGroupRole}
         userDisplayName={userName || userEmail.split('@')[0] || 'You'}
         onComplete={async (cgId) => {
@@ -143,7 +172,8 @@ export function OnboardingShell({
           }
           setPhase('wizard');
         }}
-      />
+        />
+      </>
     );
   }
 
