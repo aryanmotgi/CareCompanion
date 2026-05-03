@@ -1,43 +1,27 @@
-<!-- ccsquad:start mode=passive -->
-## ccsquad coordination
-
-**On session start:** call `list_instances` and `read_messages` to catch up on squad activity.
-
-**During the session — offer to broadcast after any of these:**
-- Shipping or landing code
-- Finishing a plan or architecture decision
-- Establishing a convention (error handling, naming, DB schema, API shape)
-- Finding a bug root cause
-- Creating a shared utility
-
-After completing any of the above, ask the user: "Want me to broadcast this to the squad? (y/n)"
-If yes, call `broadcast` with a concise summary of what was decided or built.
-
-**Always:** answer squad questions when asked (`read_messages`, `answer`).
+<!-- ccsquad:start mode=silent -->
+On session start: call list_instances and read_messages.
+Never offer to broadcast. Only broadcast if user explicitly asks.
+Always answer squad questions (read_messages, answer).
 <!-- ccsquad:end -->
 
-## Skill routing
+## Routing
+Match request to skill and invoke it FIRST. Never answer directly.
 
-When the user's request matches an available skill, ALWAYS invoke it using the Skill
-tool as your FIRST action. Do NOT answer directly, do NOT use other tools first.
-The skill has specialized workflows that produce better results than ad-hoc answers.
+- Product ideas / brainstorming → office-hours
+- Bugs / errors / 500s → investigate
+- Ship / deploy / PR → ship
+- QA / find bugs → qa
+- Code review → review
+- Docs after ship → document-release
+- Weekly retro → retro
+- Design system / brand → design-consultation
+- Visual audit / polish → design-review
+- Architecture review → plan-eng-review
+- Save progress → context-save
+- Resume context → context-restore
+- Code health → health
 
-Key routing rules:
-- Product ideas, "is this worth building", brainstorming → invoke office-hours
-- Bugs, errors, "why is this broken", 500 errors → invoke investigate
-- Ship, deploy, push, create PR → invoke ship
-- QA, test the site, find bugs → invoke qa
-- Code review, check my diff → invoke review
-- Update docs after shipping → invoke document-release
-- Weekly retro → invoke retro
-- Design system, brand → invoke design-consultation
-- Visual audit, design polish → invoke design-review
-- Architecture review → invoke plan-eng-review
-- Save progress, checkpoint, resume → invoke checkpoint
-- Code quality, health check → invoke health
-
-## Health Stack
-
+## Health
 - typecheck: npm run typecheck
 - lint: npm run lint
 - test: npm run test:run
