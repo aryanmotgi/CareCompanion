@@ -3,9 +3,9 @@
 type Role = 'caregiver' | 'patient' | 'self'
 
 const ROLES: { value: Role; emoji: string; label: string; description: string }[] = [
-  { value: 'caregiver', emoji: '🧑‍⚕️', label: 'Caregiver', description: 'Caring for someone I love' },
-  { value: 'patient', emoji: '💙', label: 'Patient', description: 'Getting support from a loved one' },
-  { value: 'self', emoji: '🌟', label: 'Self-care', description: 'Managing my care on my own' },
+  { value: 'caregiver', emoji: '🧑‍⚕️', label: 'Caregiver', description: 'Supporting someone I love' },
+  { value: 'patient', emoji: '💙', label: 'Patient', description: 'Managing my care with loved ones' },
+  { value: 'self', emoji: '🌟', label: 'Self-care', description: 'Managing my own care journey' },
 ]
 
 export function RoleSelector({

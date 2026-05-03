@@ -6,12 +6,24 @@ import { eq, asc } from 'drizzle-orm';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { OnboardingShell } from '@/components/OnboardingShell';
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ role?: string }>
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect('/login?error=session');
 
   const [dbUser] = await db.select({ id: users.id, providerSub: users.providerSub, email: users.email, displayName: users.displayName, isDemo: users.isDemo, createdAt: users.createdAt, role: users.role }).from(users).where(eq(users.email, session.user.email!)).limit(1);
   if (!dbUser) redirect('/login?error=session');
+
+  // Social sign-up passes ?role=caregiver|patient|self in callbackUrl.
+  // Save it to DB here if the user has no role yet (avoids a separate API call).
+  const { role: roleParam } = await searchParams;
+  if (!dbUser.role && roleParam && ['caregiver', 'patient', 'self'].includes(roleParam)) {
+    await db.update(users).set({ role: roleParam }).where(eq(users.id, dbUser.id));
+    dbUser.role = roleParam;
+  }
 
   const allProfiles = await db
     .select({

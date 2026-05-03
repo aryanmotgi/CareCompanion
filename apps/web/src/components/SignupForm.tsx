@@ -247,7 +247,11 @@ export function SignupForm({ joinGroup, joinToken }: { joinGroup?: string; joinT
           {/* Social sign-in — shown before email fields for discoverability */}
           <button
             type="button"
-            onClick={() => signIn('apple', { callbackUrl: '/onboarding' })}
+            onClick={() => {
+              if (!role) { setRoleError('Please choose your role before continuing'); return }
+              setRoleError('')
+              signIn('apple', { callbackUrl: `/onboarding?role=${role}` })
+            }}
             className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.98] hover:opacity-90"
             style={{ background: '#FFFFFF', color: '#000000' }}
           >
@@ -259,7 +263,11 @@ export function SignupForm({ joinGroup, joinToken }: { joinGroup?: string; joinT
 
           <button
             type="button"
-            onClick={() => signIn('google', { callbackUrl: '/onboarding' })}
+            onClick={() => {
+              if (!role) { setRoleError('Please choose your role before continuing'); return }
+              setRoleError('')
+              signIn('google', { callbackUrl: `/onboarding?role=${role}` })
+            }}
             className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.98] hover:opacity-90"
             style={{ background: '#FFFFFF', color: '#1F1F1F' }}
           >

@@ -161,13 +161,27 @@ export function OnboardingShell({
     );
   }
 
-  // Phase: complete — redirect to dashboard
+  // Phase: complete — set welcome banner flag then redirect
   if (phase === 'complete' || (phase === 'wizard' && !activeProfileId && !createdProfileId)) {
     if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('onboarding_just_completed', 'true');
+        localStorage.removeItem('welcome_banner_dismissed');
+      } catch {
+        // ignore storage errors (private browsing, storage quota)
+      }
       window.location.href = '/dashboard';
     }
     return null;
   }
 
-  return null;
+  // Fallback: show a loading state rather than a blank screen
+  return (
+    <div className="flex items-center justify-center py-20">
+      <svg className="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24" aria-label="Loading">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+      </svg>
+    </div>
+  );
 }
