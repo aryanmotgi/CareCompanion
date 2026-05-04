@@ -3,6 +3,7 @@
  * GET: Retrieve current preferences.
  * PUT: Update preferences (granular control over notification types, quiet hours).
  */
+export const dynamic = 'force-dynamic'
 import { getAuthenticatedUser, validateBody } from '@/lib/api-helpers'
 import { apiError, apiSuccess } from '@/lib/api-response'
 import { rateLimit } from '@/lib/rate-limit'

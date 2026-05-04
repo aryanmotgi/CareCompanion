@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { db } from '@/lib/db';
@@ -36,7 +37,7 @@ export async function GET() {
       title: link.title,
       createdAt: link.createdAt,
       viewCount: link.viewCount ?? 0,
-      shareUrl: `/shared/${link.token}`,
+      shareUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://carecompanionai.org'}/shared/${link.token}`,
     });
   } catch (err) {
     console.error('[share/weekly] GET error:', err);

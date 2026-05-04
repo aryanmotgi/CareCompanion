@@ -88,7 +88,7 @@ export const medications = pgTable('medications', {
   dose: text('dose'),
   frequency: text('frequency'),
   prescribingDoctor: text('prescribing_doctor'),
-  refillDate: text('refill_date'),
+  refillDate: date('refill_date'),
   notes: text('notes'),
   pharmacyPhone: text('pharmacy_phone'),
   healthkitFhirId: text('healthkit_fhir_id').unique(),
@@ -177,7 +177,9 @@ export const claims = pgTable('claims', {
   eobUrl: text('eob_url'),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-})
+}, (table) => ({
+  userIdIdx: index('claims_user_id_idx').on(table.userId),
+}))
 
 // ── Prior Authorizations ──────────────────────────────────────────────────────
 export const priorAuths = pgTable('prior_auths', {
@@ -214,6 +216,7 @@ export const labResults = pgTable('lab_results', {
   unit: text('unit'),
   referenceRange: text('reference_range'),
   isAbnormal: boolean('is_abnormal').default(false),
+  directionIsGood: boolean('direction_is_good'),
   dateTaken: date('date_taken'),
   source: text('source'),
   healthkitFhirId: text('healthkit_fhir_id').unique(),
@@ -393,6 +396,7 @@ export const sharedLinks = pgTable('shared_links', {
   data: jsonb('data').notNull().default({}),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   viewCount: integer('view_count').default(0),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
@@ -461,7 +465,7 @@ export const communityPosts = pgTable('community_posts', {
   replyCount: integer('reply_count').notNull().default(0),
   isPinned: boolean('is_pinned').notNull().default(false),
   isModerated: boolean('is_moderated').notNull().default(false),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
 export const communityReplies = pgTable('community_replies', {
@@ -473,7 +477,7 @@ export const communityReplies = pgTable('community_replies', {
   body: text('body').notNull(),
   upvotes: integer('upvotes').notNull().default(0),
   isModerated: boolean('is_moderated').notNull().default(false),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
 export const communityUpvotes = pgTable('community_upvotes', {
@@ -481,8 +485,10 @@ export const communityUpvotes = pgTable('community_upvotes', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   targetId: uuid('target_id').notNull(), // postId or replyId
   targetType: text('target_type').notNull(), // 'post' | 'reply'
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-})
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('community_upvotes_user_target_unique').on(t.userId, t.targetId, t.targetType),
+])
 
 // ── Wellness Check-ins ────────────────────────────────────────────────────────
 export const wellnessCheckins = pgTable('wellness_checkins', {
@@ -589,6 +595,7 @@ export const trialMatches = pgTable('trial_matches', {
   disqualifyingFactors: text('disqualifying_factors').array().default(sql`'{}'`),
   uncertainFactors:     text('uncertain_factors').array().default(sql`'{}'`),
   eligibilityGaps:      jsonb('eligibility_gaps'),
+  phase:                text('phase'),
   enrollmentStatus:     text('enrollment_status'),
   locations:            jsonb('locations'),
   trialUrl:             text('trial_url'),

@@ -6,14 +6,16 @@ import { FormField } from '@/components/ui/FormField';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { CategoryScanner } from '@/components/CategoryScanner';
 import { InteractionWarning } from '@/components/InteractionWarning';
+import { SectionEmptyState } from '@/components/SectionEmptyState';
 import type { Medication } from '@/lib/types';
 
 interface MedicationsViewProps {
   medications: Medication[];
   profileId: string;
+  patientName?: string;
 }
 
-export function MedicationsView({ medications: initial, profileId }: MedicationsViewProps) {
+export function MedicationsView({ medications: initial, profileId, patientName = 'your loved one' }: MedicationsViewProps) {
   const [medications, setMedications] = useState(initial);
   const [showAdd, setShowAdd] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
@@ -21,83 +23,111 @@ export function MedicationsView({ medications: initial, profileId }: Medications
   const [dose, setDose] = useState('');
   const [frequency, setFrequency] = useState('');
   const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  const [refillError, setRefillError] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null);
   const [removing, setRemoving] = useState(false);
   const [interactionWarning, setInteractionWarning] = useState<{ interactions: { drug1: string; drug2: string; severity: 'critical' | 'major' | 'moderate' | 'minor'; description: string }[]; medName: string } | null>(null);
   const [editingRefill, setEditingRefill] = useState<string | null>(null); // medication id
   const [refillDate, setRefillDate] = useState('');
-  const [savingRefill, setSavingRefill] = useState(false);
+  const [savingRefillId, setSavingRefillId] = useState<string | null>(null);
 
   const addMedication = async () => {
     if (!name.trim()) return;
     setSaving(true);
-    const res = await fetch('/api/records/medications', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        care_profile_id: profileId,
-        name: name.trim(),
-        dose: dose || null,
-        frequency: frequency || null,
-      }),
-    });
-    const json = await res.json();
-    setSaving(false);
-    if (res.ok && json.data) {
-      setMedications((prev) => [...prev, json.data]);
-      setName('');
-      setDose('');
-      setFrequency('');
-      setShowAdd(false);
+    setAddError(null);
+    try {
+      const res = await fetch('/api/records/medications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          care_profile_id: profileId,
+          name: name.trim(),
+          dose: dose || null,
+          frequency: frequency || null,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.data) {
+        setMedications((prev) => [...prev, json.data]);
+        setName('');
+        setDose('');
+        setFrequency('');
+        setShowAdd(false);
 
-      // Automatically check for drug interactions with existing medications
-      try {
-        const checkRes = await fetch('/api/interactions/check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ medication: json.data.name }),
-        });
-        if (checkRes.ok) {
-          const checkData = await checkRes.json();
-          if (checkData.data?.interactions?.length > 0) {
-            setInteractionWarning({ interactions: checkData.data.interactions, medName: json.data.name });
+        // Automatically check for drug interactions with existing medications
+        try {
+          const checkRes = await fetch('/api/interactions/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ medication: json.data.name }),
+          });
+          if (checkRes.ok) {
+            const checkData = await checkRes.json();
+            if (checkData.data?.interactions?.length > 0) {
+              setInteractionWarning({ interactions: checkData.data.interactions, medName: json.data.name });
+            }
           }
+        } catch {
+          // Interaction check is non-blocking; silently ignore failures
         }
-      } catch {
-        // Interaction check is non-blocking; silently ignore failures
+      } else {
+        setAddError(json.error || 'Failed to add medication. Please try again.');
       }
+    } catch {
+      setAddError('Network error. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
   const removeMedication = async () => {
     if (!confirmRemove) return;
     setRemoving(true);
-    const res = await fetch('/api/records/medications', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: confirmRemove.id }),
-    });
-    if (res.ok) {
-      setMedications((prev) => prev.filter((m) => m.id !== confirmRemove.id));
+    setRemoveError(null);
+    try {
+      const res = await fetch('/api/records/medications', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: confirmRemove.id }),
+      });
+      if (res.ok) {
+        setMedications((prev) => prev.filter((m) => m.id !== confirmRemove.id));
+        setConfirmRemove(null);
+      } else {
+        const json = await res.json().catch(() => ({}));
+        setRemoveError(json.error || 'Failed to remove. Please try again.');
+      }
+    } catch {
+      setRemoveError('Network error. Please try again.');
+    } finally {
+      setRemoving(false);
     }
-    setRemoving(false);
-    setConfirmRemove(null);
   };
 
   const updateRefillDate = async (id: string, date: string) => {
-    setSavingRefill(true);
-    const res = await fetch('/api/records/medications', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, refill_date: date || null }),
-    });
-    const json = await res.json();
-    if (res.ok && json.data) {
-      setMedications((prev) => prev.map((m) => m.id === id ? { ...m, refillDate: json.data.refillDate } : m));
+    setSavingRefillId(id);
+    setRefillError(null);
+    try {
+      const res = await fetch('/api/records/medications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, refill_date: date || null }),
+      });
+      const json = await res.json();
+      if (res.ok && json.data) {
+        setMedications((prev) => prev.map((m) => m.id === id ? { ...m, refillDate: json.data.refillDate } : m));
+        setEditingRefill(null);
+        setRefillDate('');
+      } else {
+        setRefillError(json.error || 'Failed to save refill date. Please try again.');
+      }
+    } catch {
+      setRefillError('Network error. Please try again.');
+    } finally {
+      setSavingRefillId(null);
     }
-    setSavingRefill(false);
-    setEditingRefill(null);
-    setRefillDate('');
   };
 
   const markRefilled = async (id: string) => {
@@ -146,9 +176,10 @@ export function MedicationsView({ medications: initial, profileId }: Medications
             <FormField label="Dose" value={dose} onChange={setDose} placeholder="e.g., 500mg" />
             <FormField label="Frequency" value={frequency} onChange={setFrequency} placeholder="e.g., Twice daily" />
           </div>
+          {addError && <p className="text-xs text-red-400">{addError}</p>}
           <div className="flex gap-2">
             <Button onClick={addMedication} loading={saving} disabled={!name.trim()}>Save</Button>
-            <Button variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
+            <Button variant="secondary" onClick={() => { setShowAdd(false); setAddError(null); }}>Cancel</Button>
           </div>
         </div>
       )}
@@ -164,23 +195,19 @@ export function MedicationsView({ medications: initial, profileId }: Medications
 
       {/* List */}
       {medications.length === 0 ? (
-        <div className="flex flex-col items-center py-8 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-[#6366F1]/10 border border-[#6366F1]/20 flex items-center justify-center mb-4">
-            <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#6366F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3" />
-            </svg>
-          </div>
-          <p className="text-sm font-semibold text-[#f1f5f9] mb-1">No medications yet</p>
-          <p className="text-xs text-[#64748b] mb-5">Add your first medication to start tracking doses and refills</p>
-          <button
-            onClick={() => setShowAdd(true)}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold shadow-lg shadow-[#6366F1]/25 hover:shadow-xl hover:shadow-[#6366F1]/30 transition-all active:scale-[0.98]"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            Add Medication
-          </button>
+        <div>
+          <SectionEmptyState
+            patientName={patientName}
+            icon={
+              <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#6366F1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3" />
+              </svg>
+            }
+            heading="Track [patient name]'s medications"
+            body="Add them here or just tell me in Chat — I'll add them automatically."
+            actionLabel="Add Medication"
+            onAction={() => setShowAdd(true)}
+          />
         </div>
       ) : (
         <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border)] divide-y divide-[var(--border)] overflow-hidden">
@@ -216,26 +243,30 @@ export function MedicationsView({ medications: initial, profileId }: Medications
 
                     {/* Refill date editor */}
                     {isEditingThisRefill && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <input
-                          type="date"
-                          value={refillDate}
-                          onChange={(e) => setRefillDate(e.target.value)}
-                          className="text-xs bg-white/[0.06] border border-white/[0.12] rounded-lg px-2 py-1 text-[var(--text)] outline-none focus:border-[#6366F1]/50"
-                        />
-                        <button
-                          onClick={() => updateRefillDate(med.id, refillDate)}
-                          disabled={savingRefill}
-                          className="text-xs px-2.5 py-1 rounded-lg bg-[#6366F1]/20 text-[#A78BFA] hover:bg-[#6366F1]/30 transition-colors disabled:opacity-50"
-                        >
-                          {savingRefill ? '...' : 'Save'}
-                        </button>
-                        <button
-                          onClick={() => { setEditingRefill(null); setRefillDate(''); }}
-                          className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
-                        >
-                          Cancel
-                        </button>
+                      <div className="mt-2 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="date"
+                            value={refillDate}
+                            onChange={(e) => setRefillDate(e.target.value)}
+                            min={new Date().toISOString().slice(0, 10)}
+                            className="text-xs bg-white/[0.06] border border-white/[0.12] rounded-lg px-2 py-1 text-[var(--text)] outline-none focus:border-[#6366F1]/50"
+                          />
+                          <button
+                            onClick={() => updateRefillDate(med.id, refillDate)}
+                            disabled={savingRefillId === med.id}
+                            className="text-xs px-2.5 py-1 rounded-lg bg-[#6366F1]/20 text-[#A78BFA] hover:bg-[#6366F1]/30 transition-colors disabled:opacity-50"
+                          >
+                            {savingRefillId === med.id ? '...' : 'Save'}
+                          </button>
+                          <button
+                            onClick={() => { setEditingRefill(null); setRefillDate(''); setRefillError(null); }}
+                            className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                        {refillError && <p className="text-xs text-red-400">{refillError}</p>}
                       </div>
                     )}
                   </div>
@@ -245,7 +276,7 @@ export function MedicationsView({ medications: initial, profileId }: Medications
                     {(refillUrgent || refillOverdue) && !isEditingThisRefill && (
                       <button
                         onClick={() => markRefilled(med.id)}
-                        disabled={savingRefill}
+                        disabled={savingRefillId === med.id}
                         className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors disabled:opacity-50"
                       >
                         Refilled
@@ -286,6 +317,9 @@ export function MedicationsView({ medications: initial, profileId }: Medications
         />
       )}
 
+      {removeError && (
+        <p className="text-xs text-red-400 text-center">{removeError}</p>
+      )}
       <ConfirmDialog
         open={!!confirmRemove}
         title="Remove Medication"
@@ -294,7 +328,7 @@ export function MedicationsView({ medications: initial, profileId }: Medications
         variant="danger"
         loading={removing}
         onConfirm={removeMedication}
-        onCancel={() => setConfirmRemove(null)}
+        onCancel={() => { setConfirmRemove(null); setRemoveError(null); }}
       />
     </div>
   );

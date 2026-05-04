@@ -74,7 +74,7 @@ export function PriorityCard({
         <div className={`w-2 h-2 rounded-full ${s.dot} ${s.dotPulse ? 'animate-dot-pulse' : ''}`} />
         <span className={`text-xs font-semibold ${s.label}`}>{label}</span>
         {isPriority && (
-          <span className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#A78BFA]/15 text-[#A78BFA] border border-[#A78BFA]/20">
+          <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-[#A78BFA]/15 text-[#A78BFA] border border-[#A78BFA]/20">
             Priority
           </span>
         )}
@@ -111,6 +111,17 @@ export function PriorityCard({
           style={animStyle}
         >
           {content}
+          <div className="flex items-center justify-end mt-2 pt-1 gap-1">
+            <span className="text-xs text-[var(--text-muted)]">
+              {expanded ? 'Less' : 'Action steps'}
+            </span>
+            <svg
+              className={`w-3.5 h-3.5 text-[var(--text-muted)] transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+              fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </div>
         </ExpandableCard>
       </div>
     )

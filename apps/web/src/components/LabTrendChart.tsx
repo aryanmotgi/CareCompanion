@@ -212,6 +212,15 @@ export function LabTrendChart({ trends }: LabTrendChartProps) {
     return null
   }
 
+  if (chartData.length === 1) {
+    return (
+      <div className="rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-4 text-center py-8">
+        <p className="text-sm text-[var(--text-secondary)]">Only one data point recorded.</p>
+        <p className="text-xs text-[var(--text-muted)] mt-1">Add another result to see trends over time.</p>
+      </div>
+    )
+  }
+
   // Find reference area bounds (use first trend with a reference range)
   const refRange = trends.find((t) => t.reference_range)?.reference_range
 

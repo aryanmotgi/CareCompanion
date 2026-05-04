@@ -23,9 +23,11 @@ import {
 } from '@/lib/seed-data'
 
 export async function POST() {
-  // Environment guard — block in production unless TEST_MODE is explicitly enabled
+  // Environment guard — block in production unless TEST_MODE is explicitly enabled.
+  // TEST_MODE (server-only) is used instead of NEXT_PUBLIC_TEST_MODE to prevent
+  // the flag from leaking into the client bundle.
   const isProduction = process.env.NODE_ENV === 'production'
-  const isTestMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true'
+  const isTestMode = process.env.TEST_MODE === 'true'
   if (isProduction && !isTestMode) {
     return apiError('Not available in production', 403)
   }

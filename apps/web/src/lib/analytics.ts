@@ -20,8 +20,3 @@ export function initAnalytics() {
   })
 }
 
-export function trackEvent(event: string, properties?: Record<string, string | number | boolean>) {
-  if (!POSTHOG_KEY) return
-  posthog.capture(event, properties)
-}
-

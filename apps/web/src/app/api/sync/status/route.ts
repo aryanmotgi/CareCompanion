@@ -9,7 +9,14 @@ export async function GET() {
   if (error) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const apps = await db
-    .select()
+    .select({
+      id: connectedApps.id,
+      source: connectedApps.source,
+      lastSynced: connectedApps.lastSynced,
+      expiresAt: connectedApps.expiresAt,
+      createdAt: connectedApps.createdAt,
+      metadata: connectedApps.metadata,
+    })
     .from(connectedApps)
     .where(eq(connectedApps.userId, dbUser!.id))
     .orderBy(desc(connectedApps.lastSynced));

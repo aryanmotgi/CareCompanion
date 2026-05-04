@@ -5,7 +5,7 @@ import {
 } from '@/lib/db/schema'
 import { eq, and, isNull } from 'drizzle-orm'
 
-export type MutationConfidence = 'high' | 'medium' | 'low'
+type MutationConfidence = 'high' | 'medium' | 'low'
 
 export type EligibilityGap = {
   gapType:       'measurable' | 'conditional' | 'fixed'
@@ -18,7 +18,7 @@ export type EligibilityGap = {
   closureSignal: string | null
 }
 
-export type LabResultEntry = {
+type LabResultEntry = {
   testName:     string
   numericValue: number | null
   unit:         string | null
@@ -26,7 +26,7 @@ export type LabResultEntry = {
   isAbnormal:   boolean
 }
 
-export type PriorTreatmentLine = {
+type PriorTreatmentLine = {
   regimen:    string
   startDate:  string
   cycleCount: number
@@ -116,7 +116,7 @@ export async function assembleProfile(careProfileId: string): Promise<PatientPro
         testName:     l.testName,
         numericValue: isNaN(numeric) ? null : numeric,
         unit:         l.unit ?? null,
-        resultDate:   l.dateTaken ?? '',
+        resultDate:   l.dateTaken ?? 'Date unknown',
         isAbnormal:   l.isAbnormal ?? false,
       }
     }),

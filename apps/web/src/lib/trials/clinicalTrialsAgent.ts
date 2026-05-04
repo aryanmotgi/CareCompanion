@@ -1,23 +1,25 @@
 import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
-import { searchTrials, searchByEligibility } from './tools'
+import { searchTrials } from './tools'
 import { buildScoringSystemPrompt, isCloseTrial } from './gapAnalysis'
 import type { PatientProfile, EligibilityGap } from './assembleProfile'
 
 export type TrialMatchResult = {
   nctId:                string
   title:                string
+  matchCategory:        'matched' | 'close'
   matchScore:           number
   matchReasons:         string[]
   disqualifyingFactors: string[]
   uncertainFactors:     string[]
   eligibilityGaps:      EligibilityGap[] | null
+  phase:                string | null
   enrollmentStatus:     string | null
   locations:            object[]
   trialUrl:             string | null
 }
 
-export type AgentMatchOutput = {
+type AgentMatchOutput = {
   matched: TrialMatchResult[]
   close:   TrialMatchResult[]
 }
@@ -26,28 +28,20 @@ export async function runTrialsAgent(profile: PatientProfile): Promise<AgentMatc
   const t0 = Date.now()
   const systemPrompt = buildScoringSystemPrompt(profile)
   const locationFilter = profile.zipCode ? `50mi:${profile.zipCode}` : undefined
-  const condition = profile.cancerType ?? 'cancer'
+  // Strip test/seed suffixes so CT.gov gets a clean search term
+  const condition = (profile.cancerType ?? 'cancer').replace(/\s*\(TEST[^)]*\)/gi, '').trim() || 'cancer'
 
-  // Fetch trials from CT.gov in parallel — eliminates the sequential agentic tool-call loop.
-  // Two searches: broad condition search + eligibility-filtered RECRUITING-only search.
-  console.log('[trials-agent] starting parallel CT.gov fetch')
-  const [broadResult, eligResult] = await Promise.all([
-    searchTrials({ condition, location: locationFilter, status: 'RECRUITING', pageSize: 20 }),
-    searchByEligibility({ condition, age: profile.age ?? undefined, location: locationFilter }),
-  ])
+  // Single CT.gov search — searchByEligibility passed age but tools.ts ignored it,
+  // making it identical to the broad search. One call with pageSize 40 is cleaner.
+  console.log('[trials-agent] starting CT.gov fetch')
+  const result = await searchTrials({ condition, location: locationFilter, status: 'RECRUITING', pageSize: 40 })
   console.log(`[trials-agent] CT.gov fetch done in ${Date.now() - t0}ms`)
 
-  // Deduplicate by nct_id
-  const seen = new Set<string>()
-  const allTrials: object[] = []
-  const sources = [
-    ...('trials' in broadResult ? broadResult.trials : []),
-    ...('trials' in eligResult ? eligResult.trials : []),
-  ]
-  for (const t of sources) {
-    const id = (t as Record<string, unknown>).nct_id as string
-    if (id && !seen.has(id)) { seen.add(id); allTrials.push(t) }
+  if ('error' in result) {
+    throw new Error(`CT.gov search failed: ${result.error}`)
   }
+
+  const allTrials: object[] = result.trials
 
   if (allTrials.length === 0) {
     console.log('[trials-agent] no trials found from CT.gov')
@@ -64,7 +58,7 @@ export async function runTrialsAgent(profile: PatientProfile): Promise<AgentMatc
     system: systemPrompt,
     prompt: `Score each of the following clinical trials for this patient. Output one JSON array (no markdown fencing) containing ALL trials with matchCategory "matched" or "close". Skip "excluded" trials entirely.
 
-Each object must have: nct_id, title, matchCategory, matchScore (0-100), matchReasons (string[]), disqualifyingFactors (string[]), uncertainFactors (string[]), eligibilityGaps (array or null), status, locations (array), url.
+Each object must have: nct_id, title, matchCategory, matchScore (0-100), matchReasons (string[]), disqualifyingFactors (string[]), uncertainFactors (string[]), eligibilityGaps (array or null), phase (string or null, pass through from input), status, locations (array), url.
 
 Trials to score:
 ${JSON.stringify(allTrials, null, 2)}`,
@@ -99,26 +93,40 @@ ${JSON.stringify(allTrials, null, 2)}`,
       }
       return true
     })
-    .map(t => ({
-      nctId:                String(t.nct_id ?? t.nctId ?? '').trim(),
-      title:                String(t.title ?? ''),
-      matchScore:           Math.max(0, Math.min(100, Number(t.matchScore) || 0)),
-      matchReasons:         Array.isArray(t.matchReasons) ? t.matchReasons : [],
-      disqualifyingFactors: Array.isArray(t.disqualifyingFactors) ? t.disqualifyingFactors : [],
-      uncertainFactors:     Array.isArray(t.uncertainFactors) ? t.uncertainFactors : [],
-      eligibilityGaps:      Array.isArray(t.eligibilityGaps) ? t.eligibilityGaps : null,
-      enrollmentStatus:     String(t.status ?? ''),
-      locations:            Array.isArray(t.locations) ? t.locations : [],
-      trialUrl:             String(t.url ?? ''),
-    }))
+    .map(t => {
+      const rawCat = String(t.matchCategory ?? '').toLowerCase()
+      const gaps   = Array.isArray(t.eligibilityGaps) ? (t.eligibilityGaps as EligibilityGap[]) : null
+      // Trust Haiku's classification. Only use gap analysis as fallback when
+      // Haiku returned an unrecognised category (neither 'matched' nor 'close').
+      let category: 'matched' | 'close'
+      if (rawCat === 'close') {
+        category = 'close'
+      } else if (rawCat === 'matched') {
+        category = 'matched'
+      } else {
+        category = gaps && isCloseTrial(gaps) ? 'close' : 'matched'
+      }
+      return {
+        nctId:                String(t.nct_id ?? t.nctId ?? '').trim(),
+        title:                String(t.title ?? ''),
+        matchCategory:        category,
+        matchScore:           Math.max(0, Math.min(100, Number(t.matchScore) || 0)),
+        matchReasons:         Array.isArray(t.matchReasons) ? t.matchReasons : [],
+        disqualifyingFactors: Array.isArray(t.disqualifyingFactors) ? t.disqualifyingFactors : [],
+        uncertainFactors:     Array.isArray(t.uncertainFactors) ? t.uncertainFactors : [],
+        eligibilityGaps:      gaps,
+        phase:                t.phase ? String(t.phase).slice(0, 50) : null,
+        enrollmentStatus:     String(t.status ?? ''),
+        locations:            Array.isArray(t.locations) ? t.locations : [],
+        trialUrl:             t.url && /^https:\/\//i.test(String(t.url)) ? String(t.url) : null,
+      }
+    })
 
-  const matched = results.filter(r => {
-    const isClose = r.eligibilityGaps && isCloseTrial(r.eligibilityGaps as EligibilityGap[])
-    return !isClose && r.matchScore >= 40
-  })
-  const close = results.filter(r =>
-    r.eligibilityGaps && isCloseTrial(r.eligibilityGaps as EligibilityGap[])
-  )
+  const matched = results
+    .filter(r => r.matchCategory === 'matched')
+    .sort((a, b) => b.matchScore - a.matchScore)
+  const close   = results.filter(r => r.matchCategory === 'close')
 
+  console.log(`[trials-agent] returned ${matched.length} matched, ${close.length} close (from ${rawArray.length} scored)`)
   return { matched, close }
 }

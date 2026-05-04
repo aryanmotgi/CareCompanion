@@ -306,9 +306,9 @@ export function ProfileCompleteness({
             <div className="min-w-0">
               {isComplete ? (
                 <>
-                  <h3 className="text-sm font-semibold text-[#10b981]">Profile complete!</h3>
+                  <h3 className="text-sm font-semibold text-[#10b981]">Profile complete</h3>
                   <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                    Great job! Your care profile is fully set up.
+                    Your care team has everything they need.
                   </p>
                 </>
               ) : (
@@ -348,6 +348,7 @@ export function ProfileCompleteness({
                 href={item.href}
                 className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.07] hover:border-[var(--lavender)]/20 transition-all animate-press group"
                 style={{ animationDelay: `${i * 50}ms` }}
+                data-tour={item.key === 'emergency_contact' ? 'emergency-card' : undefined}
               >
                 <div className="w-8 h-8 rounded-lg bg-[var(--lavender)]/10 flex items-center justify-center text-[var(--lavender)] flex-shrink-0 group-hover:bg-[var(--lavender)]/15 transition-colors">
                   {item.icon}
@@ -355,9 +356,6 @@ export function ProfileCompleteness({
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-[var(--text)]">{item.label}</p>
                 </div>
-                <span className="text-[10px] font-semibold text-[var(--lavender)] bg-[var(--lavender)]/10 px-2 py-0.5 rounded-full flex-shrink-0">
-                  +{item.weight}%
-                </span>
                 <svg className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0 group-hover:text-[var(--lavender)] transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>

@@ -11,7 +11,7 @@ interface SharedData {
   medications?: { name: string; dose?: string | null; frequency?: string | null; prescribingDoctor?: string | null; notes?: string | null }[];
   lab_results?: { name: string; value?: string | null; unit?: string | null; referenceRange?: string | null; date?: string | null; status?: string | null }[];
   appointments?: { doctorName?: string | null; specialty?: string | null; dateTime?: string | null; location?: string | null; purpose?: string | null }[];
-  care_team?: { name: string; specialty?: string | null; phone?: string | null }[];
+  care_team?: { name: string; specialty?: string | null }[];
 }
 
 interface WeeklyData {
@@ -123,21 +123,27 @@ function WeeklySummaryPage({
         </div>
 
         {/* AI Narrative */}
-        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center">
-              <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-              </svg>
+        {weekly.narrative?.trim() ? (
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                </svg>
+              </div>
+              <span className="text-xs font-medium text-white/60">CareCompanion AI</span>
             </div>
-            <span className="text-xs font-medium text-white/60">CareCompanion AI</span>
+            <div className="space-y-3">
+              {weekly.narrative.split('\n\n').filter(Boolean).map((para, i) => (
+                <p key={i} className="text-sm text-white/80 leading-relaxed">{para}</p>
+              ))}
+            </div>
           </div>
-          <div className="space-y-3">
-            {weekly.narrative.split('\n\n').filter(Boolean).map((para, i) => (
-              <p key={i} className="text-sm text-white/80 leading-relaxed">{para}</p>
-            ))}
+        ) : (
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-8 text-center">
+            <p className="text-sm text-white/40">No summary available yet for this week.</p>
           </div>
-        </div>
+        )}
 
         {/* Stats grid */}
         {stats && (
@@ -242,7 +248,21 @@ function WeeklySummaryPage({
 
 export default async function SharedPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const [link] = await db.select().from(sharedLinks).where(eq(sharedLinks.token, token)).limit(1);
+  const [link] = await db
+    .select({
+      id: sharedLinks.id,
+      token: sharedLinks.token,
+      title: sharedLinks.title,
+      type: sharedLinks.type,
+      data: sharedLinks.data,
+      expiresAt: sharedLinks.expiresAt,
+      createdAt: sharedLinks.createdAt,
+      viewCount: sharedLinks.viewCount,
+      revokedAt: sharedLinks.revokedAt,
+    })
+    .from(sharedLinks)
+    .where(eq(sharedLinks.token, token))
+    .limit(1);
 
   if (!link) notFound();
 
@@ -262,11 +282,37 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
     );
   }
 
+  if (link.revokedAt) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: '#0c0c1a' }}>
+        <div className="text-center px-4">
+          <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-white/30" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-bold text-white mb-2">Link Revoked</h1>
+          <p className="text-sm text-white/40">This link has been revoked. Ask the sender to share it again.</p>
+        </div>
+      </div>
+    );
+  }
+
   // Increment view count (fire-and-forget)
   db.update(sharedLinks).set({ viewCount: sql`${sharedLinks.viewCount} + 1` }).where(eq(sharedLinks.token, token)).catch(() => {});
 
   // Weekly summary gets its own layout
   if (link.type === 'weekly_summary') {
+    if (!link.data || typeof link.data !== 'object') {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: '#0c0c1a' }}>
+          <div className="text-center px-4">
+            <h1 className="text-xl font-bold text-white mb-2">Data Unavailable</h1>
+            <p className="text-sm text-white/40">The health data for this link could not be loaded.</p>
+          </div>
+        </div>
+      );
+    }
     const weekly = link.data as WeeklyData;
     const stats = weekly.stats;
     return <WeeklySummaryPage link={link} weekly={weekly} stats={stats} />;
@@ -279,6 +325,13 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
     : null;
 
   const futureAppts = (data.appointments ?? []).filter(a => a.dateTime && new Date(a.dateTime) >= new Date());
+
+  const hasContent =
+    (data.patient && Object.values(data.patient).some(Boolean)) ||
+    (data.medications && data.medications.length > 0) ||
+    (data.lab_results && data.lab_results.length > 0) ||
+    futureAppts.length > 0 ||
+    (data.care_team && data.care_team.length > 0);
 
   return (
     <div className="min-h-screen" style={{ background: '#0c0c1a' }}>
@@ -303,6 +356,13 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
           <h1 className="text-2xl font-bold text-white">{link.title || 'Health Summary'}</h1>
           {createdDate && <p className="text-sm text-white/40 mt-1">Shared on {createdDate}</p>}
         </div>
+
+        {/* Empty state — no data sections populated */}
+        {!hasContent && (
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-8 text-center">
+            <p className="text-sm text-white/40">No health data has been added to this profile yet.</p>
+          </div>
+        )}
 
         {/* Patient overview */}
         {data.patient && Object.values(data.patient).some(Boolean) && (
@@ -397,11 +457,6 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
                     <p className="text-sm text-white">{member.name}</p>
                     {member.specialty && <p className="text-xs text-white/40">{member.specialty}</p>}
                   </div>
-                  {member.phone && (
-                    <a href={`tel:${member.phone}`} className="text-xs text-[#A78BFA] hover:underline">
-                      {member.phone}
-                    </a>
-                  )}
                 </div>
               ))}
             </div>

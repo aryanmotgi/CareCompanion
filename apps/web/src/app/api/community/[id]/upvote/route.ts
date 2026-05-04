@@ -5,8 +5,12 @@ import { db } from '@/lib/db';
 import { communityPosts, communityReplies, communityUpvotes } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { z } from 'zod';
+import { rateLimit } from '@/lib/rate-limit';
 
 interface Props { params: Promise<{ id: string }> }
+
+const upvoteLimiter = rateLimit({ interval: 60_000, maxRequests: 30 });
+const idSchema = z.string().uuid();
 
 const upvoteSchema = z.object({
   targetType: z.enum(['post', 'reply']),
@@ -21,11 +25,38 @@ export async function POST(request: Request, { params }: Props) {
     if (authError) return authError;
 
     const { id } = await params;
-    const body = await request.json();
+    if (!idSchema.safeParse(id).success) return apiError('Invalid post ID', 400);
+
+    const rl = await upvoteLimiter.check(`community-upvote:${user!.id}`);
+    if (!rl.success) return apiError('Too many requests', 429);
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return apiError('Invalid request body', 400);
+    }
     const parsed = upvoteSchema.safeParse(body);
     if (!parsed.success) return apiError('Invalid input', 400);
 
     const { targetType } = parsed.data;
+
+    // Verify target exists and is not moderated
+    if (targetType === 'post') {
+      const [target] = await db
+        .select({ id: communityPosts.id })
+        .from(communityPosts)
+        .where(and(eq(communityPosts.id, id), eq(communityPosts.isModerated, false)))
+        .limit(1);
+      if (!target) return apiError('Post not found', 404);
+    } else {
+      const [target] = await db
+        .select({ id: communityReplies.id })
+        .from(communityReplies)
+        .where(and(eq(communityReplies.id, id), eq(communityReplies.isModerated, false)))
+        .limit(1);
+      if (!target) return apiError('Reply not found', 404);
+    }
 
     const action = await db.transaction(async (tx) => {
       // Check for existing upvote (toggle)

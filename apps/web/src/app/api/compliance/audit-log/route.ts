@@ -1,8 +1,10 @@
+export const dynamic = 'force-dynamic'
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { db } from '@/lib/db'
 import { auditLogs } from '@/lib/db/schema'
 import { eq, desc, count } from 'drizzle-orm'
+import { logger } from '@/lib/logger'
 
 /**
  * GET /api/compliance/audit-log
@@ -21,7 +23,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url)
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
-    const offset = parseInt(searchParams.get('offset') || '0')
+    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0') || 0)
 
     const [logs, [{ total }]] = await Promise.all([
       db
@@ -39,7 +41,7 @@ export async function GET(req: Request) {
 
     return apiSuccess({ logs, total, limit, offset })
   } catch (err) {
-    console.error('[audit-log] GET error:', err)
+    logger.error('[audit-log] GET error', { error: err })
     return apiError('Internal server error', 500)
   }
 }

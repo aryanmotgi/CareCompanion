@@ -4,7 +4,7 @@
  */
 import { db } from '@/lib/db'
 import { medications } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 
 interface RefillStatus {
   medication_id: string
@@ -29,7 +29,7 @@ export async function checkRefillStatus(careProfileId: string): Promise<RefillSt
       prescribingDoctor: medications.prescribingDoctor,
     })
     .from(medications)
-    .where(eq(medications.careProfileId, careProfileId))
+    .where(and(eq(medications.careProfileId, careProfileId), isNull(medications.deletedAt)))
 
   if (meds.length === 0) return []
 

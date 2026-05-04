@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useColorScheme } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-export const THEME_KEY = 'cc_theme_override'
+const THEME_KEY = 'cc_theme_override'
 export type ThemeOverride = 'dark' | 'light' | 'system'
 
 type ThemeListener = (value: ThemeOverride) => void
@@ -13,7 +13,7 @@ function emitThemeChange(value: ThemeOverride) {
   listeners.forEach((fn) => fn(value))
 }
 
-export interface GlowShadow {
+interface GlowShadow {
   shadowColor: string
   shadowOffset: { width: number; height: number }
   shadowRadius: number
@@ -21,7 +21,7 @@ export interface GlowShadow {
   elevation: number
 }
 
-export interface Theme {
+interface Theme {
   bg: string
   bgWarm: string
   bgCard: string
@@ -135,7 +135,7 @@ const light: Theme = {
   gradientBMuted: ['#F5F3FF', '#FAFAFA', 'rgba(99,102,241,0.035)', '#F5F3FF'],
 }
 
-export const shared = {
+const shared = {
   radiusSm: 10,
   radiusMd: 14,
   radiusLg: 20,

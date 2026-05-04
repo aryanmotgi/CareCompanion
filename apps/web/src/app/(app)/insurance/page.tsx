@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db';
 import { users, claims, insurance } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, isNull } from 'drizzle-orm';
 import type { Claim } from '@/lib/types'
 
 const InsuranceView = dynamic(() => import('@/components/InsuranceView').then(m => m.InsuranceView))
@@ -22,7 +22,7 @@ async function InsuranceContent() {
   if (!dbUser) redirect('/login?error=session');
 
   const [claimsData, insRows] = await Promise.all([
-    db.select().from(claims).where(eq(claims.userId, dbUser.id)).orderBy(desc(claims.serviceDate)).catch(() => []),
+    db.select().from(claims).where(and(eq(claims.userId, dbUser.id), isNull(claims.deletedAt))).orderBy(desc(claims.serviceDate)).catch(() => []),
     db.select().from(insurance).where(eq(insurance.userId, dbUser.id)).limit(1).catch(() => []),
   ]);
   const [ins] = insRows;

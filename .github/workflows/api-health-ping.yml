@@ -17,6 +17,7 @@ jobs:
         run: |
           HTTP_CODE=$(curl -s -o /tmp/liveness.json -w '%{http_code}' \
             --max-time 5 \
+            -H "x-e2e-secret: ${{ secrets.E2E_AUTH_SECRET }}" \
             https://carecompanionai.org/api/e2e/signin 2>/dev/null || echo "000")
           BODY=$(cat /tmp/liveness.json 2>/dev/null | head -c 500 || echo "no response")
           echo "status=$HTTP_CODE" >> $GITHUB_OUTPUT

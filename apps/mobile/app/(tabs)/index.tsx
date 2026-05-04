@@ -438,6 +438,24 @@ export default function HomeScreen() {
               })()}
             </Animated.View>
 
+            {/* Care Hub Radar shortcut */}
+            <Animated.View style={card3Style}>
+              <GlassCard style={styles.card} onPress={() => router.push('/care-hub' as any)}>
+                <View style={styles.timelineRow}>
+                  <View style={[styles.timelineIcon, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
+                    <Ionicons name="pulse-outline" size={20} color="#6EE7B7" />
+                  </View>
+                  <View style={styles.timelineText}>
+                    <Text style={[styles.ctaTitle, { color: theme.text, fontSize: 14 }]}>Care Hub Radar</Text>
+                    <Text style={[styles.ctaSub, { color: theme.textMuted, fontSize: 12 }]}>
+                      Symptom trends, insights & activity
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+                </View>
+              </GlassCard>
+            </Animated.View>
+
             {/* Timeline shortcut */}
             <Animated.View style={card3Style}>
               <GlassCard style={styles.card} onPress={() => router.push('/timeline' as any)}>
@@ -533,8 +551,7 @@ function OnboardingNudge() {
 
   if (onboarding.isComplete || dismissed) return null
 
-  const progress = onboarding.completedCount / onboarding.totalCount
-  const nextStep = onboarding.steps.find(s => !(s as any).completed)
+  const nextStep = onboarding.steps.find(s => !s.done) ?? onboarding.steps[0]!
 
   return (
     <Animated.View style={[styles.nudgeContainer, pillStyle]}>
@@ -551,9 +568,9 @@ function OnboardingNudge() {
             </Text>
           </View>
           <View style={styles.nudgeTextWrap}>
-            <Text style={styles.nudgeTitle}>Connect Health Records</Text>
-            <Text style={styles.nudgeSub}>
-              Auto-import your care data
+            <Text style={styles.nudgeTitle} numberOfLines={1}>{nextStep.title}</Text>
+            <Text style={styles.nudgeSub} numberOfLines={1}>
+              {nextStep.description}
             </Text>
           </View>
           <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.7)" />

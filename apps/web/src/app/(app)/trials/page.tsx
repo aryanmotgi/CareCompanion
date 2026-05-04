@@ -2,7 +2,7 @@ import { TrialsTab } from '@/components/trials/TrialsTab'
 import { db } from '@/lib/db'
 import { careProfiles } from '@/lib/db/schema'
 import { auth } from '@/lib/auth'
-import { eq } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 
 export default async function TrialsPage() {
@@ -19,6 +19,7 @@ export default async function TrialsPage() {
   })
     .from(careProfiles)
     .where(eq(careProfiles.userId, session.user.id as string))
+    .orderBy(desc(careProfiles.createdAt))
     .limit(1)
 
   const hasZip = /^\d{5}$/.test(profile?.zipCode ?? '')
@@ -29,10 +30,7 @@ export default async function TrialsPage() {
     <TrialsTab
       profileId={profile.id}
       hasZip={hasZip}
-      patientName={profile.patientName ?? undefined}
       cancerType={profile.cancerType ?? undefined}
-      cancerStage={profile.cancerStage ?? undefined}
-      patientAge={profile.patientAge ?? undefined}
     />
   )
 }

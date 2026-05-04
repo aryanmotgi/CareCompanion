@@ -33,8 +33,12 @@ export async function GET(req: Request) {
     await enqueueMatchingRun(row.careProfileId, 'retry')
   }
 
-  // 3. Enqueue all active profiles for nightly run
-  const profiles = await db.select({ id: careProfiles.id }).from(careProfiles)
+  // 3. Enqueue completed profiles for nightly run (capped to prevent OOM at scale)
+  const profiles = await db
+    .select({ id: careProfiles.id })
+    .from(careProfiles)
+    .where(eq(careProfiles.onboardingCompleted, true))
+    .limit(500)
   for (const p of profiles) {
     await enqueueMatchingRun(p.id, 'nightly')
   }
@@ -51,7 +55,11 @@ export async function GET(req: Request) {
   }
 
   // 5. Re-check close trials for gap closure (per profile, not per trial)
-  const closeTrials = await db.select().from(trialMatches).where(eq(trialMatches.matchCategory, 'close'))
+  // Limit to 200 rows per run to avoid loading the entire table into memory.
+  const closeTrials = await db.select().from(trialMatches)
+    .where(eq(trialMatches.matchCategory, 'close'))
+    .orderBy(trialMatches.careProfileId)
+    .limit(200)
   const byProfile = new Map<string, typeof closeTrials>()
   for (const t of closeTrials) {
     byProfile.set(t.careProfileId, [...(byProfile.get(t.careProfileId) ?? []), t])
@@ -75,7 +83,7 @@ export async function GET(req: Request) {
         prompt: `Given this patient profile:\n${JSON.stringify(profile, null, 2)}\n\nCheck which trials now have all gaps resolved:\n${gapCheckPrompt}\n\nReturn only NCT IDs where the patient NOW meets all previously blocking criteria.`,
       })
 
-      for (const nctId of output.resolved) {
+      for (const nctId of output?.resolved ?? []) {
         const trial = trials.find(t => t.nctId === nctId)
         if (!trial) continue
 
@@ -94,7 +102,7 @@ export async function GET(req: Request) {
           })
         }
       }
-    } catch { /* skip profile, continue */ }
+    } catch (err) { console.error('[trials-match] gap-closure failed', profileId, err); }
   }
 
   return NextResponse.json({ ok: true, processed, elapsed: Date.now() - start })

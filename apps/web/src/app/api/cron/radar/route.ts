@@ -100,6 +100,36 @@ export async function GET(req: Request) {
     pushSubsByUser.set(sub.userId, existing);
   }
 
+  // Batch-fetch care team members + recent activity for all profiles (avoids N+1 in caregiver-awareness loop)
+  const profileIds = profiles.map((p) => p.id);
+  const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+
+  const allCareTeamMembers = profileIds.length > 0
+    ? await db.select().from(careTeamMembers)
+        .where(inArray(careTeamMembers.careProfileId, profileIds))
+        .catch(() => [])
+    : [];
+  const teamMembersByProfile = new Map<string, typeof allCareTeamMembers>();
+  for (const m of allCareTeamMembers) {
+    const existing = teamMembersByProfile.get(m.careProfileId) ?? [];
+    existing.push(m);
+    teamMembersByProfile.set(m.careProfileId, existing);
+  }
+
+  const memberUserIds = allCareTeamMembers.map((m) => m.userId);
+  const allRecentActivity = memberUserIds.length > 0
+    ? await db.select({
+        userId: careTeamActivityLog.userId,
+        careProfileId: careTeamActivityLog.careProfileId,
+      }).from(careTeamActivityLog)
+        .where(and(
+          inArray(careTeamActivityLog.userId, memberUserIds),
+          gte(careTeamActivityLog.createdAt, threeDaysAgo),
+        ))
+        .catch(() => [])
+    : [];
+  const recentActivitySet = new Set(allRecentActivity.map((a) => `${a.userId}:${a.careProfileId}`));
+
   let processed = 0;
   let skipped = 0;
   let insightsGenerated = 0;
@@ -319,24 +349,11 @@ COMPUTED TRENDS:
       }
 
       // Caregiver awareness: summary for caregivers who haven't logged in 3+ days
-      const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
-      const teamMembers = await db.select().from(careTeamMembers)
-        .where(eq(careTeamMembers.careProfileId, profile.id))
-        .catch(() => []);
+      // teamMembersByProfile and recentActivitySet are pre-fetched before this loop (avoids N+1)
+      const teamMembers = teamMembersByProfile.get(profile.id) ?? [];
 
       for (const member of teamMembers) {
-        // Check if this caregiver has recent activity
-        const recentActivity = await db.select({ id: careTeamActivityLog.id })
-          .from(careTeamActivityLog)
-          .where(and(
-            eq(careTeamActivityLog.userId, member.userId),
-            eq(careTeamActivityLog.careProfileId, profile.id),
-            gte(careTeamActivityLog.createdAt, threeDaysAgo),
-          ))
-          .limit(1)
-          .catch(() => []);
-
-        if (recentActivity.length === 0) {
+        if (!recentActivitySet.has(`${member.userId}:${profile.id}`)) {
           const avgPainStr = (checkins.reduce((s, c) => s + c.pain, 0) / checkins.length).toFixed(1);
           const avgMoodStr = (checkins.reduce((s, c) => s + c.mood, 0) / checkins.length).toFixed(1);
           pendingNotifications.push({

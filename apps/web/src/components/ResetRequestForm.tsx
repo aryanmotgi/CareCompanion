@@ -81,15 +81,23 @@ export function ResetRequestForm() {
 
   if (sent) {
     return (
-      <div className="relative rounded-2xl p-6 overflow-hidden text-center" style={{
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.07)',
-        backdropFilter: 'blur(20px)',
-      }}>
-        <svg className="w-10 h-10 mx-auto mb-3 text-green-400/80" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <div
+        role="status"
+        aria-live="polite"
+        className="relative rounded-2xl p-6 overflow-hidden text-center"
+        style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          backdropFilter: 'blur(20px)',
+          animation: 'loginFadeUp 0.4s ease both',
+        }}
+      >
+        <svg className="w-10 h-10 mx-auto mb-3 text-green-400/80" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
         </svg>
-        <p className="text-sm text-white/70 mb-4">If an account exists with that email, we&apos;ve sent a reset link. Check your inbox.</p>
+        <p className="text-sm font-medium text-white/80 mb-1">Check your inbox</p>
+        <p className="text-xs text-white/50 mb-1">If an account exists for that email, we&apos;ve sent a reset link.</p>
+        <p className="text-xs text-white/35 mb-4">Can&apos;t find it? Check your spam folder too.</p>
         <a href="/login" className="text-xs underline underline-offset-2 transition-colors hover:text-white/60" style={{ color: 'rgba(167,139,250,0.7)' }}>
           Back to sign in
         </a>
@@ -116,7 +124,17 @@ export function ResetRequestForm() {
             className="w-full relative rounded-xl py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-indigo-400/70 focus:ring-offset-2 focus:ring-offset-[#05060F] overflow-hidden disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100"
             style={{ background: 'linear-gradient(135deg, #6366F1, #A78BFA)', color: '#fff' }}
           >
-            {loading ? 'Sending...' : 'Send Reset Link'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="w-4 h-4 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+                Sending…
+              </span>
+            ) : (
+              'Send Reset Link'
+            )}
           </button>
 
           <p className="text-center text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
@@ -128,6 +146,9 @@ export function ResetRequestForm() {
           {error && (
             <div role="alert" className="flex items-start gap-2 rounded-lg px-3 py-2.5"
               style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
+              <svg className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+              </svg>
               <p className="text-xs text-red-400/90">{error}</p>
             </div>
           )}

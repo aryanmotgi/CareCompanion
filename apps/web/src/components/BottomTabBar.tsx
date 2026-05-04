@@ -128,7 +128,7 @@ export function BottomTabBar() {
         boxShadow: '0 -8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
       }}
     >
-      <div className="flex justify-around items-center px-4 pt-2 pb-6">
+      <div className="flex justify-around items-center px-4 pt-2" style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
         {TABS.map((tab) => {
           const active = isActive(tab.href)
           const isPressed = pressed === tab.href
@@ -138,9 +138,8 @@ export function BottomTabBar() {
               href={tab.href}
               onClick={() => handlePress(tab.href)}
               aria-current={active ? 'page' : undefined}
-              {...(tab.label === 'Care' ? { 'data-tour': 'tab-care' } : {})}
-              {...(tab.label === 'Scan' ? { 'data-tour': 'tab-scan' } : {})}
-              {...(tab.label === 'Settings' ? { 'data-tour': 'tab-settings' } : {})}
+              {...(tab.href === "/chat" ? { "data-tour": "tab-chat" } : {})}
+              {...(tab.href === "/care-hub" ? { "data-tour": "tab-care" } : {})}
               style={{
                 display: 'flex',
                 flexDirection: 'column',

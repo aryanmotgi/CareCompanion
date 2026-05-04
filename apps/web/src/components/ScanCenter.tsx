@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { DocumentScanner } from './DocumentScanner'
 import { CategoryScanner, type ScanCategory } from './CategoryScanner'
 import { DocumentOrganizer } from './DocumentOrganizer'
@@ -37,9 +38,14 @@ interface ScanCenterProps {
 }
 
 export function ScanCenter({ documents = [] }: ScanCenterProps) {
+  const router = useRouter()
   const [scanning, setScanning] = useState(false)
   const [scanType, setScanType] = useState<ScanCategory | null>(null)
   const [showQuickScan, setShowQuickScan] = useState(false)
+
+  const handleSaved = () => {
+    router.refresh()
+  }
 
   // Category scanner modal
   if (scanning && scanType) {
@@ -47,13 +53,14 @@ export function ScanCenter({ documents = [] }: ScanCenterProps) {
       <CategoryScanner
         category={scanType}
         onClose={() => { setScanning(false); setScanType(null) }}
+        onSaved={handleSaved}
       />
     )
   }
 
   // General scanner modal
   if (scanning && !scanType) {
-    return <DocumentScanner onClose={() => setScanning(false)} />
+    return <DocumentScanner onClose={() => setScanning(false)} onSaved={handleSaved} />
   }
 
   // Quick-scan picker overlay
@@ -111,6 +118,7 @@ export function ScanCenter({ documents = [] }: ScanCenterProps) {
     <DocumentOrganizer
       documents={documents}
       onScanNew={() => setShowQuickScan(true)}
+      onDocumentsChanged={handleSaved}
     />
   )
 }

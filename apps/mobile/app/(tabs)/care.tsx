@@ -14,6 +14,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as SecureStore from 'expo-secure-store'
+import { useRouter } from 'expo-router'
 import { useTheme } from '../../src/theme'
 import { GlassCard } from '../../src/components/GlassCard'
 import { hapticMedTaken, hapticAbnormalLabEntrance } from '../../src/utils/haptics'
@@ -21,9 +22,11 @@ import { useStaggerEntrance } from '../../src/hooks/useStaggerEntrance'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { TabFadeWrapper } from './_layout'
 import { useProfile } from '../../src/context/ProfileContext'
+import { CareGroupTab } from '../../src/components/care/CareGroupTab'
+import { CareEmptyState } from '../../src/components/care/CareEmptyState'
 
 type MedStatus = 'taken' | 'upcoming' | 'overdue'
-type CareTab = 'meds' | 'appts' | 'labs' | 'journal' | 'team'
+type CareTab = 'meds' | 'appts' | 'labs' | 'journal' | 'team' | 'group'
 
 interface JournalEntry {
   id: string
@@ -59,6 +62,7 @@ const TAB_CONFIG: { key: CareTab; label: string }[] = [
   { key: 'labs', label: 'Labs' },
   { key: 'journal', label: 'Journal' },
   { key: 'team', label: 'Team' },
+  { key: 'group', label: 'Group' },
 ]
 
 interface Med {
@@ -405,6 +409,7 @@ export default function CareScreen() {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
   const { profile, csrfToken, apiClient } = useProfile()
+  const router = useRouter()
   const [tab, setTab] = useState<CareTab>('meds')
   const [meds, setMeds] = useState<Med[]>([])
   const [labs, setLabs] = useState<Lab[]>([])
@@ -416,6 +421,8 @@ export default function CareScreen() {
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
   const [takingId, setTakingId] = useState<string | null>(null)
+
+  const patientLabel = profile?.patientName ?? 'your loved one'
 
   const stagger = useStaggerEntrance(3)
   const { parallaxStyle } = useGyroParallax(0.3)
@@ -535,41 +542,58 @@ export default function CareScreen() {
         return meds.length > 0
           ? meds.map((m) => <MedRow key={m.id} med={m} onTake={markAsTaken} disabled={takingId === m.id} />)
           : (
-            <GlassCard style={{ padding: 32, alignItems: 'center' }}>
-              <Ionicons name="medkit-outline" size={40} color={theme.textMuted} style={{ marginBottom: 12 }} />
-              <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600', marginBottom: 4 }}>No medications yet</Text>
-              <Text style={{ color: theme.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 16 }}>Add your first medication or connect to HealthKit</Text>
-              <Pressable style={{ backgroundColor: theme.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 }}>
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Add Medication</Text>
-              </Pressable>
+            <GlassCard>
+              <CareEmptyState
+                iconName="medkit-outline"
+                heading="Track {name}'s medications here."
+                body="Add one below — we'll remind you when it's time and track what's been taken."
+                patientName={patientLabel}
+              />
             </GlassCard>
           )
 
       case 'appts':
-        return appointments.length > 0
-          ? appointments.map((a: any, i: number) => <AppointmentRow key={a.id || i} appointment={a} />)
-          : (
-            <GlassCard style={{ padding: 32, alignItems: 'center' }}>
-              <Ionicons name="calendar-outline" size={40} color={theme.textMuted} style={{ marginBottom: 12 }} />
-              <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600', marginBottom: 4 }}>No appointments scheduled</Text>
-              <Text style={{ color: theme.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 16 }}>Schedule your next visit with your care team</Text>
-              <Pressable style={{ backgroundColor: theme.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 }}>
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Add an appointment</Text>
-              </Pressable>
-            </GlassCard>
-          )
+        return (
+          <>
+            <Pressable
+              style={styles.apptPrepBanner}
+              onPress={() => router.push('/visit-prep')}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Visit Prep</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, marginTop: 1 }}>
+                  AI-generated prep sheets for upcoming visits
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.7)" />
+            </Pressable>
+            {appointments.length > 0
+              ? appointments.map((a: any, i: number) => <AppointmentRow key={a.id || i} appointment={a} />)
+              : (
+                <GlassCard>
+                  <CareEmptyState
+                    iconName="calendar-outline"
+                    heading="{name} has no appointments yet."
+                    body="Add the next visit and we'll help you prepare the right questions together."
+                    patientName={patientLabel}
+                  />
+                </GlassCard>
+              )
+            }
+          </>
+        )
 
       case 'labs':
         return labs.length > 0
           ? labs.map((l) => <LabRow key={l.id} lab={l} />)
           : (
-            <GlassCard style={{ padding: 32, alignItems: 'center' }}>
-              <Ionicons name="flask-outline" size={40} color={theme.textMuted} style={{ marginBottom: 12 }} />
-              <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600', marginBottom: 4 }}>No lab results yet</Text>
-              <Text style={{ color: theme.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 16 }}>Import your lab results or connect to HealthKit</Text>
-              <Pressable style={{ backgroundColor: theme.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 }}>
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Connect to HealthKit</Text>
-              </Pressable>
+            <GlassCard>
+              <CareEmptyState
+                iconName="flask-outline"
+                heading="No lab results for {name} yet."
+                body="Scan or import results — we'll flag anything worth discussing with the care team."
+                patientName={patientLabel}
+              />
             </GlassCard>
           )
 
@@ -577,10 +601,13 @@ export default function CareScreen() {
         return journal.length > 0
           ? journal.map((entry) => <JournalEntryCard key={entry.id} entry={entry} />)
           : (
-            <GlassCard style={{ padding: 32, alignItems: 'center' }}>
-              <Text style={styles.emptyEmoji}>📝</Text>
-              <Text style={[styles.emptyText, { color: theme.textMuted }]}>How are you feeling today?</Text>
-              <Text style={[styles.emptyCta, { color: '#fbbf24' }]}>Start your first entry</Text>
+            <GlassCard>
+              <CareEmptyState
+                iconName="journal-outline"
+                heading="How is {name} feeling today?"
+                body="A quick check-in helps spot patterns and gives the care team real context."
+                patientName={patientLabel}
+              />
             </GlassCard>
           )
 
@@ -597,14 +624,22 @@ export default function CareScreen() {
             {teamMembers.length > 0
               ? teamMembers.map((m) => <TeamMemberCard key={m.id} member={m} />)
               : (
-                <GlassCard style={{ padding: 24, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 28, marginBottom: 8 }}>👥</Text>
-                  <Text style={{ color: theme.text, fontSize: 15, fontWeight: '600', marginBottom: 4 }}>Invite a supporter</Text>
-                  <Text style={{ color: theme.textMuted, fontSize: 13, textAlign: 'center' }}>Family and caregivers can view your schedule and help coordinate care</Text>
+                <GlassCard>
+                  <CareEmptyState
+                    iconName="people-outline"
+                    heading="{name}'s care circle is empty."
+                    body="Invite family or a caregiver — they can view the schedule and help coordinate care."
+                    patientName={patientLabel}
+                  />
                 </GlassCard>
               )
             }
           </>
+        )
+
+      case 'group':
+        return (
+          <CareGroupTab apiClient={apiClient} csrfToken={csrfToken} />
         )
 
       default:
@@ -693,6 +728,15 @@ const styles = StyleSheet.create({
   labValue: { fontSize: 18, fontWeight: '700' },
   labDate: { fontSize: 12, marginTop: 2 },
   apptCard: { marginBottom: 10 },
+  apptPrepBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#6366F1',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    marginBottom: 10,
+  },
   apptRow: { flexDirection: 'row', alignItems: 'flex-start' },
   apptDoctor: { fontSize: 15, fontWeight: '600' },
   apptSpecialty: { fontSize: 13, fontWeight: '500', marginTop: 2 },

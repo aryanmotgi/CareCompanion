@@ -11,13 +11,18 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const page     = Math.max(1, parseInt(searchParams.get('page') ?? '1'))
   const limit    = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') ?? '20')))
-  const category = searchParams.get('category') // 'matched' | 'close' | null (all)
+  const rawCategory = searchParams.get('category')
+  const VALID_CATEGORIES = ['matched', 'close', 'all'] as const
+  if (rawCategory !== null && !(VALID_CATEGORIES as readonly string[]).includes(rawCategory)) {
+    return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
+  }
+  const category = rawCategory // 'matched' | 'close' | 'all' | null
 
   const [profile] = await db.select({ id: careProfiles.id })
     .from(careProfiles).where(eq(careProfiles.userId, user.id)).limit(1)
   if (!profile) return NextResponse.json({ matched: [], close: [], page, limit })
 
-  const staleThreshold = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+  const staleThreshold = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
   const whereClause = category && category !== 'all'
     ? and(eq(trialMatches.careProfileId, profile.id), eq(trialMatches.matchCategory, category))

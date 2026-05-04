@@ -77,7 +77,7 @@ function PasswordInput({
           onClick={() => setShow(!show)}
           className="text-white/30 hover:text-white/60 transition-colors p-1"
           aria-label={show ? 'Hide password' : 'Show password'}
-          tabIndex={-1}
+          tabIndex={0}
         >
           {show ? (
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -149,15 +149,22 @@ export function ResetConfirmForm() {
 
   if (success) {
     return (
-      <div className="relative rounded-2xl p-6 overflow-hidden text-center" style={{
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.07)',
-        backdropFilter: 'blur(20px)',
-      }}>
-        <svg className="w-10 h-10 mx-auto mb-3 text-green-400/80" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <div
+        role="status"
+        aria-live="polite"
+        className="relative rounded-2xl p-6 overflow-hidden text-center"
+        style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          backdropFilter: 'blur(20px)',
+          animation: 'loginFadeUp 0.4s ease both',
+        }}
+      >
+        <svg className="w-10 h-10 mx-auto mb-3 text-green-400/80" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <p className="text-sm text-white/70 mb-4">Your password has been reset successfully.</p>
+        <p className="text-sm font-medium text-white/80 mb-1">You&apos;re all set!</p>
+        <p className="text-xs text-white/50 mb-4">Your password has been updated. Sign in to continue where you left off.</p>
         <a href="/login" className="inline-block rounded-xl py-2.5 px-6 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-indigo-400/70" style={{ background: 'linear-gradient(135deg, #6366F1, #A78BFA)' }}>
           Sign in
         </a>
@@ -202,21 +209,34 @@ export function ResetConfirmForm() {
             )}
           </div>
 
+          {error && (
+            <div role="alert" className="flex items-start gap-2 rounded-lg px-3 py-2.5"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
+              <svg className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+              </svg>
+              <p className="text-xs text-red-400/90">{error}</p>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
             className="w-full relative rounded-xl py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-indigo-400/70 focus:ring-offset-2 focus:ring-offset-[#05060F] overflow-hidden disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100"
             style={{ background: 'linear-gradient(135deg, #6366F1, #A78BFA)', color: '#fff' }}
           >
-            {loading ? 'Resetting...' : 'Reset Password'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="w-4 h-4 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+                Resetting…
+              </span>
+            ) : (
+              'Update Password'
+            )}
           </button>
-
-          {error && (
-            <div role="alert" className="flex items-start gap-2 rounded-lg px-3 py-2.5"
-              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
-              <p className="text-xs text-red-400/90">{error}</p>
-            </div>
-          )}
         </form>
       </div>
     </div>

@@ -51,23 +51,41 @@ export async function POST(req: Request) {
     return Response.json({ error: 'This invitation has expired' }, { status: 410 });
   }
 
-  // Add user to the care team
+  // Guard against duplicate membership (race condition or repeated accept attempt)
+  const [alreadyMember] = await db
+    .select({ id: careTeamMembers.id })
+    .from(careTeamMembers)
+    .where(and(
+      eq(careTeamMembers.careProfileId, invite.careProfileId),
+      eq(careTeamMembers.userId, dbUser.id),
+    ))
+    .limit(1);
+
+  if (alreadyMember) {
+    // Mark invite accepted so it doesn't linger as pending, then return success
+    await db.update(careTeamInvites)
+      .set({ status: 'accepted' })
+      .where(eq(careTeamInvites.id, invite_id));
+    return Response.json({ success: true, message: 'You are already on this care team!' });
+  }
+
+  // Add user to the care team and mark invite accepted in one transaction
   try {
-    await db.insert(careTeamMembers).values({
-      careProfileId: invite.careProfileId,
-      userId: dbUser.id,
-      role: invite.role,
-      invitedBy: invite.invitedBy,
+    await db.transaction(async (tx) => {
+      await tx.insert(careTeamMembers).values({
+        careProfileId: invite.careProfileId,
+        userId: dbUser.id,
+        role: invite.role,
+        invitedBy: invite.invitedBy,
+      });
+      await tx.update(careTeamInvites)
+        .set({ status: 'accepted' })
+        .where(eq(careTeamInvites.id, invite_id));
     });
   } catch (err) {
     console.error('[care-team/accept] insert error:', err);
     return Response.json({ error: 'Failed to join care team' }, { status: 500 });
   }
-
-  // Mark invite as accepted
-  await db.update(careTeamInvites)
-    .set({ status: 'accepted' })
-    .where(eq(careTeamInvites.id, invite_id));
 
   // Log activity
   const displayName = dbUser.displayName || dbUser.email?.split('@')[0] || 'Someone';

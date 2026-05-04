@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { validateCsrf } from '@/lib/csrf';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { db } from '@/lib/db';
 import {
@@ -18,6 +19,8 @@ export const dynamic = 'force-dynamic';
 
 // POST — submit a wellness check-in
 export async function POST(req: NextRequest) {
+  const { valid: csrfValid, error: csrfError } = await validateCsrf(req)
+  if (!csrfValid) return csrfError
   const { user: dbUser, error: authError } = await getAuthenticatedUser();
   if (authError || !dbUser) return authError ?? apiError('Unauthorized', 401);
 
@@ -247,31 +250,52 @@ export async function GET(req: NextRequest) {
     return apiError('careProfileId query parameter is required', 400);
   }
 
+  // Verify the requesting user owns this profile or is a care team member
+  const [profile] = await db
+    .select()
+    .from(careProfiles)
+    .where(eq(careProfiles.id, careProfileId))
+    .limit(1);
+
+  if (!profile) {
+    return apiError('Care profile not found', 404);
+  }
+
+  const isOwner = profile.userId === dbUser.id;
+  if (!isOwner) {
+    const [membership] = await db
+      .select()
+      .from(careTeamMembers)
+      .where(
+        and(
+          eq(careTeamMembers.careProfileId, careProfileId),
+          eq(careTeamMembers.userId, dbUser.id)
+        )
+      )
+      .limit(1);
+
+    if (!membership) {
+      return apiError('Forbidden', 403);
+    }
+  }
+
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const [todayCheckin, profile] = await Promise.all([
-    db
-      .select()
-      .from(wellnessCheckins)
-      .where(
-        and(
-          eq(wellnessCheckins.careProfileId, careProfileId),
-          gte(wellnessCheckins.checkedInAt, todayStart)
-        )
+  const todayCheckin = await db
+    .select()
+    .from(wellnessCheckins)
+    .where(
+      and(
+        eq(wellnessCheckins.careProfileId, careProfileId),
+        gte(wellnessCheckins.checkedInAt, todayStart)
       )
-      .limit(1)
-      .then((rows) => rows[0] ?? null),
-    db
-      .select({ checkinStreak: careProfiles.checkinStreak })
-      .from(careProfiles)
-      .where(eq(careProfiles.id, careProfileId))
-      .limit(1)
-      .then((rows) => rows[0] ?? null),
-  ]);
+    )
+    .limit(1)
+    .then((rows) => rows[0] ?? null);
 
   return apiSuccess({
     checkin: todayCheckin,
-    streak: profile?.checkinStreak ?? 0,
+    streak: profile.checkinStreak ?? 0,
   });
 }

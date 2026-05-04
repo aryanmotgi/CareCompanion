@@ -17,11 +17,11 @@ export async function initAnalytics() {
   })
 }
 
-export function trackEvent(event: string, properties?: Record<string, string | number | boolean>) {
+function trackEvent(event: string, properties?: Record<string, string | number | boolean>) {
   client?.capture(event, properties)
 }
 
-export const events = {
+const events = {
   onboardingCompleted: () => trackEvent('onboarding_completed'),
   medicationAdded: () => trackEvent('medication_added'),
   labViewed: () => trackEvent('lab_viewed'),

@@ -26,16 +26,16 @@ export async function POST(req: Request) {
     const { user, error: authError } = await getAuthenticatedUser()
     if (authError) return authError
 
+    console.log(`[delete-account] Starting account deletion for user ${user.id}`)
+
+    // Delete the user record (cascades to all related records via FK constraints)
+    await db.delete(users).where(eq(users.id, user.id))
+
     await logAudit({
       user_id: user.id,
       action: 'delete_account',
       ip_address: req.headers.get('x-forwarded-for') || undefined,
     })
-
-    console.log(`[delete-account] Starting account deletion for user ${user.id}`)
-
-    // Delete the user record (cascades to all related records via FK constraints)
-    await db.delete(users).where(eq(users.providerSub, user.id))
 
     // Delete from Cognito user pool so the user can't re-login and recreate their record
     try {

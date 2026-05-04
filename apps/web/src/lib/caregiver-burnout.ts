@@ -13,7 +13,7 @@ export interface BurnoutAssessment {
   last_assessed: string
 }
 
-export interface BurnoutSignal {
+interface BurnoutSignal {
   category: 'sleep' | 'mood' | 'energy' | 'pain' | 'isolation' | 'overload'
   signal: string
   weight: number // 0-20 contribution to burnout score

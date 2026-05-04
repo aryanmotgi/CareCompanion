@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { PriorityCard } from './PriorityCard'
 import { TreatmentCycleTracker } from './TreatmentCycleTracker'
 import { AnimatedNumber } from './AnimatedNumber'
@@ -10,6 +10,7 @@ import { ProfileCompleteness } from './ProfileCompleteness'
 import { MorningSummaryCard } from './MorningSummaryCard'
 import { AppealGenerator } from './AppealGenerator'
 import { CheckinCard } from './CheckinCard'
+import GuidedTour from './GuidedTour'
 import { parseLabValue } from '@/lib/lab-parsing'
 import type { Medication, Appointment, LabResult, Claim } from '@/lib/types'
 
@@ -44,6 +45,24 @@ const PHASE_LABELS: Record<string, { label: string; color: string }> = {
   unsure: { label: 'Evaluating', color: 'text-violet-400 bg-violet-500/10' },
 }
 
+const TOUR_STEPS = [
+  {
+    target: 'tab-chat',
+    title: 'Your care assistant',
+    body: "This is your care assistant. Ask anything — medications, appointments, what to expect next. I'll remember everything.",
+  },
+  {
+    target: 'tab-care',
+    title: 'Everything about care',
+    body: "Everything about [patient name] lives here — medications, appointments, lab results, and your care team.",
+  },
+  {
+    target: 'emergency-card',
+    title: 'Emergency card',
+    body: "Your emergency card is always ready. Share it with family or save it to your phone — it works without a login.",
+  },
+]
+
 export function DashboardView({
   patientName,
   userName,
@@ -72,6 +91,7 @@ export function DashboardView({
     token: string; title: string | null; createdAt: Date | null; viewCount: number; shareUrl: string
   } | null>(null)
   const [copiedLink, setCopiedLink] = useState(false)
+  const [weeklyUpdateError, setWeeklyUpdateError] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !localStorage.getItem('dashboard_tour_seen')) {
@@ -79,12 +99,17 @@ export function DashboardView({
     }
   }, [])
 
-  useEffect(() => {
+  const fetchWeeklyUpdate = useCallback(() => {
+    setWeeklyUpdateError(false)
     fetch('/api/share/weekly')
       .then(r => r.json())
       .then(d => { if (d.data?.token) setWeeklyUpdate(d.data) })
-      .catch(() => {})
+      .catch(() => { setWeeklyUpdateError(true) })
   }, [])
+
+  useEffect(() => {
+    fetchWeeklyUpdate()
+  }, [fetchWeeklyUpdate])
 
   const dismissTooltip = () => {
     setShowTourTooltip(false)
@@ -164,7 +189,7 @@ export function DashboardView({
           variant: 'urgent',
           label: 'URGENT',
           title: `${med.name} refill ${daysLeft <= 0 ? 'overdue' : daysLeft === 1 ? 'due tomorrow' : `due in ${daysLeft} days`}`,
-          subtitle: `${med.prescribingDoctor || 'Unknown doctor'} · refill needed`,
+          subtitle: `${med.prescribingDoctor || 'Your care team'} · refill needed`,
           priority: 1,
           expandedContent: (
             <AlertInsights
@@ -179,7 +204,7 @@ export function DashboardView({
                   {med.pharmacyPhone && (
                     <a
                       href={`tel:${med.pharmacyPhone}`}
-                      className="block w-full text-center py-2 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-xs font-semibold"
+                      className="block w-full text-center py-2 rounded-lg bg-[#6366F1] hover:bg-[#4F46E5] text-white text-xs font-semibold transition-colors"
                     >
                       Call Pharmacy
                     </a>
@@ -198,10 +223,11 @@ export function DashboardView({
       }
     })
 
-    // Appointment cards (next 7 days)
+    // Appointment cards (next 7 days, future only)
     appointments.forEach((appt) => {
       if (!appt.dateTime) return
       const apptDate = new Date(appt.dateTime)
+      if (apptDate.getTime() <= now.getTime()) return
       const daysUntil = Math.ceil((apptDate.getTime() - now.getTime()) / 86400000)
       if (daysUntil >= 0 && daysUntil <= 7) {
         const timeStr = apptDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -227,6 +253,7 @@ export function DashboardView({
                         href={`https://maps.google.com/?q=${encodeURIComponent(appt.location)}`}
                         target="_blank"
                         rel="noopener noreferrer"
+                        aria-label={`Get directions to ${appt.location} (opens in Maps)`}
                         className="flex-1 text-center py-2 rounded-lg bg-white/[0.06] border border-white/[0.1] text-[#e2e8f0] text-xs font-semibold"
                       >
                         Get Directions
@@ -252,12 +279,17 @@ export function DashboardView({
     labResults.forEach((lab) => {
       if (!lab.isAbnormal) return
       const parsed = parseLabValue(lab.value, lab.referenceRange || '')
+      const labDirection = (
+        parsed.numericValue !== null &&
+        parsed.referenceMin !== null &&
+        parsed.numericValue < parsed.referenceMin
+      ) ? 'Below normal' : 'Above normal'
       result.push({
         id: `lab-${lab.id}`,
         variant: 'alert',
         label: 'ALERT',
         title: `${lab.testName} — ${lab.value} ${lab.unit}`,
-        subtitle: `${lab.isAbnormal ? 'Above normal' : 'Normal'} range (${lab.referenceRange}) · ${lab.source || ''}`,
+        subtitle: `${labDirection} (${lab.referenceRange}) · ${lab.source || ''}`,
         priority: 3,
         expandedContent: (
           <AlertInsights
@@ -277,7 +309,7 @@ export function DashboardView({
                         style={{ width: `${Math.min(parsed.progressPercent, 100)}%` }}
                       />
                     </div>
-                    <div className="flex justify-between text-[10px] text-[#64748b] mt-1">
+                    <div className="flex justify-between text-[10px] text-[var(--text-muted)] mt-1">
                       <span>0</span>
                       <span>{parsed.referenceMax ? `Normal: <${parsed.referenceMax}` : ''}</span>
                     </div>
@@ -286,7 +318,7 @@ export function DashboardView({
               </div>
             }
             insights={[
-              { text: `Your ${lab.testName} is ${lab.value} ${lab.unit}, above the normal range of ${lab.referenceRange}. Schedule a follow-up to discuss this result.` },
+              { text: `Your ${lab.testName} is ${lab.value} ${lab.unit} — ${labDirection.toLowerCase()} the normal range of ${lab.referenceRange}. It's worth discussing this with your care team.` },
               { text: `Track this value over time — a single reading can be a fluke, but a trend tells the real story.` },
               { text: `Ask your doctor what lifestyle changes (diet, exercise, sleep) could help bring this number into range.` },
               { text: `If you're on medication for this, ask whether your dosage needs adjusting based on this result.` },
@@ -346,9 +378,9 @@ export function DashboardView({
     result.push({
       id: 'quick-ask',
       variant: 'quick-ask',
-      label: 'AI ASSISTANT',
+      label: 'ASK ANYTHING',
       title: 'Ask CareCompanion',
-      subtitle: 'Get help understanding your cancer care',
+      subtitle: 'Get help understanding your care',
       priority: 99,
       action: 'Start a conversation',
       href: '/chat',
@@ -402,6 +434,7 @@ export function DashboardView({
 
   return (
     <>
+    <GuidedTour steps={TOUR_STEPS} patientName={patientName} />
     <div className="px-4 sm:px-5 py-5 sm:py-6">
       <MorningSummaryCard
         medicationCount={todayMedCount}
@@ -414,7 +447,7 @@ export function DashboardView({
             <AnimatedNumber value={actionCount} /> {actionCount === 1 ? 'item needs' : 'items need'} attention
           </>
         ) : (
-          `Looking good, ${(userName || 'there').split(' ')[0]}!`
+          `${(userName || 'there').split(' ')[0]}'s care is up to date.`
         )}
       </h2>
       {(cancerType || treatmentPhase) && (
@@ -433,121 +466,6 @@ export function DashboardView({
       )}
       {!cancerType && !treatmentPhase && <div className="mb-3 sm:mb-4" />}
 
-      {/* Resume onboarding banner for users who skipped */}
-      {onboardingComplete && !cancerType && (
-        <a
-          href={profileId ? `/onboarding?step=1&profileId=${profileId}` : '/onboarding?step=1'}
-          className="block rounded-2xl bg-gradient-to-r from-violet-500/10 to-blue-500/10 border border-violet-500/20 p-4 mb-4 hover:border-violet-500/30 transition-colors"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-white">Finish setting up your profile</p>
-              <p className="text-xs text-[var(--text-muted)] mt-0.5">Add your diagnosis, medications, and priorities for a personalized experience</p>
-            </div>
-            <svg className="w-5 h-5 text-violet-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-            </svg>
-          </div>
-        </a>
-      )}
-
-      {/* Onboarding banner for existing users */}
-      {!onboardingComplete && (
-        <a
-          href={profileId ? `/onboarding?step=1&profileId=${profileId}` : '/onboarding?step=1'}
-          className="block mb-4 sm:mb-5 rounded-2xl border border-[#A78BFA]/30 bg-[#A78BFA]/5 p-4 hover:bg-[#A78BFA]/10 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#A78BFA]/20 flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-[#A78BFA]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white">Complete your profile</p>
-              <p className="text-xs text-[var(--text-muted)]">Set up your cancer type, treatment phase, and preferences for a personalized experience</p>
-            </div>
-            <svg className="w-5 h-5 text-[#A78BFA] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-          </div>
-        </a>
-      )}
-
-      {/* Re-engagement nudges for skipped onboarding steps */}
-      {onboardingComplete && profileCreatedAt && (
-        <NudgeManager
-          hasMedications={medications.length > 0}
-          hasAppointments={appointments.length > 0}
-          hasEmergencyContact={hasEmergencyContact}
-          hasDocumentsScanned={hasDocumentsScanned}
-          profileCreatedAt={profileCreatedAt}
-        />
-      )}
-
-      {/* Daily Check-in Card */}
-      {profileId && <CheckinCard careProfileId={profileId} />}
-
-      {/* Profile Completeness Indicator */}
-      <ProfileCompleteness
-        patientName={patientName}
-        cancerType={cancerType}
-        cancerStage={cancerStage}
-        treatmentPhase={treatmentPhase}
-        allergies={allergies}
-        conditions={conditions}
-        emergencyContactName={emergencyContactName}
-        emergencyContactPhone={emergencyContactPhone}
-        medicationCount={medications.length}
-        doctorCount={doctorCount}
-        appointmentCount={appointments.length}
-      />
-
-      {/* Treatment Cycle Tracker */}
-      <TreatmentCycleTracker medications={medications} patientName={patientName} />
-
-      {/* Weekly family update — share card */}
-      {weeklyUpdate && (
-        <div className="mx-4 sm:mx-5 mb-4 rounded-2xl border border-[#6366F1]/30 bg-gradient-to-r from-[#6366F1]/5 to-[#A78BFA]/5 p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white">This week&apos;s update is ready</p>
-              <p className="text-xs text-white/50 mt-0.5">Share with family to keep everyone in the loop</p>
-              {weeklyUpdate.viewCount > 0 && (
-                <p className="text-xs text-white/30 mt-1">Viewed {weeklyUpdate.viewCount} time{weeklyUpdate.viewCount !== 1 ? 's' : ''}</p>
-              )}
-            </div>
-          </div>
-          <div className="flex gap-2 mt-3">
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.origin + weeklyUpdate.shareUrl)
-                  .then(() => { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000) })
-                  .catch(() => {})
-              }}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-xs font-semibold text-white hover:opacity-90 transition-opacity"
-            >
-              {copiedLink ? (
-                <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>Copied!</>
-              ) : (
-                <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.375" /></svg>Copy link</>
-              )}
-            </button>
-            <a
-              href={weeklyUpdate.shareUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-2 rounded-xl border border-white/[0.08] bg-white/[0.04] text-xs font-medium text-white/70 hover:text-white hover:bg-white/[0.08] transition-colors"
-            >
-              Preview
-            </a>
-          </div>
-        </div>
-      )}
-
       {actionCount === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center" data-tour="dashboard-cards">
           <div className="w-16 h-16 rounded-full bg-[#10b981]/10 flex items-center justify-center mb-4">
@@ -555,13 +473,21 @@ export function DashboardView({
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <div className="text-[var(--text)] text-lg font-semibold mb-1">All clear!</div>
-          <div className="text-[var(--text-muted)] text-sm">No items need your attention right now.</div>
+          {onboardingComplete && (medications.length > 0 || appointments.length > 0) ? (
+            <>
+              <div className="text-[var(--text)] text-lg font-semibold mb-1">You&apos;re all caught up</div>
+              <div className="text-[var(--text-muted)] text-sm">Nothing urgent right now — take a breath.</div>
+            </>
+          ) : (
+            <>
+              <div className="text-[var(--text)] text-lg font-semibold mb-1">Let&apos;s personalize your care</div>
+              <div className="text-[var(--text-muted)] text-sm">Add your medications and upcoming appointments to get personalized reminders and alerts.</div>
+            </>
+          )}
 
           {/* Quick-start cards for empty data */}
           {(medications.length === 0 || appointments.length === 0 || labResults.length === 0) && (
             <div className="w-full mt-8 space-y-3 text-left">
-              <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2 text-center">Get Started</div>
               {medications.length === 0 && (
                 <a
                   href="/care?tab=meds"
@@ -648,10 +574,9 @@ export function DashboardView({
         </div>
       )}
 
-      {/* Quick-ask prompts */}
-      {actionCount > 0 && (
-        <div className="mt-6 relative" id="quick-ask-section" data-tour="quick-ask">
-          <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2">Quick Ask</div>
+      {/* Quick-ask prompts — always visible */}
+      <div className="mt-6 relative" id="quick-ask-section" data-tour="quick-ask">
+          <div className="text-[var(--text-secondary)] text-[11px] uppercase tracking-wider mb-2">Quick Ask</div>
           <div className="flex flex-wrap gap-2">
             {quickAskPrompts.map((prompt) => (
               <a
@@ -679,7 +604,6 @@ export function DashboardView({
             </div>
           )}
         </div>
-      )}
 
       {/* Care Timeline shortcut — always visible */}
       <a
@@ -701,24 +625,131 @@ export function DashboardView({
         </svg>
       </a>
 
-      {/* Tooltip for quick-ask card when no action items */}
-      {actionCount === 0 && showTourTooltip && (
-        <div className="relative mt-6">
-          <div className="flex justify-center">
-            <div className="relative bg-[#6366F1] text-white rounded-xl px-4 py-3 shadow-lg max-w-[260px] text-center">
-              <p className="text-sm font-medium mb-2">Tap here to ask your AI care companion anything</p>
-              <button
-                onClick={dismissTooltip}
-                className="text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-lg px-3 py-1 transition-colors"
-              >
-                Got it
-              </button>
-              {/* Arrow pointing down */}
-              <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-[#6366F1]" />
+      {/* Daily Check-in Card */}
+      {profileId && <CheckinCard careProfileId={profileId} />}
+
+      {/* Weekly family update — share card */}
+      {weeklyUpdate && (
+        <div className="mb-4 rounded-2xl border border-[#6366F1]/30 bg-gradient-to-r from-[#6366F1]/5 to-[#A78BFA]/5 p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
+              </svg>
             </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white">This week&apos;s update is ready</p>
+              <p className="text-xs text-white/50 mt-0.5">Share with family to keep everyone in the loop</p>
+              {weeklyUpdate.viewCount > 0 && (
+                <p className="text-xs text-white/30 mt-1">Viewed {weeklyUpdate.viewCount} time{weeklyUpdate.viewCount !== 1 ? 's' : ''}</p>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.origin + weeklyUpdate.shareUrl)
+                  .then(() => { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000) })
+                  .catch(() => {})
+              }}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#6366F1] hover:bg-[#4F46E5] text-xs font-semibold text-white transition-colors"
+            >
+              {copiedLink ? (
+                <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>Copied!</>
+              ) : (
+                <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.375" /></svg>Copy link</>
+              )}
+            </button>
+            <a
+              href={weeklyUpdate.shareUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2 rounded-xl border border-white/[0.08] bg-white/[0.04] text-xs font-medium text-white/70 hover:text-white hover:bg-white/[0.08] transition-colors"
+            >
+              Preview
+            </a>
           </div>
         </div>
       )}
+      {weeklyUpdateError && (
+        <div className="mb-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 flex items-center justify-between gap-3">
+          <p className="text-xs text-[var(--text-muted)]">Couldn&apos;t load this week&apos;s update.</p>
+          <button
+            onClick={fetchWeeklyUpdate}
+            className="text-xs text-[#A78BFA] hover:text-white transition-colors flex-shrink-0"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Treatment Cycle Tracker */}
+      <TreatmentCycleTracker medications={medications} patientName={patientName} />
+
+      {/* Profile Completeness Indicator */}
+      <ProfileCompleteness
+        patientName={patientName}
+        cancerType={cancerType}
+        cancerStage={cancerStage}
+        treatmentPhase={treatmentPhase}
+        allergies={allergies}
+        conditions={conditions}
+        emergencyContactName={emergencyContactName}
+        emergencyContactPhone={emergencyContactPhone}
+        medicationCount={medications.length}
+        doctorCount={doctorCount}
+        appointmentCount={appointments.length}
+      />
+
+      {/* Re-engagement nudges for skipped onboarding steps */}
+      {onboardingComplete && profileCreatedAt && (
+        <NudgeManager
+          hasMedications={medications.length > 0}
+          hasAppointments={appointments.length > 0}
+          hasEmergencyContact={hasEmergencyContact}
+          hasDocumentsScanned={hasDocumentsScanned}
+          profileCreatedAt={profileCreatedAt}
+        />
+      )}
+
+      {/* Onboarding banners — secondary, after action items */}
+      {onboardingComplete && !cancerType && (
+        <a
+          href={profileId ? `/onboarding?step=1&profileId=${profileId}` : '/onboarding?step=1'}
+          className="block rounded-2xl bg-gradient-to-r from-violet-500/10 to-blue-500/10 border border-violet-500/20 p-4 mb-4 hover:border-violet-500/30 transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-white">Finish setting up your profile</p>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">Add your diagnosis, medications, and priorities for a personalized experience</p>
+            </div>
+            <svg className="w-5 h-5 text-violet-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+            </svg>
+          </div>
+        </a>
+      )}
+
+      {!onboardingComplete && (
+        <a
+          href={profileId ? `/onboarding?step=1&profileId=${profileId}` : '/onboarding?step=1'}
+          className="block mb-4 sm:mb-5 rounded-2xl border border-[#A78BFA]/30 bg-[#A78BFA]/5 p-4 hover:bg-[#A78BFA]/10 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#A78BFA]/20 flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-[#A78BFA]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white">Complete your profile</p>
+              <p className="text-xs text-[var(--text-muted)]">Set up your diagnosis, treatment phase, and preferences for a personalized experience</p>
+            </div>
+            <svg className="w-5 h-5 text-[#A78BFA] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          </div>
+        </a>
+      )}
+
 
     </div>
     </>

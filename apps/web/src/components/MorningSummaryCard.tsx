@@ -48,7 +48,7 @@ export function MorningSummaryCard({
             className="text-[10px] uppercase tracking-wider font-semibold"
             style={{ color: '#A78BFA', letterSpacing: '0.1em' }}
           >
-            ☀️ YOUR DAY
+            YOUR DAY
           </span>
           <button
             onClick={handleDismiss}

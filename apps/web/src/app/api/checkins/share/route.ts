@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
+import { validateCsrf } from '@/lib/csrf';
 import { db } from '@/lib/db';
 import {
   wellnessCheckins,
+  careProfiles,
   careTeamMembers,
   careTeamActivityLog,
   pushSubscriptions,
@@ -13,6 +15,10 @@ import { eq, inArray } from 'drizzle-orm';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  // CSRF check must come before auth so the token is read from the original body stream
+  const { valid, error: csrfError } = await validateCsrf(req);
+  if (!valid) return csrfError!;
+
   const { user, error } = await getAuthenticatedUser();
   if (error || !user) return error ?? NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -30,6 +36,18 @@ export async function POST(req: Request) {
 
   if (!checkin) {
     return NextResponse.json({ error: 'Check-in not found' }, { status: 404 });
+  }
+
+  // Ownership check: verify the care profile belongs to the requesting user (IDOR guard).
+  // wellnessCheckins has no direct userId — ownership is via careProfiles.userId.
+  const [profile] = await db
+    .select({ userId: careProfiles.userId })
+    .from(careProfiles)
+    .where(eq(careProfiles.id, checkin.careProfileId))
+    .limit(1);
+
+  if (!profile || profile.userId !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   // Map mood number (1-5) to emoji

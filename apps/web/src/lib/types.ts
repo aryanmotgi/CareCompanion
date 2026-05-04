@@ -103,6 +103,7 @@ export interface LabResult {
   unit: string | null;
   referenceRange: string | null;
   isAbnormal: boolean | null;
+  directionIsGood?: boolean | null;
   dateTaken: string | null;
   source: string | null;
   deletedAt?: Date | null;

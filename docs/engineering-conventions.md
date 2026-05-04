@@ -1,6 +1,6 @@
 # CareCompanion Engineering Conventions
 
-> Last updated: 2026-04-20  
+> Last updated: 2026-05-02  
 > Covers: auth patterns, DB queries, API routes, soft deletes, security gates
 
 ---
@@ -59,6 +59,7 @@ It sets `deletedAt = now()` and verifies ownership before mutating.
 - `doctors` — filter by `careProfileId` + `isNull(doctors.deletedAt)`
 - `labResults` — filter by `userId` + `isNull(labResults.deletedAt)`
 - `claims` — filter by `userId` + `isNull(claims.deletedAt)`
+- `documents` — filter by `careProfileId` + `isNull(documents.deletedAt)`
 
 ---
 
@@ -207,7 +208,62 @@ Checklist when adding a new table that stores user health records:
 
 ---
 
-## 10. Key File Map
+## 10. Ownership Checks on GET Routes
+
+Read endpoints that return user-specific health data must verify the requesting user owns the resource or is a care team member. Do not assume the caller is authorized just because a valid session exists.
+
+**Pattern for `careProfileId`-scoped GET routes:**
+
+```typescript
+// 1. Look up the profile directly (don't rely on query param alone)
+const [profile] = await db.select().from(careProfiles)
+  .where(eq(careProfiles.id, careProfileId)).limit(1);
+if (!profile) return apiError('Care profile not found', 404);
+
+// 2. Check ownership
+const isOwner = profile.userId === dbUser.id;
+if (!isOwner) {
+  const [membership] = await db.select().from(careTeamMembers)
+    .where(and(
+      eq(careTeamMembers.careProfileId, careProfileId),
+      eq(careTeamMembers.userId, dbUser.id)
+    )).limit(1);
+  if (!membership) return apiError('Forbidden', 403);
+}
+```
+
+Routes that implement this pattern:
+- `GET /api/checkins` — returns today's checkin + streak for a care profile
+
+---
+
+## 11. Rate Limiting AI/LLM-Backed Endpoints
+
+Routes that invoke LLM agents or external APIs with per-call cost must have their own rate limiter — the standard mutation-route limit (20 req/min) is too permissive for expensive operations.
+
+**Pattern:**
+
+```typescript
+const myLimiter = rateLimit({ interval: 60 * 60 * 1000, maxRequests: 3 })
+
+export async function POST() {
+  const { user, error } = await getAuthenticatedUser()
+  if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { success } = await myLimiter.check(user.id)  // key by userId, not IP
+  if (!success) return NextResponse.json({ error: 'Too many requests. Try again in an hour.' }, { status: 429 })
+  // ...
+}
+```
+
+Key difference from mutation routes: **key by `user.id`** (authenticated identity), not by IP. This prevents cost amplification by a single authenticated user across IPs.
+
+Routes with LLM-specific limits:
+- `POST /api/trials/match` — 3 searches/hour per user (Claude agent + ClinicalTrials.gov calls)
+
+---
+
+## 12. Key File Map
 
 | What | Where |
 |---|---|

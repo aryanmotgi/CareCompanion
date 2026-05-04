@@ -42,9 +42,8 @@ describe('lab-trends extended', () => {
       ]
       const trend = analyzeTrend(results)
       expect(trend?.trend).toBe('stable')
-      // changePercent is 0, but the code uses `changePercent ? round : null`
-      // so 0 is falsy and returns null — this is the actual behavior
-      expect(trend?.change_percent).toBeNull()
+      // changePercent is 0.0 — should be reported as 0, not null
+      expect(trend?.change_percent).toBe(0)
     })
 
     it('detects rapid decline when drop exceeds 20%', () => {

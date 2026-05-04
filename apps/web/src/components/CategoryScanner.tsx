@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ToastProvider';
+import { useCsrfToken } from '@/components/CsrfProvider';
 
 export type ScanCategory = 'medication' | 'lab_report' | 'insurance' | 'eob' | 'doctor_note';
 
@@ -75,8 +76,11 @@ const CATEGORY_CONFIG: Record<ScanCategory, {
   },
 };
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
 export function CategoryScanner({ category, onClose, onSaved }: CategoryScannerProps) {
   const { showToast } = useToast();
+  const csrfToken = useCsrfToken();
   const config = CATEGORY_CONFIG[category];
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -90,6 +94,11 @@ export function CategoryScanner({ category, onClose, onSaved }: CategoryScannerP
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
+    if (f.size > MAX_FILE_SIZE) {
+      setError('File too large. Maximum size is 10 MB.');
+      showToast('File too large (max 10 MB)', 'error');
+      return;
+    }
     setFile(f);
     setError(null);
     setResult(null);
@@ -112,14 +121,19 @@ export function CategoryScanner({ category, onClose, onSaved }: CategoryScannerP
     try {
       const res = await fetch('/api/scan-document', {
         method: 'POST',
+        headers: { 'x-csrf-token': csrfToken },
         body: formData,
       });
-      if (!res.ok) throw new Error('Scan failed');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Scan failed');
+      }
       const data = await res.json();
       setResult(data);
       showToast('Document scanned', 'success');
-    } catch {
-      setError('Failed to analyze the document. Please try a clearer photo.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to analyze the document.';
+      setError(msg === 'Scan failed' ? 'Failed to analyze the document. Please try a clearer photo.' : msg);
       showToast('Failed to scan document', 'error');
     } finally {
       setScanning(false);
@@ -134,7 +148,7 @@ export function CategoryScanner({ category, onClose, onSaved }: CategoryScannerP
     try {
       const res = await fetch('/api/save-scan-results', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
         body: JSON.stringify(result),
       });
       if (!res.ok) throw new Error('Save failed');
@@ -237,7 +251,7 @@ export function CategoryScanner({ category, onClose, onSaved }: CategoryScannerP
               <input
                 ref={fileRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,.pdf,application/pdf"
                 capture="environment"
                 className="hidden"
                 onChange={handleFileChange}

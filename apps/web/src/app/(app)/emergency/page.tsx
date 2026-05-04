@@ -1,8 +1,9 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { users, careProfiles, medications, doctors, insurance } from '@/lib/db/schema';
+import { users, medications, doctors, insurance } from '@/lib/db/schema';
 import { and, eq, isNull } from 'drizzle-orm';
+import { getActiveProfile } from '@/lib/active-profile';
 import { EmergencyCard } from '@/components/EmergencyCard';
 
 export default async function EmergencyPage() {
@@ -12,7 +13,7 @@ export default async function EmergencyPage() {
   const [dbUser] = await db.select({ id: users.id, providerSub: users.providerSub, email: users.email, displayName: users.displayName, isDemo: users.isDemo, createdAt: users.createdAt }).from(users).where(eq(users.email, session.user.email!)).limit(1);
   if (!dbUser) redirect('/login?error=session');
 
-  const [profile] = await db.select().from(careProfiles).where(eq(careProfiles.userId, dbUser.id)).limit(1);
+  const profile = await getActiveProfile(dbUser.id);
   if (!profile) redirect('/setup');
 
   const [meds, docs, insRows] = await Promise.all([
@@ -34,7 +35,7 @@ export default async function EmergencyPage() {
         allergies: profile.allergies,
         emergencyContactName: profile.emergencyContactName,
         emergencyContactPhone: profile.emergencyContactPhone,
-        updatedAt: profile.createdAt,
+        updatedAt: profile.createdAt, // TODO: add updatedAt to careProfiles schema — currently no timestamp tracks last edit
       }}
       medications={meds.map((m) => ({
         name: m.name,

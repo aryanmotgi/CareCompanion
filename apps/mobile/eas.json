@@ -27,6 +27,18 @@
         "EXPO_PUBLIC_API_BASE_URL": "https://carecompanionai.org"
       }
     },
+    "testflight": {
+      "bun": "1.3.11",
+      "ios": {
+        "simulator": false,
+        "distribution": "store",
+        "buildConfiguration": "Release",
+        "autoIncrement": "buildNumber"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://carecompanionai.org"
+      }
+    },
     "production": {
       "bun": "1.3.11",
       "ios": {

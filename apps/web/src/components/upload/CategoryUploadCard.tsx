@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { EditableItem, CATEGORY_FIELDS } from './EditableFieldList';
 import { ManualEntryForm } from './ManualEntryForms';
 import { useToast } from '@/components/ToastProvider';
+import { useCsrfToken } from '@/components/CsrfProvider';
 
 export type UploadCategoryId =
   | 'medications'
@@ -42,7 +43,7 @@ function extractItems(categoryId: UploadCategoryId, scanResult: Record<string, u
   }
   if (categoryId === 'conditions') {
     const conds = (scanResult.conditions as string[] | undefined) ?? [];
-    return conds.map((c) => ({ name: c }));
+    return [...new Set(conds.map((c) => c.trim()).filter(Boolean))].map((c) => ({ name: c }));
   }
   if (categoryId === 'allergies') {
     const allergies = (scanResult.allergies as Record<string, unknown>[] | undefined) ?? [];
@@ -121,7 +122,7 @@ function buildSaveBody(categoryId: UploadCategoryId, items: Record<string, strin
   if (categoryId === 'insurance') {
     const i = items[0] ?? {};
     return {
-      provider: i.provider || 'Unknown',
+      provider: i.provider || undefined,
       member_id: i.member_id || undefined,
       group_number: i.group_number || undefined,
       plan_type: i.plan_type || undefined,
@@ -153,6 +154,8 @@ function emptyItem(categoryId: UploadCategoryId): Record<string, string> {
   return Object.fromEntries(fields.map((f) => [f.key, '']));
 }
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
 export function CategoryUploadCard({
   categoryId,
   label,
@@ -164,6 +167,7 @@ export function CategoryUploadCard({
   onSaved,
 }: CategoryUploadCardProps) {
   const { showToast } = useToast();
+  const csrfToken = useCsrfToken();
   const [state, setState] = useState<CardState>('idle');
   const [preview, setPreview] = useState<string | null>(null);
   const [items, setItems] = useState<Record<string, string>[]>([]);
@@ -176,6 +180,12 @@ export function CategoryUploadCard({
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
+
+    if (file.size > MAX_FILE_SIZE) {
+      setScanError('File too large. Maximum size is 10 MB.');
+      showToast('File too large (max 10 MB)', 'error');
+      return;
+    }
 
     setScanError(null);
 
@@ -190,7 +200,7 @@ export function CategoryUploadCard({
     formData.append('category', categoryId);
 
     try {
-      const res = await fetch('/api/scan-document', { method: 'POST', body: formData });
+      const res = await fetch('/api/scan-document', { method: 'POST', headers: { 'x-csrf-token': csrfToken }, body: formData });
       if (!res.ok) throw new Error('scan failed');
       const data = await res.json();
       const extracted = extractItems(categoryId, data);
@@ -217,7 +227,7 @@ export function CategoryUploadCard({
     try {
       const res = await fetch(getSaveEndpoint(categoryId), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error('save failed');

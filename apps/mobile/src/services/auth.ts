@@ -49,7 +49,7 @@ export async function signInWithCareGroup(
   })
 }
 
-export async function signOut(): Promise<void> {
+async function signOut(): Promise<void> {
   await SecureStore.deleteItemAsync('cc-session-token')
   await SecureStore.deleteItemAsync('cc-profile')
   await SecureStore.deleteItemAsync('cc-csrf-token')

@@ -179,6 +179,7 @@ describe('POST /api/auth/register', () => {
     const res = await POST(
       new Request('http://localhost/api/auth/register', {
         method: 'POST',
+        headers: { 'x-forwarded-for': '10.0.0.99' },
         body: JSON.stringify({
           email: 'user@example.com',
           password: 'password123',

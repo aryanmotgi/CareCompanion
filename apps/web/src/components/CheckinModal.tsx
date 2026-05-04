@@ -19,7 +19,7 @@ const MOOD_EMOJIS = [
   { value: 5, emoji: '\u{1F604}' },
 ]
 
-const ENERGY_OPTIONS = ['low', 'med', 'high'] as const
+const ENERGY_OPTIONS = ['low', 'medium', 'high'] as const
 const SLEEP_OPTIONS = ['bad', 'ok', 'good'] as const
 
 export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: CheckinModalProps) {
@@ -208,7 +208,7 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
                     : 'border border-[var(--border)] bg-white/[0.04] text-[var(--text-muted)] hover:bg-white/[0.08]'
                 }`}
               >
-                {opt === 'med' ? 'Med' : opt.charAt(0).toUpperCase() + opt.slice(1)}
+                {opt === 'medium' ? 'Med' : opt.charAt(0).toUpperCase() + opt.slice(1)}
               </button>
             ))}
           </div>

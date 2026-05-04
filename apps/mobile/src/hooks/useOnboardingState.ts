@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useProfile } from '../context/ProfileContext'
 
-export interface OnboardingStep {
+interface OnboardingStep {
   key: string
   title: string
   description: string
@@ -10,7 +10,7 @@ export interface OnboardingStep {
   route: string // Tab or screen to navigate to
 }
 
-export interface OnboardingState {
+interface OnboardingState {
   steps: OnboardingStep[]
   completedCount: number
   totalCount: number

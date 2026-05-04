@@ -8,6 +8,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      screens: {
+        xs: '480px',
+      },
       fontFamily: {
         display: ['var(--font-figtree)', 'system-ui', 'sans-serif'],
         sans: ['var(--font-source-sans)', 'system-ui', 'sans-serif'],

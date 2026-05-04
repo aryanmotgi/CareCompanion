@@ -64,7 +64,7 @@ function isPast(timestamp: string): boolean {
   return new Date(timestamp).getTime() < Date.now()
 }
 
-export function TimelineCard({ item, onTakeMedication }: TimelineCardProps) {
+function TimelineCard({ item, onTakeMedication }: TimelineCardProps) {
   const theme = useTheme()
   const [expanded, setExpanded] = useState(false)
   const expandHeight = useSharedValue(0)

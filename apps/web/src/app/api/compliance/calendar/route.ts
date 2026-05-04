@@ -6,11 +6,13 @@
  *   year  – 4-digit year  (default: current year)
  *   month – 1-12          (default: current month)
  */
+export const dynamic = 'force-dynamic'
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { db } from '@/lib/db'
 import { reminderLogs } from '@/lib/db/schema'
 import { and, eq, gte, lte, asc } from 'drizzle-orm'
 import { apiSuccess, ApiErrors } from '@/lib/api-response'
+import { logAudit } from '@/lib/audit'
 
 export interface CalendarDay {
   date: string // YYYY-MM-DD
@@ -32,6 +34,13 @@ export async function GET(req: Request) {
   try {
     const { user: dbUser, error } = await getAuthenticatedUser()
     if (error) return error
+
+    await logAudit({
+      user_id: dbUser!.id,
+      action: 'view_records',
+      resource_type: 'compliance_calendar',
+      ip_address: req.headers.get('x-forwarded-for') || undefined,
+    })
 
     const url = new URL(req.url)
     const now = new Date()

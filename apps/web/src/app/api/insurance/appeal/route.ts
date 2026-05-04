@@ -37,9 +37,13 @@ export async function POST(req: Request) {
     if (error) return error
 
     const body = await req.json()
-    const { claim_id, additional_context } = body
-
-    if (!claim_id) return ApiErrors.badRequest('claim_id is required')
+    const bodySchema = z.object({
+      claim_id: z.string().uuid('claim_id must be a valid UUID'),
+      additional_context: z.string().max(2000).optional(),
+    })
+    const parseResult = bodySchema.safeParse(body)
+    if (!parseResult.success) return ApiErrors.badRequest(parseResult.error.issues[0]?.message || 'Invalid request body')
+    const { claim_id, additional_context } = parseResult.data
 
     const [claim] = await db
       .select()

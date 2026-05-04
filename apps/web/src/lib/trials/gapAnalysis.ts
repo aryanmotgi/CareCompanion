@@ -1,10 +1,13 @@
 import type { EligibilityGap, PatientProfile } from './assembleProfile'
 
-export type { EligibilityGap }
-
 export function isCloseTrial(gaps: EligibilityGap[]): boolean {
   if (gaps.length === 0) return false
   return gaps.every(g => g.gapType === 'measurable' || g.gapType === 'conditional')
+}
+
+function cleanCancerType(raw: string | null): string {
+  if (!raw) return 'Unknown'
+  return raw.replace(/\s*\(TEST[^)]*\)/gi, '').trim() || 'Unknown'
 }
 
 export function buildScoringSystemPrompt(profile: PatientProfile): string {
@@ -30,7 +33,7 @@ export function buildScoringSystemPrompt(profile: PatientProfile): string {
 
 ## Patient Profile
 
-- Cancer type: ${profile.cancerType ?? 'Unknown'}
+- Cancer type: ${cleanCancerType(profile.cancerType)}
 - Cancer stage: ${profile.cancerStage ?? 'Unknown'}
 - Age: ${profile.age ?? 'Unknown'}
 - Location (zip): ${profile.zipCode ?? 'Not provided'}

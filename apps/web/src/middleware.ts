@@ -31,9 +31,12 @@ const PUBLIC_PATHS = [
   '/api/cron',               // Cron jobs (protected by verifyCronRequest internally)
   '/api/notifications/generate', // Notification cron
   '/api/reminders/check',    // Reminder cron
-  '/api/share/',             // Public share links with token (e.g. /api/share/abc123) — POST /api/share itself is protected
+  // Public: token-based GET /api/share/[token] has no auth (rate-limited).
+  // POST /api/share (create) and GET /api/share (list) enforce auth at handler level.
+  '/api/share',              // Covers /api/share/[token], /api/share/weekly, and the base route
   '/api/demo/start',         // Demo session creation — no auth needed to start a demo
   '/api/feedback',           // Bug report submissions — works without auth
+  // '/api/debug-auth' intentionally omitted — dev-only, requires NODE_ENV check internally
   '/shared',                 // Public share pages
   '/reset-password',          // Password reset pages
 ]
@@ -45,6 +48,14 @@ export default auth((req) => {
   // MIME type console error (prefetch client expects RSC payload, not HTML redirect).
   // Next-Router-Prefetch: 1 is the documented signal for RSC prefetch requests.
   const isPrefetch = req.headers.get('Next-Router-Prefetch') === '1'
+
+  // Mobile app sends Authorization: Bearer <jwt> — NextAuth middleware can't verify
+  // the custom mobile JWT, so req.auth is null. Let API route handlers handle auth
+  // themselves via getAuthenticatedUser() which does support Bearer tokens.
+  const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization')
+  if (pathname.startsWith('/api/') && authHeader?.startsWith('Bearer ')) {
+    return NextResponse.next()
+  }
 
   const isPublic = PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + '/')
@@ -86,7 +97,7 @@ export default auth((req) => {
       const url = req.nextUrl.clone()
       const cb = req.nextUrl.searchParams.get('callbackUrl')
       url.search = ''
-      url.pathname = (cb && cb.startsWith('/')) ? cb : '/dashboard'
+      url.pathname = (cb && cb.startsWith('/') && !cb.startsWith('//')) ? cb : '/dashboard'
       return NextResponse.redirect(url)
     }
   }

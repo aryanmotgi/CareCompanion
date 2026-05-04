@@ -1,5 +1,5 @@
 // Top 50 US health systems supporting Apple Health Records (Epic/Cerner FHIR)
-export const SUPPORTED_HOSPITALS = [
+const SUPPORTED_HOSPITALS = [
   'Atrium Health',
   'Banner Health',
   'Baylor Scott & White Health',

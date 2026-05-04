@@ -18,12 +18,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '../../src/theme'
 import { NoiseOverlay } from '../../src/components/NoiseOverlay'
+import { GuidedTour } from '../../src/components/GuidedTour'
 
 const TABS = [
   { name: 'index', label: 'Home', icon: 'home-outline', iconActive: 'home' },
   { name: 'chat', label: 'Chat', icon: 'chatbubble-outline', iconActive: 'chatbubble' },
   { name: 'care', label: 'Care', icon: 'heart-outline', iconActive: 'heart' },
-  { name: 'scan', label: 'Scan', icon: 'scan-outline', iconActive: 'scan' },
+  { name: 'trials', label: 'Trials', icon: 'flask-outline', iconActive: 'flask' },
+  { name: 'community', label: 'Community', icon: 'people-outline', iconActive: 'people' },
 ]
 
 function TabIcon({ icon, iconActive, active }: { icon: string; iconActive: string; active: boolean }) {
@@ -206,9 +208,12 @@ export default function TabLayout() {
         <Tabs.Screen name="index" />
         <Tabs.Screen name="chat" />
         <Tabs.Screen name="care" />
-        <Tabs.Screen name="scan" />
+        <Tabs.Screen name="trials" />
+        <Tabs.Screen name="community" />
+        <Tabs.Screen name="scan" options={{ href: null }} />
         <Tabs.Screen name="settings" options={{ href: null }} />
       </Tabs>
+      <GuidedTour />
     </View>
   )
 }

@@ -105,6 +105,7 @@ export function RefillStatusCard() {
   const [medications, setMedications] = useState<RefillMedication[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const fetchRefills = useCallback(async () => {
     setLoading(true)
@@ -115,8 +116,9 @@ export function RefillStatusCard() {
         throw new Error(`Failed to fetch refill status (${res.status})`)
       }
       const json = await res.json()
-      const sorted = [...(json.data?.medications ?? json.data ?? [])].sort(sortByUrgency)
-      setMedications(sorted)
+      const meds: RefillMedication[] = json.data?.medications ?? []
+      setMedications([...meds].sort(sortByUrgency))
+      setLastUpdated(new Date())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
@@ -165,13 +167,20 @@ export function RefillStatusCard() {
           </div>
         </div>
         {!loading && !error && (
-          <button
-            onClick={fetchRefills}
-            className="text-[11px] text-[var(--text-secondary,#a78bfa)] hover:text-[#c4b5fd] transition-colors"
-            aria-label="Refresh refill status"
-          >
-            Refresh
-          </button>
+          <div className="flex flex-col items-end gap-0.5">
+            {lastUpdated && (
+              <span className="text-[10px] text-[var(--text-muted,#9ca3af)]">
+                Updated {lastUpdated.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              </span>
+            )}
+            <button
+              onClick={fetchRefills}
+              className="text-[11px] text-[var(--text-secondary,#a78bfa)] hover:text-[#c4b5fd] transition-colors"
+              aria-label="Refresh refill status"
+            >
+              Refresh
+            </button>
+          </div>
         )}
       </div>
 

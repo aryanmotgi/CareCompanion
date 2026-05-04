@@ -814,6 +814,7 @@ This is the most complex endpoint. On each request:
 | POST | /api/scan-document | OCR scan of documents |
 | POST | /api/save-scan-results | Save extracted data |
 | POST | /api/documents/extract | Extract structured data |
+| DELETE | /api/documents/[id] | Soft-delete a document (ownership-verified) |
 | POST | /api/extract-medications | AI medication extraction |
 
 ## AI Feature Endpoints

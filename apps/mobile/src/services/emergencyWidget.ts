@@ -4,7 +4,7 @@ import type { Profile } from '../context/ProfileContext'
 
 const { EmergencyWidgetBridge } = NativeModules
 
-export interface EmergencyWidgetData {
+interface EmergencyWidgetData {
   patientName: string
   bloodType: string
   allergies: string

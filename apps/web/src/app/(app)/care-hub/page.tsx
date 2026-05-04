@@ -40,18 +40,13 @@ async function CareHubContent() {
   const profile = await getActiveProfile(dbUser.id)
   if (!profile) redirect('/onboarding')
 
-  // Fetch the user's Care Group (if any)
   const membership = await db.query.careGroupMembers.findFirst({
     where: eq(careGroupMembers.userId, dbUser.id),
   })
 
-  let careGroupName: string | null = null
-  if (membership) {
-    const group = await db.query.careGroups.findFirst({
-      where: eq(careGroups.id, membership.careGroupId),
-    })
-    careGroupName = group?.name ?? null
-  }
+  const careGroupName: string | null = membership
+    ? (await db.query.careGroups.findFirst({ where: eq(careGroups.id, membership.careGroupId) }))?.name ?? null
+    : null
 
   return (
     <CareHubView

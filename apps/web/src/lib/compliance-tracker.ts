@@ -93,7 +93,7 @@ export async function generateComplianceReport(
         break
       case 'missed':
         entry.missed++
-        if (log.scheduledTime) missedTimes.push(log.scheduledTime.toISOString())
+        if (log.scheduledTime) missedTimes.push(log.scheduledTime.toISOString().substring(11, 16))
         break
       case 'snoozed':
         entry.snoozed++

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react'
 import { useToast } from '@/components/ToastProvider'
+import { useCsrfToken } from '@/components/CsrfProvider'
 
 interface ClaimInfo {
   provider_name: string
@@ -26,6 +27,7 @@ interface AppealGeneratorProps {
 
 export function AppealGenerator({ claimId, claimInfo }: AppealGeneratorProps) {
   const { showToast } = useToast()
+  const csrfToken = useCsrfToken()
   const [additionalContext, setAdditionalContext] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -39,7 +41,7 @@ export function AppealGenerator({ claimId, claimInfo }: AppealGeneratorProps) {
     try {
       const res = await fetch('/api/insurance/appeal', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
         body: JSON.stringify({
           claim_id: claimId,
           ...(additionalContext.trim() ? { additional_context: additionalContext.trim() } : {}),
@@ -59,7 +61,7 @@ export function AppealGenerator({ claimId, claimInfo }: AppealGeneratorProps) {
     } finally {
       setLoading(false)
     }
-  }, [claimId, additionalContext, showToast])
+  }, [claimId, additionalContext, showToast, csrfToken])
 
   const copyLetter = useCallback(async () => {
     if (!appeal) return

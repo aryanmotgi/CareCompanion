@@ -63,9 +63,9 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
     .slice(0, 6);
 
   // ---- Spending ----
-  const totalBilled = claims.reduce((sum, c) => sum + parseFloat(c.billedAmount || '0'), 0);
-  const totalPaid = claims.reduce((sum, c) => sum + parseFloat(c.paidAmount || '0'), 0);
-  const totalOOP = claims.reduce((sum, c) => sum + parseFloat(c.patientResponsibility || '0'), 0);
+  const totalBilled = claims.reduce((sum, c) => sum + (parseFloat(c.billedAmount ?? '0') || 0), 0);
+  const totalPaid = claims.reduce((sum, c) => sum + (parseFloat(c.paidAmount ?? '0') || 0), 0);
+  const totalOOP = claims.reduce((sum, c) => sum + (parseFloat(c.patientResponsibility ?? '0') || 0), 0);
   const deniedCount = claims.filter((c) => c.status === 'denied').length;
 
   if (loading) {
@@ -92,22 +92,15 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
       <h2 className="text-xl font-bold text-white mb-1">Health Analytics</h2>
       <p className="text-xs text-[var(--text-muted)] mb-5">{patientName}&apos;s trends and insights</p>
 
-      {/* Stat cards row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-white">{medications.length}</p>
-          <p className="text-[10px] text-[var(--text-muted)] uppercase">Medications</p>
-        </div>
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-white">{labResults.filter((l) => l.isAbnormal).length}</p>
-          <p className="text-[10px] text-[var(--text-muted)] uppercase">Abnormal Labs</p>
-        </div>
-        <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-xl p-3 text-center">
-          <p className={`text-2xl font-bold ${adherenceRate !== null && adherenceRate >= 80 ? 'text-emerald-400' : adherenceRate !== null ? 'text-amber-400' : 'text-[var(--text-muted)]'}`}>
-            {adherenceRate !== null ? `${adherenceRate}%` : '—'}
-          </p>
-          <p className="text-[10px] text-[var(--text-muted)] uppercase">Med Adherence</p>
-        </div>
+      {/* Summary row — inline stats, no hero grid */}
+      <div className="flex flex-wrap gap-x-6 gap-y-1 mb-5 text-xs text-[var(--text-secondary)]">
+        <span><span className="font-semibold text-[var(--text)]">{medications.length}</span> medications</span>
+        {labResults.filter((l) => l.isAbnormal).length > 0 && (
+          <span><span className="font-semibold text-amber-400">{labResults.filter((l) => l.isAbnormal).length}</span> abnormal labs</span>
+        )}
+        {adherenceRate !== null && (
+          <span>Adherence: <span className={`font-semibold ${adherenceRate >= 80 ? 'text-emerald-400' : 'text-amber-400'}`}>{adherenceRate}%</span></span>
+        )}
       </div>
 
       {/* Medication Adherence */}
@@ -179,7 +172,7 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
               <span className="text-xs text-[var(--text-secondary)]">Most reported</span>
               <div className="flex flex-wrap gap-1.5 mt-1.5">
                 {topSymptoms.map(([symptom, count]) => (
-                  <span key={symptom} className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400">
+                  <span key={symptom} className="text-xs px-2 py-0.5 rounded-full bg-white/[0.06] text-[var(--text-secondary)]">
                     {symptom} ({count}x)
                   </span>
                 ))}
@@ -200,23 +193,29 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
               const latestVal = parseFloat(latest.value || '0');
               const prevVal = parseFloat(previous.value || '0');
               const change = latestVal - prevVal;
-              const changeStr = change > 0 ? `+${change.toFixed(1)}` : change.toFixed(1);
 
               return (
                 <div key={testName} className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white font-medium truncate">{testName}</p>
-                    <p className="text-[10px] text-[var(--text-muted)]">{results.length} results</p>
+                    <p className="text-xs text-[var(--text-muted)]">{results.length} results</p>
                   </div>
                   <div className="text-right">
                     <p className={`text-sm font-mono ${latest.isAbnormal ? 'text-amber-400' : 'text-white'}`}>
                       {latest.value} {latest.unit || ''}
                     </p>
-                    {!isNaN(change) && change !== 0 && (
-                      <p className={`text-[10px] ${change > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                        {changeStr} {latest.unit || ''}
-                      </p>
-                    )}
+                    {!isNaN(change) && change !== 0 && (() => {
+                      const rising = change > 0
+                      // directionIsGood: true = rising is good (e.g. hemoglobin), false = rising is bad (e.g. PSA), null = unknown
+                      const dir = latest.directionIsGood
+                      const isGood = dir === null ? null : (dir ? rising : !rising)
+                      const color = isGood === null ? 'text-[var(--text-muted)]' : isGood ? 'text-emerald-400' : 'text-amber-400'
+                      return (
+                        <p className={`text-xs ${color}`}>
+                          {rising ? '↑' : '↓'} {Math.abs(change).toFixed(1)} {latest.unit || ''}
+                        </p>
+                      )
+                    })()}
                   </div>
                 </div>
               );
@@ -232,19 +231,19 @@ export function AnalyticsDashboard({ patientName, labResults, symptoms, reminder
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-lg font-bold text-white">${totalBilled.toLocaleString()}</p>
-              <p className="text-[10px] text-[var(--text-muted)] uppercase">Total Billed</p>
+              <p className="text-xs text-[var(--text-muted)] uppercase">Total Billed</p>
             </div>
             <div>
               <p className="text-lg font-bold text-emerald-400">${totalPaid.toLocaleString()}</p>
-              <p className="text-[10px] text-[var(--text-muted)] uppercase">Insurance Paid</p>
+              <p className="text-xs text-[var(--text-muted)] uppercase">Insurance Paid</p>
             </div>
             <div>
               <p className="text-lg font-bold text-amber-400">${totalOOP.toLocaleString()}</p>
-              <p className="text-[10px] text-[var(--text-muted)] uppercase">Your Cost</p>
+              <p className="text-xs text-[var(--text-muted)] uppercase">Your Cost</p>
             </div>
             <div>
               <p className="text-lg font-bold text-red-400">{deniedCount}</p>
-              <p className="text-[10px] text-[var(--text-muted)] uppercase">Denied Claims</p>
+              <p className="text-xs text-[var(--text-muted)] uppercase">Denied Claims</p>
             </div>
           </div>
         </div>

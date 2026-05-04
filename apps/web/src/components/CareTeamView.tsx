@@ -108,7 +108,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
     try {
       const res = await fetch('/api/care-team/accept', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
         body: JSON.stringify({ invite_id: inviteId }),
       });
       const data = await res.json();
@@ -127,7 +127,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
     // Remove the ?accept= param from the URL without a reload
     window.history.replaceState({}, '', '/care-team');
     loadTeam();
-  }, [showToast, loadTeam]);
+  }, [showToast, loadTeam, csrfToken]);
 
   useEffect(() => {
     if (acceptInviteId) {

@@ -33,7 +33,7 @@ function formatLocations(locations: unknown[], max: number): object[] {
   })
 }
 
-export type SearchTrialsParams = {
+type SearchTrialsParams = {
   condition: string
   terms?:    string
   location?: string
@@ -52,7 +52,7 @@ export async function searchTrials(params: SearchTrialsParams): Promise<{ count:
           'filter.geo':           params.location,
           'filter.overallStatus': params.status,
           'filter.phase':         params.phase,
-          pageSize:               Math.min(params.pageSize ?? 20, 20),
+          pageSize:               Math.min(params.pageSize ?? 20, 100),
           format:                 'json',
         },
       })
@@ -117,19 +117,3 @@ export async function getTrialDetails(nctId: string): Promise<Record<string, unk
   }
 }
 
-export type SearchByEligibilityParams = {
-  condition: string
-  terms?:    string
-  age?:      number
-  sex?:      string
-  location?: string
-}
-
-export async function searchByEligibility(params: SearchByEligibilityParams) {
-  return searchTrials({
-    condition: params.condition,
-    terms:     params.terms,
-    location:  params.location,
-    status:    'RECRUITING',
-  })
-}

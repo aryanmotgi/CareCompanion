@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/api-helpers'
+import { validateCsrf } from '@/lib/csrf'
 import { db } from '@/lib/db'
 import { savedTrials, careProfiles } from '@/lib/db/schema'
 import { and, eq } from 'drizzle-orm'
@@ -13,6 +14,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ nctId: string }> }
 ) {
+  const { valid, error: csrfError } = await validateCsrf(req)
+  if (!valid) return csrfError!
   const { user, error } = await getAuthenticatedUser()
   if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -24,6 +27,9 @@ export async function PATCH(
   if (!profile) return NextResponse.json({ error: 'No care profile' }, { status: 404 })
 
   const { nctId } = await params
+  if (!/^NCT\d{4,}$/.test(nctId)) {
+    return NextResponse.json({ error: 'Invalid NCT ID' }, { status: 400 })
+  }
   const [row] = await db.update(savedTrials)
     .set({ interestStatus: body.data.interestStatus })
     .where(and(eq(savedTrials.careProfileId, profile.id), eq(savedTrials.nctId, nctId)))

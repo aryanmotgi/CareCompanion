@@ -362,25 +362,28 @@ export function InsuranceView({
                     )}
 
                     {/* EOB link */}
-                    {claim.eobUrl && (
-                      <a
-                        href={claim.eobUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-xs text-[#A78BFA] hover:text-[#c4b5fd] mb-3 transition-colors"
-                      >
-                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                          <path
-                            d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                        View Explanation of Benefits
-                      </a>
-                    )}
+                    {(() => {
+                      const safeEobUrl = claim.eobUrl?.startsWith('https://') ? claim.eobUrl : null
+                      return safeEobUrl ? (
+                        <a
+                          href={safeEobUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-xs text-[#A78BFA] hover:text-[#c4b5fd] mb-3 transition-colors"
+                        >
+                          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                            <path
+                              d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          View Explanation of Benefits
+                        </a>
+                      ) : null
+                    })()}
 
                     {/* Appeal generator for denied claims */}
                     {claim.status === 'denied' && (

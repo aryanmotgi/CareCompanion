@@ -2,6 +2,7 @@
  * Chat history search endpoint.
  * Full-text search across past conversations.
  */
+export const dynamic = 'force-dynamic'
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { db } from '@/lib/db'
 import { messages } from '@/lib/db/schema'

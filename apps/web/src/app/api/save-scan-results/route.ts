@@ -4,7 +4,7 @@ import { validateCsrf } from '@/lib/csrf';
 import { rateLimit } from '@/lib/rate-limit';
 import { db } from '@/lib/db';
 import { careProfiles, medications, labResults, insurance, appointments, claims } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import { triggerMatchingRun } from '@/lib/trials/matchingQueue';
 
@@ -44,7 +44,7 @@ const ClaimSchema = z.object({
   billed_amount: z.number().optional(),
   paid_amount: z.number().optional(),
   patient_responsibility: z.number().optional(),
-  status: z.string().optional(),
+  status: z.enum(['paid', 'pending', 'denied', 'in_review']).optional(),
 });
 
 const ScanResultsSchema = z.object({
@@ -124,16 +124,29 @@ export async function POST(req: Request) {
       void triggerMatchingRun(profile.id, 'new_lab');
     }
 
-    // Save insurance
+    // Save insurance (upsert: update most-recent row if exists, else insert)
     if (data.insurance) {
       const ins = data.insurance;
-      await db.insert(insurance).values({
-        userId: user!.id,
+      const insuranceValues = {
         provider: ins.provider ?? 'Unknown',
         memberId: ins.member_id ?? null,
         groupNumber: ins.group_number ?? null,
         planYear: new Date().getFullYear(),
-      });
+      };
+      const [existingIns] = await db
+        .select({ id: insurance.id })
+        .from(insurance)
+        .where(eq(insurance.userId, user!.id))
+        .orderBy(desc(insurance.createdAt))
+        .limit(1);
+      if (existingIns) {
+        await db
+          .update(insurance)
+          .set({ ...insuranceValues })
+          .where(eq(insurance.id, existingIns.id));
+      } else {
+        await db.insert(insurance).values({ userId: user!.id, ...insuranceValues });
+      }
       saved.insurance = 1;
     }
 

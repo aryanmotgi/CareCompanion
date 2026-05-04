@@ -5,7 +5,7 @@ vi.mock('axios', () => ({
   default: { create: vi.fn(() => ({ get: mockGet })), get: mockGet },
 }))
 
-import { searchTrials, getTrialDetails, searchByEligibility } from '@/lib/trials/tools'
+import { searchTrials, getTrialDetails } from '@/lib/trials/tools'
 
 describe('searchTrials', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -26,12 +26,12 @@ describe('searchTrials', () => {
     expect(result).toHaveProperty('error')
   })
 
-  it('caps pageSize at 20', async () => {
+  it('caps pageSize at 100', async () => {
     mockGet.mockResolvedValueOnce({ data: { studies: [], totalCount: 0 } })
-    await searchTrials({ condition: 'cancer', pageSize: 100 })
+    await searchTrials({ condition: 'cancer', pageSize: 200 })
     expect(mockGet).toHaveBeenCalledWith(
       '/studies',
-      expect.objectContaining({ params: expect.objectContaining({ pageSize: 20 }) })
+      expect.objectContaining({ params: expect.objectContaining({ pageSize: 100 }) })
     )
   })
 })
@@ -68,15 +68,3 @@ describe('getTrialDetails', () => {
   })
 })
 
-describe('searchByEligibility', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('calls searchTrials with RECRUITING status', async () => {
-    mockGet.mockResolvedValueOnce({ data: { studies: [], totalCount: 0 } })
-    await searchByEligibility({ condition: 'lung cancer', age: 55 })
-    expect(mockGet).toHaveBeenCalledWith(
-      '/studies',
-      expect.objectContaining({ params: expect.objectContaining({ 'filter.overallStatus': 'RECRUITING' }) })
-    )
-  })
-})

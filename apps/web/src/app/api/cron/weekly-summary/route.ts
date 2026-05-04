@@ -18,13 +18,18 @@ import {
   careProfiles, symptomEntries, reminderLogs,
   appointments, labResults, sharedLinks, notifications, pushSubscriptions,
 } from '@/lib/db/schema';
-import { eq, and, gte, lte, desc, inArray } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, inArray, gt } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { sendPushNotification } from '@/lib/push';
 import { logger } from '@/lib/logger';
+import { cronState } from '@/lib/db/schema';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
+
+const CURSOR_KEY  = 'weekly_summary_cursor';
+const NULL_CURSOR = '00000000-0000-0000-0000-000000000000';
+const PAGE_SIZE   = 200;
 
 export async function GET(req: Request) {
   const authError = verifyCronRequest(req);
@@ -34,7 +39,11 @@ export async function GET(req: Request) {
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const sevenDaysAhead = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  // Only process users with a completed onboarding
+  // Cursor-based pagination: process PAGE_SIZE profiles per run, cycling through all users.
+  // Cursor is the last processed care_profiles.id; resets to NULL_CURSOR when exhausted.
+  const [cursorRow] = await db.select().from(cronState).where(eq(cronState.key, CURSOR_KEY));
+  const lastId = cursorRow?.value ?? NULL_CURSOR;
+
   const profiles = await db
     .select({
       id: careProfiles.id,
@@ -46,9 +55,17 @@ export async function GET(req: Request) {
       relationship: careProfiles.relationship,
     })
     .from(careProfiles)
-    .where(eq(careProfiles.onboardingCompleted, true));
+    .where(and(eq(careProfiles.onboardingCompleted, true), gt(careProfiles.id, lastId)))
+    .orderBy(careProfiles.id)
+    .limit(PAGE_SIZE);
 
-  if (profiles.length === 0) return Response.json({ message: 'No profiles', summaries: 0 });
+  if (profiles.length === 0) {
+    // Exhausted — reset cursor so next run starts from the beginning
+    await db.insert(cronState)
+      .values({ key: CURSOR_KEY, value: NULL_CURSOR })
+      .onConflictDoUpdate({ target: cronState.key, set: { value: NULL_CURSOR, updatedAt: new Date() } });
+    return Response.json({ message: 'No profiles', summaries: 0 });
+  }
 
   // Batch-fetch all push subscriptions upfront (avoids N+1 inside the loop)
   const profileUserIds = profiles.map((p) => p.userId);
@@ -221,5 +238,13 @@ Keep it to 3 paragraphs max. Warm, real, human.`,
     }
   }
 
-  return Response.json({ summaries: generated, users: profiles.length, errors });
+  // Advance cursor; if we got a full page there may be more users — next run continues from here.
+  // If we got fewer than PAGE_SIZE, we exhausted the table — reset to NULL_CURSOR.
+  const ranToEnd = profiles.length < PAGE_SIZE;
+  const nextCursor = ranToEnd ? NULL_CURSOR : profiles[profiles.length - 1].id;
+  await db.insert(cronState)
+    .values({ key: CURSOR_KEY, value: nextCursor })
+    .onConflictDoUpdate({ target: cronState.key, set: { value: nextCursor, updatedAt: new Date() } });
+
+  return Response.json({ summaries: generated, users: profiles.length, cursor: nextCursor, errors });
 }

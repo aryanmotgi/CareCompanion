@@ -7,6 +7,7 @@ import { rateLimit } from '@/lib/rate-limit';
 const shareLimiter = rateLimit({
   interval: 60 * 1000, // 1 minute
   maxRequests: 20,
+  uniqueTokenPerInterval: 500,
 });
 
 // Public — no auth required
@@ -22,13 +23,24 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
 
   if (!token) return apiError('Token required', 400);
 
-  const [link] = await db.select()
+  const [link] = await db.select({
+    title: sharedLinks.title,
+    type: sharedLinks.type,
+    data: sharedLinks.data,
+    createdAt: sharedLinks.createdAt,
+    expiresAt: sharedLinks.expiresAt,
+    revokedAt: sharedLinks.revokedAt,
+    viewCount: sharedLinks.viewCount,
+  })
     .from(sharedLinks)
     .where(eq(sharedLinks.token, token))
     .limit(1);
 
   if (!link) return apiError('Link not found', 404);
   if (new Date(link.expiresAt) < new Date()) return apiError('This link has expired', 410);
+  if (link.revokedAt) {
+    return apiError('This share link has been revoked', 410)
+  }
 
   // Increment view count (fire-and-forget, but actually execute the query)
   db.update(sharedLinks)

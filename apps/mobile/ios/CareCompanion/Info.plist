@@ -30,7 +30,7 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>carecompanion</string>
-          <string>com.aryanmotgi.carecompanion.dev</string>
+          <string>com.aryanmotgi.carecompanion</string>
         </array>
       </dict>
       <dict>

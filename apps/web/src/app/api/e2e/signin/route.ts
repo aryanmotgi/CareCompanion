@@ -12,6 +12,9 @@
  *  - Any email not in the DB gets 404; this is the only gate.
  *  - The E2E test account has no elevated privileges, so worst-case exposure
  *    is read-only access to one account's data.
+ *  - Unlike /api/test/reset, no NODE_ENV guard is used: this endpoint is
+ *    intentionally callable in production when E2E_AUTH_SECRET is set (CI
+ *    against prod requires it). Rotate E2E_AUTH_SECRET on each CI secret rotation.
  */
 import { db } from '@/lib/db'
 import { users, careProfiles } from '@/lib/db/schema'
@@ -26,7 +29,13 @@ const limiter = rateLimit({ interval: 60_000, maxRequests: 60 })
 // GET /api/e2e/signin — liveness probe used by CI to detect when the new
 // deployment is live.  The "v" field is bumped each time the endpoint changes
 // so the CI wait step can poll for the specific version it expects.
-export async function GET() {
+// Requires the same E2E_AUTH_SECRET header to avoid confirming the endpoint
+// exists in production to unauthenticated callers.
+export async function GET(req: Request) {
+  const e2eSecret = process.env.E2E_AUTH_SECRET
+  if (!e2eSecret || req.headers.get('x-e2e-secret') !== e2eSecret) {
+    return Response.json({ error: 'unauthorized' }, { status: 401 })
+  }
   return Response.json({ ready: true, v: 19 })
 }
 

@@ -56,7 +56,8 @@ function parseCycleInfo(med: Medication): CycleInfo | null {
     const nextInfusion = new Date(med.refillDate);
     const now = new Date();
     const daysUntilNext = Math.ceil((nextInfusion.getTime() - now.getTime()) / 86400000);
-    dayInCycle = Math.max(1, cycleLengthDays - daysUntilNext);
+    // Clamp dayInCycle to [1, cycleLengthDays] so overdue refills don't exceed the cycle length
+    dayInCycle = Math.min(Math.max(1, cycleLengthDays - daysUntilNext), cycleLengthDays);
   }
 
   let phase: CycleInfo['phase'] = 'recovery';
@@ -204,13 +205,20 @@ export function TreatmentCycleTracker({ medications, patientName }: TreatmentCyc
     persistEffects(sideEffects.filter((_, i) => i !== index));
   }, [sideEffects, persistEffects]);
 
-  if (!cycleInfo) return null;
+  if (!cycleInfo) return (
+    <div className="mb-4 rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] px-5 py-6 text-center">
+      <p className="text-sm text-[var(--text-secondary)]">No treatment cycle detected.</p>
+      <p className="text-xs text-[var(--text-muted)] mt-1">Add cycle info to a medication&apos;s notes, e.g. &quot;Cycle 1 of 6&quot;.</p>
+    </div>
+  );
 
-  const progressPercent = (cycleInfo.dayInCycle / cycleInfo.cycleLengthDays) * 100;
-  const overallPercent = ((cycleInfo.currentCycle - 1 + cycleInfo.dayInCycle / cycleInfo.cycleLengthDays) / cycleInfo.totalCycles) * 100;
+  const safeCycleLengthDays = Math.max(1, cycleInfo.cycleLengthDays);
+  const safeTotalCycles = Math.max(1, cycleInfo.totalCycles);
+  const progressPercent = (cycleInfo.dayInCycle / safeCycleLengthDays) * 100;
+  const overallPercent = ((cycleInfo.currentCycle - 1 + cycleInfo.dayInCycle / safeCycleLengthDays) / safeTotalCycles) * 100;
 
   const firstName = patientName.split(' ')[0];
-  const daysLeft = cycleInfo.cycleLengthDays - cycleInfo.dayInCycle;
+  const daysLeft = safeCycleLengthDays - cycleInfo.dayInCycle;
 
   // Effects for the current cycle
   const currentCycleEffects = sideEffects.filter(e => e.cycle === cycleInfo.currentCycle);

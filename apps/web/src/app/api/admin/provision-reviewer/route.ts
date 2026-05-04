@@ -183,7 +183,7 @@ export async function POST(req: NextRequest) {
     status: 'created',
     email: REVIEWER_EMAIL,
     userId: newUser.id,
-    temporaryPassword: generatedPassword, // Only returned once at creation — store securely
+    temporaryPassword: '[see server logs]',
   });
 }
 

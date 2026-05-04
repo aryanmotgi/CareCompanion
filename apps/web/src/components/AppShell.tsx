@@ -193,7 +193,7 @@ export function AppShell({
         </header>
       )}
 
-      <main id="main-content" className={`${isSetup ? '' : (isDemo ? 'pt-[104px] pb-24' : (pathname === '/chat' ? 'pt-14 pb-0' : 'pt-14 pb-24'))} min-h-screen min-h-dvh`}>
+      <main id="main-content" className={`${isSetup ? '' : (isDemo ? 'pt-[104px]' : (pathname === '/chat' ? 'pt-14' : 'pt-14'))} min-h-screen min-h-dvh`} style={isSetup ? undefined : { paddingBottom: pathname === '/chat' ? undefined : 'calc(96px + env(safe-area-inset-bottom, 0px))' }}>
         <div className={pathname === '/chat' ? 'mx-auto px-0' : 'max-w-lg lg:max-w-2xl xl:max-w-3xl mx-auto px-1 sm:px-0'}>
           {children}
         </div>

@@ -13,9 +13,11 @@ import { VisitPrepSheet } from './VisitPrepSheet'
 import { MedicationReminders } from './MedicationReminders'
 import type { Medication, Appointment, Doctor, CareProfile, CareTeamMember, ReminderLog, LabResult, SymptomEntry } from '@/lib/types'
 
-const LabsView = dynamic(() => import('@/app/(app)/labs/LabsView').then((m) => m.LabsView))
-const SymptomJournal = dynamic(() => import('./SymptomJournal').then((m) => m.SymptomJournal))
-const CareTeamView = dynamic(() => import('./CareTeamView').then((m) => m.CareTeamView))
+const TabLoader = () => <div className="mt-5 space-y-2">{[0,1,2].map(i => <div key={i} className="h-16 rounded-xl bg-white/[0.04] animate-pulse" />)}</div>
+
+const LabsView = dynamic(() => import('@/app/(app)/labs/LabsView').then((m) => m.LabsView), { loading: () => <TabLoader /> })
+const SymptomJournal = dynamic(() => import('./SymptomJournal').then((m) => m.SymptomJournal), { loading: () => <TabLoader /> })
+const CareTeamView = dynamic(() => import('./CareTeamView').then((m) => m.CareTeamView), { loading: () => <TabLoader /> })
 
 const TAB_MAP: Record<string, number> = { meds: 0, appts: 1, labs: 2, journal: 3, team: 4 }
 
@@ -54,6 +56,7 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
   const [medName, setMedName] = useState('')
   const [medDose, setMedDose] = useState('')
   const [medFreq, setMedFreq] = useState('')
+  const [medDoctor, setMedDoctor] = useState('')
   const [apptDoctor, setApptDoctor] = useState('')
   const [apptSpecialty, setApptSpecialty] = useState('')
   const [apptDate, setApptDate] = useState('')
@@ -95,12 +98,13 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
           name: medName.trim(),
           dose: medDose || null,
           frequency: medFreq || null,
+          prescribingDoctor: medDoctor || null,
         }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       if (json.data) setMedications([...medications, json.data])
-      setMedName(''); setMedDose(''); setMedFreq('')
+      setMedName(''); setMedDose(''); setMedFreq(''); setMedDoctor('')
       setShowMedForm(false)
       showToast('Medication added', 'success')
     } catch {
@@ -224,6 +228,7 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
     const dateStr = apptDateTime ? apptDateTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : 'No date'
     const doctorPhone = getDoctorPhone(appt.doctorName)
 
+    const subtitleParts = [appt.specialty, `${dateStr} at ${timeStr}`].filter(Boolean)
     return (
       <ExpandableCard
         key={appt.id}
@@ -267,7 +272,7 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
       >
         <div>
           <div className="text-[#f1f5f9] text-[15px] font-semibold">{appt.doctorName}</div>
-          <div className="text-[#94a3b8] text-xs">{appt.specialty} · {dateStr} at {timeStr}</div>
+          <div className="text-[#94a3b8] text-xs">{subtitleParts.join(' · ')}</div>
         </div>
       </ExpandableCard>
     )
@@ -328,7 +333,15 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
           <div>
             <div className="text-[#64748b] text-[11px] uppercase tracking-wider mb-2">Upcoming</div>
             {upcomingAppts.length === 0 && thisWeekAppts.length === 0 ? (
-              <div className="text-center py-8 text-[#64748b] text-sm">No appointments scheduled</div>
+              <div className="text-center py-8 space-y-4">
+                <p className="text-[#64748b] text-sm">You&apos;re all clear — no upcoming appointments.</p>
+                <button
+                  onClick={() => setShowApptForm(true)}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold animate-press shimmer-btn relative overflow-hidden"
+                >
+                  + Add Appointment
+                </button>
+              </div>
             ) : (
               <div className="space-y-2">{upcomingAppts.map((a, i) => renderApptCard(a, i + thisWeekAppts.length))}</div>
             )}
@@ -372,15 +385,19 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
         <div className="space-y-3">
           <div>
             <label className="text-[#94a3b8] text-xs mb-1 block">Medication name <span className="text-[#ef4444]">*</span></label>
-            <input className={inputClass} placeholder="e.g., Metformin" value={medName} onChange={(e) => setMedName(e.target.value)} />
+            <input className={inputClass} placeholder="e.g., Metformin" value={medName} onChange={(e) => setMedName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddMed()} autoFocus />
           </div>
           <div>
             <label className="text-[#94a3b8] text-xs mb-1 block">Dose</label>
-            <input className={inputClass} placeholder="e.g., 10mg" value={medDose} onChange={(e) => setMedDose(e.target.value)} />
+            <input className={inputClass} placeholder="e.g., 10mg" value={medDose} onChange={(e) => setMedDose(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddMed()} />
           </div>
           <div>
             <label className="text-[#94a3b8] text-xs mb-1 block">Frequency</label>
-            <input className={inputClass} placeholder="e.g., Once daily" value={medFreq} onChange={(e) => setMedFreq(e.target.value)} />
+            <input className={inputClass} placeholder="e.g., Once daily" value={medFreq} onChange={(e) => setMedFreq(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddMed()} />
+          </div>
+          <div>
+            <label className="text-[#94a3b8] text-xs mb-1 block">Prescribing doctor</label>
+            <input className={inputClass} placeholder="e.g., Dr. Smith" value={medDoctor} onChange={(e) => setMedDoctor(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddMed()} />
           </div>
           <button
             onClick={handleAddMed}
@@ -403,11 +420,11 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
         <div className="space-y-3">
           <div>
             <label className="text-[#94a3b8] text-xs mb-1 block">Doctor name <span className="text-[#ef4444]">*</span></label>
-            <input className={inputClass} placeholder="e.g., Dr. Smith" value={apptDoctor} onChange={(e) => setApptDoctor(e.target.value)} />
+            <input className={inputClass} placeholder="e.g., Dr. Smith" value={apptDoctor} onChange={(e) => setApptDoctor(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddAppt()} autoFocus />
           </div>
           <div>
             <label className="text-[#94a3b8] text-xs mb-1 block">Specialty</label>
-            <input className={inputClass} placeholder="e.g., Cardiology" value={apptSpecialty} onChange={(e) => setApptSpecialty(e.target.value)} />
+            <input className={inputClass} placeholder="e.g., Oncology" value={apptSpecialty} onChange={(e) => setApptSpecialty(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddAppt()} />
           </div>
           <div>
             <label className="text-[#94a3b8] text-xs mb-1 block">Date & time <span className="text-[#ef4444]">*</span></label>
@@ -415,11 +432,11 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
           </div>
           <div>
             <label className="text-[#94a3b8] text-xs mb-1 block">Location</label>
-            <input className={inputClass} placeholder="e.g., 123 Medical Dr" value={apptLocation} onChange={(e) => setApptLocation(e.target.value)} />
+            <input className={inputClass} placeholder="e.g., 123 Medical Dr, Suite 4" value={apptLocation} onChange={(e) => setApptLocation(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddAppt()} />
           </div>
           <div>
-            <label className="text-[#94a3b8] text-xs mb-1 block">Purpose</label>
-            <input className={inputClass} placeholder="e.g., Annual checkup" value={apptPurpose} onChange={(e) => setApptPurpose(e.target.value)} />
+            <label className="text-[#94a3b8] text-xs mb-1 block">What&apos;s this visit for?</label>
+            <input className={inputClass} placeholder="e.g., Chemo infusion, follow-up" value={apptPurpose} onChange={(e) => setApptPurpose(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddAppt()} />
           </div>
           <button
             onClick={handleAddAppt}
@@ -440,9 +457,9 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
       {/* Confirm Delete Dialog */}
       <ConfirmDialog
         open={!!confirmDelete}
-        title={confirmDelete?.type === 'med' ? 'Delete Medication' : 'Delete Appointment'}
-        description={`Are you sure you want to delete "${confirmDelete?.name}"? This action cannot be undone.`}
-        confirmLabel="Delete"
+        title={confirmDelete?.type === 'med' ? 'Remove medication?' : 'Remove appointment?'}
+        description={`Remove "${confirmDelete?.name}" from your list? This can't be undone.`}
+        confirmLabel="Remove"
         variant="danger"
         loading={!!deletingId}
         onConfirm={handleDeleteConfirmed}

@@ -1,18 +1,27 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useToast } from './ToastProvider'
 import { useCsrfToken } from './CsrfProvider'
 import { ThemeToggle } from './ThemeToggle'
 import { ReminderManager } from './ReminderManager'
 import { NotificationPreferences } from './NotificationPreferences'
+import { InfoTooltip } from './InfoTooltip'
 import type { UserSettings, MedicationReminder, Medication } from '@/lib/types'
+
+interface ConnectedApp {
+  id: string
+  source: string
+  lastSynced: Date | null
+  expiresAt: Date | null
+}
 
 interface SettingsPageProps {
   settings: UserSettings | null
   medicationReminders?: MedicationReminder[]
   medications?: Medication[]
   isDemo?: boolean
+  integrations?: ConnectedApp[]
 }
 
 function SettingsRow({
@@ -61,21 +70,107 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function SettingsPage({ settings: initialSettings, medicationReminders = [], medications = [] }: SettingsPageProps) {
+export function SettingsPage({ settings: initialSettings, medicationReminders = [], medications = [], integrations: initialIntegrations = [] }: SettingsPageProps) {
   const { showToast } = useToast()
   const csrfToken = useCsrfToken()
   const [settings, setSettings] = useState<UserSettings | null>(initialSettings)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [importing, setImporting] = useState(false)
   const [showCsvMenu, setShowCsvMenu] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [integrations, setIntegrations] = useState<ConnectedApp[]>(initialIntegrations)
+  const [disconnecting, setDisconnecting] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
+
+  interface ShareLink { token: string; type: string; title: string; expiresAt: string; createdAt: string }
+  const [shareLinks, setShareLinks] = useState<ShareLink[]>([])
+  const [revokingToken, setRevokingToken] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/share')
+      .then((r) => r.ok ? r.json() : null)
+      .then((json) => { if (json?.data?.links) setShareLinks(json.data.links) })
+      .catch(() => {})
+  }, [])
+
+  const handleRevokeLink = async (token: string) => {
+    setRevokingToken(token)
+    try {
+      const res = await fetch(`/api/share/${token}/revoke`, {
+        method: 'POST',
+        headers: { 'x-csrf-token': csrfToken },
+      })
+      if (res.ok) setShareLinks((prev) => prev.filter((l) => l.token !== token))
+      else showToast('Failed to revoke link', 'error')
+    } catch {
+      showToast('Failed to revoke link', 'error')
+    } finally {
+      setRevokingToken(null)
+    }
+  }
 
   const isTestMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true'
   const showTestTools = isTestMode
+
+  const googleCalendar = integrations.find((a) => a.source === 'google_calendar')
+
+  const handleConnectGoogle = () => {
+    window.location.href = '/api/auth/google-calendar'
+  }
+
+  const handleDisconnect = async (source: string) => {
+    setDisconnecting(source)
+    try {
+      const res = await fetch(`/api/integrations/${source}`, {
+        method: 'DELETE',
+        headers: { 'x-csrf-token': csrfToken ?? '' },
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as { error?: string }).error || 'Disconnect failed')
+      }
+      setIntegrations((prev) => prev.filter((a) => a.source !== source))
+      showToast('Disconnected', 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to disconnect', 'error')
+    } finally {
+      setDisconnecting(null)
+    }
+  }
+
+  const handleSyncGoogle = async () => {
+    setSyncing(true)
+    try {
+      const res = await fetch('/api/sync/google-calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken ?? '' },
+        body: JSON.stringify({}),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as { error?: string }).error || 'Sync failed')
+      }
+      const data = await res.json() as { imported?: number }
+      showToast(`Synced — ${data.imported ?? 0} new events imported`, 'success')
+      setIntegrations((prev) => prev.map((a) =>
+        a.source === 'google_calendar' ? { ...a, lastSynced: new Date() } : a
+      ))
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Sync failed'
+      if (msg.includes('reconnect')) {
+        showToast('Google Calendar token expired — reconnect to continue syncing', 'error')
+      } else {
+        showToast(msg, 'error')
+      }
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const handleResetTestData = async () => {
     setResetting(true)
@@ -131,7 +226,7 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
         const json = JSON.parse(text)
         const res = await fetch('/api/import-data', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken ?? ''},
           body: JSON.stringify(json),
         })
         if (!res.ok) {
@@ -155,20 +250,24 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
   }
 
   const handleChangePassword = async () => {
-    if (!newPassword || newPassword.length < 6) return
+    if (!currentPassword || !newPassword || newPassword.length < 8) return
     setSaving(true)
     try {
       const res = await fetch('/api/account/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: newPassword }),
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken ?? ''},
+        body: JSON.stringify({ currentPassword, password: newPassword }),
       })
-      if (!res.ok) throw new Error('Failed to update password')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as { error?: string }).error || 'Failed to update password')
+      }
+      setCurrentPassword('')
       setNewPassword('')
       setShowPasswordForm(false)
       showToast('Password updated', 'success')
-    } catch {
-      showToast('Failed to update password', 'error')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to update password', 'error')
     }
     setSaving(false)
   }
@@ -178,7 +277,7 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
     try {
       const res = await fetch('/api/delete-account', {
         method: 'POST',
-        headers: { 'x-csrf-token': csrfToken },
+        headers: { 'x-csrf-token': csrfToken ?? ''},
       })
       if (!res.ok) throw new Error('Delete failed')
       window.location.href = '/login'
@@ -218,7 +317,7 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
           label="Edit Profile & Preferences"
           description="Update cancer type, treatment phase, and priorities"
           onClick={() => {
-            window.location.href = '/onboarding'
+            window.location.href = '/profile/edit'
           }}
         />
       </SettingsGroup>
@@ -233,6 +332,60 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
       <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl overflow-hidden p-4">
         <ReminderManager reminders={medicationReminders} medications={medications} />
       </div>
+
+      <SectionLabel>Integrations</SectionLabel>
+      <SettingsGroup>
+        <div className="px-4 py-3.5 flex items-center justify-between">
+          <div>
+            <div className="text-sm text-[#e2e8f0]">Google Calendar</div>
+            <div className="text-[11px] text-[#64748b] mt-0.5">
+              {googleCalendar
+                ? `Connected · Last synced ${googleCalendar.lastSynced ? new Date(googleCalendar.lastSynced).toLocaleDateString() : 'never'}`
+                : 'Import health appointments automatically'}
+            </div>
+            {googleCalendar?.expiresAt && new Date(googleCalendar.expiresAt) < new Date() && (
+              <div className="text-[11px] text-[#f97316] mt-1">Token expired — reconnect to resume syncing</div>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0 ml-4">
+            {googleCalendar ? (
+              <>
+                <button
+                  onClick={handleSyncGoogle}
+                  disabled={syncing}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] text-[#e2e8f0] hover:bg-white/[0.1] transition-colors disabled:opacity-40"
+                >
+                  {syncing ? 'Syncing…' : 'Sync now'}
+                </button>
+                <button
+                  onClick={() => handleDisconnect('google_calendar')}
+                  disabled={disconnecting === 'google_calendar'}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] text-[#ef4444] hover:bg-white/[0.1] transition-colors disabled:opacity-40"
+                >
+                  {disconnecting === 'google_calendar' ? '…' : 'Disconnect'}
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleConnectGoogle}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white font-semibold hover:opacity-90 transition-opacity"
+                >
+                  Connect
+                </button>
+                <InfoTooltip content="Connecting your health system automatically imports appointments, lab results, and medications — no manual entry needed." />
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="px-4 py-3.5 flex items-center justify-between">
+          <div>
+            <div className="text-sm text-[#e2e8f0]">Apple Health</div>
+            <div className="text-[11px] text-[#64748b] mt-0.5">Available in the iOS app — syncs medications, labs, and appointments from Health Records</div>
+          </div>
+          <span className="text-[11px] text-[#64748b] shrink-0 ml-4">iOS only</span>
+        </div>
+      </SettingsGroup>
 
       <SectionLabel>App Preferences</SectionLabel>
       <SettingsGroup>
@@ -256,8 +409,8 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
                 setSettings({ ...settings, aiPersonality: val })
                 await fetch('/api/records/settings', {
                   method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ aiPersonality: val }),
+                  headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken ?? ''},
+                  body: JSON.stringify({ ai_personality: val }),
                 })
               }}
               className="bg-transparent text-[#64748b] text-sm outline-none cursor-pointer"
@@ -321,22 +474,31 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
 
       {showPasswordForm && (
         <div className="mt-3 bg-white/[0.04] border border-white/[0.06] rounded-xl p-4">
+          <label className="text-[#94a3b8] text-xs mb-1.5 block" htmlFor="current-password">Current password</label>
+          <input
+            id="current-password"
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="Current password"
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-[#e2e8f0] text-sm mb-3 outline-none focus:border-[#A78BFA]/40 transition-colors"
+          />
           <label className="text-[#94a3b8] text-xs mb-1.5 block" htmlFor="new-password">New password</label>
           <input
             id="new-password"
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="Min 6 characters"
-            minLength={6}
+            placeholder="Min 8 characters"
+            minLength={8}
             className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-[#e2e8f0] text-sm mb-3 outline-none focus:border-[#A78BFA]/40 transition-colors"
           />
-          {newPassword.length > 0 && newPassword.length < 6 && (
-            <p className="text-[#ef4444] text-xs mb-2">Password must be at least 6 characters</p>
+          {newPassword.length > 0 && newPassword.length < 8 && (
+            <p className="text-[#ef4444] text-xs mb-2">Password must be at least 8 characters</p>
           )}
           <button
             onClick={handleChangePassword}
-            disabled={saving || newPassword.length < 6}
+            disabled={saving || !currentPassword || newPassword.length < 8}
             className="w-full py-2.5 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-sm font-semibold disabled:opacity-40 flex items-center justify-center gap-2"
           >
             {saving && (
@@ -382,11 +544,34 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
         </div>
       )}
 
+      <SectionLabel>Active Share Links</SectionLabel>
+      <SettingsGroup>
+        {shareLinks.length === 0 ? (
+          <div className="px-4 py-3.5 text-sm text-[#64748b]">No active share links</div>
+        ) : shareLinks.map((link) => (
+          <div key={link.token} className="px-4 py-3.5 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm text-[#e2e8f0] truncate">{link.title || link.type}</p>
+              <p className="text-xs text-[#64748b] mt-0.5">
+                Expires {new Date(link.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+            </div>
+            <button
+              onClick={() => handleRevokeLink(link.token)}
+              disabled={revokingToken === link.token}
+              className="flex-shrink-0 text-xs text-[#ef4444] font-medium hover:opacity-70 disabled:opacity-40 transition-opacity"
+            >
+              {revokingToken === link.token ? 'Revoking…' : 'Revoke'}
+            </button>
+          </div>
+        ))}
+      </SettingsGroup>
+
       <SectionLabel>About</SectionLabel>
       <SettingsGroup>
         <SettingsRow
           label="App Version"
-          right={<span className="text-[#64748b] text-sm">0.1.2</span>}
+          right={<span className="text-[#64748b] text-sm">0.3.1.0</span>}
         />
         <SettingsRow label="Terms of Service" onClick={() => window.open('/terms', '_blank')} />
         <SettingsRow label="Privacy Policy" onClick={() => window.open('/privacy', '_blank')} />
