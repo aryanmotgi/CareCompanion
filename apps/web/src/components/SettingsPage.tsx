@@ -8,6 +8,7 @@ import { ReminderManager } from './ReminderManager'
 import { NotificationPreferences } from './NotificationPreferences'
 import { InfoTooltip } from './InfoTooltip'
 import type { UserSettings, MedicationReminder, Medication } from '@/lib/types'
+import { SettingsRow } from '@/components/ui/SettingsRow'
 
 interface ConnectedApp {
   id: string
@@ -24,35 +25,6 @@ interface SettingsPageProps {
   integrations?: ConnectedApp[]
 }
 
-function SettingsRow({
-  label,
-  description,
-  right,
-  onClick,
-  danger,
-}: {
-  label: string
-  description?: string
-  right?: React.ReactNode
-  onClick?: () => void
-  danger?: boolean
-}) {
-  return (
-    <div
-      className={`px-4 py-3.5 flex items-center justify-between ${onClick ? 'cursor-pointer active:bg-white/[0.02]' : ''}`}
-      onClick={onClick}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
-    >
-      <div>
-        <div className={`text-sm ${danger ? 'text-[#ef4444]' : 'text-[#e2e8f0]'}`}>{label}</div>
-        {description && <div className="text-[11px] text-[#64748b] mt-0.5">{description}</div>}
-      </div>
-      {right || (onClick && <span className="text-[#64748b] text-base" aria-hidden="true">›</span>)}
-    </div>
-  )
-}
 
 function SettingsGroup({ children }: { children: React.ReactNode }) {
   return (
@@ -175,7 +147,7 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
   const handleResetTestData = async () => {
     setResetting(true)
     try {
-      const res = await fetch('/api/test/reset', { method: 'POST' })
+      const res = await fetch('/api/test/reset', { method: 'POST', headers: { 'x-csrf-token': csrfToken ?? '' } })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error((err as { error?: string }).error || 'Reset failed')
@@ -335,19 +307,39 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
 
       <SectionLabel>Integrations</SectionLabel>
       <SettingsGroup>
-        <div className="px-4 py-3.5 flex items-center justify-between">
-          <div>
-            <div className="text-sm text-[#e2e8f0]">Google Calendar</div>
-            <div className="text-[11px] text-[#64748b] mt-0.5">
+        {/* Google Calendar */}
+        <div className="px-4 py-4 flex items-start gap-3">
+          <div className="w-9 h-9 rounded-lg bg-white/[0.06] border border-white/[0.06] flex items-center justify-center shrink-0 mt-0.5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="17" rx="2" stroke="#4285F4" strokeWidth="1.5"/>
+              <path d="M3 9h18" stroke="#4285F4" strokeWidth="1.5"/>
+              <path d="M8 2v4M16 2v4" stroke="#4285F4" strokeWidth="1.5" strokeLinecap="round"/>
+              <rect x="7" y="13" width="4" height="3" rx="0.5" fill="#34A853" opacity="0.8"/>
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-[#e2e8f0] font-medium">Google Calendar</span>
+              {googleCalendar && (
+                <span className="flex items-center gap-1 text-[10px] font-medium text-[#6EE7B7]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#6EE7B7] shrink-0" />
+                  Connected
+                </span>
+              )}
+            </div>
+            <div className="text-[11px] text-[#5B6785] mt-0.5 leading-snug">
               {googleCalendar
-                ? `Connected · Last synced ${googleCalendar.lastSynced ? new Date(googleCalendar.lastSynced).toLocaleDateString() : 'never'}`
+                ? `Last synced ${googleCalendar.lastSynced ? new Date(googleCalendar.lastSynced).toLocaleDateString() : 'never'}`
                 : 'Import health appointments automatically'}
             </div>
             {googleCalendar?.expiresAt && new Date(googleCalendar.expiresAt) < new Date() && (
-              <div className="text-[11px] text-[#f97316] mt-1">Token expired — reconnect to resume syncing</div>
+              <div className="flex items-center gap-1 mt-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FCD34D] shrink-0" />
+                <span className="text-[11px] text-[#FCD34D]">Token expired — reconnect to resume syncing</span>
+              </div>
             )}
           </div>
-          <div className="flex items-center gap-2 shrink-0 ml-4">
+          <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
             {googleCalendar ? (
               <>
                 <button
@@ -355,12 +347,12 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
                   disabled={syncing}
                   className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] text-[#e2e8f0] hover:bg-white/[0.1] transition-colors disabled:opacity-40"
                 >
-                  {syncing ? 'Syncing…' : 'Sync now'}
+                  {syncing ? 'Syncing…' : 'Sync'}
                 </button>
                 <button
                   onClick={() => handleDisconnect('google_calendar')}
                   disabled={disconnecting === 'google_calendar'}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] text-[#ef4444] hover:bg-white/[0.1] transition-colors disabled:opacity-40"
+                  className="text-xs px-3 py-1.5 rounded-lg text-[#FCA5A5] hover:bg-white/[0.06] transition-colors disabled:opacity-40"
                 >
                   {disconnecting === 'google_calendar' ? '…' : 'Disconnect'}
                 </button>
@@ -369,21 +361,30 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={handleConnectGoogle}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white font-semibold hover:opacity-90 transition-opacity"
+                  className="text-xs px-3 py-1.5 rounded-lg bg-[#6366F1] text-white font-semibold hover:bg-[#818CF8] transition-colors"
                 >
                   Connect
                 </button>
-                <InfoTooltip content="Connecting your health system automatically imports appointments, lab results, and medications — no manual entry needed." />
+                <InfoTooltip content="Connecting Google Calendar automatically imports appointments — no manual entry needed." />
               </div>
             )}
           </div>
         </div>
-        <div className="px-4 py-3.5 flex items-center justify-between">
-          <div>
-            <div className="text-sm text-[#e2e8f0]">Apple Health</div>
-            <div className="text-[11px] text-[#64748b] mt-0.5">Available in the iOS app — syncs medications, labs, and appointments from Health Records</div>
+
+        {/* Apple Health */}
+        <div className="px-4 py-4 flex items-start gap-3">
+          <div className="w-9 h-9 rounded-lg bg-white/[0.06] border border-white/[0.06] flex items-center justify-center shrink-0 mt-0.5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 21C12 21 4 15.5 4 9.5C4 7.01 5.99 5 8.5 5C10 5 11.5 5.75 12 7C12.5 5.75 14 5 15.5 5C18.01 5 20 7.01 20 9.5C20 15.5 12 21 12 21Z" stroke="#FC3158" strokeWidth="1.5" strokeLinejoin="round"/>
+            </svg>
           </div>
-          <span className="text-[11px] text-[#64748b] shrink-0 ml-4">iOS only</span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-[#e2e8f0] font-medium">Apple Health</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/[0.06] text-[#5B6785] font-medium tracking-wide">iOS only</span>
+            </div>
+            <div className="text-[11px] text-[#5B6785] mt-0.5 leading-snug">Syncs medications, labs, and appointments from Health Records</div>
+          </div>
         </div>
       </SettingsGroup>
 
@@ -571,7 +572,7 @@ export function SettingsPage({ settings: initialSettings, medicationReminders = 
       <SettingsGroup>
         <SettingsRow
           label="App Version"
-          right={<span className="text-[#64748b] text-sm">0.3.1.0</span>}
+          right={<span className="text-[#64748b] text-sm">{process.env.NEXT_PUBLIC_APP_VERSION ?? '0.3.1.0'}</span>}
         />
         <SettingsRow label="Terms of Service" onClick={() => window.open('/terms', '_blank')} />
         <SettingsRow label="Privacy Policy" onClick={() => window.open('/privacy', '_blank')} />

@@ -47,9 +47,9 @@ const PERIOD_LABELS: Record<Period, string> = {
 /* ------------------------------------------------------------------ */
 
 function adherenceColor(pct: number): string {
-  if (pct >= 90) return '#10b981'
-  if (pct >= 70) return '#f59e0b'
-  return '#ef4444'
+  if (pct >= 90) return '#6EE7B7'
+  if (pct >= 70) return '#FCD34D'
+  return '#FCA5A5'
 }
 
 function adherenceLabel(pct: number): string {
@@ -146,37 +146,37 @@ function MedicationBar({ med }: { med: MedicationBreakdown }) {
         {takenPct > 0 && (
           <div
             className="h-full transition-[width] duration-500 ease-out"
-            style={{ width: `${takenPct}%`, backgroundColor: '#10b981' }}
+            style={{ width: `${takenPct}%`, backgroundColor: '#6EE7B7' }}
           />
         )}
         {snoozedPct > 0 && (
           <div
             className="h-full transition-[width] duration-500 ease-out"
-            style={{ width: `${snoozedPct}%`, backgroundColor: '#f59e0b' }}
+            style={{ width: `${snoozedPct}%`, backgroundColor: '#FCD34D' }}
           />
         )}
         {missedPct > 0 && (
           <div
             className="h-full transition-[width] duration-500 ease-out"
-            style={{ width: `${missedPct}%`, backgroundColor: '#ef4444' }}
+            style={{ width: `${missedPct}%`, backgroundColor: '#FCA5A5' }}
           />
         )}
       </div>
 
       <div className="flex gap-3 text-[10px] text-[var(--text-muted)]">
         <span className="flex items-center gap-1">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#10b981]" />
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#6EE7B7]" />
           {med.taken} taken
         </span>
         {med.snoozed > 0 && (
           <span className="flex items-center gap-1">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#f59e0b]" />
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#FCD34D]" />
             {med.snoozed} snoozed
           </span>
         )}
         {med.missed > 0 && (
           <span className="flex items-center gap-1">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ef4444]" />
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#FCA5A5]" />
             {med.missed} missed
           </span>
         )}
@@ -196,7 +196,7 @@ function ReportSkeleton() {
       <Skeleton className="h-10 w-full" />
 
       {/* Hero card */}
-      <div className="rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-6">
+      <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-6">
         <div className="flex flex-col items-center gap-4">
           <Skeleton className="h-40 w-40 rounded-full" />
           <Skeleton className="h-4 w-28" />
@@ -208,7 +208,7 @@ function ReportSkeleton() {
       </div>
 
       {/* Medication breakdown */}
-      <div className="rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-5">
+      <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-5">
         <Skeleton className="h-4 w-40 mb-4" />
         <div className="space-y-5">
           {[1, 2, 3].map((i) => (
@@ -230,7 +230,7 @@ function ReportSkeleton() {
 
 function EmptyState() {
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-8 text-center">
+    <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-8 text-center">
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#6366F1]/10">
         <svg
           width="28"
@@ -351,7 +351,7 @@ export function ComplianceReport() {
     return (
       <div className="space-y-5">
         {periodTabs}
-        <div className="rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-6 text-center">
+        <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-6 text-center">
           <p className="text-sm text-[#ef4444] mb-3">{error}</p>
           <button
             onClick={() => fetchReport(period)}
@@ -383,7 +383,7 @@ export function ComplianceReport() {
       {periodTabs}
 
       {/* Hero adherence card */}
-      <div className="rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-6">
+      <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-6">
         <div className="flex flex-col items-center">
           <div className="relative">
             <ProgressRing percent={pct} />
@@ -414,7 +414,7 @@ export function ComplianceReport() {
                 height="16"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#f59e0b"
+                stroke="#FCD34D"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -452,7 +452,7 @@ export function ComplianceReport() {
                   {formatTime24(data.worst_time)}
                 </span>
               ) : (
-                <span className="text-sm font-semibold text-[#10b981]">
+                <span className="text-sm font-semibold text-[#6EE7B7]">
                   None
                 </span>
               )}
@@ -476,7 +476,7 @@ export function ComplianceReport() {
 
       {/* Per-medication breakdown */}
       {data.by_medication.length > 0 && (
-        <div className="rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-5">
+        <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-5">
           <h3 className="text-sm font-semibold text-[var(--text)] mb-4">
             By Medication
           </h3>
@@ -490,15 +490,15 @@ export function ComplianceReport() {
           {/* Legend */}
           <div className="flex items-center justify-center gap-4 mt-5 pt-4 border-t border-white/[0.06]">
             <span className="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)]">
-              <span className="inline-block w-2 h-2 rounded-full bg-[#10b981]" />
+              <span className="inline-block w-2 h-2 rounded-full bg-[#6EE7B7]" />
               Taken
             </span>
             <span className="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)]">
-              <span className="inline-block w-2 h-2 rounded-full bg-[#f59e0b]" />
+              <span className="inline-block w-2 h-2 rounded-full bg-[#FCD34D]" />
               Snoozed
             </span>
             <span className="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)]">
-              <span className="inline-block w-2 h-2 rounded-full bg-[#ef4444]" />
+              <span className="inline-block w-2 h-2 rounded-full bg-[#FCA5A5]" />
               Missed
             </span>
           </div>
@@ -507,24 +507,24 @@ export function ComplianceReport() {
 
       {/* Summary stats row */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <div className="rounded-xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-2.5 sm:p-3 text-center">
-          <p className="text-base sm:text-lg font-bold text-[#10b981] tabular-nums">
+        <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-2.5 sm:p-3 text-center">
+          <p className="text-base sm:text-lg font-bold text-[#6EE7B7] tabular-nums">
             {data.total_taken}
           </p>
           <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">
             Taken
           </p>
         </div>
-        <div className="rounded-xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-2.5 sm:p-3 text-center">
-          <p className="text-base sm:text-lg font-bold text-[#f59e0b] tabular-nums">
+        <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-2.5 sm:p-3 text-center">
+          <p className="text-base sm:text-lg font-bold text-[#FCD34D] tabular-nums">
             {data.total_snoozed}
           </p>
           <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">
             Snoozed
           </p>
         </div>
-        <div className="rounded-xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-2.5 sm:p-3 text-center">
-          <p className="text-base sm:text-lg font-bold text-[#ef4444] tabular-nums">
+        <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-2.5 sm:p-3 text-center">
+          <p className="text-base sm:text-lg font-bold text-[#FCA5A5] tabular-nums">
             {data.total_missed}
           </p>
           <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">

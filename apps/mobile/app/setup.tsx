@@ -194,58 +194,118 @@ export default function SetupScreen() {
 
   if (setupPhase === 'care-group') {
     return (
-      <SafeAreaView style={[styles.root, { backgroundColor: '#05060F' }]}>
-        <ScrollView contentContainerStyle={{ padding: 24, paddingTop: 48 }}>
-          <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700', marginBottom: 6 }}>
-            Set up your Care Group 👨‍👩‍👧
-          </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 24 }}>
-            Connect with your patient or caregiver to share health data.
-          </Text>
+      <View style={[styles.root, { paddingTop: insets.top }]}>
+        <LinearGradient
+          colors={['#05060F', '#0C0E1A', '#12143A', '#0C0E1A']}
+          locations={[0, 0.3, 0.6, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.glowOrb1} />
+        <View style={styles.glowOrb2} />
 
-          {cgStep === 'pick' && (
-            <>
-              <Pressable
-                onPress={() => setCgStep('create')}
-                style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 14, padding: 16, marginBottom: 10 }}
-              >
-                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>✨ Create a new Care Group</Text>
-                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 3 }}>Pick a name and password to share.</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setCgStep('join')}
-                style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 14, padding: 16, marginBottom: 10 }}
-              >
-                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>🔗 Join an existing Care Group</Text>
-                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 3 }}>Enter the name and password someone gave you.</Text>
-              </Pressable>
-              <Pressable onPress={() => setSetupPhase('wizard')} style={{ marginTop: 8, alignItems: 'center' }}>
-                <Text style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>Skip for now</Text>
-              </Pressable>
-            </>
-          )}
+        {/* Header */}
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} hitSlop={16} style={styles.closeButton}>
+            <BlurView intensity={20} tint="dark" style={styles.closeBlur}>
+              <Ionicons name="close" size={18} color="rgba(255,255,255,0.7)" />
+            </BlurView>
+          </Pressable>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerStep}>Set Up</Text>
+          </View>
+          <View style={{ width: 36 }} />
+        </View>
 
-          {(cgStep === 'create' || cgStep === 'join') && (
-            <>
-              <Pressable onPress={() => { setCgStep('pick'); setCgError('') }} style={{ marginBottom: 16 }}>
-                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>← Back</Text>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={[styles.content, { paddingTop: 40 }]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Icon */}
+            <Animated.View entering={FadeIn.duration(400).delay(100)} style={styles.emojiWrap}>
+              <Text style={styles.emoji}>👥</Text>
+            </Animated.View>
+
+            <Animated.View entering={FadeIn.duration(400).delay(200)}>
+              <Text style={styles.title}>
+                {cgStep === 'pick' ? 'Your Care Group' : cgStep === 'create' ? 'Create a Group' : 'Join a Group'}
+              </Text>
+              <Text style={styles.subtitle}>
+                {cgStep === 'pick'
+                  ? 'Share health updates and coordinate care with family and caregivers.'
+                  : cgStep === 'create'
+                  ? 'Choose a name and password to share with your group.'
+                  : 'Enter the name and password your group admin shared with you.'}
+              </Text>
+            </Animated.View>
+
+            <Animated.View entering={FadeIn.duration(400).delay(300)} style={styles.inputArea}>
+              {cgStep === 'pick' ? (
+                <View style={{ gap: 10 }}>
+                  <Pressable
+                    onPress={() => setCgStep('create')}
+                    style={styles.cgOptionCard}
+                  >
+                    <View style={styles.cgOptionIcon}>
+                      <Ionicons name="add-circle-outline" size={22} color="#A78BFA" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cgOptionTitle}>Create a new group</Text>
+                      <Text style={styles.cgOptionSub}>Pick a name and password to share</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setCgStep('join')}
+                    style={styles.cgOptionCard}
+                  >
+                    <View style={styles.cgOptionIcon}>
+                      <Ionicons name="link-outline" size={22} color="#67E8F9" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cgOptionTitle}>Join an existing group</Text>
+                      <Text style={styles.cgOptionSub}>Enter the name and password you were given</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
+                  </Pressable>
+                </View>
+              ) : (
+                <View style={{ gap: 10 }}>
+                  <Pressable onPress={() => { setCgStep('pick'); setCgError('') }} style={{ marginBottom: 4 }}>
+                    <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>← Back</Text>
+                  </Pressable>
+                  <TextInput
+                    value={cgName}
+                    onChangeText={setCgName}
+                    placeholder={cgStep === 'create' ? 'Group name (e.g. The Smith Family)' : 'Care Group name'}
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    style={styles.textInput}
+                  />
+                  <TextInput
+                    value={cgPassword}
+                    onChangeText={setCgPassword}
+                    placeholder="Group password"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    secureTextEntry
+                    style={styles.textInput}
+                  />
+                  {!!cgError && (
+                    <Text style={{ color: '#FCA5A5', fontSize: 12 }}>{cgError}</Text>
+                  )}
+                </View>
+              )}
+            </Animated.View>
+          </ScrollView>
+
+          {/* Bottom actions */}
+          <View style={[styles.bottom, { paddingBottom: insets.bottom + 12 }]}>
+            {cgStep === 'pick' ? (
+              <Pressable onPress={() => setSetupPhase('wizard')} style={styles.skipLink}>
+                <Text style={styles.skipText}>Skip for now</Text>
               </Pressable>
-              <TextInput
-                value={cgName}
-                onChangeText={setCgName}
-                placeholder={cgStep === 'create' ? 'Group name (e.g. The Smith Family)' : 'Care Group name'}
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 12, padding: 14, color: '#fff', fontSize: 14, marginBottom: 10 }}
-              />
-              <TextInput
-                value={cgPassword}
-                onChangeText={setCgPassword}
-                placeholder="Group password"
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                secureTextEntry
-                style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 12, padding: 14, color: '#fff', fontSize: 14, marginBottom: 10 }}
-              />
-              {!!cgError && <Text style={{ color: '#ef4444', fontSize: 12, marginBottom: 8 }}>{cgError}</Text>}
+            ) : (
               <Pressable
                 onPress={async () => {
                   if (!cgName.trim() || !cgPassword) { setCgError('Enter a name and password'); return }
@@ -269,16 +329,24 @@ export default function SetupScreen() {
                   }
                 }}
                 disabled={cgLoading}
-                style={{ backgroundColor: '#7c3aed', borderRadius: 12, padding: 14, alignItems: 'center', opacity: cgLoading ? 0.5 : 1 }}
+                style={({ pressed }) => [styles.nextButton, pressed && { transform: [{ scale: 0.97 }] }]}
               >
-                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
-                  {cgLoading ? 'Loading...' : cgStep === 'create' ? 'Create Group' : 'Join Group'}
-                </Text>
+                <LinearGradient
+                  colors={['#6366F1', '#818CF8']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[styles.nextGradient, { opacity: cgLoading ? 0.5 : 1 }]}
+                >
+                  <Text style={styles.nextText}>
+                    {cgLoading ? 'Loading...' : cgStep === 'create' ? 'Create Group' : 'Join Group'}
+                  </Text>
+                  {!cgLoading && <Ionicons name="arrow-forward" size={18} color="#fff" />}
+                </LinearGradient>
               </Pressable>
-            </>
-          )}
-        </ScrollView>
-      </SafeAreaView>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </View>
     )
   }
 
@@ -605,5 +673,34 @@ const styles = StyleSheet.create({
   skipText: {
     color: 'rgba(255,255,255,0.3)',
     fontSize: 13,
+  },
+  cgOptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 16,
+    padding: 16,
+  },
+  cgOptionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cgOptionTitle: {
+    color: '#EDE9FE',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  cgOptionSub: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 12,
+    lineHeight: 16,
   },
 })

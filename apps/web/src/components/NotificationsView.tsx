@@ -3,9 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useToast } from './ToastProvider'
+import { useCsrfToken } from './CsrfProvider'
 import type { Notification } from '@/lib/types'
-
-const csrfToken = () => document.cookie.match(/(^| )cc-csrf-token=([^;]+)/)?.[2] ?? ''
 
 function getChatPromptForType(type: string): string {
   switch (type) {
@@ -40,6 +39,10 @@ const TYPE_ICONS: Record<string, string> = {
   lab_result: '\u{1F52C}',
   claim_denied: '\u{274C}',
   prescription_ready: '\u{1F48A}',
+  cycle_nadir_warning: '\u{1F9EC}',
+  cycle_nadir_active: '\u{1F321}\u{FE0F}',
+  cycle_recovery: '\u{1F4C8}',
+  cycle_pre_infusion: '\u{1F489}',
 }
 
 const FILTER_TABS = [
@@ -49,6 +52,7 @@ const FILTER_TABS = [
   { key: 'appointments', label: 'Appointments', types: ['appointment_prep', 'appointment_today'] },
   { key: 'labs', label: 'Labs', types: ['abnormal_lab', 'lab_result'] },
   { key: 'insurance', label: 'Insurance', types: ['prior_auth_expiring', 'low_balance', 'claim_denied'] },
+  { key: 'treatment', label: 'Treatment', types: ['cycle_nadir_warning', 'cycle_nadir_active', 'cycle_recovery', 'cycle_pre_infusion'] },
 ]
 
 function timeAgo(dateStr: string) {
@@ -70,6 +74,7 @@ export function NotificationsView({ notifications: initial }: NotificationsViewP
   const [notifications, setNotifications] = useState(initial)
   const [activeFilter, setActiveFilter] = useState('all')
   const { showToast } = useToast()
+  const csrfToken = useCsrfToken()
 
   const filtered = notifications.filter((n) => {
     if (activeFilter === 'all') return true
@@ -81,10 +86,9 @@ export function NotificationsView({ notifications: initial }: NotificationsViewP
   const dismiss = async (id: string) => {
     const prev = notifications
     setNotifications((n) => n.filter((x) => x.id !== id))
-    const res = await fetch('/api/notifications/read', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken() },
-      body: JSON.stringify({ id }),
+    const res = await fetch(`/api/notifications/${id}`, {
+      method: 'DELETE',
+      headers: { 'x-csrf-token': csrfToken ?? '' },
     })
     if (!res.ok) {
       setNotifications(prev)
@@ -97,7 +101,7 @@ export function NotificationsView({ notifications: initial }: NotificationsViewP
     setNotifications((n) => n.map((x) => ({ ...x, isRead: true })))
     const res = await fetch('/api/notifications/read', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken() },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken ?? '' },
       body: JSON.stringify({ all: true }),
     })
     if (!res.ok) {

@@ -3,7 +3,7 @@ import {
   careProfiles, userSettings, medications, appointments,
   priorAuths, labResults, fsaHsa, notifications, pushSubscriptions,
 } from '@/lib/db/schema';
-import { eq, and, gte, desc, isNull } from 'drizzle-orm';
+import { eq, and, gte, desc, isNull, lt, asc } from 'drizzle-orm';
 import { sendPushNotification } from '@/lib/push';
 import { generateAppointmentPrepForUser } from '@/lib/appointment-prep';
 
@@ -25,7 +25,7 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
 
   // Enforce quiet hours — skip notification generation if inside quiet window
   if (settings?.quietHoursEnabled) {
-    const tz = 'UTC';
+    const tz = (settings.timezone as string | null) ?? 'America/New_York';
     let nowHour: number;
     let nowMinute: number;
     try {
@@ -157,7 +157,7 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
           userId,
           type: 'appointment_prep',
           title,
-          message: `${appt.doctorName || 'Appointment'} at ${time}${appt.location ? ` — ${appt.location}` : ''}. Your AI prep sheet is ready — open Visit Prep to see your personalized questions and what to bring.`,
+          message: `${appt.doctorName || 'Appointment'} at ${time}${appt.location ? ` — ${appt.location}` : ''}. Open Visit Prep to generate your personalized questions and what to bring.`,
         });
       }
     } else if (diff === 0) {
@@ -359,31 +359,52 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
 
 /**
  * Run notification generation for all users with care profiles.
+ * Uses cursor pagination to avoid loading all profiles into memory.
  */
 export async function generateNotificationsForAllUsers(): Promise<{ total: number; users: number }> {
-  const profiles = await db
-    .select({ userId: careProfiles.userId })
-    .from(careProfiles);
-
-  if (profiles.length === 0) return { total: 0, users: 0 };
-
+  const PAGE_SIZE = 100;
   const BATCH_SIZE = 10;
   let total = 0;
   let processed = 0;
+  let cursor: string | null = null;
 
-  for (let i = 0; i < profiles.length; i += BATCH_SIZE) {
-    const batch = profiles.slice(i, i + BATCH_SIZE);
-    const results = await Promise.allSettled(
-      batch.map((p) => generateNotificationsForUser(p.userId))
-    );
-    for (const result of results) {
-      processed++;
-      if (result.status === 'fulfilled') {
-        total += result.value;
-      } else {
-        console.error('[notifications] user generation failed:', result.reason);
+  // Cleanup: delete read notifications older than 30 days
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  await db
+    .delete(notifications)
+    .where(and(eq(notifications.isRead, true), lt(notifications.createdAt, thirtyDaysAgo)))
+    .catch((err) => console.error('[notifications] cleanup failed:', err));
+
+  while (true) {
+    const page: Array<{ userId: string; id: string }> = await db
+      .select({ userId: careProfiles.userId, id: careProfiles.id })
+      .from(careProfiles)
+      .where(cursor ? gte(careProfiles.id, cursor) : undefined)
+      .orderBy(asc(careProfiles.id))
+      .limit(PAGE_SIZE + 1);
+
+    if (page.length === 0) break;
+
+    const hasMore: boolean = page.length > PAGE_SIZE;
+    const batch = hasMore ? page.slice(0, PAGE_SIZE) : page;
+    cursor = hasMore ? page[PAGE_SIZE].id : null;
+
+    for (let i = 0; i < batch.length; i += BATCH_SIZE) {
+      const chunk = batch.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        chunk.map((p) => generateNotificationsForUser(p.userId))
+      );
+      for (const result of results) {
+        processed++;
+        if (result.status === 'fulfilled') {
+          total += result.value;
+        } else {
+          console.error('[notifications] user generation failed:', result.reason);
+        }
       }
     }
+
+    if (!cursor) break;
   }
 
   return { total, users: processed };

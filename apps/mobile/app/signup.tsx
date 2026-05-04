@@ -203,20 +203,20 @@ export default function SignupScreen() {
                       borderRadius: 12,
                       padding: 10,
                       alignItems: 'center',
-                      backgroundColor: selected ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.05)',
+                      backgroundColor: selected ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.05)',
                       borderWidth: selected ? 2 : 1,
-                      borderColor: selected ? '#7c3aed' : 'rgba(255,255,255,0.1)',
+                      borderColor: selected ? '#6366F1' : 'rgba(255,255,255,0.1)',
                     }}
                   >
                     <Text style={{ fontSize: 20, marginBottom: 4 }}>{r.emoji}</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: selected ? '#c4b5fd' : '#f1f5f9' }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: selected ? '#A78BFA' : '#f1f5f9' }}>
                       {r.label}
                     </Text>
                   </Pressable>
                 )
               })}
             </View>
-            {!!roleError && <Text style={{ color: '#ef4444', fontSize: 11, marginTop: 4 }}>{roleError}</Text>}
+            {!!roleError && <Text style={{ color: '#FCA5A5', fontSize: 11, marginTop: 4 }}>{roleError}</Text>}
           </View>
 
           {/* Social sign-up buttons */}

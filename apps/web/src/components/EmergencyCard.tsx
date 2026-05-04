@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { InfoTooltip } from './InfoTooltip';
 
@@ -31,6 +32,8 @@ interface EmergencyCardProps {
 }
 
 export function EmergencyCard({ patient, medications, doctors, insurance }: EmergencyCardProps) {
+  const [copied, setCopied] = useState(false)
+
   const isEmpty =
     !patient.allergies &&
     medications.length === 0 &&
@@ -50,11 +53,15 @@ export function EmergencyCard({ patient, medications, doctors, insurance }: Emer
       } catch (e) {
         if (e instanceof Error && e.name !== 'AbortError') {
           await navigator.clipboard.writeText(text).catch(() => null);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
         }
       }
     } else {
       try {
         await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
       } catch {
         // Clipboard API not available (HTTP context); no-op — user can screenshot
       }
@@ -93,12 +100,14 @@ export function EmergencyCard({ patient, medications, doctors, insurance }: Emer
         <div className="flex items-center gap-1.5">
           <button
             onClick={handleShare}
-            className="p-2 rounded-lg bg-white/[0.06] text-[var(--text-secondary)] hover:text-white transition-colors"
+            className="px-3 py-2 rounded-lg bg-white/[0.06] text-[var(--text-secondary)] hover:text-white transition-colors text-xs font-medium min-w-[64px]"
             title="Share or copy"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.935-2.186 2.25 2.25 0 0 0-3.935-2.186Z" />
-            </svg>
+            {copied ? 'Copied!' : (
+              <svg className="w-5 h-5 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.935-2.186 2.25 2.25 0 0 0-3.935-2.186Z" />
+              </svg>
+            )}
           </button>
           <InfoTooltip content="This link works without a login — safe to share with family or save to your phone." />
         </div>

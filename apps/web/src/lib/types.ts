@@ -193,10 +193,13 @@ export interface UserSettings {
   labAlerts: boolean | null
   claimUpdates: boolean | null
   aiPersonality: string | null
+  quietHoursEnabled?: boolean | null
   quietHoursStart?: string | null
   quietHoursEnd?: string | null
   emailNotifications?: boolean | null
   pushNotifications?: boolean | null
+  notificationPreferences?: unknown
+  timezone?: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
