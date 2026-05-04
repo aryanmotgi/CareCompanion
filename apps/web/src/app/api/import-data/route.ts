@@ -11,7 +11,7 @@ const importSchema = z.object({
     name: z.string(),
     dose: z.string().optional(),
     frequency: z.string().optional(),
-  })).optional(),
+  })).max(500).optional(),
   appointments: z.array(z.object({
     doctor_name: z.string(),
     specialty: z.string().optional(),
@@ -19,7 +19,7 @@ const importSchema = z.object({
     time: z.string().optional(),
     location: z.string().optional(),
     notes: z.string().optional(),
-  })).optional(),
+  })).max(500).optional(),
   lab_results: z.array(z.object({
     test_name: z.string(),
     value: z.string().optional(),
@@ -27,7 +27,7 @@ const importSchema = z.object({
     reference_range: z.string().optional(),
     is_abnormal: z.boolean().optional(),
     date_taken: z.string().optional(),
-  })).optional(),
+  })).max(500).optional(),
 })
 
 export async function POST(req: Request) {

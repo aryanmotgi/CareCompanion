@@ -1,9 +1,20 @@
 import { withSentryConfig } from '@sentry/nextjs'
 import withPWA from '@ducanh2912/next-pwa'
+import { readFileSync } from 'fs'
+import { resolve, dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const appVersion = (() => {
+  try { return readFileSync(resolve(__dirname, '../../VERSION'), 'utf8').trim() } catch { return '0.0.0' }
+})()
 
 /** @type {import('next').NextConfig} */
 
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_APP_VERSION: appVersion,
+  },
   async headers() {
     return [
       {

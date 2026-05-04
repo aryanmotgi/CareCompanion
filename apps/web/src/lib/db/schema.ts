@@ -57,6 +57,7 @@ export const careProfiles = pgTable('care_profiles', {
   state:   text('state'),
   zipCode: text('zip_code'),
   fieldOverrides: jsonb('field_overrides'),            // { cancerType: true, stage: true, ... } — FHIR sync skips true fields
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })
 
 // ── Conversations ─────────────────────────────────────────────────────────────
@@ -281,6 +282,7 @@ export const userSettings = pgTable('user_settings', {
   quietHoursEnabled: boolean('quiet_hours_enabled').default(false),
   quietHoursStart: text('quiet_hours_start'),
   quietHoursEnd: text('quiet_hours_end'),
+  timezone: text('timezone').default('America/New_York'),
   emailNotifications: boolean('email_notifications').default(false),
   pushNotifications: boolean('push_notifications').default(true),
   notificationPreferences: jsonb('notification_preferences').default({}),
