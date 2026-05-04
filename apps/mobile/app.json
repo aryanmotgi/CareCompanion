@@ -19,7 +19,8 @@
       "infoPlist": {
         "NSHealthShareUsageDescription": "CareCompanion reads your health records to help manage cancer care — including medications, lab results, and appointments from your care team.",
         "NSHealthUpdateUsageDescription": "CareCompanion saves care data to help you track your treatment progress.",
-        "NSCameraUsageDescription": "CareCompanion uses the camera to scan medical documents and prescriptions."
+        "NSCameraUsageDescription": "CareCompanion uses the camera to scan medical documents and prescriptions.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "entitlements": {
         "com.apple.developer.healthkit": true,
