@@ -25,8 +25,8 @@ const DEMO_DISPLAY_NAME = 'Demo User';
 
 const REGION = 'us-east-1';
 const USER_POOL_ID = 'us-east-1_ZLns0ABGw';
-const RESOURCE_ARN = 'arn:aws:rds:us-east-1:136455701483:cluster:database-3';
-const SECRET_ARN = 'arn:aws:secretsmanager:us-east-1:136455701483:secret:carecompanion/db-SHzJzs';
+const RESOURCE_ARN = process.env.RESOURCE_ARN ?? 'arn:aws:rds:us-east-1:136455701483:cluster:database-3';
+const SECRET_ARN = process.env.SECRET_ARN ?? 'arn:aws:secretsmanager:us-east-1:136455701483:secret:carecompanion/db-SHzJzs';
 const DB = 'carecompanion';
 
 const creds = {
