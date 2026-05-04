@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 const ACTIVE_GRADIENT = 'linear-gradient(135deg, #7C3AED, #6366F1)'
 
@@ -11,7 +11,7 @@ const TABS = [
     label: 'Home',
     href: '/dashboard',
     icon: (active: boolean) => (
-      <svg width="24" height="24" fill={active ? 'url(#homeGrad)' : 'none'} stroke={active ? 'none' : '#4B5568'} strokeWidth="1.75" viewBox="0 0 24 24">
+      <svg width="24" height="24" fill="none" stroke={active ? 'url(#homeGrad)' : '#4B5568'} strokeWidth="1.75" viewBox="0 0 24 24">
         <defs>
           <linearGradient id="homeGrad" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#A78BFA" />
@@ -103,6 +103,24 @@ const TABS = [
 export function BottomTabBar() {
   const pathname = usePathname()
   const [pressed, setPressed] = useState<string | null>(null)
+  const navRef = useRef<HTMLElement>(null)
+
+  // Measure actual nav height and expose as CSS variable so other components
+  // (e.g. ChatInterface) can size themselves without hardcoding pixel values.
+  useEffect(() => {
+    const nav = navRef.current
+    if (!nav) return
+    const update = () => {
+      document.documentElement.style.setProperty(
+        '--bottom-nav-height',
+        `${nav.getBoundingClientRect().height}px`
+      )
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(nav)
+    return () => ro.disconnect()
+  }, [])
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard'
@@ -117,11 +135,14 @@ export function BottomTabBar() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40"
+      ref={navRef}
+      className="fixed bottom-0 left-0 right-0"
       aria-label="Main navigation"
       data-tour="tab-nav"
       style={{
-        background: 'linear-gradient(to top, rgba(10,8,20,0.98) 70%, rgba(10,8,20,0.85) 100%)',
+        zIndex: 9000,
+        background: 'rgb(10,8,20)',
+        backgroundImage: 'linear-gradient(to top, rgba(10,8,20,0.98) 70%, rgba(10,8,20,0.85) 100%)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
         borderTop: '1px solid rgba(139,92,246,0.12)',

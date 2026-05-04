@@ -19,7 +19,7 @@
 import { db } from '@/lib/db'
 import { users, careProfiles } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
-import { encode } from 'next-auth/jwt'
+import { encode, decode } from 'next-auth/jwt'
 import { NextResponse } from 'next/server'
 import { rateLimit } from '@/lib/rate-limit'
 
@@ -33,10 +33,37 @@ const limiter = rateLimit({ interval: 60_000, maxRequests: 60 })
 // exists in production to unauthenticated callers.
 export async function GET(req: Request) {
   const e2eSecret = process.env.E2E_AUTH_SECRET
-  if (!e2eSecret || req.headers.get('x-e2e-secret') !== e2eSecret) {
-    return Response.json({ error: 'unauthorized' }, { status: 401 })
+
+  // Path 1: x-e2e-secret header → liveness probe (used by Check 1 and Check 3 curl)
+  if (e2eSecret && req.headers.get('x-e2e-secret') === e2eSecret) {
+    return Response.json({ ready: true, v: 19 })
   }
-  return Response.json({ ready: true, v: 19 })
+
+  // Path 2: valid session cookie → session validation probe (used by Check 3)
+  // Check 2 mints a session cookie; Check 3 sends it here to confirm it decodes.
+  const authSecret = process.env.AUTH_SECRET
+  if (authSecret) {
+    const isProd = process.env.NODE_ENV === 'production'
+    const cookieName = isProd ? '__Secure-authjs.session-token' : 'authjs.session-token'
+    const cookieHeader = req.headers.get('cookie') ?? ''
+    const rawToken = cookieHeader
+      .split(';')
+      .map(c => c.trim())
+      .find(c => c.startsWith(cookieName + '='))
+      ?.slice(cookieName.length + 1)
+    if (rawToken) {
+      try {
+        const decoded = await decode({ token: rawToken, secret: authSecret, salt: cookieName })
+        if (decoded?.sub) {
+          return Response.json({ ready: true, session: true, v: 19 })
+        }
+      } catch {
+        // malformed token — fall through to 401
+      }
+    }
+  }
+
+  return Response.json({ error: 'unauthorized' }, { status: 401 })
 }
 
 export async function POST(req: Request) {
