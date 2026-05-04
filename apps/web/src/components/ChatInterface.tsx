@@ -168,7 +168,7 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
   ];
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100dvh - 56px - var(--bottom-nav-height, 96px))' }}>
+    <div className="flex flex-col" style={{ height: 'calc(100dvh - var(--top-bar-height, 56px) - var(--bottom-nav-height, 96px))' }}>
       {/* Header bar — New Chat + Search buttons */}
       <div className="flex justify-end gap-2 px-4 sm:px-8 pt-3 pb-1">
         <button
