@@ -23,6 +23,7 @@ const TABS = [
   { name: 'index', label: 'Home', icon: 'home-outline', iconActive: 'home' },
   { name: 'chat', label: 'Chat', icon: 'chatbubble-outline', iconActive: 'chatbubble' },
   { name: 'care', label: 'Care', icon: 'heart-outline', iconActive: 'heart' },
+  { name: 'trials', label: 'Trials', icon: 'flask-outline', iconActive: 'flask' },
   { name: 'scan', label: 'Scan', icon: 'scan-outline', iconActive: 'scan' },
 ]
 
@@ -206,6 +207,7 @@ export default function TabLayout() {
         <Tabs.Screen name="index" />
         <Tabs.Screen name="chat" />
         <Tabs.Screen name="care" />
+        <Tabs.Screen name="trials" />
         <Tabs.Screen name="scan" />
         <Tabs.Screen name="settings" options={{ href: null }} />
       </Tabs>

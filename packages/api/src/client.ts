@@ -1,5 +1,32 @@
 import type { Medication, LabResult, Appointment, HealthKitRecord } from '@carecompanion/types'
 
+export type EligibilityGap = {
+  gapType: 'measurable' | 'conditional' | 'fixed'
+  description: string
+  verifiable: boolean
+  metric?: string | null
+  currentValue?: string | null
+  requiredValue?: string | null
+  unit?: string | null
+}
+
+export type TrialMatch = {
+  nctId: string
+  title: string
+  matchScore: number
+  matchCategory: string
+  matchReasons: string[]
+  disqualifyingFactors: string[]
+  uncertainFactors: string[]
+  eligibilityGaps: EligibilityGap[] | null
+  phase: string | null
+  enrollmentStatus: string | null
+  locations: Array<{ city?: string; state?: string; country?: string }> | null
+  trialUrl: string | null
+  stale: boolean
+  updatedAt?: string | null
+}
+
 interface ApiClientConfig {
   baseUrl: string
   getToken?: () => Promise<string | null>
@@ -119,6 +146,40 @@ export function createApiClient(config: ApiClientConfig) {
           body: JSON.stringify(data),
         }) as Promise<{ id: string }>,
     },
+    trials: {
+      getMatches: () =>
+        apiFetch(config, '/api/trials/matches', { method: 'GET' }) as Promise<{
+          matched: TrialMatch[]
+          close: TrialMatch[]
+        }>,
+      getSaved: () =>
+        apiFetch(config, '/api/trials/saved', { method: 'GET' }) as Promise<
+          Array<{ nctId: string; interestStatus: string }>
+        >,
+      runMatch: (csrfToken: string) =>
+        apiFetch(config, '/api/trials/match', {
+          method: 'POST',
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ matched: TrialMatch[]; close: TrialMatch[]; refreshedAt: string }>,
+      saveTrial: (nctId: string, csrfToken: string) =>
+        apiFetch(config, '/api/trials/save', {
+          method: 'POST',
+          body: JSON.stringify({ nctId }),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ ok: boolean }>,
+      updateSaved: (nctId: string, interestStatus: string, csrfToken: string) =>
+        apiFetch(config, `/api/trials/saved/${nctId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ interestStatus }),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ ok: boolean }>,
+    },
+    updateMe: (data: Record<string, unknown>, csrfToken: string) =>
+      apiFetch(config, '/api/me', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+        headers: { 'x-csrf-token': csrfToken },
+      }) as Promise<{ ok: boolean }>,
     me: () =>
       apiFetch(config, '/api/me', { method: 'GET' }) as Promise<{
         userId: string

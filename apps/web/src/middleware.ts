@@ -49,6 +49,14 @@ export default auth((req) => {
   // Next-Router-Prefetch: 1 is the documented signal for RSC prefetch requests.
   const isPrefetch = req.headers.get('Next-Router-Prefetch') === '1'
 
+  // Mobile app sends Authorization: Bearer <jwt> — NextAuth middleware can't verify
+  // the custom mobile JWT, so req.auth is null. Let API route handlers handle auth
+  // themselves via getAuthenticatedUser() which does support Bearer tokens.
+  const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization')
+  if (pathname.startsWith('/api/') && authHeader?.startsWith('Bearer ')) {
+    return NextResponse.next()
+  }
+
   const isPublic = PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + '/')
   )
