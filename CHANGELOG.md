@@ -4,7 +4,19 @@ All notable changes to CareCompanion will be documented in this file.
 
 ## [0.3.1.0] - 2026-05-03
 
-Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, Community Forum + Sharing Links full security audit, Cron Jobs / Production Monitor / Admin Routes security audit, auth UX polish, Clinical Trials full UX+a11y+security pass, full onboarding flow UX+a11y+bug-fix pass, and Care Groups onboarding deep UX audit.
+Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, Community Forum + Sharing Links full security audit, Cron Jobs / Production Monitor / Admin Routes security audit, auth UX polish, Clinical Trials full UX+a11y+security pass, full onboarding flow UX+a11y+bug-fix pass, Care Groups onboarding deep UX audit, and mobile app: Batch 1+2 features.
+
+### Added (Mobile App — Batch 1)
+- **Clinical Trials tab** — new 5th bottom tab (flask icon) with live search overlay, matched/close trial cards, expandable detail views, save/share/dismiss with optimistic updates, cancer type prompt, Reanimated pulsing loading animation
+- **Community tab** — anonymous caregiver forum with cancer-type filter pills, post list with pagination, new-post modal (cancer type + role selector, anonymous label preview), post detail with upvotes and inline replies
+- **Care Groups sub-tab** — 6th sub-tab in Care screen; create/join flow with password strength indicator, invite link sharing via native Share API, 3-second polling for partner join, celebration screen on connect
+
+### Added (Mobile App — Batch 2)
+- **Personalized empty states** — all 5 Care sub-tabs (Meds, Appts, Labs, Journal, Team) now show patient-name-aware empty states with warm copy and accent-tinted icons, matching web `SectionEmptyState` pattern
+- **First-run guided tour** — 3-step tooltip overlay pointing to Chat, Care, and Trials tabs; shows once after login via AsyncStorage gate; Reanimated fade transitions, animated step-width dots, tap-to-advance
+
+### Fixed (Mobile App)
+- **Mobile API auth** — NextAuth middleware now passes Bearer token requests through to route handlers, fixing all API calls on device (conversations, trials, community, care data)
 
 ### Fixed (Care Groups — Onboarding)
 - **QR polling timeout extended to 10 min** — previously stopped after 30s while the invite link stays valid for 7 days; partner who took longer than 30s to scan was never detected as joined

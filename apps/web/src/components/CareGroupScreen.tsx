@@ -224,7 +224,7 @@ export function CareGroupScreen({
           </button>
           <form
             className="flex flex-col gap-3"
-            onSubmit={e => { e.preventDefault(); step === 'create-form' ? handleCreate() : handleJoin() }}
+            onSubmit={e => { e.preventDefault(); if (step === 'create-form') { handleCreate(); } else { handleJoin(); } }}
           >
             <div
               className="rounded-xl px-4 pt-5 pb-3 focus-within:ring-1 focus-within:ring-violet-400/40 transition-shadow"
