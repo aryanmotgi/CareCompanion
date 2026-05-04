@@ -24,7 +24,7 @@ const TABS = [
   { name: 'chat', label: 'Chat', icon: 'chatbubble-outline', iconActive: 'chatbubble' },
   { name: 'care', label: 'Care', icon: 'heart-outline', iconActive: 'heart' },
   { name: 'trials', label: 'Trials', icon: 'flask-outline', iconActive: 'flask' },
-  { name: 'scan', label: 'Scan', icon: 'scan-outline', iconActive: 'scan' },
+  { name: 'community', label: 'Community', icon: 'people-outline', iconActive: 'people' },
 ]
 
 function TabIcon({ icon, iconActive, active }: { icon: string; iconActive: string; active: boolean }) {
@@ -208,7 +208,8 @@ export default function TabLayout() {
         <Tabs.Screen name="chat" />
         <Tabs.Screen name="care" />
         <Tabs.Screen name="trials" />
-        <Tabs.Screen name="scan" />
+        <Tabs.Screen name="community" />
+        <Tabs.Screen name="scan" options={{ href: null }} />
         <Tabs.Screen name="settings" options={{ href: null }} />
       </Tabs>
     </View>

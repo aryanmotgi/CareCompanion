@@ -146,6 +146,75 @@ export function createApiClient(config: ApiClientConfig) {
           body: JSON.stringify(data),
         }) as Promise<{ id: string }>,
     },
+    community: {
+      list: (params: { cancerType?: string; limit?: number; offset?: number } = {}) => {
+        const q = new URLSearchParams()
+        if (params.cancerType) q.set('cancerType', params.cancerType)
+        q.set('limit', String(params.limit ?? 20))
+        q.set('offset', String(params.offset ?? 0))
+        return apiFetch(config, `/api/community?${q.toString()}`, { method: 'GET' }) as Promise<{
+          ok: boolean
+          data: Array<{
+            id: string
+            cancerType: string
+            authorLabel: string
+            title: string
+            bodyPreview: string
+            upvotes: number
+            replyCount: number
+            isPinned: boolean
+            createdAt: string
+            isOwn: boolean
+          }>
+        }>
+      },
+      create: (
+        data: { title: string; body: string; cancerType: string; authorRole: 'caregiver' | 'patient' },
+        csrfToken: string,
+      ) =>
+        apiFetch(config, '/api/community', {
+          method: 'POST',
+          body: JSON.stringify(data),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ ok: boolean; data: { id: string; authorLabel: string } }>,
+      get: (id: string) =>
+        apiFetch(config, `/api/community/${id}`, { method: 'GET' }) as Promise<{
+          ok: boolean
+          data: {
+            post: {
+              id: string
+              authorLabel: string
+              cancerType: string
+              title: string
+              body: string
+              upvotes: number
+              replyCount: number
+              createdAt: string
+              hasUpvoted: boolean
+            }
+            replies: Array<{
+              id: string
+              authorLabel: string
+              body: string
+              upvotes: number
+              createdAt: string
+            }>
+            totalReplies: number
+          }
+        }>,
+      reply: (id: string, body: string, csrfToken: string) =>
+        apiFetch(config, `/api/community/${id}`, {
+          method: 'POST',
+          body: JSON.stringify({ body }),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ ok: boolean; data: { id: string; authorLabel: string; body: string; upvotes: number; createdAt: string } }>,
+      upvote: (id: string, csrfToken: string) =>
+        apiFetch(config, `/api/community/${id}/upvote`, {
+          method: 'POST',
+          body: JSON.stringify({ targetType: 'post' }),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ ok: boolean; data: { action: 'added' | 'removed' } }>,
+    },
     trials: {
       getMatches: () =>
         apiFetch(config, '/api/trials/matches', { method: 'GET' }) as Promise<{
