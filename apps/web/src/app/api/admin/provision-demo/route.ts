@@ -114,7 +114,6 @@ export async function POST(req: NextRequest) {
         UserAttributes: [
           { Name: 'email', Value: DEMO_EMAIL },
           { Name: 'email_verified', Value: 'true' },
-          { Name: 'custom:display_name', Value: DEMO_DISPLAY_NAME },
         ],
         TemporaryPassword: DEMO_PASSWORD + 'Tmp1!',
       }));
