@@ -28,7 +28,6 @@
       }
     },
     "testflight": {
-      "channel": "production",
       "bun": "1.3.11",
       "ios": {
         "simulator": false,
