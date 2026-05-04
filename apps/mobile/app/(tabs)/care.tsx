@@ -21,9 +21,10 @@ import { useStaggerEntrance } from '../../src/hooks/useStaggerEntrance'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { TabFadeWrapper } from './_layout'
 import { useProfile } from '../../src/context/ProfileContext'
+import { CareGroupTab } from '../../src/components/care/CareGroupTab'
 
 type MedStatus = 'taken' | 'upcoming' | 'overdue'
-type CareTab = 'meds' | 'appts' | 'labs' | 'journal' | 'team'
+type CareTab = 'meds' | 'appts' | 'labs' | 'journal' | 'team' | 'group'
 
 interface JournalEntry {
   id: string
@@ -59,6 +60,7 @@ const TAB_CONFIG: { key: CareTab; label: string }[] = [
   { key: 'labs', label: 'Labs' },
   { key: 'journal', label: 'Journal' },
   { key: 'team', label: 'Team' },
+  { key: 'group', label: 'Group' },
 ]
 
 interface Med {
@@ -605,6 +607,11 @@ export default function CareScreen() {
               )
             }
           </>
+        )
+
+      case 'group':
+        return (
+          <CareGroupTab apiClient={apiClient} csrfToken={csrfToken} />
         )
 
       default:

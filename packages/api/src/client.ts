@@ -146,6 +146,31 @@ export function createApiClient(config: ApiClientConfig) {
           body: JSON.stringify(data),
         }) as Promise<{ id: string }>,
     },
+    careGroup: {
+      create: (name: string, password: string, csrfToken: string) =>
+        apiFetch(config, '/api/care-group', {
+          method: 'POST',
+          body: JSON.stringify({ name, password }),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ id: string; name: string }>,
+      join: (name: string, password: string, csrfToken: string) =>
+        apiFetch(config, '/api/care-group/join', {
+          method: 'POST',
+          body: JSON.stringify({ name, password }),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ id: string; name: string }>,
+      invite: (careGroupId: string, csrfToken: string) =>
+        apiFetch(config, '/api/care-group/invite', {
+          method: 'POST',
+          body: JSON.stringify({ careGroupId }),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ token: string; url: string }>,
+      status: (careGroupId: string) =>
+        apiFetch(config, `/api/care-group/${careGroupId}/status`, { method: 'GET' }) as Promise<{
+          joined: boolean
+          name?: string
+        }>,
+    },
     community: {
       list: (params: { cancerType?: string; limit?: number; offset?: number } = {}) => {
         const q = new URLSearchParams()
