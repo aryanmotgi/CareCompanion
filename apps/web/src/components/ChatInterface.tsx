@@ -13,9 +13,10 @@ import { useVoiceInput } from '@/hooks/useVoiceInput';
 
 interface ChatInterfaceProps {
   initialMessages: UIMessage[];
+  patientName?: string;
 }
 
-export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
+export function ChatInterface({ initialMessages, patientName }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -118,6 +119,9 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
     'Explain my tumor markers',
     'What should I expect this chemo cycle?',
     'Help me understand my treatment plan',
+    'What does low hemoglobin mean?',
+    'Prep me for my oncology appointment',
+    'What side effects should I watch for?',
   ])
 
   const isAllowedPrompt = (prompt: string) =>
@@ -156,15 +160,15 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
     }
   };
 
-  const starterPrompts = [
-    { color: '#A78BFA', svgPath: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z', text: 'What should I expect this chemo cycle?', desc: 'Side effects, timing, what to watch for' },
-    { color: '#34D399', svgPath: 'M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5', text: 'Explain my tumor markers', desc: 'CEA, CA-125, PSA trends explained' },
-    { color: '#60A5FA', svgPath: 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5', text: 'Prep for oncology appointment', desc: 'Questions to ask your oncologist' },
-    { color: '#F472B6', svgPath: 'M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z', text: 'Help me understand my treatment plan', desc: 'Plain-language explanations' },
+  const quickPrompts = [
+    'Explain my tumor markers',
+    'What does low hemoglobin mean?',
+    'Prep me for my oncology appointment',
+    'What side effects should I watch for?',
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-56px-72px)]">
+    <div className="flex flex-col" style={{ height: 'calc(100dvh - 56px - 80px - env(safe-area-inset-bottom, 0px))' }}>
       {/* Header bar — New Chat + Search buttons */}
       <div className="flex justify-end gap-2 px-4 sm:px-8 pt-3 pb-1">
         <button
@@ -203,57 +207,44 @@ export function ChatInterface({ initialMessages }: ChatInterfaceProps) {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto chat-scroll px-4 sm:px-6 lg:px-8 py-6" role="log" aria-label="Conversation" aria-live="polite">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            {/* Hero icon with glow */}
+          <div className="flex flex-col items-center justify-center h-full text-center px-6">
+            {/* Logo */}
             <div style={{
-              width: 80,
-              height: 80,
-              borderRadius: 24,
+              width: 72,
+              height: 72,
+              borderRadius: 22,
               background: 'linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(167,139,250,0.15) 100%)',
               border: '1px solid rgba(167,139,250,0.2)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: 20,
+              marginBottom: 18,
               boxShadow: '0 0 40px rgba(139,92,246,0.2), inset 0 1px 0 rgba(255,255,255,0.08)',
               position: 'relative',
             }}>
-              <div style={{ position: 'absolute', inset: -12, borderRadius: 36, background: 'radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)', filter: 'blur(8px)' }} />
-              <svg style={{ width: 40, height: 40, color: '#A78BFA', position: 'relative' }} fill="none" viewBox="0 0 24 24" strokeWidth={1.25} stroke="currentColor">
+              <div style={{ position: 'absolute', inset: -12, borderRadius: 34, background: 'radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)', filter: 'blur(8px)' }} />
+              <svg style={{ width: 36, height: 36, color: '#A78BFA', position: 'relative' }} fill="none" viewBox="0 0 24 24" strokeWidth={1.25} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z" />
               </svg>
             </div>
-            <h2 className="font-display text-3xl font-bold text-[var(--text)] mb-2.5" style={{ letterSpacing: '-0.02em' }}>
-              Hi, I&apos;m here for you.
+            <h2 className="font-display text-2xl font-bold text-[var(--text)] mb-2" style={{ letterSpacing: '-0.02em' }}>
+              Ask anything about {patientName ? `${patientName}'s care` : 'your care'}
             </h2>
-            <p className="text-[var(--text-secondary)] mb-8 text-[15px] leading-relaxed">
-              Ask me anything — managing side effects, understanding your labs, or preparing for your next appointment.
+            <p className="text-[var(--text-secondary)] mb-8 text-[14px] leading-relaxed max-w-xs">
+              Medications, lab results, appointments, side effects — I know the full picture.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
-              {starterPrompts.map((prompt) => (
+            <div className="flex flex-wrap justify-center gap-2 max-w-sm">
+              {quickPrompts.map((prompt) => (
                 <button
-                  key={prompt.text}
-                  onClick={() => handleSend(prompt.text)}
-                  className="flex flex-col items-start gap-2.5 p-5 rounded-2xl text-left active:scale-[0.97] group"
+                  key={prompt}
+                  onClick={() => handleSend(prompt)}
+                  className="px-4 py-2 rounded-full text-[13px] font-medium text-[var(--text-secondary)] hover:text-[#A78BFA] active:scale-95 transition-all"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)',
-                    border: '1px solid rgba(255,255,255,0.07)',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={e => {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(167,139,250,0.1) 0%, rgba(99,102,241,0.06) 100%)'
-                    ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(167,139,250,0.25)'
-                  }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)'
-                    ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.07)'
+                    background: 'rgba(167,139,250,0.07)',
+                    border: '1px solid rgba(167,139,250,0.15)',
                   }}
                 >
-                  <div style={{ width: 36, height: 36, borderRadius: 12, background: prompt.color + '20', border: `1px solid ${prompt.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <svg style={{ width: 18, height: 18 }} fill="none" stroke={prompt.color} strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={prompt.svgPath} /></svg>
-                  </div>
-                  <span className="text-[13px] font-semibold text-[var(--text)] leading-snug group-hover:text-[#A78BFA] transition-colors">{prompt.text}</span>
-                  <span className="text-[11px] text-[var(--text-muted)] leading-tight">{prompt.desc}</span>
+                  {prompt}
                 </button>
               ))}
             </div>

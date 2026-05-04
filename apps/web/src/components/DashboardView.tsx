@@ -79,19 +79,9 @@ export function DashboardView({
   cancerType,
   cancerStage,
   treatmentPhase,
-  onboardingComplete = true,
   priorities,
-  hasEmergencyContact = false,
-  hasDocumentsScanned = false,
-  profileCreatedAt,
-  allergies,
-  conditions,
-  emergencyContactName,
-  emergencyContactPhone,
-  doctorCount = 0,
   profileId,
   shareHealthCard,
-  insightsContent,
 }: DashboardViewProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('today')
   const [expandedId, setExpandedId] = useState<string | null>(null)
