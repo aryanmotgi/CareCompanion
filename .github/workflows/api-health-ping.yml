@@ -44,8 +44,10 @@ jobs:
           echo "status=$HTTP_CODE" >> $GITHUB_OUTPUT
           echo "body=$BODY" >> $GITHUB_OUTPUT
 
-          # Extract session cookie for Check 3
-          COOKIE=$(grep -i 'set-cookie' /tmp/auth-headers.txt 2>/dev/null | head -1 | sed 's/set-cookie: //i' | cut -d';' -f1 || echo "")
+          # Extract session cookie for Check 3 — grep specifically for the session
+          # token, not head -1, because cc-csrf-token is set first and would be
+          # grabbed instead of the authjs session token.
+          COOKIE=$(grep -i 'set-cookie:.*authjs\.session-token' /tmp/auth-headers.txt 2>/dev/null | head -1 | sed 's/set-cookie: //i' | cut -d';' -f1 || echo "")
           echo "cookie=$COOKIE" >> $GITHUB_OUTPUT
 
           if [ "$HTTP_CODE" = "401" ] && [ "${{ steps.liveness.outputs.failed }}" = "false" ]; then
