@@ -28,24 +28,27 @@ export async function POST(req: Request) {
 
     console.log(`[delete-account] Starting account deletion for user ${user.id}`)
 
-    // Delete the user record (cascades to all related records via FK constraints)
-    await db.delete(users).where(eq(users.id, user.id))
-
+    // Audit before delete so the record exists if the write fails
     await logAudit({
       user_id: user.id,
       action: 'delete_account',
       ip_address: req.headers.get('x-forwarded-for') || undefined,
     })
 
-    // Delete from Cognito user pool so the user can't re-login and recreate their record
+    // Delete the user record (cascades to all related records via FK constraints)
+    await db.delete(users).where(eq(users.id, user.id))
+
+    // Delete from Cognito — use providerSub (cognito_sub column = Cognito UUID username)
+    // Falls back to email for users who signed up before cognito_sub was stored
+    const cognitoUsername = user.providerSub ?? user.email
     try {
       await cognitoClient.send(new AdminDeleteUserCommand({
         UserPoolId: process.env.COGNITO_USER_POOL_ID!,
-        Username: user.providerSub ?? undefined,
+        Username: cognitoUsername,
       }));
     } catch (cognitoErr) {
-      console.error('[delete-account] Cognito deletion failed (DB record already deleted):', cognitoErr);
-      // Continue — DB record is deleted, Cognito failure is non-blocking
+      console.error(`[delete-account] Cognito deletion failed for username "${cognitoUsername}" (DB record already deleted):`, cognitoErr);
+      // Non-blocking — DB record is gone, user cannot log back in via DB lookup
     }
 
     console.log(`[delete-account] Successfully deleted user ${user.id}`)

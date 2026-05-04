@@ -18,9 +18,9 @@ interface InsuranceViewProps {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  paid: { label: 'Approved', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-  pending: { label: 'Pending', color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
-  denied: { label: 'Denied', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  paid: { label: 'Approved', color: '#6EE7B7', bg: 'rgba(110,231,183,0.1)' },
+  pending: { label: 'Pending', color: '#FCD34D', bg: 'rgba(252,211,77,0.1)' },
+  denied: { label: 'Denied', color: '#FCA5A5', bg: 'rgba(252,165,165,0.1)' },
   in_review: { label: 'In Review', color: '#6366F1', bg: 'rgba(99,102,241,0.12)' },
 }
 
@@ -116,38 +116,43 @@ export function InsuranceView({
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <div className="rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-3.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#94a3b8] mb-1">Total Claims</p>
-          <p className="text-xl font-bold text-[#f1f5f9]">{stats.totalClaims}</p>
+        <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-3.5">
+          <p className="text-[10px] uppercase tracking-wider text-[#A5B4CF] mb-1">Total Claims</p>
+          <p className="text-xl font-bold text-[#EDE9FE]">{stats.totalClaims}</p>
         </div>
-        <div className="rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-3.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#94a3b8] mb-1">Approved</p>
-          <p className="text-xl font-bold text-[#10b981]">{formatCurrency(stats.approvedAmount)}</p>
+        <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-3.5">
+          <p className="text-[10px] uppercase tracking-wider text-[#A5B4CF] mb-1">Approved</p>
+          <p className="text-xl font-bold text-[#6EE7B7]">{formatCurrency(stats.approvedAmount)}</p>
         </div>
-        <div className="rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-3.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#94a3b8] mb-1">Pending</p>
-          <p className="text-xl font-bold text-[#eab308]">{stats.pendingCount}</p>
+        <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-3.5">
+          <p className="text-[10px] uppercase tracking-wider text-[#A5B4CF] mb-1">Pending</p>
+          <p className="text-xl font-bold text-[#FCD34D]">{stats.pendingCount}</p>
         </div>
-        <div className="rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-3.5">
-          <p className="text-[10px] uppercase tracking-wider text-[#94a3b8] mb-1">Denied</p>
-          <p className="text-xl font-bold text-[#ef4444]">{stats.deniedCount}</p>
+        <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-3.5">
+          <p className="text-[10px] uppercase tracking-wider text-[#A5B4CF] mb-1">Denied</p>
+          <p className="text-xl font-bold text-[#FCA5A5]">{stats.deniedCount}</p>
         </div>
       </div>
 
-      {/* Deductible & OOP progress (if insurance data exists) */}
+      {/* Deductible & OOP progress */}
       {(deductibleLimit || oopLimit) && (
-        <div className="rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] p-4 mb-5 space-y-3">
+        <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-4 mb-5 space-y-4">
           {deductibleLimit != null && deductibleLimit > 0 && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs text-[#94a3b8]">Deductible</span>
-                <span className="text-xs text-[#f1f5f9] font-medium">
-                  {formatCurrency(deductibleUsed)} / {formatCurrency(deductibleLimit)}
-                </span>
+                <span className="text-xs text-[#A5B4CF]">Deductible</span>
+                <div className="flex items-center gap-2">
+                  {deductiblePercent >= 100 && (
+                    <span className="text-[10px] font-semibold text-[#6EE7B7] px-1.5 py-0.5 rounded-md bg-[rgba(110,231,183,0.1)]">Met</span>
+                  )}
+                  <span className="text-xs text-[#EDE9FE] font-medium tabular-nums">
+                    {formatCurrency(deductibleUsed)} <span className="text-[#5B6785]">/ {formatCurrency(deductibleLimit)}</span>
+                  </span>
+                </div>
               </div>
-              <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden" role="progressbar" aria-valuenow={deductibleUsed} aria-valuemin={0} aria-valuemax={deductibleLimit ?? 0} aria-label="Deductible progress">
+              <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden" role="progressbar" aria-valuenow={deductibleUsed} aria-valuemin={0} aria-valuemax={deductibleLimit ?? 0} aria-label="Deductible progress">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#6366F1] to-[#A78BFA] transition-all duration-500"
+                  className="h-full rounded-full bg-[#6366F1] transition-all duration-500"
                   style={{ width: `${deductiblePercent}%` }}
                 />
               </div>
@@ -156,14 +161,19 @@ export function InsuranceView({
           {oopLimit != null && oopLimit > 0 && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs text-[#94a3b8]">Out-of-Pocket Max</span>
-                <span className="text-xs text-[#f1f5f9] font-medium">
-                  {formatCurrency(oopUsed)} / {formatCurrency(oopLimit)}
-                </span>
+                <span className="text-xs text-[#A5B4CF]">Out-of-Pocket Max</span>
+                <div className="flex items-center gap-2">
+                  {oopPercent >= 100 && (
+                    <span className="text-[10px] font-semibold text-[#FCD34D] px-1.5 py-0.5 rounded-md bg-[rgba(252,211,77,0.1)]">Met</span>
+                  )}
+                  <span className="text-xs text-[#EDE9FE] font-medium tabular-nums">
+                    {formatCurrency(oopUsed)} <span className="text-[#5B6785]">/ {formatCurrency(oopLimit)}</span>
+                  </span>
+                </div>
               </div>
-              <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden" role="progressbar" aria-valuenow={oopUsed} aria-valuemin={0} aria-valuemax={oopLimit ?? 0} aria-label="Out-of-pocket progress">
+              <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden" role="progressbar" aria-valuenow={oopUsed} aria-valuemin={0} aria-valuemax={oopLimit ?? 0} aria-label="Out-of-pocket progress">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#22d3ee] to-[#10b981] transition-all duration-500"
+                  className="h-full rounded-full bg-[#A78BFA] transition-all duration-500"
                   style={{ width: `${oopPercent}%` }}
                 />
               </div>
@@ -253,7 +263,7 @@ export function InsuranceView({
             return (
               <div
                 key={claim.id}
-                className="rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] overflow-hidden transition-all"
+                className="rounded-2xl bg-white/[0.04] border border-white/[0.08] overflow-hidden transition-all"
               >
                 {/* Collapsed row */}
                 <button
@@ -329,15 +339,15 @@ export function InsuranceView({
                         <p className="text-[10px] uppercase tracking-wider text-[#94a3b8] mb-0.5">
                           Insurance Paid
                         </p>
-                        <p className="text-xs font-medium text-[#10b981]">
+                        <p className="text-xs font-medium text-[#6EE7B7]">
                           {formatCurrency(claim.paidAmount)}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[#94a3b8] mb-0.5">
+                        <p className="text-[10px] uppercase tracking-wider text-[#A5B4CF] mb-0.5">
                           Your Responsibility
                         </p>
-                        <p className="text-xs font-medium text-[#eab308]">
+                        <p className="text-xs font-medium text-[#FCD34D]">
                           {formatCurrency(claim.patientResponsibility)}
                         </p>
                       </div>
@@ -353,11 +363,11 @@ export function InsuranceView({
 
                     {/* Denial reason */}
                     {claim.status === 'denied' && claim.denialReason && (
-                      <div className="rounded-xl bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.2)] px-3 py-2.5 mb-3">
-                        <p className="text-[10px] uppercase tracking-wider text-[#ef4444] font-semibold mb-0.5">
+                      <div className="rounded-xl bg-[rgba(252,165,165,0.06)] border border-[rgba(252,165,165,0.18)] px-3 py-2.5 mb-3">
+                        <p className="text-[10px] uppercase tracking-wider text-[#FCA5A5] font-semibold mb-0.5">
                           Denial Reason
                         </p>
-                        <p className="text-xs text-[#fca5a5]">{claim.denialReason}</p>
+                        <p className="text-xs text-[#fca5a5]/80">{claim.denialReason}</p>
                       </div>
                     )}
 

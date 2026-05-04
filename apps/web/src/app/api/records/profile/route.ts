@@ -59,6 +59,7 @@ export async function PATCH(req: Request) {
   if (fields.field_overrides !== undefined) allowed.fieldOverrides = fields.field_overrides;
 
   if (Object.keys(allowed).length === 0) return apiError('No valid fields to update', 400);
+  allowed.updatedAt = new Date();
 
   // Verify ownership
   let profileId = id;

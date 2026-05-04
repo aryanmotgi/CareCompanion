@@ -4,6 +4,9 @@ import { eq } from 'drizzle-orm';
 import { getAuthenticatedUser, parseBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { validateCsrf } from '@/lib/csrf';
+import { z } from 'zod';
+
+const AI_PERSONALITY = z.enum(['professional', 'friendly', 'concise']);
 
 // PATCH — update user settings fields
 export async function PATCH(req: Request) {
@@ -17,7 +20,11 @@ export async function PATCH(req: Request) {
   if (bodyError) return bodyError;
 
   const allowed: Record<string, unknown> = {};
-  if (body.ai_personality !== undefined) allowed.aiPersonality = body.ai_personality;
+  if (body.ai_personality !== undefined) {
+    const parsed = AI_PERSONALITY.safeParse(body.ai_personality);
+    if (!parsed.success) return apiError('Invalid ai_personality value', 400);
+    allowed.aiPersonality = parsed.data;
+  }
   if (body.notification_preferences !== undefined) allowed.notificationPreferences = body.notification_preferences;
   if (body.quiet_hours_enabled !== undefined) allowed.quietHoursEnabled = body.quiet_hours_enabled;
   if (body.quiet_hours_start !== undefined) allowed.quietHoursStart = body.quiet_hours_start;
@@ -28,6 +35,7 @@ export async function PATCH(req: Request) {
   if (body.claim_updates !== undefined) allowed.claimUpdates = body.claim_updates;
   if (body.email_notifications !== undefined) allowed.emailNotifications = body.email_notifications;
   if (body.push_notifications !== undefined) allowed.pushNotifications = body.push_notifications;
+  if (body.timezone !== undefined) allowed.timezone = body.timezone;
 
   if (Object.keys(allowed).length === 0) return apiError('No valid fields to update', 400);
 

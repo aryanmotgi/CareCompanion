@@ -3,9 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useToast } from './ToastProvider'
 import { useCsrfToken } from './CsrfProvider'
+import { SettingsRow } from '@/components/ui/SettingsRow'
 import type { UserSettings, NotificationCategoryPrefs } from '@/lib/types'
-
-// ─── Shared UI primitives (same as SettingsPage) ─────────────────────────────
 
 function Toggle({ enabled, onToggle, label }: { enabled: boolean; onToggle: () => void; label: string }) {
   return (
@@ -26,28 +25,6 @@ function Toggle({ enabled, onToggle, label }: { enabled: boolean; onToggle: () =
         />
       </div>
     </button>
-  )
-}
-
-function SettingsRow({
-  label,
-  description,
-  right,
-  indent,
-}: {
-  label: string
-  description?: string
-  right?: React.ReactNode
-  indent?: boolean
-}) {
-  return (
-    <div className={`px-4 py-3.5 flex items-center justify-between ${indent ? 'pl-8' : ''}`}>
-      <div className="flex-1 mr-3">
-        <div className="text-sm text-[#e2e8f0]">{label}</div>
-        {description && <div className="text-[11px] text-[#64748b] mt-0.5">{description}</div>}
-      </div>
-      {right}
-    </div>
   )
 }
 
@@ -162,20 +139,35 @@ export function NotificationPreferences({ settings, onSettingsChange }: Notifica
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const saveStatusTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Merge stored prefs with defaults (notification_preferences no longer stored in UserSettings)
-  const [prefs, setPrefs] = useState<Required<NotificationCategoryPrefs>>(() => ({
-    medications: { ...DEFAULT_PREFS.medications },
-    appointments: { ...DEFAULT_PREFS.appointments },
-    lab_results: { ...DEFAULT_PREFS.lab_results },
-    insurance: { ...DEFAULT_PREFS.insurance },
-    care_team: { ...DEFAULT_PREFS.care_team },
-  }))
+  // Initialize from persisted JSONB field, falling back to aggregate DB flags, then defaults
+  const [prefs, setPrefs] = useState<Required<NotificationCategoryPrefs>>(() => {
+    const stored = settings?.notificationPreferences as Partial<Required<NotificationCategoryPrefs>> | null
+    if (stored && Object.keys(stored).length > 0) {
+      return {
+        medications: { ...DEFAULT_PREFS.medications, ...stored.medications },
+        appointments: { ...DEFAULT_PREFS.appointments, ...stored.appointments },
+        lab_results: { ...DEFAULT_PREFS.lab_results, ...stored.lab_results },
+        insurance: { ...DEFAULT_PREFS.insurance, ...stored.insurance },
+        care_team: { ...DEFAULT_PREFS.care_team, ...stored.care_team },
+      }
+    }
+    // First load: seed from aggregate DB flags
+    return {
+      medications: { ...DEFAULT_PREFS.medications, enabled: settings?.refillReminders ?? true, refill_reminders: settings?.refillReminders ?? true },
+      appointments: { ...DEFAULT_PREFS.appointments, enabled: settings?.appointmentReminders ?? true },
+      lab_results: { ...DEFAULT_PREFS.lab_results, enabled: settings?.labAlerts ?? true },
+      insurance: { ...DEFAULT_PREFS.insurance, enabled: settings?.claimUpdates ?? true, claim_status: settings?.claimUpdates ?? true },
+      care_team: { ...DEFAULT_PREFS.care_team },
+    }
+  })
 
   const [quietHours, setQuietHours] = useState({
-    enabled: !!(settings?.quietHoursStart),
+    enabled: !!(settings?.quietHoursEnabled ?? settings?.quietHoursStart),
     start: settings?.quietHoursStart ?? '22:00',
     end: settings?.quietHoursEnd ?? '07:00',
   })
+
+  const [timezone, setTimezone] = useState(settings?.timezone ?? 'America/New_York')
 
   // Cleanup on unmount
   useEffect(() => {
@@ -187,7 +179,8 @@ export function NotificationPreferences({ settings, onSettingsChange }: Notifica
 
   const persistChanges = useCallback((
     updatedPrefs: Required<NotificationCategoryPrefs>,
-    updatedQuietHours: typeof quietHours
+    updatedQuietHours: typeof quietHours,
+    updatedTimezone?: string,
   ) => {
     if (!settings) return
 
@@ -196,14 +189,17 @@ export function NotificationPreferences({ settings, onSettingsChange }: Notifica
 
     debounceRef.current = setTimeout(async () => {
       try {
-        // API expects snake_case keys
         const payload = {
           quiet_hours_start: updatedQuietHours.enabled ? updatedQuietHours.start : null,
           quiet_hours_end: updatedQuietHours.enabled ? updatedQuietHours.end : null,
+          quiet_hours_enabled: updatedQuietHours.enabled,
+          timezone: updatedTimezone ?? timezone,
           refill_reminders: updatedPrefs.medications.refill_reminders && updatedPrefs.medications.enabled,
           appointment_reminders: updatedPrefs.appointments.enabled,
           lab_alerts: updatedPrefs.lab_results.enabled,
           claim_updates: updatedPrefs.insurance.claim_status && updatedPrefs.insurance.enabled,
+          // Persist full sub-toggle state as JSONB so refreshing restores exact state
+          notification_preferences: updatedPrefs,
         }
 
         const res = await fetch('/api/records/settings', {
@@ -288,6 +284,11 @@ export function NotificationPreferences({ settings, onSettingsChange }: Notifica
     const updated = { ...quietHours, [field]: value }
     setQuietHours(updated)
     persistChanges(prefs, updated)
+  }
+
+  const updateTimezone = (tz: string) => {
+    setTimezone(tz)
+    persistChanges(prefs, quietHours, tz)
   }
 
   return (
@@ -387,6 +388,23 @@ export function NotificationPreferences({ settings, onSettingsChange }: Notifica
                 className="bg-white/[0.06] border border-white/[0.08] rounded-lg px-3 py-1.5 text-[#e2e8f0] text-sm outline-none focus:border-[#A78BFA]/40 transition-colors [color-scheme:dark]"
                 aria-label="Quiet hours end time"
               />
+            </div>
+            <div className="px-4 py-3.5 flex items-center justify-between pl-8">
+              <div className="text-sm text-[#e2e8f0]">Your Timezone</div>
+              <select
+                value={timezone}
+                onChange={(e) => updateTimezone(e.target.value)}
+                className="bg-white/[0.06] border border-white/[0.08] rounded-lg px-2 py-1.5 text-[#e2e8f0] text-sm outline-none focus:border-[#A78BFA]/40 transition-colors"
+                aria-label="Timezone for quiet hours"
+              >
+                <option value="America/New_York">Eastern (ET)</option>
+                <option value="America/Chicago">Central (CT)</option>
+                <option value="America/Denver">Mountain (MT)</option>
+                <option value="America/Los_Angeles">Pacific (PT)</option>
+                <option value="America/Anchorage">Alaska (AKT)</option>
+                <option value="Pacific/Honolulu">Hawaii (HT)</option>
+                <option value="UTC">UTC</option>
+              </select>
             </div>
           </>
         )}

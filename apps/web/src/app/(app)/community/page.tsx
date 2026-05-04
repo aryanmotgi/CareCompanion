@@ -173,8 +173,7 @@ export default function CommunityPage() {
         </div>
         <button
           onClick={() => setShowNewPost(true)}
-          className="text-white text-sm px-4 py-2 rounded-xl font-semibold transition-opacity hover:opacity-90"
-          style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+          className="text-white text-sm px-4 py-2 rounded-xl font-semibold bg-[#6366F1] hover:bg-[#818CF8] transition-colors"
         >
           + Post
         </button>
@@ -184,8 +183,7 @@ export default function CommunityPage() {
       {showNewPost && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div
-            className="rounded-2xl w-full max-w-lg p-6 shadow-2xl"
-            style={{ background: '#0f0f17', border: '1px solid rgba(255,255,255,0.08)' }}
+            className="rounded-2xl w-full max-w-lg p-6 shadow-2xl bg-[#10112B] border border-white/[0.08]"
           >
             <h2 className="font-semibold text-white mb-4">Share with the community</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -216,21 +214,11 @@ export default function CommunityPage() {
                       key={role}
                       type="button"
                       onClick={() => setForm({ ...form, authorRole: role })}
-                      className="flex-1 py-2 rounded-lg text-sm transition-all font-medium"
-                      style={
+                      className={`flex-1 py-2 rounded-lg text-sm transition-all font-medium ${
                         form.authorRole === role
-                          ? {
-                              border: '2px solid #7c3aed',
-                              background: 'rgba(124,58,237,0.15)',
-                              color: '#c4b5fd',
-                              boxShadow: '0 0 0 2px rgba(124,58,237,0.2)',
-                            }
-                          : {
-                              border: '1px solid rgba(255,255,255,0.12)',
-                              background: 'rgba(255,255,255,0.06)',
-                              color: 'rgba(255,255,255,0.5)',
-                            }
-                      }
+                          ? 'border-2 border-[#6366F1] bg-[rgba(99,102,241,0.12)] text-[#A78BFA]'
+                          : 'border border-white/[0.12] bg-white/[0.06] text-white/50'
+                      }`}
                     >
                       {role.charAt(0).toUpperCase() + role.slice(1)}
                     </button>
@@ -247,17 +235,12 @@ export default function CommunityPage() {
                     setForm({ ...form, title: e.target.value });
                     setTitleError(null);
                   }}
-                  className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 placeholder:text-white/20"
-                  style={{
-                    background: 'rgba(255,255,255,0.06)',
-                    border: titleError ? '1px solid #f87171' : '1px solid rgba(255,255,255,0.12)',
-                    color: 'rgba(255,255,255,0.9)',
-                  }}
+                  className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1]/50 placeholder:text-white/20 bg-white/[0.06] text-white/90 ${titleError ? 'border border-[#FCA5A5]/60' : 'border border-white/[0.12]'}`}
                   maxLength={200}
                   required
                 />
                 {titleError && (
-                  <p className="text-xs mt-1" style={{ color: '#f87171' }}>{titleError}</p>
+                  <p className="text-xs mt-1 text-[#FCA5A5]">{titleError}</p>
                 )}
               </div>
               <div>
@@ -270,26 +253,21 @@ export default function CommunityPage() {
                     setBodyError(null);
                   }}
                   rows={4}
-                  className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none placeholder:text-white/20"
-                  style={{
-                    background: 'rgba(255,255,255,0.06)',
-                    border: bodyError ? '1px solid #f87171' : '1px solid rgba(255,255,255,0.12)',
-                    color: 'rgba(255,255,255,0.9)',
-                  }}
+                  className={`w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1]/50 resize-none placeholder:text-white/20 bg-white/[0.06] text-white/90 ${bodyError ? 'border border-[#FCA5A5]/60' : 'border border-white/[0.12]'}`}
                   maxLength={2000}
                   required
                 />
                 <div className="flex items-center justify-between mt-0.5">
                   {bodyError
-                    ? <p className="text-xs" style={{ color: '#f87171' }}>{bodyError}</p>
+                    ? <p className="text-xs text-[#FCA5A5]">{bodyError}</p>
                     : <span />
                   }
-                  <p className="text-xs text-right" style={{ color: 'rgba(255,255,255,0.35)' }}>{form.body.length}/2000</p>
+                  <p className="text-xs text-right text-white/35">{form.body.length}/2000</p>
                 </div>
               </div>
               <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Your identity is never revealed. Your post appears as &ldquo;{form.cancerType ? `${form.cancerType.charAt(0).toUpperCase() + form.cancerType.slice(1)} ${form.authorRole.charAt(0).toUpperCase() + form.authorRole.slice(1)}` : 'Anonymous'}&rdquo;.</p>
               {submitError && (
-                <p className="text-sm rounded-lg px-3 py-2" style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', color: '#f87171' }}>
+                <p className="text-sm rounded-lg px-3 py-2 bg-[rgba(252,165,165,0.06)] border border-[rgba(252,165,165,0.2)] text-[#FCA5A5]">
                   {submitError}
                 </p>
               )}
@@ -314,8 +292,7 @@ export default function CommunityPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 hover:opacity-90 transition-opacity"
-                  style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+                  className="flex-1 text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 bg-[#6366F1] hover:bg-[#818CF8] transition-colors"
                 >
                   {submitting ? 'Posting…' : 'Post anonymously'}
                 </button>
@@ -331,20 +308,11 @@ export default function CommunityPage() {
           <button
             key={ct.value}
             onClick={() => setFilter(ct.value)}
-            className="shrink-0 text-xs px-3 py-1.5 rounded-full transition-all"
-            style={
+            className={`shrink-0 text-xs px-3 py-1.5 rounded-full transition-all ${
               filter === ct.value
-                ? {
-                    background: '#7c3aed',
-                    border: '1px solid #7c3aed',
-                    color: '#ffffff',
-                  }
-                : {
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    color: 'rgba(255,255,255,0.5)',
-                  }
-            }
+                ? 'bg-[#6366F1] border border-[#6366F1] text-white'
+                : 'bg-white/[0.06] border border-white/[0.12] text-white/50 hover:text-white/70'
+            }`}
           >
             {ct.label}
           </button>
@@ -353,10 +321,7 @@ export default function CommunityPage() {
 
       {/* List-level error */}
       {error && !loading && (
-        <div
-          className="rounded-xl px-4 py-3 mb-4 text-sm"
-          style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', color: '#f87171' }}
-        >
+        <div className="rounded-xl px-4 py-3 mb-4 text-sm bg-[rgba(252,165,165,0.06)] border border-[rgba(252,165,165,0.2)] text-[#FCA5A5]">
           {error}
         </div>
       )}
@@ -388,8 +353,7 @@ export default function CommunityPage() {
           </p>
           <button
             onClick={() => setShowNewPost(true)}
-            className="text-sm font-semibold px-6 py-3 rounded-xl"
-            style={{ background: 'linear-gradient(135deg, #6366F1, #A78BFA)', color: 'white' }}
+            className="text-sm font-semibold px-6 py-3 rounded-xl bg-[#6366F1] hover:bg-[#818CF8] text-white transition-colors"
           >
             Write a post
           </button>
@@ -401,26 +365,11 @@ export default function CommunityPage() {
               <Link
                 key={post.id}
                 href={`/community/${post.id}`}
-                className="block rounded-xl p-4 transition-all group"
-                style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)';
-                  (e.currentTarget as HTMLElement).style.borderColor = 'rgba(124,58,237,0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)';
-                  (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)';
-                }}
+                className="block rounded-xl p-4 transition-all group bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] hover:border-[#6366F1]/35"
               >
                 {post.isPinned && (
-                  <span
-                    className="text-xs font-medium mb-1 block px-2 py-0.5 rounded-full w-fit"
-                    style={{ background: 'rgba(124,58,237,0.3)', color: '#c4b5fd' }}
-                  >
-                    📌 Pinned
+                  <span className="text-xs font-medium mb-1 block px-2 py-0.5 rounded-full w-fit bg-[rgba(99,102,241,0.18)] text-[#A78BFA]">
+                    Pinned
                   </span>
                 )}
                 <h3

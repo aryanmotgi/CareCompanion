@@ -47,19 +47,24 @@ export function useOnboardingState(): OnboardingState {
       return
     }
     try {
-      // Fetch data to determine step completion
-      const [medsResult] = await Promise.all([
+      const [medsResult, careTeamResult, convsResult] = await Promise.all([
         apiClient.medications.list(profile.careProfileId).catch(() => []),
+        apiClient.careTeam.list().catch(() => ({ members: [], invites: [], role: null })),
+        apiClient.conversations.list().catch(() => ({ ok: false, data: [] })),
       ])
 
       const medsArray = Array.isArray(medsResult) ? medsResult : []
+      const members = careTeamResult?.members ?? []
+      const conversations = convsResult?.data ?? []
+      const hasMessages = conversations.some((c) => (c.messageCount ?? 0) > 0)
+      // Care team has more than just the user themselves
+      const hasCareTeamMember = members.length > 1
 
       setExtraData({
         hasMedications: medsArray.length > 0,
-        // These are optimistic checks — if we can't verify, assume not done
         hasInsuranceDoc: false,
-        hasCareTeamMember: false,
-        hasMessages: false,
+        hasCareTeamMember,
+        hasMessages,
         hasHealthSummary: false,
       })
     } catch {

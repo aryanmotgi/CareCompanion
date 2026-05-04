@@ -159,10 +159,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
   if (loadError || !post) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8">
-        <div
-          className="rounded-xl px-4 py-4 mb-5 text-sm"
-          style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', color: '#f87171' }}
-        >
+        <div className="rounded-xl px-4 py-4 mb-5 text-sm bg-[rgba(252,165,165,0.06)] border border-[rgba(252,165,165,0.2)] text-[#FCA5A5]">
           {loadError ?? 'This post could not be found.'}
         </div>
         <Link
@@ -212,21 +209,11 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           <button
             onClick={handleUpvote}
             disabled={upvoting}
-            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-all"
-            style={
+            className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-all ${
               post.hasUpvoted
-                ? {
-                    border: '2px solid #7c3aed',
-                    background: 'rgba(124,58,237,0.15)',
-                    color: '#c4b5fd',
-                    boxShadow: '0 0 0 2px rgba(124,58,237,0.2)',
-                  }
-                : {
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    background: 'rgba(255,255,255,0.06)',
-                    color: 'rgba(255,255,255,0.5)',
-                  }
-            }
+                ? 'border-2 border-[#6366F1] bg-[rgba(99,102,241,0.12)] text-[#A78BFA]'
+                : 'border border-white/[0.12] bg-white/[0.06] text-white/50 hover:text-white/70'
+            }`}
           >
             ↑ {post.upvotes} {post.upvotes === 1 ? 'upvote' : 'upvotes'}
           </button>
@@ -246,19 +233,14 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
           }}
           placeholder="Share your experience or support…"
           rows={3}
-          className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none placeholder:text-white/20"
-          style={{
-            background: 'rgba(255,255,255,0.06)',
-            border: replyError ? '1px solid #f87171' : '1px solid rgba(255,255,255,0.12)',
-            color: 'rgba(255,255,255,0.9)',
-          }}
+          className={`w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1]/50 resize-none placeholder:text-white/20 bg-white/[0.06] text-white/90 ${replyError ? 'border border-[#FCA5A5]/60' : 'border border-white/[0.12]'}`}
           maxLength={REPLY_MAX}
         />
         <div className="flex items-start justify-between mt-1.5 gap-3">
           <div className="flex flex-col gap-1 min-w-0">
             <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>Your reply is anonymous</p>
             {replyError && (
-              <p className="text-xs" style={{ color: '#f87171' }}>{replyError}</p>
+              <p className="text-xs text-[#FCA5A5]">{replyError}</p>
             )}
           </div>
           <div className="flex items-center gap-3 flex-shrink-0">
@@ -268,8 +250,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
             <button
               type="submit"
               disabled={replyTooShort || submitting}
-              className="text-white text-sm px-4 py-2 rounded-lg font-semibold disabled:opacity-50 hover:opacity-90 transition-opacity"
-              style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+              className="text-white text-sm px-4 py-2 rounded-lg font-semibold disabled:opacity-50 bg-[#6366F1] hover:bg-[#818CF8] transition-colors"
             >
               {submitting ? 'Posting…' : 'Reply'}
             </button>
