@@ -30,12 +30,6 @@
     },
     "plugins": [
       "expo-router",
-      [
-        "expo-updates",
-        {
-          "handleMissingNativeModule": true
-        }
-      ],
       "expo-secure-store",
       "expo-apple-authentication",
       [
@@ -73,7 +67,8 @@
     },
     "owner": "aryan1008",
     "updates": {
-      "url": "https://u.expo.dev/845c42cd-33e6-42d0-8189-59131144999f"
+      "url": "https://u.expo.dev/845c42cd-33e6-42d0-8189-59131144999f",
+      "enabled": false
     }
   }
 }
