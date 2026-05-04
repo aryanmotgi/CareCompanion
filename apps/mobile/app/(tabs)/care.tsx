@@ -14,6 +14,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as SecureStore from 'expo-secure-store'
+import { useRouter } from 'expo-router'
 import { useTheme } from '../../src/theme'
 import { GlassCard } from '../../src/components/GlassCard'
 import { hapticMedTaken, hapticAbnormalLabEntrance } from '../../src/utils/haptics'
@@ -408,6 +409,7 @@ export default function CareScreen() {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
   const { profile, csrfToken, apiClient } = useProfile()
+  const router = useRouter()
   const [tab, setTab] = useState<CareTab>('meds')
   const [meds, setMeds] = useState<Med[]>([])
   const [labs, setLabs] = useState<Lab[]>([])
@@ -551,18 +553,35 @@ export default function CareScreen() {
           )
 
       case 'appts':
-        return appointments.length > 0
-          ? appointments.map((a: any, i: number) => <AppointmentRow key={a.id || i} appointment={a} />)
-          : (
-            <GlassCard>
-              <CareEmptyState
-                iconName="calendar-outline"
-                heading="{name} has no appointments yet."
-                body="Add the next visit and we'll help you prepare the right questions together."
-                patientName={patientLabel}
-              />
-            </GlassCard>
-          )
+        return (
+          <>
+            <Pressable
+              style={styles.apptPrepBanner}
+              onPress={() => router.push('/visit-prep')}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Visit Prep</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, marginTop: 1 }}>
+                  AI-generated prep sheets for upcoming visits
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.7)" />
+            </Pressable>
+            {appointments.length > 0
+              ? appointments.map((a: any, i: number) => <AppointmentRow key={a.id || i} appointment={a} />)
+              : (
+                <GlassCard>
+                  <CareEmptyState
+                    iconName="calendar-outline"
+                    heading="{name} has no appointments yet."
+                    body="Add the next visit and we'll help you prepare the right questions together."
+                    patientName={patientLabel}
+                  />
+                </GlassCard>
+              )
+            }
+          </>
+        )
 
       case 'labs':
         return labs.length > 0
@@ -709,6 +728,15 @@ const styles = StyleSheet.create({
   labValue: { fontSize: 18, fontWeight: '700' },
   labDate: { fontSize: 12, marginTop: 2 },
   apptCard: { marginBottom: 10 },
+  apptPrepBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#6366F1',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    marginBottom: 10,
+  },
   apptRow: { flexDirection: 'row', alignItems: 'flex-start' },
   apptDoctor: { fontSize: 15, fontWeight: '600' },
   apptSpecialty: { fontSize: 13, fontWeight: '500', marginTop: 2 },
