@@ -35,6 +35,8 @@ interface DashboardViewProps {
   emergencyContactPhone?: string | null
   doctorCount?: number
   profileId?: string | null
+  shareHealthCard?: React.ReactNode
+  insightsContent?: React.ReactNode
 }
 
 const PHASE_LABELS: Record<string, { label: string; color: string }> = {
@@ -63,6 +65,14 @@ const TOUR_STEPS = [
   },
 ]
 
+type TabKey = 'today' | 'care' | 'insights'
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'today', label: 'Today' },
+  { key: 'care', label: 'Care' },
+  { key: 'insights', label: 'Insights' },
+]
+
 export function DashboardView({
   patientName,
   userName,
@@ -84,7 +94,10 @@ export function DashboardView({
   emergencyContactPhone,
   doctorCount = 0,
   profileId,
+  shareHealthCard,
+  insightsContent,
 }: DashboardViewProps) {
+  const [activeTab, setActiveTab] = useState<TabKey>('today')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showTourTooltip, setShowTourTooltip] = useState(false)
   const [weeklyUpdate, setWeeklyUpdate] = useState<{
@@ -119,7 +132,6 @@ export function DashboardView({
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
-  // Compute next appointment for MorningSummaryCard
   const nextAppointment = useMemo(() => {
     const now = new Date()
     const upcoming = appointments
@@ -142,10 +154,8 @@ export function DashboardView({
     return { doctor: appt.doctorName || 'Doctor', when }
   }, [appointments])
 
-  // Count today's scheduled medications
   const todayMedCount = medications.filter(m => !m.deletedAt).length
 
-  // Map priority keys to card ID prefixes for matching
   const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
     side_effects: 'symptom',
     medications: 'med-',
@@ -178,7 +188,6 @@ export function DashboardView({
 
     const now = new Date()
 
-    // Medication refill cards
     medications.forEach((med) => {
       if (!med.refillDate) return
       const refillDate = new Date(med.refillDate)
@@ -223,7 +232,6 @@ export function DashboardView({
       }
     })
 
-    // Appointment cards (next 7 days, future only)
     appointments.forEach((appt) => {
       if (!appt.dateTime) return
       const apptDate = new Date(appt.dateTime)
@@ -275,7 +283,6 @@ export function DashboardView({
       }
     })
 
-    // Abnormal lab alerts
     labResults.forEach((lab) => {
       if (!lab.isAbnormal) return
       const parsed = parseLabValue(lab.value, lab.referenceRange || '')
@@ -329,7 +336,6 @@ export function DashboardView({
       })
     })
 
-    // Denied claims
     claims.forEach((claim) => {
       if (claim.status !== 'denied') return
       result.push({
@@ -374,28 +380,11 @@ export function DashboardView({
       })
     })
 
-    // Quick-ask card (always last)
-    result.push({
-      id: 'quick-ask',
-      variant: 'quick-ask',
-      label: 'ASK ANYTHING',
-      title: 'Ask CareCompanion',
-      subtitle: 'Get help understanding your care',
-      priority: 99,
-      action: 'Start a conversation',
-      href: '/chat',
-    })
-
-    // Mark cards that match user priorities
     result.forEach(card => {
       card.isPriority = isCardPriority(card.id)
     })
 
     result.sort((a, b) => {
-      // Quick-ask always last
-      if (a.variant === 'quick-ask') return 1
-      if (b.variant === 'quick-ask') return -1
-      // Boost cards matching user priorities
       const aBoost = a.isPriority ? -100 : 0
       const bBoost = b.isPriority ? -100 : 0
       return (a.priority + aBoost) - (b.priority + bBoost)
@@ -404,9 +393,18 @@ export function DashboardView({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [medications, appointments, labResults, claims, priorities])
 
-  const actionCount = cards.filter((c) => c.variant !== 'quick-ask').length
+  // Today tab: urgent + alert only
+  const todayCards = useMemo(
+    () => cards.filter(c => c.variant === 'urgent' || c.variant === 'alert'),
+    [cards]
+  )
 
-  // Personalized quick-ask prompts based on user priorities
+  // Care tab: upcoming appointments
+  const upcomingCards = useMemo(
+    () => cards.filter(c => c.variant === 'upcoming'),
+    [cards]
+  )
+
   const quickAskPrompts = useMemo(() => {
     const PRIORITY_PROMPTS: Record<string, string> = {
       side_effects: "Log today's side effects",
@@ -424,7 +422,6 @@ export function DashboardView({
 
     if (!priorities || priorities.length === 0) return DEFAULT_PROMPTS
 
-    // Build prompts: priority-matched first, then fill with defaults
     const matched = priorities
       .map(p => PRIORITY_PROMPTS[p])
       .filter(Boolean)
@@ -436,320 +433,318 @@ export function DashboardView({
     <>
     <GuidedTour steps={TOUR_STEPS} patientName={patientName} />
     <div className="px-4 sm:px-5 py-5 sm:py-6">
-      <MorningSummaryCard
-        medicationCount={todayMedCount}
-        nextAppointment={nextAppointment}
-      />
-      <div className="mb-1 text-[var(--text-secondary)] text-xs tracking-wider">{greeting}</div>
-      <h2 className="text-fluid-xl font-bold mb-2 animate-greeting">
-        {actionCount > 0 ? (
-          <>
-            <AnimatedNumber value={actionCount} /> {actionCount === 1 ? 'item needs' : 'items need'} attention
-          </>
-        ) : (
-          `${(userName || 'there').split(' ')[0]}'s care is up to date.`
-        )}
-      </h2>
-      {(cancerType || treatmentPhase) && (
-        <div className="flex flex-wrap items-center gap-2 mb-4 sm:mb-5">
-          {cancerType && (
-            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[#A78BFA]/10 text-[#A78BFA]">
-              {cancerType}{cancerStage && cancerStage !== 'Unsure' ? ` — Stage ${cancerStage}` : ''}
-            </span>
-          )}
-          {treatmentPhase && PHASE_LABELS[treatmentPhase] && (
-            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${PHASE_LABELS[treatmentPhase].color}`}>
-              {PHASE_LABELS[treatmentPhase].label}
-            </span>
-          )}
-        </div>
-      )}
-      {!cancerType && !treatmentPhase && <div className="mb-3 sm:mb-4" />}
 
-      {actionCount === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center" data-tour="dashboard-cards">
-          <div className="w-16 h-16 rounded-full bg-[#10b981]/10 flex items-center justify-center mb-4">
-            <svg width="32" height="32" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </div>
-          {onboardingComplete && (medications.length > 0 || appointments.length > 0) ? (
-            <>
-              <div className="text-[var(--text)] text-lg font-semibold mb-1">You&apos;re all caught up</div>
-              <div className="text-[var(--text-muted)] text-sm">Nothing urgent right now — take a breath.</div>
-            </>
-          ) : (
-            <>
-              <div className="text-[var(--text)] text-lg font-semibold mb-1">Let&apos;s personalize your care</div>
-              <div className="text-[var(--text-muted)] text-sm">Add your medications and upcoming appointments to get personalized reminders and alerts.</div>
-            </>
-          )}
-
-          {/* Quick-start cards for empty data */}
-          {(medications.length === 0 || appointments.length === 0 || labResults.length === 0) && (
-            <div className="w-full mt-8 space-y-3 text-left">
-              {medications.length === 0 && (
-                <a
-                  href="/care?tab=meds"
-                  className="flex items-center gap-3 p-4 rounded-2xl bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] transition-colors"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center flex-shrink-0">
-                    <svg width="20" height="20" fill="none" stroke="#6366F1" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 3h6v11a3 3 0 01-3 3v0a3 3 0 01-3-3V3z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 8h6" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 17v4" />
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--text)]">Add your first medication</p>
-                    <p className="text-xs text-[var(--text-muted)]">Track doses, refills, and interactions</p>
-                  </div>
-                  <svg className="w-5 h-5 text-[var(--text-muted)] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </a>
-              )}
-              {appointments.length === 0 && (
-                <a
-                  href="/care?tab=appts"
-                  className="flex items-center gap-3 p-4 rounded-2xl bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] transition-colors"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-[#22d3ee]/10 flex items-center justify-center flex-shrink-0">
-                    <svg width="20" height="20" fill="none" stroke="#22d3ee" strokeWidth="2" viewBox="0 0 24 24">
-                      <rect x="3" y="4" width="18" height="18" rx="2" />
-                      <path strokeLinecap="round" d="M16 2v4M8 2v4M3 10h18" />
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--text)]">Schedule an appointment</p>
-                    <p className="text-xs text-[var(--text-muted)]">Keep track of upcoming visits and prep</p>
-                  </div>
-                  <svg className="w-5 h-5 text-[var(--text-muted)] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </a>
-              )}
-              {labResults.length === 0 && (
-                <a
-                  href="/scans"
-                  className="flex items-center gap-3 p-4 rounded-2xl bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] transition-colors"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-[#10b981]/10 flex items-center justify-center flex-shrink-0">
-                    <svg width="20" height="20" fill="none" stroke="#10b981" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
-                      <rect x="9" y="3" width="6" height="4" rx="1" />
-                      <path strokeLinecap="round" d="M9 14l2 2 4-4" />
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--text)]">Scan a lab report</p>
-                    <p className="text-xs text-[var(--text-muted)]">Upload and get AI-powered insights</p>
-                  </div>
-                  <svg className="w-5 h-5 text-[var(--text-muted)] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </a>
-              )}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-3 card-stagger" data-tour="dashboard-cards">
-          {cards.map((card, i) => (
-            <PriorityCard
-              key={card.id}
-              variant={card.variant}
-              label={card.label}
-              title={card.title}
-              subtitle={card.subtitle}
-              action={card.action}
-              href={card.href}
-              index={i}
-              expanded={expandedId === card.id}
-              onToggle={() => setExpandedId(expandedId === card.id ? null : card.id)}
-              expandedContent={card.expandedContent}
-              isPriority={card.isPriority}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Quick-ask prompts — always visible */}
-      <div className="mt-6 relative" id="quick-ask-section" data-tour="quick-ask">
-          <div className="text-[var(--text-secondary)] text-[11px] uppercase tracking-wider mb-2">Quick Ask</div>
-          <div className="flex flex-wrap gap-2">
-            {quickAskPrompts.map((prompt) => (
-              <a
-                key={prompt}
-                href={`/chat?prompt=${encodeURIComponent(prompt)}`}
-                className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[#94a3b8] text-xs hover:bg-white/[0.08] transition-colors animate-press"
-              >
-                {prompt}
-              </a>
-            ))}
-          </div>
-          {showTourTooltip && (
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-50">
-              <div className="relative bg-[#6366F1] text-white rounded-xl px-4 py-3 shadow-lg max-w-[260px] text-center">
-                <p className="text-sm font-medium mb-2">Tap here to ask your AI care companion anything</p>
-                <button
-                  onClick={dismissTooltip}
-                  className="text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-lg px-3 py-1 transition-colors"
-                >
-                  Got it
-                </button>
-                {/* Arrow pointing down */}
-                <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-[#6366F1]" />
-              </div>
-            </div>
-          )}
-        </div>
-
-      {/* Care Timeline shortcut — always visible */}
-      <a
-        href="/timeline"
-        className="flex items-center gap-3 p-4 rounded-2xl border border-white/[0.06] mt-4 transition-colors hover:bg-white/[0.06] active:scale-[0.98]"
-        style={{ background: 'rgba(99,102,241,0.06)' }}
+      {/* Pill tab bar */}
+      <div
+        className="flex gap-1 p-1 rounded-full border border-white/[0.06] mb-5"
+        style={{ background: '#1a1d2e' }}
+        role="tablist"
+        aria-label="Dashboard sections"
       >
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(99,102,241,0.15)' }}>
-          <svg width="20" height="20" fill="none" stroke="#A78BFA" strokeWidth="1.75" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white">Care Timeline</p>
-          <p className="text-xs text-white/50">Medications, appointments &amp; milestones</p>
-        </div>
-        <svg width="16" height="16" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-        </svg>
-      </a>
+        {TABS.map(tab => (
+          <button
+            key={tab.key}
+            role="tab"
+            aria-selected={activeTab === tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex-1 py-2 rounded-full text-xs font-semibold transition-all duration-200 ${
+              activeTab === tab.key
+                ? 'text-white shadow-sm'
+                : 'text-white/40 hover:text-white/60'
+            }`}
+            style={activeTab === tab.key ? { background: '#6c63ff' } : undefined}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      {/* Daily Check-in Card */}
-      {profileId && <CheckinCard careProfileId={profileId} />}
+      {/* ── TODAY TAB ── */}
+      {activeTab === 'today' && (
+        <>
+          <MorningSummaryCard
+            medicationCount={todayMedCount}
+            nextAppointment={nextAppointment}
+          />
+          <div className="mb-1 text-[var(--text-secondary)] text-xs tracking-wider">{greeting}</div>
+          <h2 className="text-fluid-xl font-bold mb-2 animate-greeting">
+            {todayCards.length > 0 ? (
+              <>
+                <AnimatedNumber value={todayCards.length} /> {todayCards.length === 1 ? 'item needs' : 'items need'} attention
+              </>
+            ) : (
+              `${(userName || 'there').split(' ')[0]}'s care is up to date.`
+            )}
+          </h2>
 
-      {/* Weekly family update — share card */}
-      {weeklyUpdate && (
-        <div className="mb-4 rounded-2xl border border-[#6366F1]/30 bg-gradient-to-r from-[#6366F1]/5 to-[#A78BFA]/5 p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
+          {(cancerType || treatmentPhase) && (
+            <div className="flex flex-wrap items-center gap-2 mb-4 sm:mb-5">
+              {cancerType && (
+                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[#A78BFA]/10 text-[#A78BFA]">
+                  {cancerType}{cancerStage && cancerStage !== 'Unsure' ? ` — Stage ${cancerStage}` : ''}
+                </span>
+              )}
+              {treatmentPhase && PHASE_LABELS[treatmentPhase] && (
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${PHASE_LABELS[treatmentPhase].color}`}>
+                  {PHASE_LABELS[treatmentPhase].label}
+                </span>
+              )}
+            </div>
+          )}
+          {!cancerType && !treatmentPhase && <div className="mb-3 sm:mb-4" />}
+
+          {/* Urgent / alert cards or all-caught-up empty state */}
+          {todayCards.length === 0 ? (
+            <div
+              className="flex flex-col items-center justify-center py-12 text-center rounded-2xl border border-white/[0.05] mb-5"
+              style={{ background: '#1a1d2e' }}
+              data-tour="dashboard-cards"
+            >
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center mb-3"
+                style={{ background: 'rgba(108,99,255,0.12)' }}
+              >
+                <svg width="28" height="28" fill="none" stroke="#6c63ff" strokeWidth="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+              <p className="text-[var(--text)] text-base font-semibold mb-1">You&apos;re all caught up today.</p>
+              <p className="text-[var(--text-muted)] text-sm">No urgent items need your attention.</p>
+            </div>
+          ) : (
+            <div className="space-y-3 card-stagger mb-5" data-tour="dashboard-cards">
+              {todayCards.map((card, i) => (
+                <PriorityCard
+                  key={card.id}
+                  variant={card.variant}
+                  label={card.label}
+                  title={card.title}
+                  subtitle={card.subtitle}
+                  action={card.action}
+                  href={card.href}
+                  index={i}
+                  expanded={expandedId === card.id}
+                  onToggle={() => setExpandedId(expandedId === card.id ? null : card.id)}
+                  expandedContent={card.expandedContent}
+                  isPriority={card.isPriority}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Quick Ask */}
+          <div className="relative" id="quick-ask-section" data-tour="quick-ask">
+            <div className="text-[var(--text-secondary)] text-[11px] uppercase tracking-wider mb-2">Quick Ask</div>
+            <div className="flex flex-wrap gap-2">
+              {quickAskPrompts.map((prompt) => (
+                <a
+                  key={prompt}
+                  href={`/chat?prompt=${encodeURIComponent(prompt)}`}
+                  className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-[#94a3b8] text-xs hover:bg-white/[0.08] transition-colors animate-press"
+                >
+                  {prompt}
+                </a>
+              ))}
+            </div>
+            {showTourTooltip && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-50">
+                <div className="relative bg-[#6366F1] text-white rounded-xl px-4 py-3 shadow-lg max-w-[260px] text-center">
+                  <p className="text-sm font-medium mb-2">Tap here to ask your AI care companion anything</p>
+                  <button
+                    onClick={dismissTooltip}
+                    className="text-xs font-semibold bg-white/20 hover:bg-white/30 rounded-lg px-3 py-1 transition-colors"
+                  >
+                    Got it
+                  </button>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-[#6366F1]" />
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── CARE TAB ── */}
+      {activeTab === 'care' && (
+        <>
+          {/* Daily Check-in */}
+          {profileId && <CheckinCard careProfileId={profileId} />}
+
+          {/* Care Timeline */}
+          <a
+            href="/timeline"
+            className="flex items-center gap-3 p-4 rounded-2xl border border-white/[0.06] mt-4 mb-4 transition-colors hover:bg-white/[0.06] active:scale-[0.98]"
+            style={{ background: 'rgba(99,102,241,0.06)' }}
+          >
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(99,102,241,0.15)' }}>
+              <svg width="20" height="20" fill="none" stroke="#A78BFA" strokeWidth="1.75" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white">This week&apos;s update is ready</p>
-              <p className="text-xs text-white/50 mt-0.5">Share with family to keep everyone in the loop</p>
-              {weeklyUpdate.viewCount > 0 && (
-                <p className="text-xs text-white/30 mt-1">Viewed {weeklyUpdate.viewCount} time{weeklyUpdate.viewCount !== 1 ? 's' : ''}</p>
-              )}
+              <p className="text-sm font-semibold text-white">Care Timeline</p>
+              <p className="text-xs text-white/50">Medications, appointments &amp; milestones</p>
             </div>
-          </div>
-          <div className="flex gap-2 mt-3">
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.origin + weeklyUpdate.shareUrl)
-                  .then(() => { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000) })
-                  .catch(() => {})
-              }}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#6366F1] hover:bg-[#4F46E5] text-xs font-semibold text-white transition-colors"
-            >
-              {copiedLink ? (
-                <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>Copied!</>
-              ) : (
-                <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.375" /></svg>Copy link</>
-              )}
-            </button>
-            <a
-              href={weeklyUpdate.shareUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-2 rounded-xl border border-white/[0.08] bg-white/[0.04] text-xs font-medium text-white/70 hover:text-white hover:bg-white/[0.08] transition-colors"
-            >
-              Preview
-            </a>
-          </div>
-        </div>
-      )}
-      {weeklyUpdateError && (
-        <div className="mb-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 flex items-center justify-between gap-3">
-          <p className="text-xs text-[var(--text-muted)]">Couldn&apos;t load this week&apos;s update.</p>
-          <button
-            onClick={fetchWeeklyUpdate}
-            className="text-xs text-[#A78BFA] hover:text-white transition-colors flex-shrink-0"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-      {/* Treatment Cycle Tracker */}
-      <TreatmentCycleTracker medications={medications} patientName={patientName} />
-
-      {/* Profile Completeness Indicator */}
-      <ProfileCompleteness
-        patientName={patientName}
-        cancerType={cancerType}
-        cancerStage={cancerStage}
-        treatmentPhase={treatmentPhase}
-        allergies={allergies}
-        conditions={conditions}
-        emergencyContactName={emergencyContactName}
-        emergencyContactPhone={emergencyContactPhone}
-        medicationCount={medications.length}
-        doctorCount={doctorCount}
-        appointmentCount={appointments.length}
-      />
-
-      {/* Re-engagement nudges for skipped onboarding steps */}
-      {onboardingComplete && profileCreatedAt && (
-        <NudgeManager
-          hasMedications={medications.length > 0}
-          hasAppointments={appointments.length > 0}
-          hasEmergencyContact={hasEmergencyContact}
-          hasDocumentsScanned={hasDocumentsScanned}
-          profileCreatedAt={profileCreatedAt}
-        />
-      )}
-
-      {/* Onboarding banners — secondary, after action items */}
-      {onboardingComplete && !cancerType && (
-        <a
-          href={profileId ? `/onboarding?step=1&profileId=${profileId}` : '/onboarding?step=1'}
-          className="block rounded-2xl bg-gradient-to-r from-violet-500/10 to-blue-500/10 border border-violet-500/20 p-4 mb-4 hover:border-violet-500/30 transition-colors"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-white">Finish setting up your profile</p>
-              <p className="text-xs text-[var(--text-muted)] mt-0.5">Add your diagnosis, medications, and priorities for a personalized experience</p>
-            </div>
-            <svg className="w-5 h-5 text-violet-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-            </svg>
-          </div>
-        </a>
-      )}
-
-      {!onboardingComplete && (
-        <a
-          href={profileId ? `/onboarding?step=1&profileId=${profileId}` : '/onboarding?step=1'}
-          className="block mb-4 sm:mb-5 rounded-2xl border border-[#A78BFA]/30 bg-[#A78BFA]/5 p-4 hover:bg-[#A78BFA]/10 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#A78BFA]/20 flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-[#A78BFA]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white">Complete your profile</p>
-              <p className="text-xs text-[var(--text-muted)]">Set up your diagnosis, treatment phase, and preferences for a personalized experience</p>
-            </div>
-            <svg className="w-5 h-5 text-[#A78BFA] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <svg width="16" height="16" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
-          </div>
-        </a>
+          </a>
+
+          {/* Next appointment cards */}
+          {upcomingCards.length > 0 && (
+            <div className="space-y-3 mb-4">
+              {upcomingCards.map((card, i) => (
+                <PriorityCard
+                  key={card.id}
+                  variant={card.variant}
+                  label={card.label}
+                  title={card.title}
+                  subtitle={card.subtitle}
+                  action={card.action}
+                  href={card.href}
+                  index={i}
+                  expanded={expandedId === card.id}
+                  onToggle={() => setExpandedId(expandedId === card.id ? null : card.id)}
+                  expandedContent={card.expandedContent}
+                  isPriority={card.isPriority}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Weekly family update */}
+          {weeklyUpdate && (
+            <div className="mb-4 rounded-2xl border border-[#6366F1]/30 bg-gradient-to-r from-[#6366F1]/5 to-[#A78BFA]/5 p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white">This week&apos;s update is ready</p>
+                  <p className="text-xs text-white/50 mt-0.5">Share with family to keep everyone in the loop</p>
+                  {weeklyUpdate.viewCount > 0 && (
+                    <p className="text-xs text-white/30 mt-1">Viewed {weeklyUpdate.viewCount} time{weeklyUpdate.viewCount !== 1 ? 's' : ''}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.origin + weeklyUpdate.shareUrl)
+                      .then(() => { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000) })
+                      .catch(() => {})
+                  }}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#6366F1] hover:bg-[#4F46E5] text-xs font-semibold text-white transition-colors"
+                >
+                  {copiedLink ? (
+                    <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>Copied!</>
+                  ) : (
+                    <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.375" /></svg>Copy link</>
+                  )}
+                </button>
+                <a
+                  href={weeklyUpdate.shareUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-2 rounded-xl border border-white/[0.08] bg-white/[0.04] text-xs font-medium text-white/70 hover:text-white hover:bg-white/[0.08] transition-colors"
+                >
+                  Preview
+                </a>
+              </div>
+            </div>
+          )}
+          {weeklyUpdateError && (
+            <div className="mb-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 flex items-center justify-between gap-3">
+              <p className="text-xs text-[var(--text-muted)]">Couldn&apos;t load this week&apos;s update.</p>
+              <button
+                onClick={fetchWeeklyUpdate}
+                className="text-xs text-[#A78BFA] hover:text-white transition-colors flex-shrink-0"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {/* Share Health Summary */}
+          {shareHealthCard}
+
+          {/* Treatment Cycle Tracker */}
+          <TreatmentCycleTracker medications={medications} patientName={patientName} />
+
+          {/* Profile Completeness */}
+          <ProfileCompleteness
+            patientName={patientName}
+            cancerType={cancerType}
+            cancerStage={cancerStage}
+            treatmentPhase={treatmentPhase}
+            allergies={allergies}
+            conditions={conditions}
+            emergencyContactName={emergencyContactName}
+            emergencyContactPhone={emergencyContactPhone}
+            medicationCount={medications.length}
+            doctorCount={doctorCount}
+            appointmentCount={appointments.length}
+          />
+
+          {/* Re-engagement nudges */}
+          {onboardingComplete && profileCreatedAt && (
+            <NudgeManager
+              hasMedications={medications.length > 0}
+              hasAppointments={appointments.length > 0}
+              hasEmergencyContact={hasEmergencyContact}
+              hasDocumentsScanned={hasDocumentsScanned}
+              profileCreatedAt={profileCreatedAt}
+            />
+          )}
+
+          {/* Onboarding banners */}
+          {onboardingComplete && !cancerType && (
+            <a
+              href={profileId ? `/onboarding?step=1&profileId=${profileId}` : '/onboarding?step=1'}
+              className="block rounded-2xl bg-gradient-to-r from-violet-500/10 to-blue-500/10 border border-violet-500/20 p-4 mb-4 hover:border-violet-500/30 transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-white">Finish setting up your profile</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">Add your diagnosis, medications, and priorities for a personalized experience</p>
+                </div>
+                <svg className="w-5 h-5 text-violet-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+              </div>
+            </a>
+          )}
+
+          {!onboardingComplete && (
+            <a
+              href={profileId ? `/onboarding?step=1&profileId=${profileId}` : '/onboarding?step=1'}
+              className="block mb-4 sm:mb-5 rounded-2xl border border-[#A78BFA]/30 bg-[#A78BFA]/5 p-4 hover:bg-[#A78BFA]/10 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#A78BFA]/20 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-[#A78BFA]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white">Complete your profile</p>
+                  <p className="text-xs text-[var(--text-muted)]">Set up your diagnosis, treatment phase, and preferences for a personalized experience</p>
+                </div>
+                <svg className="w-5 h-5 text-[#A78BFA] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </div>
+            </a>
+          )}
+        </>
       )}
 
+      {/* ── INSIGHTS TAB ── */}
+      {activeTab === 'insights' && (
+        <div className="space-y-4 pb-2">
+          {insightsContent}
+        </div>
+      )}
 
     </div>
     </>

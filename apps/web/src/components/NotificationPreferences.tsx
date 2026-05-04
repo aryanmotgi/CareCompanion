@@ -229,7 +229,7 @@ export function NotificationPreferences({ settings, onSettingsChange }: Notifica
         setSaveStatus('idle')
       }
     }, 600)
-  }, [settings, onSettingsChange, showToast, csrfToken])
+  }, [settings, onSettingsChange, showToast, csrfToken, timezone])
 
   const toggleCategory = (categoryKey: CategoryKey) => {
     const category = prefs[categoryKey]
