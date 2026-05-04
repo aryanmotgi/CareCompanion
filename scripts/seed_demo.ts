@@ -21,7 +21,7 @@ import {
 
 const DEMO_EMAIL = 'demo@carecompanionai.org';
 const DEMO_PASSWORD = 'CareDemo2026';
-const DEMO_DISPLAY_NAME = 'Demo User';
+const DEMO_DISPLAY_NAME = 'Margaret Chen';
 
 const REGION = 'us-east-1';
 const USER_POOL_ID = 'us-east-1_ZLns0ABGw';
