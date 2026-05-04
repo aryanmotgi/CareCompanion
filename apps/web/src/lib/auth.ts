@@ -110,9 +110,12 @@ export const { handlers, auth } = NextAuth({
       if (trigger === 'update' && token.dbUserId) {
         const refreshed = await db.query.users.findFirst({
           where: eq(users.id, token.dbUserId as string),
-          columns: { role: true },
+          columns: { role: true, displayName: true },
         })
-        if (refreshed) token.role = refreshed.role ?? null
+        if (refreshed) {
+          token.role = refreshed.role ?? null
+          if (refreshed.displayName) token.displayName = refreshed.displayName
+        }
         return token
       }
 

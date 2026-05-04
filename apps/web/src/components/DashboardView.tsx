@@ -437,7 +437,7 @@ const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
       {activeTab === 'today' && (
         <>
           <h2 className="text-2xl font-bold text-white mb-1">
-            {greeting}, {(userName || 'Sarah').split(' ')[0]} 👋
+            {greeting}, {(userName || patientName || 'there').split(' ')[0]} 👋
           </h2>
           <p className="text-sm text-[#94a3b8] mb-5">
             {todayCards.length > 0
