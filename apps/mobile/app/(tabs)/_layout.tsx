@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '../../src/theme'
 import { NoiseOverlay } from '../../src/components/NoiseOverlay'
+import { GuidedTour } from '../../src/components/GuidedTour'
 
 const TABS = [
   { name: 'index', label: 'Home', icon: 'home-outline', iconActive: 'home' },
@@ -212,6 +213,7 @@ export default function TabLayout() {
         <Tabs.Screen name="scan" options={{ href: null }} />
         <Tabs.Screen name="settings" options={{ href: null }} />
       </Tabs>
+      <GuidedTour />
     </View>
   )
 }
