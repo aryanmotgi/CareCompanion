@@ -16,6 +16,7 @@
       "name": "@carecompanion/mobile",
       "version": "0.0.1",
       "dependencies": {
+        "@babel/runtime": "^7.29.2",
         "@carecompanion/api": "workspace:*",
         "@carecompanion/types": "workspace:*",
         "@expo/metro-runtime": "~4.0.1",
