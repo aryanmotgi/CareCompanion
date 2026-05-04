@@ -11,6 +11,10 @@ Security hardening, Care Tab reliability, dashboard fixes, trials engine improve
 - **Community tab** — anonymous caregiver forum with cancer-type filter pills, post list with pagination, new-post modal (cancer type + role selector, anonymous label preview), post detail with upvotes and inline replies
 - **Care Groups sub-tab** — 6th sub-tab in Care screen; create/join flow with password strength indicator, invite link sharing via native Share API, 3-second polling for partner join, celebration screen on connect
 
+### Added (Mobile App — Batch 3)
+- **Visit Prep screen** — standalone screen at `/visit-prep`; loads upcoming appointments (next 30 days) from the API, generates AI-powered prep sheets via `POST /api/visit-prep` with Bearer auth, inline markdown renderer (headers, bullets, checkboxes, tables), regenerate + native Share buttons; Visit Prep indigo banner added to Care tab Appts section
+- **Care Hub Radar screen** — standalone screen at `/care-hub`; fetches live data from `GET /api/care-hub`, shows patient status banner with All Clear / Watch / Needs Attention badge driven by pain/mood thresholds, Symptom Radar card with color-coded orbs (Pain/Energy/Mood) and View-based 7-day bar sparklines, AI Insights card with severity tints, Medications, Care Team Activity with relative timestamps, and Upcoming Appointments; 60s polling; Care Hub shortcut added to Home screen
+
 ### Added (Mobile App — Batch 2)
 - **Personalized empty states** — all 5 Care sub-tabs (Meds, Appts, Labs, Journal, Team) now show patient-name-aware empty states with warm copy and accent-tinted icons, matching web `SectionEmptyState` pattern
 - **First-run guided tour** — 3-step tooltip overlay pointing to Chat, Care, and Trials tabs; shows once after login via AsyncStorage gate; Reanimated fade transitions, animated step-width dots, tap-to-advance
