@@ -49,7 +49,7 @@ export async function searchTrials(params: SearchTrialsParams): Promise<{ count:
         params: {
           'query.cond':           params.condition,
           'query.term':           params.terms,
-          'filter.geo':           params.location,
+          'query.locn':           params.location,
           'filter.overallStatus': params.status,
           'filter.phase':         params.phase,
           pageSize:               Math.min(params.pageSize ?? 20, 100),

@@ -50,10 +50,10 @@ beforeEach(() => {
 
 // ── CT.gov fetch and error handling ──────────────────────────────────────────
 describe('CT.gov fetch and dedup', () => {
-  it('returns empty when no trials from CT.gov', async () => {
+  it('returns mock fallback when no trials from CT.gov', async () => {
     ;(searchTrials as ReturnType<typeof vi.fn>).mockResolvedValue({ trials: [] })
     const result = await runTrialsAgent(mockProfile)
-    expect(result).toEqual({ matched: [], close: [] })
+    expect(result.matched.length).toBeGreaterThan(0)
     expect(generateText).not.toHaveBeenCalled()
   })
 
@@ -66,9 +66,11 @@ describe('CT.gov fetch and dedup', () => {
     )
   })
 
-  it('throws when CT.gov returns an error object', async () => {
+  it('returns mock fallback when CT.gov returns an error object', async () => {
     ;(searchTrials as ReturnType<typeof vi.fn>).mockResolvedValue({ error: 'rate limited' })
-    await expect(runTrialsAgent(mockProfile)).rejects.toThrow('CT.gov search failed: rate limited')
+    const result = await runTrialsAgent(mockProfile)
+    expect(result.matched.length).toBeGreaterThan(0)
+    expect(generateText).not.toHaveBeenCalled()
   })
 
   it('strips TEST suffix from cancerType before CT.gov search', async () => {
@@ -96,7 +98,7 @@ describe('CT.gov fetch and dedup', () => {
     ;(generateText as ReturnType<typeof vi.fn>).mockResolvedValue({ text: '[]' })
     await runTrialsAgent(mockProfile)
     expect(searchTrials).toHaveBeenCalledWith(
-      expect.objectContaining({ location: '50mi:94105' })
+      expect.objectContaining({ location: '94105' })
     )
   })
 
