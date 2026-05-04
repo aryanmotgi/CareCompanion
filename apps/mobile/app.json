@@ -30,6 +30,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-updates",
+        {
+          "handleMissingNativeModule": true
+        }
+      ],
       "expo-secure-store",
       "expo-apple-authentication",
       [
