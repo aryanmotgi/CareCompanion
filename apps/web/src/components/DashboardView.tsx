@@ -2,14 +2,10 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { PriorityCard } from './PriorityCard'
-import { TreatmentCycleTracker } from './TreatmentCycleTracker'
-import { AnimatedNumber } from './AnimatedNumber'
 import { AlertInsights } from './AlertInsights'
-import { NudgeManager } from './NudgeManager'
-import { ProfileCompleteness } from './ProfileCompleteness'
-import { MorningSummaryCard } from './MorningSummaryCard'
 import { AppealGenerator } from './AppealGenerator'
 import { CheckinCard } from './CheckinCard'
+import { HealthDataChart } from './HealthDataChart'
 import GuidedTour from './GuidedTour'
 import { parseLabValue } from '@/lib/lab-parsing'
 import type { Medication, Appointment, LabResult, Claim } from '@/lib/types'
@@ -65,12 +61,12 @@ const TOUR_STEPS = [
   },
 ]
 
-type TabKey = 'today' | 'care' | 'insights'
+type TabKey = 'today' | 'care' | 'health'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'today', label: 'Today' },
-  { key: 'care', label: 'Care' },
-  { key: 'insights', label: 'Insights' },
+  { key: 'care', label: 'My Care' },
+  { key: 'health', label: 'Health Data' },
 ]
 
 export function DashboardView({
@@ -132,31 +128,7 @@ export function DashboardView({
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
-  const nextAppointment = useMemo(() => {
-    const now = new Date()
-    const upcoming = appointments
-      .filter(a => a.dateTime && new Date(a.dateTime).getTime() > now.getTime())
-      .sort((a, b) => new Date(a.dateTime!).getTime() - new Date(b.dateTime!).getTime())
-    if (upcoming.length === 0) return null
-    const appt = upcoming[0]
-    const apptDate = new Date(appt.dateTime!)
-    const diffMs = apptDate.getTime() - now.getTime()
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
-    let when: string
-    if (diffDays === 0) {
-      when = diffHours <= 1 ? 'in <1hr' : `in ${diffHours}hrs`
-    } else if (diffDays === 1) {
-      when = 'tomorrow'
-    } else {
-      when = `in ${diffDays} days`
-    }
-    return { doctor: appt.doctorName || 'Doctor', when }
-  }, [appointments])
-
-  const todayMedCount = medications.filter(m => !m.deletedAt).length
-
-  const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
+const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
     side_effects: 'symptom',
     medications: 'med-',
     appointments: 'appt-',
@@ -447,14 +419,26 @@ export function DashboardView({
             role="tab"
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 py-2 rounded-full text-xs font-semibold transition-all duration-200 ${
+            className={`flex-1 py-2 rounded-full text-xs font-semibold transition-all duration-200 relative ${
               activeTab === tab.key
-                ? 'text-white shadow-sm'
+                ? 'text-white'
                 : 'text-white/40 hover:text-white/60'
             }`}
-            style={activeTab === tab.key ? { background: '#6c63ff' } : undefined}
+            style={activeTab === tab.key ? {
+              background: '#6c63ff',
+              boxShadow: '0 0 16px rgba(108, 99, 255, 0.45), 0 0 32px rgba(108, 99, 255, 0.15)',
+              paddingLeft: '1.25rem',
+              paddingRight: '1.25rem',
+            } : undefined}
           >
-            {tab.label}
+            <span className="relative inline-flex items-center gap-1.5">
+              {tab.label}
+              {tab.key === 'today' && todayCards.length > 0 && (
+                <span className="min-w-[15px] h-[15px] px-0.5 bg-red-500 rounded-full text-[9px] text-white inline-flex items-center justify-center font-bold leading-none">
+                  {todayCards.length}
+                </span>
+              )}
+            </span>
           </button>
         ))}
       </div>
@@ -462,20 +446,14 @@ export function DashboardView({
       {/* ── TODAY TAB ── */}
       {activeTab === 'today' && (
         <>
-          <MorningSummaryCard
-            medicationCount={todayMedCount}
-            nextAppointment={nextAppointment}
-          />
-          <div className="mb-1 text-[var(--text-secondary)] text-xs tracking-wider">{greeting}</div>
-          <h2 className="text-fluid-xl font-bold mb-2 animate-greeting">
-            {todayCards.length > 0 ? (
-              <>
-                <AnimatedNumber value={todayCards.length} /> {todayCards.length === 1 ? 'item needs' : 'items need'} attention
-              </>
-            ) : (
-              `${(userName || 'there').split(' ')[0]}'s care is up to date.`
-            )}
+          <h2 className="text-2xl font-bold text-white mb-1">
+            {greeting}, {(userName || 'Sarah').split(' ')[0]} 👋
           </h2>
+          <p className="text-sm text-[#94a3b8] mb-5">
+            {todayCards.length > 0
+              ? `${todayCards.length} ${todayCards.length === 1 ? 'item needs' : 'items need'} your attention`
+              : 'All caught up — nothing needs attention.'}
+          </p>
 
           {(cancerType || treatmentPhase) && (
             <div className="flex flex-wrap items-center gap-2 mb-4 sm:mb-5">
@@ -612,6 +590,25 @@ export function DashboardView({
             </div>
           )}
 
+          {/* Static upcoming appointment */}
+          <div className="flex items-center gap-3 p-4 rounded-2xl border border-[#6c63ff]/20 bg-[#6c63ff]/5 mb-4">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(108,99,255,0.15)' }}
+            >
+              <svg width="20" height="20" fill="none" stroke="#A78BFA" strokeWidth="1.75" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white">Oncology Follow-up</p>
+              <p className="text-xs text-white/50">Dr. Patel &middot; May 8, 2:30 PM</p>
+            </div>
+            <svg width="16" height="16" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          </div>
+
           {/* Weekly family update */}
           {weeklyUpdate && (
             <div className="mb-4 rounded-2xl border border-[#6366F1]/30 bg-gradient-to-r from-[#6366F1]/5 to-[#A78BFA]/5 p-4">
@@ -669,80 +666,13 @@ export function DashboardView({
 
           {/* Share Health Summary */}
           {shareHealthCard}
-
-          {/* Treatment Cycle Tracker */}
-          <TreatmentCycleTracker medications={medications} patientName={patientName} />
-
-          {/* Profile Completeness */}
-          <ProfileCompleteness
-            patientName={patientName}
-            cancerType={cancerType}
-            cancerStage={cancerStage}
-            treatmentPhase={treatmentPhase}
-            allergies={allergies}
-            conditions={conditions}
-            emergencyContactName={emergencyContactName}
-            emergencyContactPhone={emergencyContactPhone}
-            medicationCount={medications.length}
-            doctorCount={doctorCount}
-            appointmentCount={appointments.length}
-          />
-
-          {/* Re-engagement nudges */}
-          {onboardingComplete && profileCreatedAt && (
-            <NudgeManager
-              hasMedications={medications.length > 0}
-              hasAppointments={appointments.length > 0}
-              hasEmergencyContact={hasEmergencyContact}
-              hasDocumentsScanned={hasDocumentsScanned}
-              profileCreatedAt={profileCreatedAt}
-            />
-          )}
-
-          {/* Onboarding banners */}
-          {onboardingComplete && !cancerType && (
-            <a
-              href={profileId ? `/onboarding?step=1&profileId=${profileId}` : '/onboarding?step=1'}
-              className="block rounded-2xl bg-gradient-to-r from-violet-500/10 to-blue-500/10 border border-violet-500/20 p-4 mb-4 hover:border-violet-500/30 transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-white">Finish setting up your profile</p>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5">Add your diagnosis, medications, and priorities for a personalized experience</p>
-                </div>
-                <svg className="w-5 h-5 text-violet-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                </svg>
-              </div>
-            </a>
-          )}
-
-          {!onboardingComplete && (
-            <a
-              href={profileId ? `/onboarding?step=1&profileId=${profileId}` : '/onboarding?step=1'}
-              className="block mb-4 sm:mb-5 rounded-2xl border border-[#A78BFA]/30 bg-[#A78BFA]/5 p-4 hover:bg-[#A78BFA]/10 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#A78BFA]/20 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-[#A78BFA]" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white">Complete your profile</p>
-                  <p className="text-xs text-[var(--text-muted)]">Set up your diagnosis, treatment phase, and preferences for a personalized experience</p>
-                </div>
-                <svg className="w-5 h-5 text-[#A78BFA] flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
-              </div>
-            </a>
-          )}
         </>
       )}
 
-      {/* ── INSIGHTS TAB ── */}
-      {activeTab === 'insights' && (
+      {/* ── HEALTH DATA TAB ── */}
+      {activeTab === 'health' && (
         <div className="space-y-4 pb-2">
-          {insightsContent}
+          <HealthDataChart />
         </div>
       )}
 

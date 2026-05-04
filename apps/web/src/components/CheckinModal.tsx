@@ -155,7 +155,7 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
                 onClick={() => setMood(value)}
                 className={`w-12 h-12 rounded-xl text-xl flex items-center justify-center transition-all btn-press ${
                   mood === value
-                    ? 'border-2 border-[var(--accent)] bg-[var(--accent-light)] scale-110'
+                    ? 'border-2 border-white bg-[#6c63ff]/40 scale-110 shadow-[0_0_0_3px_rgba(108,99,255,0.35)]'
                     : 'border border-[var(--border)] bg-white/[0.04] hover:bg-white/[0.08]'
                 }`}
               >
