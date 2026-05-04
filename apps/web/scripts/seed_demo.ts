@@ -189,18 +189,56 @@ Ibuprofen (causes GI upset)',
   console.log('\n🧪 Step 6: Adding lab results...');
   await sql(`
     INSERT INTO lab_results (id, user_id, test_name, value, unit, reference_range, is_abnormal, date_taken, source) VALUES
+    -- ~5 months ago (chemo cycle 1)
+    (gen_random_uuid(), '${userId}', 'WBC (White Blood Cells)', '5.8', 'K/uL', '4.5-11.0', false, '${dayISO(-147)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'Hemoglobin', '13.2', 'g/dL', '12.0-16.0', false, '${dayISO(-147)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'Platelet Count', '210', 'K/uL', '150-400', false, '${dayISO(-147)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'Creatinine', '0.8', 'mg/dL', '0.6-1.2', false, '${dayISO(-147)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'ALT', '18', 'U/L', '7-56', false, '${dayISO(-147)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'HER2/neu', '22.4', 'ng/mL', '<15.0', true, '${dayISO(-140)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'CA 15-3', '45.2', 'U/mL', '<30', true, '${dayISO(-140)}', 'Demo'),
+    -- ~4 months ago (cycle 2, nadir effect)
+    (gen_random_uuid(), '${userId}', 'WBC (White Blood Cells)', '3.8', 'K/uL', '4.5-11.0', true, '${dayISO(-126)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'Hemoglobin', '12.1', 'g/dL', '12.0-16.0', false, '${dayISO(-126)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'Platelet Count', '185', 'K/uL', '150-400', false, '${dayISO(-126)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'Creatinine', '0.85', 'mg/dL', '0.6-1.2', false, '${dayISO(-126)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'ALT', '24', 'U/L', '7-56', false, '${dayISO(-126)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'HER2/neu', '19.1', 'ng/mL', '<15.0', true, '${dayISO(-119)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'CA 15-3', '38.7', 'U/mL', '<30', true, '${dayISO(-119)}', 'Demo'),
+    -- ~3 months ago (cycle 3, treatment response improving)
+    (gen_random_uuid(), '${userId}', 'WBC (White Blood Cells)', '4.2', 'K/uL', '4.5-11.0', true, '${dayISO(-105)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'Hemoglobin', '11.8', 'g/dL', '12.0-16.0', true, '${dayISO(-105)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'Platelet Count', '168', 'K/uL', '150-400', false, '${dayISO(-105)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'Creatinine', '0.88', 'mg/dL', '0.6-1.2', false, '${dayISO(-105)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'ALT', '28', 'U/L', '7-56', false, '${dayISO(-105)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'HER2/neu', '17.3', 'ng/mL', '<15.0', true, '${dayISO(-98)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'CA 15-3', '33.1', 'U/mL', '<30', true, '${dayISO(-98)}', 'Demo'),
+    -- ~6 weeks ago (cycle 4)
+    (gen_random_uuid(), '${userId}', 'WBC (White Blood Cells)', '3.6', 'K/uL', '4.5-11.0', true, '${dayISO(-63)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'Hemoglobin', '11.5', 'g/dL', '12.0-16.0', true, '${dayISO(-63)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'Platelet Count', '155', 'K/uL', '150-400', false, '${dayISO(-63)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'Creatinine', '0.92', 'mg/dL', '0.6-1.2', false, '${dayISO(-63)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'ALT', '31', 'U/L', '7-56', false, '${dayISO(-63)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'HER2/neu', '16.2', 'ng/mL', '<15.0', true, '${dayISO(-56)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'CA 15-3', '29.8', 'U/mL', '<30', false, '${dayISO(-56)}', 'Demo'),
+    -- ~3 weeks ago (cycle 5, markers improving)
+    (gen_random_uuid(), '${userId}', 'WBC (White Blood Cells)', '4.1', 'K/uL', '4.5-11.0', true, '${dayISO(-23)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'Hemoglobin', '11.8', 'g/dL', '12.0-16.0', true, '${dayISO(-23)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'Platelet Count', '168', 'K/uL', '150-400', false, '${dayISO(-23)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'Creatinine', '0.9', 'mg/dL', '0.6-1.2', false, '${dayISO(-23)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'ALT', '26', 'U/L', '7-56', false, '${dayISO(-23)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'HER2/neu', '15.4', 'ng/mL', '<15.0', true, '${dayISO(-17)}', 'Demo'),
+    (gen_random_uuid(), '${userId}', 'CA 15-3', '27.9', 'U/mL', '<30', false, '${dayISO(-17)}', 'Demo'),
+    -- Most recent (cycle 6 - 2 days ago)
     (gen_random_uuid(), '${userId}', 'WBC (White Blood Cells)', '3.2', 'K/uL', '4.5-11.0', true, '${dayISO(-2)}', 'Demo'),
     (gen_random_uuid(), '${userId}', 'Hemoglobin', '11.2', 'g/dL', '12.0-16.0', true, '${dayISO(-2)}', 'Demo'),
     (gen_random_uuid(), '${userId}', 'Platelet Count', '145', 'K/uL', '150-400', true, '${dayISO(-2)}', 'Demo'),
     (gen_random_uuid(), '${userId}', 'Creatinine', '0.9', 'mg/dL', '0.6-1.2', false, '${dayISO(-2)}', 'Demo'),
     (gen_random_uuid(), '${userId}', 'ALT', '22', 'U/L', '7-56', false, '${dayISO(-2)}', 'Demo'),
     (gen_random_uuid(), '${userId}', 'HER2/neu', '15.8', 'ng/mL', '<15.0', true, '${dayISO(-5)}', 'Demo'),
-    (gen_random_uuid(), '${userId}', 'CA 15-3', '28.5', 'U/mL', '<30', false, '${dayISO(-5)}', 'Demo'),
-    (gen_random_uuid(), '${userId}', 'WBC (White Blood Cells)', '4.1', 'K/uL', '4.5-11.0', true, '${dayISO(-23)}', 'Demo'),
-    (gen_random_uuid(), '${userId}', 'Hemoglobin', '11.8', 'g/dL', '12.0-16.0', true, '${dayISO(-23)}', 'Demo'),
-    (gen_random_uuid(), '${userId}', 'Platelet Count', '168', 'K/uL', '150-400', false, '${dayISO(-23)}', 'Demo')
+    (gen_random_uuid(), '${userId}', 'CA 15-3', '28.5', 'U/mL', '<30', false, '${dayISO(-5)}', 'Demo')
   `);
-  console.log(`   ✅ 10 lab results`);
+  console.log(`   ✅ 42 lab results`);
 
   // ── 7. Appointments ────────────────────────────────────────────────────────
   console.log('\n📅 Step 7: Adding appointments...');
@@ -297,7 +335,7 @@ Ibuprofen (causes GI upset)',
   console.log(`👤 Patient:  Margaret Chen, 58F`);
   console.log(`🎗️  Cancer:   HER2+ Breast Cancer, Stage IIIA`);
   console.log(`💊 Meds:     ${insertedMeds.length}`);
-  console.log(`🧪 Labs:     10`);
+  console.log(`🧪 Labs:     42`);
   console.log(`📅 Appts:    5`);
   console.log(`👨‍⚕️  Doctors:  5`);
   console.log(`🔔 Notifs:   5`);

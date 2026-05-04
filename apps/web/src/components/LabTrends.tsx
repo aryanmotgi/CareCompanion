@@ -27,6 +27,7 @@ interface LabTrend {
   values: TrendValue[]
   alerts: TrendAlert[]
   prediction_7d: number | null
+  reference_range?: { low?: number; high?: number }
 }
 
 interface LabTrendsResponse {
@@ -477,6 +478,7 @@ export function LabTrends() {
     values: t.values,
     trend: t.trend,
     prediction: t.prediction_7d ?? undefined,
+    reference_range: t.reference_range,
   }))
 
   return (

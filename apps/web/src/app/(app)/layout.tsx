@@ -118,7 +118,7 @@ export default async function AppLayout({
     <ToastProvider>
       <OfflineIndicator />
       <TestModeBanner />
-      <BugReportButton />
+      {!dbUser.isDemo && <BugReportButton />}
       <ChecklistVersionNotice />
       <AppShell
         patientName={profile?.patientName || 'your loved one'}

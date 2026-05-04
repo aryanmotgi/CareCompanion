@@ -265,13 +265,57 @@ export function GlobalSearch() {
 
                 {/* Default state */}
                 {!loading && query.length < 2 && (
-                  <div className="py-6 px-4 text-center">
-                    <p className="text-sm text-[var(--text-secondary)] mb-2">
-                      Search your medications, appointments, lab results, documents, and journal entries.
-                    </p>
-                    <p className="text-xs text-[var(--text-muted)]">
-                      Tip: Add medications, appointments, and notes in the Care tab to make them searchable here.
-                    </p>
+                  <div style={{ padding: '16px 16px 8px' }}>
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 8 }}>
+                        Recent searches
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {['Hemoglobin', 'Dr. Lisa Chen'].map(chip => (
+                          <button
+                            key={chip}
+                            type="button"
+                            onClick={() => { setQuery(chip); setActiveIndex(-1) }}
+                            style={{
+                              background: 'rgba(255,255,255,0.06)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              color: 'var(--text-secondary)',
+                              fontSize: 13,
+                              padding: '6px 12px',
+                              borderRadius: 20,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {chip}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 8 }}>
+                        Suggested
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {['Hemoglobin', 'Ondansetron', 'Dr. Lisa Chen', 'Next appointment', 'CA 15-3'].map(chip => (
+                          <button
+                            key={chip}
+                            type="button"
+                            onClick={() => { setQuery(chip); setActiveIndex(-1) }}
+                            style={{
+                              background: 'rgba(255,255,255,0.06)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              color: 'var(--text-secondary)',
+                              fontSize: 13,
+                              padding: '6px 12px',
+                              borderRadius: 20,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {chip}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
 

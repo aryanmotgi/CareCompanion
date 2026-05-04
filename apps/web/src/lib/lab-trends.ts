@@ -15,6 +15,7 @@ interface TrendAnalysis {
   values: Array<{ value: number; date: string }>
   alerts: TrendAlert[]
   prediction_7d: number | null
+  reference_range?: { low?: number; high?: number }
 }
 
 interface TrendAlert {
@@ -178,6 +179,10 @@ export function analyzeTrend(results: LabResult[]): TrendAnalysis | null {
     }
   }
 
+  const referenceRange = threshold
+    ? { low: threshold[1].low, high: threshold[1].high }
+    : undefined
+
   return {
     test_name: testName,
     unit: results[results.length - 1].unit ?? null,
@@ -188,6 +193,7 @@ export function analyzeTrend(results: LabResult[]): TrendAnalysis | null {
     values,
     alerts,
     prediction_7d: prediction7d,
+    reference_range: referenceRange,
   }
 }
 

@@ -176,7 +176,7 @@ export function CategoryScanner({ category, onClose, onSaved }: CategoryScannerP
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-[var(--bg-card)] rounded-2xl shadow-2xl shadow-black/40 w-full max-w-lg max-h-[90vh] overflow-y-auto border border-[var(--border)]">
+      <div className="bg-[#1a1525] rounded-2xl shadow-2xl shadow-black/40 w-full max-w-lg max-h-[90vh] overflow-y-auto border border-[var(--border)]">
         {/* Header with category color */}
         <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
           <div className="flex items-center gap-3">
