@@ -9,7 +9,7 @@
  *   curl -X POST https://carecompanionai.org/api/admin/provision-demo \
  *     -H "Authorization: Bearer YOUR_CRON_SECRET"
  *
- * Safe to call multiple times — skips Cognito create if user already exists,
+ * Safe to call multiple times -skips Cognito create if user already exists,
  * and skips DB seed if profile already exists. Pass ?reseed=true to force
  * a full reseed of an existing account.
  */
@@ -157,7 +157,13 @@ export async function POST(req: NextRequest) {
     await seedDemoData(newUser.id);
   } catch (err) {
     console.error('[provision-demo] Seed failed:', err);
-    return NextResponse.json({ error: 'Cognito user created but DB seed failed', detail: String(err) }, { status: 500 });
+    const e = err as Record<string, unknown>;
+    return NextResponse.json({
+      error: 'Cognito user created but DB seed failed',
+      detail: String(err),
+      cause: e?.cause ? String(e.cause) : undefined,
+      extra: JSON.stringify(err, Object.getOwnPropertyNames(err as object)),
+    }, { status: 500 });
   }
 
   console.log(`[provision-demo] Created demo account: ${DEMO_EMAIL} (${newUser.id})`);
@@ -223,7 +229,7 @@ async function seedDemoData(userId: string) {
     { careProfileId, name: 'Ondansetron (Zofran)', dose: '8mg', frequency: 'As needed for nausea', prescribingDoctor: 'Dr. Lisa Chen (Medical Oncology)', refillDate: dayISO(3), notes: 'Take at first sign of nausea. May cause constipation.' },
     { careProfileId, name: 'Dexamethasone', dose: '4mg', frequency: 'Before chemo infusion', prescribingDoctor: 'Dr. Lisa Chen (Medical Oncology)', refillDate: dayISO(7), notes: 'Pre-medication for chemo. Take night before and morning of infusion.' },
     { careProfileId, name: 'Tamoxifen', dose: '20mg', frequency: 'Once daily', prescribingDoctor: 'Dr. Lisa Chen (Medical Oncology)', refillDate: dayISO(25), notes: 'Hormone therapy. Long-term maintenance (5-10 years).' },
-    { careProfileId, name: 'Lisinopril', dose: '10mg', frequency: 'Once daily — morning', prescribingDoctor: 'Dr. Maria Santos (Primary Care)', refillDate: dayISO(20), notes: 'Blood pressure control.' },
+    { careProfileId, name: 'Lisinopril', dose: '10mg', frequency: 'Once daily -morning', prescribingDoctor: 'Dr. Maria Santos (Primary Care)', refillDate: dayISO(20), notes: 'Blood pressure control.' },
     { careProfileId, name: 'Lorazepam (Ativan)', dose: '0.5mg', frequency: 'As needed for anxiety', prescribingDoctor: 'Dr. Maria Santos (Primary Care)', refillDate: dayISO(30), notes: 'PRN for anxiety before scans or procedures. Do not mix with alcohol.' },
   ]).returning({ id: medications.id, name: medications.name });
 
@@ -241,11 +247,11 @@ async function seedDemoData(userId: string) {
   ]);
 
   await db.insert(appointments).values([
-    { careProfileId, doctorName: 'Dr. Lisa Chen', specialty: 'Medical Oncology', dateTime: dayTime(3, 10, 0), location: 'Cancer Center — Clinic 2, Room 204', purpose: 'Oncology follow-up — treatment response review' },
-    { careProfileId, doctorName: 'Lab Work', specialty: 'Laboratory', dateTime: dayTime(6, 8, 0), location: 'Cancer Center — Lab', purpose: 'Pre-chemo bloodwork (CBC, CMP, tumor markers)' },
-    { careProfileId, doctorName: 'Infusion Center', specialty: 'Medical Oncology', dateTime: dayTime(7, 9, 0), location: 'Cancer Center — Infusion Suite B', purpose: 'Chemotherapy infusion — Herceptin + Perjeta + Taxotere' },
-    { careProfileId, doctorName: 'Dr. James Park', specialty: 'Cardiology', dateTime: dayTime(14, 11, 0), location: 'Heart & Vascular Center', purpose: 'Echocardiogram — Herceptin cardiac monitoring' },
-    { careProfileId, doctorName: 'Dr. Rachel Kim', specialty: 'Breast Surgery', dateTime: dayTime(28, 14, 30), location: 'Cancer Center — Surgery Clinic', purpose: 'Post-treatment surgical consult' },
+    { careProfileId, doctorName: 'Dr. Lisa Chen', specialty: 'Medical Oncology', dateTime: dayTime(3, 10, 0), location: 'Cancer Center -Clinic 2, Room 204', purpose: 'Oncology follow-up -treatment response review' },
+    { careProfileId, doctorName: 'Lab Work', specialty: 'Laboratory', dateTime: dayTime(6, 8, 0), location: 'Cancer Center -Lab', purpose: 'Pre-chemo bloodwork (CBC, CMP, tumor markers)' },
+    { careProfileId, doctorName: 'Infusion Center', specialty: 'Medical Oncology', dateTime: dayTime(7, 9, 0), location: 'Cancer Center -Infusion Suite B', purpose: 'Chemotherapy infusion -Herceptin + Perjeta + Taxotere' },
+    { careProfileId, doctorName: 'Dr. James Park', specialty: 'Cardiology', dateTime: dayTime(14, 11, 0), location: 'Heart & Vascular Center', purpose: 'Echocardiogram -Herceptin cardiac monitoring' },
+    { careProfileId, doctorName: 'Dr. Rachel Kim', specialty: 'Breast Surgery', dateTime: dayTime(28, 14, 30), location: 'Cancer Center -Surgery Clinic', purpose: 'Post-treatment surgical consult' },
   ]);
 
   await db.insert(doctors).values([
@@ -274,9 +280,9 @@ async function seedDemoData(userId: string) {
   }
 
   await db.insert(notifications).values([
-    { userId, type: 'lab_result', title: 'Low WBC — Neutropenia Warning', message: 'WBC is 3.2 K/uL (normal: 4.5-11.0). Watch for fever or signs of infection. Contact oncology if temp > 100.4°F.', isRead: false },
-    { userId, type: 'refill', title: 'Ondansetron (Zofran) refill soon', message: '12 tablets remaining. Refill due in 3 days — you will need these for your next infusion.', isRead: false },
-    { userId, type: 'appointment', title: 'Oncology follow-up in 3 days', message: 'Dr. Lisa Chen at Cancer Center — Clinic 2, 10:00 AM. Review treatment response.', isRead: false },
+    { userId, type: 'lab_result', title: 'Low WBC -Neutropenia Warning', message: 'WBC is 3.2 K/uL (normal: 4.5-11.0). Watch for fever or signs of infection. Contact oncology if temp > 100.4°F.', isRead: false },
+    { userId, type: 'refill', title: 'Ondansetron (Zofran) refill soon', message: '12 tablets remaining. Refill due in 3 days -you will need these for your next infusion.', isRead: false },
+    { userId, type: 'appointment', title: 'Oncology follow-up in 3 days', message: 'Dr. Lisa Chen at Cancer Center -Clinic 2, 10:00 AM. Review treatment response.', isRead: false },
     { userId, type: 'appointment', title: 'Chemo infusion in 1 week', message: 'Cycle 4 infusion on Thursday. Remember pre-meds (Dexamethasone) night before and morning of.', isRead: false },
     { userId, type: 'lab_result', title: 'HER2/neu slightly elevated', message: 'HER2/neu is 15.8 ng/mL (normal: <15.0). Discuss trend with Dr. Chen at your next visit.', isRead: true },
   ]);
