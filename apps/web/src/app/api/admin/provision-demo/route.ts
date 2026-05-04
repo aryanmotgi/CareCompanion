@@ -37,7 +37,7 @@ import {
 import { eq, inArray } from 'drizzle-orm';
 
 const DEMO_EMAIL = 'demo@carecompanionai.org';
-const DEMO_PASSWORD = 'CareDemo2026';
+const DEMO_PASSWORD = 'CareDemo2026!';
 const DEMO_DISPLAY_NAME = 'Demo User';
 
 const cognito = new CognitoIdentityProviderClient({
