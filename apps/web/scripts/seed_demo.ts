@@ -20,7 +20,7 @@ import {
 } from '@aws-sdk/client-rds-data';
 
 const DEMO_EMAIL = 'demo@carecompanionai.org';
-const DEMO_PASSWORD = 'CareDemo2026';
+const DEMO_PASSWORD = 'CareDemo2026!';
 const DEMO_DISPLAY_NAME = 'Margaret Chen';
 
 const REGION = 'us-east-1';
