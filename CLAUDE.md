@@ -51,7 +51,10 @@ Match request to skill and invoke it FIRST. Never answer directly.
    All four must pass. Fix, don't skip.
 
 ### Branch hygiene
-4. **No direct push to `main`.** PR + 1 review required. Use `aryan/dev`, `shreyash/dev`, `rahil/dev` (or sub-branches `aryan/feature/*`). Squash-merge into main.
+4. **No direct push to `main`.** All changes go through a PR.
+   - **Aryan** (web lead / AI architect) — may self-merge own PRs into `main` without review.
+   - **Shreyash, Rahil** — PR + 1 review required before merging into `main`. Aryan is default reviewer; route to the relevant owner if the change touches their files.
+   - Use `aryan/dev`, `shreyash/dev`, `rahil/dev` (or sub-branches `aryan/feature/*`). Squash-merge into main.
 5. **Rebase dev branch onto `origin/main` daily**: `git fetch && git rebase origin/main`. Keeps dev branches close to main, shrinks conflicts.
 6. **Squash-merge PRs into main.** One commit per feature. Clean `git log main`.
 
