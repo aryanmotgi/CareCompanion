@@ -18,6 +18,7 @@ const PUBLIC_PATHS = [
   '/api/auth',       // Auth.js callback routes — prefix covers /api/auth/callback/cognito etc.
   '/api/chat/guest', // Guest chat API
   '/api/e2e',        // E2E production monitor auth (gated by E2E_AUTH_SECRET, not session)
+  '/api/health',     // Health check — no session required; route gates detail behind CRON_SECRET
   '/demo-walkthrough',
   '/about',
   '/privacy',

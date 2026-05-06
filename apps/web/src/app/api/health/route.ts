@@ -52,15 +52,17 @@ export async function GET(req: Request) {
   // Schema integrity — catch Aurora migration drift before users hit a 500
   try {
     const tableNames = [...new Set(REQUIRED_COLUMNS.map(r => r.table))]
-    const rows = await db.execute(sql`
+    const tableList = sql.join(tableNames.map(t => sql`${t}`), sql`, `)
+    const result = await db.execute(sql`
       SELECT table_name, column_name
       FROM information_schema.columns
       WHERE table_schema = 'public'
-        AND table_name = ANY(${tableNames})
+        AND table_name IN (${tableList})
     `)
-    const found = new Set(
-      (rows as unknown as { table_name: string; column_name: string }[]).map(r => `${r.table_name}.${r.column_name}`)
-    )
+    const rows = (Array.isArray(result)
+      ? result
+      : (result as { rows?: unknown[] }).rows ?? []) as { table_name: string; column_name: string }[]
+    const found = new Set(rows.map(r => `${r.table_name}.${r.column_name}`))
     const missing = REQUIRED_COLUMNS.filter(r => !found.has(`${r.table}.${r.column}`))
     if (missing.length > 0) {
       checks.schema = {
