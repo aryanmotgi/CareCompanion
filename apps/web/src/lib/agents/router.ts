@@ -12,6 +12,13 @@ const routingSchema = z.object({
 
 type RoutingOutput = z.infer<typeof routingSchema>;
 
+const SIMPLE_PATTERN = /^(hi|hello|hey|thanks|thank you|thx|yes|no|yeah|nope|ok|okay|sure|great|good|sounds good|got it|👍|❤️|🙏|✅)[\s!.]*$/i;
+
+function isSimpleMessage(message: string): boolean {
+  const wordCount = message.trim().split(/\s+/).length;
+  return wordCount < 15 && SIMPLE_PATTERN.test(message.trim());
+}
+
 /**
  * Route a user message to the appropriate specialist agent(s).
  * Uses Haiku for fast, cheap classification.
@@ -24,6 +31,10 @@ export async function routeMessage(
   reasoning: string;
   isComplex: boolean;
 }> {
+  if (isSimpleMessage(userMessage)) {
+    return { specialists: ['general'], reasoning: 'simple message', isComplex: false };
+  }
+
   try {
     const result = await generateText({
       model: anthropic('claude-haiku-4-5-20251001'),
@@ -47,7 +58,7 @@ RULES:
 - Emotional/stress messages → wellness (even if they mention other topics)
 
 RECENT CONTEXT:
-${conversationContext.slice(-500)}
+${conversationContext.slice(-2000)}
 
 USER MESSAGE:
 ${userMessage}`,

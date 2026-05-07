@@ -38,45 +38,42 @@ export async function orchestrate(
   patientContext: PatientContext,
   userId: string,
 ): Promise<OrchestratorResult> {
+  const emptyResult: OrchestratorResult = {
+    specialistsUsed: [],
+    agentOutputs: {},
+    synthesizedContext: '',
+    isMultiAgent: false,
+  };
+
   // Step 1: Route the message
   const routing = await routeMessage(userMessage, conversationHistory);
 
-  // Step 2: If single simple specialist, skip the full orchestration
-  if (!routing.isComplex && routing.specialists.length === 1 && routing.specialists[0] === 'general') {
-    return {
-      specialistsUsed: [],
-      agentOutputs: {},
-      synthesizedContext: '',
-      isMultiAgent: false,
-    };
+  // Step 2: Fast path — single specialist, short message, not complex → Sonnet handles it alone
+  const wordCount = userMessage.trim().split(/\s+/).length;
+  if (!routing.isComplex && routing.specialists.length === 1 && wordCount < 20) {
+    return emptyResult;
   }
 
   // Step 2.5: Rate limit specialist calls (max 10 per user per minute)
-  const agentRateKey = `agent:${userId}`
-  const agentRateResult = await agentLimiter.check(agentRateKey)
+  const agentRateKey = `agent:${userId}`;
+  const agentRateResult = await agentLimiter.check(agentRateKey);
   if (!agentRateResult.success) {
-    console.warn(`[orchestrator] Agent rate limit hit for user ${userId}`)
-    return {
-      specialistsUsed: [],
-      agentOutputs: {},
-      synthesizedContext: '',
-      isMultiAgent: false,
-    }
+    console.warn(`[orchestrator] Agent rate limit hit for user ${userId}`);
+    return emptyResult;
   }
 
   // Cap at 3 specialists max per message to control costs
-  const cappedSpecialists = routing.specialists.slice(0, 3)
+  const cappedSpecialists = routing.specialists.slice(0, 3);
 
   // Step 3: Run specialist agents in parallel
   const specialistPromises = cappedSpecialists.map(async (type) => {
     const config = SPECIALISTS[type];
     const relevantData = buildRelevantData(config.relevantDataKeys, patientContext);
 
-    try {
-      const { text } = await generateText({
-        model: anthropic('claude-haiku-4-5-20251001'),
-        system: config.systemPrompt,
-        prompt: `PATIENT DATA:
+    const runSpecialist = async () => generateText({
+      model: anthropic('claude-haiku-4-5-20251001'),
+      system: config.systemPrompt,
+      prompt: `PATIENT DATA:
 ${relevantData}
 
 USER MESSAGE:
@@ -86,12 +83,25 @@ CONVERSATION CONTEXT:
 ${conversationHistory.slice(-1000)}
 
 Provide your specialist analysis. Be specific, reference the patient's actual data, and include any recommendations or flags from your domain. Keep it concise (3-5 key points max).`,
-      });
+    });
 
+    try {
+      const { text } = await runSpecialist();
       return { type, output: text };
     } catch (error) {
-      console.error(`[orchestrator] ${type} specialist failed:`, error);
-      return { type, output: '' };
+      const status = (error as { status?: number }).status;
+      if (status && status >= 400 && status < 500) {
+        console.error(`[orchestrator] ${type} specialist failed (non-retryable ${status}):`, error);
+        return { type, output: '' };
+      }
+      await new Promise((r) => setTimeout(r, 1000));
+      try {
+        const { text } = await runSpecialist();
+        return { type, output: text };
+      } catch (retryError) {
+        console.error(`[orchestrator] ${type} specialist failed after retry:`, retryError);
+        return { type, output: '' };
+      }
     }
   });
 
@@ -145,16 +155,41 @@ function buildRelevantData(keys: string[], context: PatientContext): string {
         if (context.profile) sections.push(`Patient: ${JSON.stringify(context.profile)}`);
         break;
       case 'medications':
-        if (context.medications.length) sections.push(`Medications: ${JSON.stringify(context.medications)}`);
+        if (context.medications.length) {
+          const lines = context.medications.map((m) => {
+            const med = m as Record<string, string>;
+            return `- ${med.name ?? 'Unknown'} ${med.dose ?? ''} ${med.frequency ?? ''} (Dr. ${med.prescribingDoctor ?? 'Unknown'})`.trim();
+          });
+          sections.push(`Medications:\n${lines.join('\n')}`);
+        }
         break;
       case 'doctors':
-        if (context.doctors.length) sections.push(`Doctors: ${JSON.stringify(context.doctors)}`);
+        if (context.doctors.length) {
+          const lines = context.doctors.map((d) => {
+            const doc = d as Record<string, string>;
+            return `- ${doc.name ?? 'Unknown'} (${doc.specialty ?? 'Unknown'}) ${doc.phone ?? ''}`.trim();
+          });
+          sections.push(`Doctors:\n${lines.join('\n')}`);
+        }
         break;
       case 'appointments':
-        if (context.appointments.length) sections.push(`Appointments: ${JSON.stringify(context.appointments)}`);
+        if (context.appointments.length) {
+          const lines = context.appointments.map((a) => {
+            const apt = a as Record<string, string>;
+            return `- ${apt.doctorName ?? 'Unknown'} on ${apt.dateTime ?? 'TBD'} — ${apt.purpose ?? 'General visit'}`;
+          });
+          sections.push(`Appointments:\n${lines.join('\n')}`);
+        }
         break;
       case 'labResults':
-        if (context.labResults.length) sections.push(`Lab Results: ${JSON.stringify(context.labResults)}`);
+        if (context.labResults.length) {
+          const lines = context.labResults.map((l) => {
+            const lab = l as Record<string, string>;
+            const abnormal = lab.isAbnormal === 'true' || lab.isAbnormal === '1' ? ' ⚠️ ABNORMAL' : '';
+            return `- ${lab.testName ?? 'Unknown'}: ${lab.value ?? '?'} ${lab.unit ?? ''} (range: ${lab.referenceRange ?? 'N/A'})${abnormal}`;
+          });
+          sections.push(`Lab Results:\n${lines.join('\n')}`);
+        }
         break;
       case 'insurance':
         if (context.insurance) sections.push(`Insurance: ${JSON.stringify(context.insurance)}`);
@@ -180,6 +215,22 @@ function buildRelevantData(keys: string[], context: PatientContext): string {
       case 'symptoms':
         if (context.symptoms.length) sections.push(`Recent symptoms: ${JSON.stringify(context.symptoms)}`);
         break;
+      case 'cancerType':
+        if (context.profile) sections.push(`Cancer Type: ${(context.profile as Record<string, string>).cancerType || 'Not recorded'}`);
+        break;
+      case 'cancerStage':
+        if (context.profile) sections.push(`Cancer Stage: ${(context.profile as Record<string, string>).cancerStage || 'Not recorded'}`);
+        break;
+      case 'mutations':
+        if (context.profile) sections.push(`Mutations: ${(context.profile as Record<string, string>).mutations || 'Not recorded'}`);
+        break;
+      case 'treatmentHistory': {
+        const profile = context.profile as Record<string, string> | null;
+        const phase = profile?.treatmentPhase ?? 'Unknown';
+        const medCount = context.medications.length;
+        sections.push(`Treatment History: Phase: ${phase} | ${medCount} active medication${medCount !== 1 ? 's' : ''}`);
+        break;
+      }
     }
   }
 

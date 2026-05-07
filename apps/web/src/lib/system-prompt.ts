@@ -246,6 +246,23 @@ export function buildSystemPrompt(
     context += `Reference the patient's current cycle day when discussing symptoms, side effects, or what to expect next.\n`;
   }
 
+  // Pre-compute relevant appointments (future + last 7 days) and active doctors
+  const _now = new Date();
+  const _sevenDaysAgo = new Date(_now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const relevantAppointments = (appointments ?? []).filter((appt) => {
+    if (!appt.dateTime) return false;
+    return new Date(appt.dateTime) >= _sevenDaysAgo;
+  });
+  const _activeDoctorNames = new Set<string>();
+  (medications ?? []).forEach((m) => {
+    if (m.prescribingDoctor) _activeDoctorNames.add(m.prescribingDoctor.toLowerCase());
+  });
+  relevantAppointments.forEach((appt) => {
+    if (appt.doctorName) _activeDoctorNames.add(appt.doctorName.toLowerCase());
+  });
+  const _activeDoctors = (doctors ?? []).filter((d) => _activeDoctorNames.has(d.name.toLowerCase()));
+  const doctorsToShow = _activeDoctors.length > 0 ? _activeDoctors : (doctors ?? []);
+
   if (medications && medications.length > 0) {
     context += `\n=== MEDICATIONS ===\n`;
     context += `⚠️ CHECK ALL NEW MEDICATIONS AGAINST THIS LIST FOR INTERACTIONS:\n`;
@@ -261,29 +278,25 @@ export function buildSystemPrompt(
     context += `\n=== MEDICATIONS ===\nNo medications recorded yet.\n`;
   }
 
-  if (doctors && doctors.length > 0) {
+  if (doctorsToShow.length > 0) {
     context += `\n=== DOCTORS ===\n`;
-    doctors.forEach((doc) => {
+    doctorsToShow.forEach((doc) => {
       context += `- ${doc.name}`;
       if (doc.specialty) context += ` (${doc.specialty})`;
       if (doc.phone) context += `, ${doc.phone}`;
       context += `\n`;
     });
-  } else {
-    context += `\n=== DOCTORS ===\nNo doctors recorded yet.\n`;
   }
 
-  if (appointments && appointments.length > 0) {
+  if (relevantAppointments.length > 0) {
     context += `\n=== UPCOMING APPOINTMENTS ===\n`;
-    appointments.forEach((appt) => {
+    relevantAppointments.forEach((appt) => {
       context += `- `;
       if (appt.doctorName) context += `${appt.doctorName}`;
       if (appt.dateTime) context += ` on ${new Date(appt.dateTime).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
       if (appt.purpose) context += ` — ${appt.purpose}`;
       context += `\n`;
     });
-  } else {
-    context += `\n=== UPCOMING APPOINTMENTS ===\nNo appointments scheduled.\n`;
   }
 
   // Synced data context
@@ -291,12 +304,14 @@ export function buildSystemPrompt(
     const { labResults, notifications, claims, priorAuths, fsaHsa, memories, conversationSummaries, symptoms } = extras;
 
     if (labResults && labResults.length > 0) {
+      const abnormalLabs = labResults.filter((l) => l.isAbnormal);
+      const normalLabs = labResults.filter((l) => !l.isAbnormal);
+      const cappedLabs = [...abnormalLabs, ...normalLabs].slice(0, 10);
       context += `\n=== RECENT LAB RESULTS ===\n`;
-      const abnormal = labResults.filter((l) => l.isAbnormal);
-      if (abnormal.length > 0) {
-        context += `⚠️ ${abnormal.length} ABNORMAL result(s):\n`;
+      if (abnormalLabs.length > 0) {
+        context += `⚠️ ${abnormalLabs.length} ABNORMAL result(s):\n`;
       }
-      labResults.forEach((lab) => {
+      cappedLabs.forEach((lab) => {
         context += `- ${lab.testName}: ${lab.value} ${lab.unit || ''}`;
         if (lab.referenceRange) context += ` (range: ${lab.referenceRange})`;
         if (lab.isAbnormal) context += ` ⚠️ ABNORMAL`;
@@ -306,9 +321,10 @@ export function buildSystemPrompt(
     }
 
     if (symptoms && symptoms.length > 0) {
+      const cappedSymptoms = symptoms.slice(0, 14);
       context += `\n=== RECENT SYMPTOMS (last 14 days) ===\n`;
       context += `Use these to understand how the patient has been feeling. Look for patterns and trends.\n`;
-      symptoms.forEach((s) => {
+      cappedSymptoms.forEach((s) => {
         const parts: string[] = [];
         if (s.painLevel !== null && s.painLevel !== undefined) parts.push(`pain ${s.painLevel}/10`);
         if (s.mood !== null && s.mood !== undefined) parts.push(`mood ${s.mood}/10`);
@@ -322,13 +338,16 @@ export function buildSystemPrompt(
     }
 
     if (notifications && notifications.length > 0) {
+      const cappedNotifications = notifications.slice(0, 5);
+      const notifOverflow = notifications.length - cappedNotifications.length;
       context += `\n=== UNREAD ALERTS ===\n`;
       context += `Proactively mention these to the user:\n`;
-      notifications.forEach((n) => {
+      cappedNotifications.forEach((n) => {
         context += `- [${n.type}] ${n.title}`;
         if (n.message) context += `: ${n.message}`;
         context += `\n`;
       });
+      if (notifOverflow > 0) context += `(+${notifOverflow} more unread)\n`;
     }
 
     if (claims && claims.length > 0) {
@@ -366,23 +385,9 @@ export function buildSystemPrompt(
       }
     }
 
-    // Long-term memories — the agent's permanent knowledge about this patient.
-    // Only high/medium confidence facts are injected; low-confidence inferences are
-    // excluded to reduce noise and limit prompt-injection surface area.
+    // Long-term memories — high/medium confidence only; low-confidence excluded.
     const safeMemories = (memories ?? []).filter((m) => m.confidence !== 'low');
     if (safeMemories.length > 0) {
-      context += `\n=== LONG-TERM MEMORY ===\n`;
-      context += `These are facts you have learned from past conversations. Use them to personalize your responses.\n`;
-      context += `Reference these naturally — don't say "according to my records" — just know them like a trusted friend would.\n\n`;
-
-      // Group by category for clarity
-      const grouped = new Map<string, Memory[]>();
-      for (const mem of safeMemories) {
-        const existing = grouped.get(mem.category) || [];
-        existing.push(mem);
-        grouped.set(mem.category, existing);
-      }
-
       const categoryLabels: Record<string, string> = {
         medication: 'Medications',
         condition: 'Conditions',
@@ -399,29 +404,51 @@ export function buildSystemPrompt(
         other: 'Other',
       };
 
-      for (const [category, mems] of Array.from(grouped.entries())) {
-        const safeLines: string[] = [];
-        for (const mem of mems) {
-          const sanitized = sanitizeMemoryFact(mem.fact);
-          if (!sanitized) continue;
-          const age = mem.lastReferenced ? daysSince(mem.lastReferenced.toISOString()) : 999;
-          const recency = age < 7 ? '' : age < 30 ? ' (mentioned weeks ago)' : ' (mentioned a while ago)';
-          safeLines.push(`- ${sanitized}${recency}`);
+      // Dedup: skip memories that repeat data already present in structured sections
+      const medNames = new Set((medications ?? []).map((m) => m.name.toLowerCase()));
+      const labNames = new Set((labResults ?? []).map((l) => l.testName.toLowerCase()));
+      const cancerType = (profile.cancerType ?? '').toLowerCase();
+
+      const deduped = safeMemories.filter((m) => {
+        const factLower = m.fact.toLowerCase();
+        if (m.category === 'medication') {
+          return !Array.from(medNames).some((name) => factLower.includes(name));
         }
-        if (safeLines.length > 0) {
-          context += `[${categoryLabels[category] || category}]\n`;
-          context += safeLines.join('\n') + '\n\n';
+        if (m.category === 'lab_result') {
+          return !Array.from(labNames).some((name) => factLower.includes(name));
         }
+        if (m.category === 'condition' && cancerType) {
+          return !factLower.includes(cancerType);
+        }
+        return true;
+      });
+
+      const memoryLines: string[] = [];
+      for (const mem of deduped) {
+        const sanitized = sanitizeMemoryFact(mem.fact);
+        if (!sanitized) continue;
+        const age = mem.lastReferenced ? daysSince(mem.lastReferenced.toISOString()) : 999;
+        const recency = age >= 30 ? ' (mentioned a while ago)' : '';
+        const label = categoryLabels[mem.category] || mem.category;
+        memoryLines.push(`[${label}] ${sanitized}${recency}`);
+      }
+
+      if (memoryLines.length > 0) {
+        context += `\n=== LONG-TERM MEMORY ===\n`;
+        context += `Facts from past conversations — know these like a trusted friend would:\n`;
+        context += memoryLines.join('\n') + '\n';
       }
     }
 
     // Recent conversation summaries — what was discussed recently
     if (conversationSummaries && conversationSummaries.length > 0) {
+      const recentSummaries = conversationSummaries.slice(0, 3);
       context += `=== RECENT CONVERSATIONS ===\n`;
       context += `Summary of past sessions (most recent first):\n`;
-      for (const summary of conversationSummaries) {
+      for (const summary of recentSummaries) {
         const date = summary.createdAt ? new Date(summary.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-        context += `- [${date}] ${summary.summary}`;
+        const text = summary.summary.length > 150 ? summary.summary.slice(0, 150) + '...' : summary.summary;
+        context += `- [${date}] ${text}`;
         if (summary.topics && summary.topics.length > 0) context += ` (topics: ${summary.topics.join(', ')})`;
         context += `\n`;
       }
