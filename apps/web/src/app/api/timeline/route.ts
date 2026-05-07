@@ -21,7 +21,7 @@ export interface TimelineItem {
   date: string
   title: string
   subtitle?: string | null
-  severity?: 'info' | 'watch' | 'alert' | 'positive' | null
+  severity?: 'info' | 'watch' | 'alert' | 'positive' | 'critical' | 'warning' | 'informational' | null
   isMilestone?: boolean
   data?: Record<string, unknown>
 }
@@ -260,7 +260,7 @@ export async function GET(req: Request) {
         date: dateStr,
         title: insight.title,
         subtitle: insight.body.length > 100 ? insight.body.slice(0, 100) + '...' : insight.body,
-        severity: insight.severity as 'info' | 'watch' | 'alert',
+        severity: insight.severity as TimelineItem['severity'],
         isMilestone: insight.type === 'milestone',
         data: {
           body: insight.body,

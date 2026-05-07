@@ -3,10 +3,10 @@ import { streamText, stepCountIs, type UIMessage } from 'ai';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { db } from '@/lib/db';
 import { careProfiles, medications, doctors, appointments, labResults, notifications, claims, priorAuths, fsaHsa, symptomEntries, insurance, messages, treatmentCycles } from '@/lib/db/schema';
-import { eq, desc, and, isNull } from 'drizzle-orm';
+import { eq, desc, and, isNull, sql } from 'drizzle-orm';
 import { buildSystemPrompt, buildRoleContext } from '@/lib/system-prompt';
 import { buildTools } from '@/lib/tools';
-import { extractAndSaveMemories, loadMemories, loadConversationSummaries, touchReferencedMemories, summarizeConversation } from '@/lib/memory';
+import { extractAndSaveMemories, loadMemories, loadRelevantMemories, loadConversationSummaries, touchReferencedMemories, summarizeConversation } from '@/lib/memory';
 import { orchestrate } from '@/lib/agents/orchestrator';
 import { rateLimit } from '@/lib/rate-limit';
 import { ApiErrors } from '@/lib/api-response';
@@ -80,11 +80,12 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
 
   // Pre-screen for dangerous account-management intents (Bug #6)
   const lastMsg = msgs[msgs.length - 1];
+  const userMessageText = lastMsg?.role === 'user'
+    ? (lastMsg.parts?.filter((p): p is { type: 'text'; text: string } => p.type === 'text').map((p) => p.text).join('') || '')
+    : '';
+
   if (lastMsg?.role === 'user') {
-    const userText = lastMsg.parts
-      ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-      .map((p) => p.text)
-      .join('') || '';
+    const userText = userMessageText;
     const dangerousIntentPattern = /\b(delete\s+(my\s+)?account|cancel\s+(my\s+)?(subscription|plan|membership)|change\s+(my\s+)?password|reset\s+(my\s+)?password|close\s+(my\s+)?account|deactivate\s+(my\s+)?account)\b/i;
     if (dangerousIntentPattern.test(userText)) {
       const encoder = new TextEncoder();
@@ -133,7 +134,7 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     db.select().from(claims).where(and(eq(claims.userId, dbUser!.id), eq(claims.status, 'denied'))).limit(5).catch(() => []),
     db.select().from(priorAuths).where(eq(priorAuths.userId, dbUser!.id)).limit(50).catch(() => []),
     db.select().from(fsaHsa).where(eq(fsaHsa.userId, dbUser!.id)).limit(50).catch(() => []),
-    loadMemories(dbUser!.id).catch(() => []),
+    (userMessageText ? loadRelevantMemories(dbUser!.id, userMessageText) : loadMemories(dbUser!.id, 50)).catch(() => []),
     loadConversationSummaries(dbUser!.id).catch(() => []),
     db.select().from(symptomEntries).where(eq(symptomEntries.userId, dbUser!.id)).orderBy(desc(symptomEntries.date)).limit(14).catch(() => []),
     db.select().from(insurance).where(eq(insurance.userId, dbUser!.id)).limit(1).catch(() => []),
@@ -143,25 +144,22 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
   const [activeCycle] = activeCycleRows;
 
   // Save the user message
-  const lastMessage = msgs[msgs.length - 1];
-  let userMessageText = '';
-  if (lastMessage?.role === 'user') {
-    userMessageText = lastMessage.parts
-      ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-      .map((p) => p.text)
-      .join('') || '';
+  if (userMessageText) {
+    await db.insert(messages).values({
+      userId: dbUser!.id,
+      role: 'user',
+      content: userMessageText,
+    });
 
-    if (userMessageText) {
-      await db.insert(messages).values({
-        userId: dbUser!.id,
-        role: 'user',
-        content: userMessageText,
-      });
-
-      // Touch referenced memories (non-blocking)
-      touchReferencedMemories(dbUser!.id, userMessageText, memoriesData).catch(() => {});
-    }
+    // Touch referenced memories (non-blocking)
+    touchReferencedMemories(dbUser!.id, userMessageText, memoriesData).catch(() => {});
   }
+
+  // Server-side message count for summarization trigger
+  const [{ msgCount }] = await db
+    .select({ msgCount: sql<number>`count(*)` })
+    .from(messages)
+    .where(eq(messages.userId, dbUser!.id));
 
   // Build conversation messages for Claude
   const conversationMessages = msgs.map((msg) => ({
@@ -174,7 +172,14 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
   }));
 
   // Run the multi-agent orchestrator in parallel with building the system prompt
-  const conversationHistory = conversationMessages.slice(-6).map((m) => `${m.role}: ${m.content}`).join('\n');
+  const conversationHistory = conversationMessages
+    .slice(-8)
+    .map((m) => {
+      const label = m.role === 'user' ? 'User' : 'Assistant';
+      const content = m.content.length > 500 ? m.content.slice(0, 500) + '…' : m.content;
+      return `${label}: ${content}`;
+    })
+    .join('\n');
 
   const roleContext = buildRoleContext({
     role: dbUser!.role ?? null,
@@ -226,29 +231,34 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     messages: conversationMessages,
     tools,
     stopWhen: stepCountIs(10),
-    onFinish: async ({ text }) => {
+    onFinish: async ({ text, steps }) => {
+      // Fallback message if model used all tool steps but produced no text
+      const finalText = (!text || text.length < 20) && steps && steps.length >= 10
+        ? "I ran into a complexity limit on that request. Could you try breaking it into smaller questions?"
+        : text;
+
       // Save assistant message
-      if (text) {
+      if (finalText) {
         await db.insert(messages).values({
           userId: dbUser!.id,
           role: 'assistant',
-          content: text,
+          content: finalText,
         });
       }
 
-      // Extract and save new memories (non-blocking background job)
-      if (userMessageText && text) {
+      // Extract and save new memories — skip very short responses (no extractable facts)
+      if (userMessageText && finalText && finalText.length >= 50) {
         extractAndSaveMemories(
           dbUser!.id,
           profile?.id || null,
           userMessageText,
-          text,
+          finalText,
           memoriesData,
         ).catch((err) => console.error('[memory] background extraction error:', err));
       }
 
-      // Summarize conversation every 20 messages
-      if (msgs.length > 0 && msgs.length % 20 === 0) {
+      // Summarize conversation every 20 messages using server-side count
+      if (Number(msgCount) > 0 && Number(msgCount) % 20 === 0) {
         summarizeConversation(dbUser!.id, conversationMessages)
           .catch((err) => console.error('[memory] background summarization error:', err));
       }
