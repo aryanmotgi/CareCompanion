@@ -16,6 +16,8 @@
 		A72C0A16FF8C4EF288EE5E65 /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62BAADAE86CE4EB585BD1496 /* noop-file.swift */; };
 		AA63906D2FADA91A00DF53CC /* HealthKitBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = AA63906B2FADA91A00DF53CC /* HealthKitBridge.m */; };
 		AA63906E2FADA91A00DF53CC /* HealthKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA63906C2FADA91A00DF53CC /* HealthKitBridge.swift */; };
+		AA6390712FADA91A00DF53CC /* WellnessVitals.m in Sources */ = {isa = PBXBuildFile; fileRef = AA63906F2FADA91A00DF53CC /* WellnessVitals.m */; };
+		AA6390722FADA91A00DF53CC /* WellnessVitals.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6390702FADA91A00DF53CC /* WellnessVitals.swift */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 /* End PBXBuildFile section */
@@ -36,6 +38,8 @@
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = CareCompanion/SplashScreen.storyboard; sourceTree = "<group>"; };
 		AA63906B2FADA91A00DF53CC /* HealthKitBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HealthKitBridge.m; sourceTree = "<group>"; };
 		AA63906C2FADA91A00DF53CC /* HealthKitBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitBridge.swift; sourceTree = "<group>"; };
+		AA63906F2FADA91A00DF53CC /* WellnessVitals.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WellnessVitals.m; sourceTree = "<group>"; };
+		AA6390702FADA91A00DF53CC /* WellnessVitals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WellnessVitals.swift; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-CareCompanion/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
@@ -91,6 +95,8 @@
 			children = (
 				AA63906B2FADA91A00DF53CC /* HealthKitBridge.m */,
 				AA63906C2FADA91A00DF53CC /* HealthKitBridge.swift */,
+				AA63906F2FADA91A00DF53CC /* WellnessVitals.m */,
+				AA6390702FADA91A00DF53CC /* WellnessVitals.swift */,
 				13B07FAE1A68108700A75B9A /* CareCompanion */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
@@ -348,6 +354,8 @@
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,
 				AA63906D2FADA91A00DF53CC /* HealthKitBridge.m in Sources */,
 				AA63906E2FADA91A00DF53CC /* HealthKitBridge.swift in Sources */,
+				AA6390712FADA91A00DF53CC /* WellnessVitals.m in Sources */,
+				AA6390722FADA91A00DF53CC /* WellnessVitals.swift in Sources */,
 				A72C0A16FF8C4EF288EE5E65 /* noop-file.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
