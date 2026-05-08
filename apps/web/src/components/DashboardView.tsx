@@ -69,6 +69,109 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'health', label: 'Health Data' },
 ]
 
+interface CardItem {
+  id: string
+  variant: 'urgent' | 'upcoming' | 'alert' | 'quick-ask'
+  label: string
+  title: string
+  subtitle: string
+  priority: number
+  action?: string
+  href?: string
+  expandedContent?: React.ReactNode
+  isPriority?: boolean
+  name?: string
+}
+
+interface CardGroup {
+  groupId: string
+  emoji: string
+  label: string
+  title: string
+  previewSubtitle: string
+  variant: 'urgent' | 'alert'
+  items: CardItem[]
+}
+
+function SummaryGroupCard({
+  group,
+  expanded,
+  onToggle,
+  expandedChildId,
+  onChildToggle,
+}: {
+  group: CardGroup
+  expanded: boolean
+  onToggle: () => void
+  expandedChildId: string | null
+  onChildToggle: (id: string | null) => void
+}) {
+  const isUrgent = group.variant === 'urgent'
+  const borderAccent = isUrgent ? 'border-l-[#ef4444]' : 'border-l-[#fbbf24]'
+  const labelColor = isUrgent ? 'text-[#ef4444]' : 'text-[#fbbf24]'
+  const dotColor = isUrgent ? 'bg-[#ef4444]' : 'bg-[#fbbf24]'
+  const countStyle = isUrgent
+    ? 'bg-[rgba(239,68,68,0.12)] text-[#ef4444]'
+    : 'bg-[rgba(251,191,36,0.12)] text-[#fbbf24]'
+
+  return (
+    <div className="space-y-2">
+      <div
+        className={`bg-white/[0.04] border border-white/[0.06] border-l-2 ${borderAccent} rounded-xl p-4 cursor-pointer animate-press card-hover-glow`}
+        onClick={onToggle}
+        role="button"
+        aria-expanded={expanded}
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor} ${isUrgent ? 'animate-dot-pulse' : ''}`} />
+          <span className={`text-xs font-semibold ${labelColor}`}>{group.label}</span>
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${countStyle}`}>
+            {group.items.length}
+          </span>
+        </div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-[var(--text)] text-sm font-semibold">
+              {group.emoji} {group.title}
+            </div>
+            <div className="text-[var(--text-secondary)] text-xs mt-0.5">{group.previewSubtitle}</div>
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+            <span className="text-xs text-[var(--text-muted)]">{expanded ? 'Less' : 'View all'}</span>
+            <svg
+              className={`w-3.5 h-3.5 text-[var(--text-muted)] transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+              fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="space-y-2 pl-3 border-l-2 border-white/[0.08] ml-2">
+          {group.items.map((card, i) => (
+            <PriorityCard
+              key={card.id}
+              variant={card.variant}
+              label={card.label}
+              title={card.title}
+              subtitle={card.subtitle}
+              action={card.action}
+              href={card.href}
+              index={i}
+              expanded={expandedChildId === card.id}
+              onToggle={() => onChildToggle(expandedChildId === card.id ? null : card.id)}
+              expandedContent={card.expandedContent}
+              isPriority={card.isPriority}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function DashboardView({
   patientName,
   userName,
@@ -85,6 +188,8 @@ export function DashboardView({
 }: DashboardViewProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('today')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null)
+  const [expandedChildId, setExpandedChildId] = useState<string | null>(null)
   const [showTourTooltip, setShowTourTooltip] = useState(false)
   const [weeklyUpdate, setWeeklyUpdate] = useState<{
     token: string; title: string | null; createdAt: Date | null; viewCount: number; shareUrl: string
@@ -118,7 +223,7 @@ export function DashboardView({
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
-const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
+  const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
     side_effects: 'symptom',
     medications: 'med-',
     appointments: 'appt-',
@@ -135,18 +240,7 @@ const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
   }
 
   const cards = useMemo(() => {
-    const result: {
-      id: string
-      variant: 'urgent' | 'upcoming' | 'alert' | 'quick-ask'
-      label: string
-      title: string
-      subtitle: string
-      priority: number
-      action?: string
-      href?: string
-      expandedContent?: React.ReactNode
-      isPriority?: boolean
-    }[] = []
+    const result: CardItem[] = []
 
     const now = new Date()
 
@@ -155,13 +249,15 @@ const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
       const refillDate = new Date(med.refillDate)
       const daysLeft = Math.ceil((refillDate.getTime() - now.getTime()) / 86400000)
       if (daysLeft <= 3) {
+        const isOverdue = daysLeft <= 0
         result.push({
           id: `med-${med.id}`,
-          variant: 'urgent',
-          label: 'URGENT',
-          title: `${med.name} refill ${daysLeft <= 0 ? 'overdue' : daysLeft === 1 ? 'due tomorrow' : `due in ${daysLeft} days`}`,
+          name: med.name,
+          variant: isOverdue ? 'urgent' : 'alert',
+          label: isOverdue ? 'OVERDUE' : 'REFILL DUE',
+          title: `${med.name} refill ${isOverdue ? 'overdue' : daysLeft === 1 ? 'due tomorrow' : `due in ${daysLeft} days`}`,
           subtitle: `${med.prescribingDoctor || 'Your care team'} · refill needed`,
-          priority: 1,
+          priority: isOverdue ? 1 : 2,
           expandedContent: (
             <AlertInsights
               details={
@@ -184,10 +280,10 @@ const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
               }
               insights={[
                 { text: `Call your pharmacy now to request a refill for ${med.name}. Have your prescription number ready.` },
-                { text: `Set a reminder ${daysLeft <= 0 ? 'immediately' : 'today'} to follow up on refill for ${med.name}.` },
+                { text: `Set a reminder ${isOverdue ? 'immediately' : 'today'} to follow up on refill for ${med.name}.` },
                 { text: `If refills are denied, ask ${med.prescribingDoctor || 'your doctor'} for a new prescription or 90-day supply to avoid running out again.` },
               ]}
-              chatPrompt={`Help me manage my ${med.name} refill — it's ${daysLeft <= 0 ? 'overdue' : `due in ${daysLeft} days`}`}
+              chatPrompt={`Help me manage my ${med.name} refill — it's ${isOverdue ? 'overdue' : `due in ${daysLeft} days`}`}
             />
           ),
         })
@@ -204,11 +300,12 @@ const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
         const dayStr = daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `In ${daysUntil} days`
         result.push({
           id: `appt-${appt.id}`,
+          name: appt.doctorName || undefined,
           variant: 'upcoming',
           label: 'UPCOMING',
           title: `${appt.doctorName} — ${appt.specialty}`,
           subtitle: `${dayStr} at ${timeStr} · ${appt.purpose || ''}`,
-          priority: 2,
+          priority: 3,
           expandedContent: (
             <AlertInsights
               details={
@@ -255,11 +352,12 @@ const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
       ) ? 'Below normal' : 'Above normal'
       result.push({
         id: `lab-${lab.id}`,
+        name: lab.testName,
         variant: 'alert',
         label: 'ALERT',
         title: `${lab.testName} — ${lab.value} ${lab.unit}`,
         subtitle: `${labDirection} (${lab.referenceRange}) · ${lab.source || ''}`,
-        priority: 3,
+        priority: 4,
         expandedContent: (
           <AlertInsights
             details={
@@ -302,11 +400,12 @@ const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
       if (claim.status !== 'denied') return
       result.push({
         id: `claim-${claim.id}`,
+        name: claim.providerName || undefined,
         variant: 'alert',
         label: 'ALERT',
         title: `Claim denied — ${claim.providerName}`,
         subtitle: `$${claim.patientResponsibility} patient responsibility · ${claim.denialReason || ''}`,
-        priority: 3,
+        priority: 4,
         expandedContent: (
           <>
           <AlertInsights
@@ -355,17 +454,85 @@ const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [medications, appointments, labResults, claims, priorities])
 
-  // Today tab: urgent + alert only
   const todayCards = useMemo(
     () => cards.filter(c => c.variant === 'urgent' || c.variant === 'alert'),
     [cards]
   )
 
-  // Care tab: upcoming appointments
   const upcomingCards = useMemo(
     () => cards.filter(c => c.variant === 'upcoming'),
     [cards]
   )
+
+  const groupedTodayCards = useMemo(() => {
+    const medItems = todayCards.filter(c => c.id.startsWith('med-'))
+    const labItems = todayCards.filter(c => c.id.startsWith('lab-'))
+    const claimItems = todayCards.filter(c => c.id.startsWith('claim-'))
+    const otherItems = todayCards.filter(
+      c => !c.id.startsWith('med-') && !c.id.startsWith('lab-') && !c.id.startsWith('claim-')
+    )
+
+    const groups: CardGroup[] = []
+
+    if (medItems.length >= 2) {
+      const names = medItems.map(c => c.name).filter((n): n is string => !!n)
+      const shownNames = names.slice(0, 2).join(', ')
+      const overflow = names.length - 2
+      const hasOverdue = medItems.some(c => c.variant === 'urgent')
+      groups.push({
+        groupId: 'group-med',
+        emoji: '💊',
+        label: hasOverdue ? 'OVERDUE' : 'REFILLS DUE',
+        title: `${medItems.length} medication${medItems.length !== 1 ? 's' : ''} need refills`,
+        previewSubtitle: overflow > 0 ? `${shownNames} +${overflow} more` : shownNames,
+        variant: hasOverdue ? 'urgent' : 'alert',
+        items: medItems,
+      })
+    }
+
+    if (labItems.length >= 2) {
+      const names = labItems.map(c => c.name).filter((n): n is string => !!n)
+      const shownNames = names.slice(0, 2).join(', ')
+      const overflow = names.length - 2
+      groups.push({
+        groupId: 'group-lab',
+        emoji: '⚠️',
+        label: 'ALERT',
+        title: `${labItems.length} abnormal lab result${labItems.length !== 1 ? 's' : ''}`,
+        previewSubtitle: overflow > 0 ? `${shownNames} +${overflow} more` : shownNames,
+        variant: 'alert',
+        items: labItems,
+      })
+    }
+
+    if (claimItems.length >= 2) {
+      const names = claimItems.map(c => c.name).filter((n): n is string => !!n)
+      const shownNames = names.slice(0, 2).join(', ')
+      const overflow = names.length - 2
+      groups.push({
+        groupId: 'group-claim',
+        emoji: '📋',
+        label: 'ALERT',
+        title: `${claimItems.length} claim${claimItems.length !== 1 ? 's' : ''} denied`,
+        previewSubtitle: overflow > 0 ? `${shownNames} +${overflow} more` : shownNames,
+        variant: 'alert',
+        items: claimItems,
+      })
+    }
+
+    const singletons: CardItem[] = [
+      ...(medItems.length === 1 ? medItems : []),
+      ...(labItems.length === 1 ? labItems : []),
+      ...(claimItems.length === 1 ? claimItems : []),
+      ...otherItems,
+    ].sort((a, b) => {
+      const aBoost = a.isPriority ? -100 : 0
+      const bBoost = b.isPriority ? -100 : 0
+      return (a.priority + aBoost) - (b.priority + bBoost)
+    })
+
+    return { groups, singletons }
+  }, [todayCards])
 
   const quickAskPrompts = useMemo(() => {
     const PRIORITY_PROMPTS: Record<string, string> = {
@@ -391,14 +558,16 @@ const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
     return [...matched, ...remaining].slice(0, 4)
   }, [priorities])
 
+  const totalTodayCount = todayCards.length
+
   return (
     <>
     <GuidedTour steps={TOUR_STEPS} patientName={patientName} />
     <div className="px-4 sm:px-5 py-5 sm:py-6">
 
-      {/* Pill tab bar */}
+      {/* Slim tab bar — no glow */}
       <div
-        className="flex gap-1 p-1 rounded-full border border-white/[0.06] mb-5"
+        className="flex gap-1 p-1 rounded-full border border-white/[0.06] mb-6"
         style={{ background: '#1a1d2e' }}
         role="tablist"
         aria-label="Dashboard sections"
@@ -409,23 +578,18 @@ const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
             role="tab"
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 py-2 rounded-full text-xs font-semibold transition-all duration-200 relative ${
+            className={`flex-1 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
               activeTab === tab.key
                 ? 'text-white'
                 : 'text-white/40 hover:text-white/60'
             }`}
-            style={activeTab === tab.key ? {
-              background: '#6c63ff',
-              boxShadow: '0 0 16px rgba(108, 99, 255, 0.45), 0 0 32px rgba(108, 99, 255, 0.15)',
-              paddingLeft: '1.25rem',
-              paddingRight: '1.25rem',
-            } : undefined}
+            style={activeTab === tab.key ? { background: '#6c63ff' } : undefined}
           >
             <span className="relative inline-flex items-center gap-1.5">
               {tab.label}
-              {tab.key === 'today' && todayCards.length > 0 && (
-                <span className="min-w-[15px] h-[15px] px-0.5 bg-red-500 rounded-full text-[9px] text-white inline-flex items-center justify-center font-bold leading-none">
-                  {todayCards.length}
+              {tab.key === 'today' && totalTodayCount > 0 && (
+                <span className="min-w-[16px] h-[16px] px-0.5 bg-red-500 rounded-full text-[11px] text-white inline-flex items-center justify-center font-bold leading-none">
+                  {totalTodayCount}
                 </span>
               )}
             </span>
@@ -439,32 +603,32 @@ const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
           <h2 className="text-2xl font-bold text-white mb-1">
             {greeting}, {(userName || patientName || 'there').split(' ')[0]} 👋
           </h2>
-          <p className="text-sm text-[#94a3b8] mb-5">
-            {todayCards.length > 0
-              ? `${todayCards.length} ${todayCards.length === 1 ? 'item needs' : 'items need'} your attention`
+          <p className="text-sm text-[#94a3b8] mb-4">
+            {totalTodayCount > 0
+              ? `${totalTodayCount} ${totalTodayCount === 1 ? 'item needs' : 'items need'} your attention`
               : 'All caught up — nothing needs attention.'}
           </p>
 
           {(cancerType || treatmentPhase) && (
-            <div className="flex flex-wrap items-center gap-2 mb-4 sm:mb-5">
+            <div className="flex flex-wrap items-center gap-2 mb-5">
               {cancerType && (
-                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[#A78BFA]/10 text-[#A78BFA]">
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#A78BFA]/10 text-[#A78BFA]">
                   {cancerType}{cancerStage && cancerStage !== 'Unsure' ? ` — Stage ${cancerStage}` : ''}
                 </span>
               )}
               {treatmentPhase && PHASE_LABELS[treatmentPhase] && (
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${PHASE_LABELS[treatmentPhase].color}`}>
+                <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${PHASE_LABELS[treatmentPhase].color}`}>
                   {PHASE_LABELS[treatmentPhase].label}
                 </span>
               )}
             </div>
           )}
-          {!cancerType && !treatmentPhase && <div className="mb-3 sm:mb-4" />}
+          {!cancerType && !treatmentPhase && <div className="mb-4" />}
 
-          {/* Urgent / alert cards or all-caught-up empty state */}
-          {todayCards.length === 0 ? (
+          {/* Urgent / alert cards (grouped) or all-caught-up */}
+          {totalTodayCount === 0 ? (
             <div
-              className="flex flex-col items-center justify-center py-12 text-center rounded-2xl border border-white/[0.05] mb-5"
+              className="flex flex-col items-center justify-center py-12 text-center rounded-2xl border border-white/[0.05] mb-6"
               style={{ background: '#1a1d2e' }}
               data-tour="dashboard-cards"
             >
@@ -480,8 +644,23 @@ const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
               <p className="text-[var(--text-muted)] text-sm">No urgent items need your attention.</p>
             </div>
           ) : (
-            <div className="space-y-3 card-stagger mb-5" data-tour="dashboard-cards">
-              {todayCards.map((card, i) => (
+            <div className="space-y-3 card-stagger mb-6" data-tour="dashboard-cards">
+              {/* Grouped summary cards */}
+              {groupedTodayCards.groups.map(group => (
+                <SummaryGroupCard
+                  key={group.groupId}
+                  group={group}
+                  expanded={expandedGroupId === group.groupId}
+                  onToggle={() => {
+                    setExpandedGroupId(expandedGroupId === group.groupId ? null : group.groupId)
+                    setExpandedChildId(null)
+                  }}
+                  expandedChildId={expandedChildId}
+                  onChildToggle={setExpandedChildId}
+                />
+              ))}
+              {/* Singleton cards (count == 1 per type, or other types) */}
+              {groupedTodayCards.singletons.map((card, i) => (
                 <PriorityCard
                   key={card.id}
                   variant={card.variant}
@@ -579,25 +758,6 @@ const PRIORITY_TO_CARD_PREFIX: Record<string, string> = {
               ))}
             </div>
           )}
-
-          {/* Static upcoming appointment */}
-          <div className="flex items-center gap-3 p-4 rounded-2xl border border-[#6c63ff]/20 bg-[#6c63ff]/5 mb-4">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(108,99,255,0.15)' }}
-            >
-              <svg width="20" height="20" fill="none" stroke="#A78BFA" strokeWidth="1.75" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white">Oncology Follow-up</p>
-              <p className="text-xs text-white/50">Dr. Patel &middot; May 8, 2:30 PM</p>
-            </div>
-            <svg width="16" height="16" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-          </div>
 
           {/* Weekly family update */}
           {weeklyUpdate && (
