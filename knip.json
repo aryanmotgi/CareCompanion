@@ -2,6 +2,10 @@
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "ignore": [
     "apps/web/scripts/**",
-    ".agents/**"
+    ".agents/**",
+    "apps/mobile/ios/build/**"
+  ],
+  "ignoreDependencies": [
+    "expo-web-browser"
   ]
 }
