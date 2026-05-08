@@ -2,6 +2,33 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.4.0.0] - 2026-05-06
+
+Oncology-aware radar, richer memory extraction, AI orchestration improvements, Premium Care OS DB migration, health API and middleware fixes.
+
+### Added
+- **Oncology-aware daily radar** — nadir window detection (days 7–14 of chemo cycle), recovery phase signals, caregiver burnout detection (prior 7-day vs last 7-day activity drop), 48hr per-category dedup on push notifications, guaranteed positive insight when any positive signal exists, treatment cycle context injected into Claude prompt
+- **Treatment cycle tracking in radar** — batch-fetches active `treatmentCycles` per profile; computes `cycleDay`, `isNadir`, `isRecovery`; surfaces oncology-specific warnings proactively
+- **Memory extraction: emotional_state and treatment_response categories** — AI now extracts caregiver/patient emotional signals ("exhausted", "hopeful", "scared") and treatment response signals ("tumor shrinking", "CEA went down", "nausea improving after cycle 3") into dedicated memory categories
+- **Memory extraction: richer fact specificity** — updated Haiku prompt extracts dose changes, specific lab values, upcoming events, and doctor opinions; source rules prevent extracting questions, hypotheticals, or AI-said content as facts
+- **Premium Care OS DB migration** — migration 008 adds check-in radar, care hub, timeline, and notification tables; `apply-migration` runner script for safe schema application
+- **CLAUDE.md team rules** — commit conventions, file ownership, pre-push checklist, branch hygiene, PHI logging rules, Aurora migration requirements, security guidelines
+
+### Fixed
+- **Health API IN-list binding** — corrected RDS Data API parameter binding for multi-value IN queries; fixed `rows` shape mismatch in response
+- **Middleware session bypass** — `/api/health` now accessible without session for uptime monitoring
+- **Demo account password** — requires `!` character for password strength compliance
+- **Severity string mismatch** — CareHub view, PDF export, and timeline API now handle both legacy (`info`/`watch`/`alert`) and new (`critical`/`warning`/`positive`/`informational`) insight severity strings
+
+### Changed
+- **AI orchestration fast-path** — short messages (< 20 words) bypass specialist routing for lower latency
+- **Radar push notifications** — gated to `CRITICAL`/`WARNING` only; `informational` and `positive` insights appear in-app only
+- **Aurora auto-pause retry shim removed** — simplified DB connection handling after Aurora reliability improvements
+
+### Removed
+- Aurora auto-pause retry logic (no longer needed)
+- Duplicate `scripts/seed_demo.ts` (consolidated into `apps/web/scripts/`)
+
 ## [0.3.1.0] - 2026-05-03
 
 Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, Community Forum + Sharing Links full security audit, Cron Jobs / Production Monitor / Admin Routes security audit, auth UX polish, Clinical Trials full UX+a11y+security pass, full onboarding flow UX+a11y+bug-fix pass, Care Groups onboarding deep UX audit, and mobile app: Batch 1+2 features.

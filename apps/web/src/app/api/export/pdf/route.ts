@@ -271,7 +271,7 @@ export async function GET(req: Request) {
   ${insights.length > 0 ? `
   <h2>AI Insights</h2>
   <ul style="padding-left:18px;">
-    ${insights.map(i => `<li style="margin:6px 0;"><strong>${escapeHtml(i.title)}</strong> <span style="font-size:10px;font-weight:600;color:${i.severity === 'alert' ? '#dc2626' : i.severity === 'watch' ? '#d97706' : '#6366F1'};">[${escapeHtml(i.severity)}]</span><br/>${escapeHtml(i.body)}</li>`).join('')}
+    ${insights.map(i => `<li style="margin:6px 0;"><strong>${escapeHtml(i.title)}</strong> <span style="font-size:10px;font-weight:600;color:${(i.severity === 'alert' || i.severity === 'critical') ? '#dc2626' : (i.severity === 'watch' || i.severity === 'warning') ? '#d97706' : '#6366F1'};">[${escapeHtml(i.severity)}]</span><br/>${escapeHtml(i.body)}</li>`).join('')}
   </ul>
   ` : ''}
 

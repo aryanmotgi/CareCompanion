@@ -512,7 +512,7 @@ export const symptomInsights = pgTable('symptom_insights', {
   id: uuid('id').defaultRandom().primaryKey(),
   careProfileId: uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
   type: text('type').notNull(), // 'trend' | 'correlation' | 'anomaly' | 'milestone'
-  severity: text('severity').notNull(), // 'info' | 'watch' | 'alert'
+  severity: text('severity').notNull(), // 'critical' | 'warning' | 'positive' | 'informational' (legacy: 'info' | 'watch' | 'alert')
   status: text('status').notNull().default('active'), // 'active' | 'read' | 'dismissed' | 'archived'
   title: text('title').notNull(),
   body: text('body').notNull(),

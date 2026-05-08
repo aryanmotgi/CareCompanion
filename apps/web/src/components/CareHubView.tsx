@@ -102,8 +102,8 @@ function getStatusBadge(checkin: CareHubData['todayCheckin']): {
 }
 
 function SeverityTint({ severity }: { severity: string }) {
-  if (severity === 'alert') return <div className="absolute inset-0 rounded-xl bg-red-500/[0.04]" />
-  if (severity === 'watch') return <div className="absolute inset-0 rounded-xl bg-amber-500/[0.04]" />
+  if (severity === 'alert' || severity === 'critical') return <div className="absolute inset-0 rounded-xl bg-red-500/[0.04]" />
+  if (severity === 'watch' || severity === 'warning') return <div className="absolute inset-0 rounded-xl bg-amber-500/[0.04]" />
   return <div className="absolute inset-0 rounded-xl bg-emerald-500/[0.04]" />
 }
 
@@ -324,8 +324,8 @@ export default function CareHubView({ careProfileId, patientName, careGroupName 
                   <div className="relative z-10">
                     <div className="flex items-start gap-2">
                       <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
-                        insight.severity === 'alert' ? 'bg-red-400' :
-                        insight.severity === 'watch' ? 'bg-amber-400' : 'bg-emerald-400'
+                        (insight.severity === 'alert' || insight.severity === 'critical') ? 'bg-red-400' :
+                        (insight.severity === 'watch' || insight.severity === 'warning') ? 'bg-amber-400' : 'bg-emerald-400'
                       }`} />
                       <div>
                         <p className="text-sm font-medium text-white">{insight.title}</p>

@@ -139,24 +139,54 @@ export async function saveMatchResults(
     }
   }
 
-  // Generic notification for brand-new unnotified matches (no prior record).
-  const newUnnotified = await db.select({ id: trialMatches.id, matchCategory: trialMatches.matchCategory })
-    .from(trialMatches)
+  // Per-trial notifications for brand-new unnotified matches.
+  const newUnnotified = await db.select({
+    id:            trialMatches.id,
+    nctId:         trialMatches.nctId,
+    title:         trialMatches.title,
+    matchCategory: trialMatches.matchCategory,
+    matchScore:    trialMatches.matchScore,
+    matchReasons:  trialMatches.matchReasons,
+    phase:         trialMatches.phase,
+  }).from(trialMatches)
     .where(and(eq(trialMatches.careProfileId, careProfileId), isNull(trialMatches.notifiedAt)))
+
   if (newUnnotified.length > 0) {
     const [cp] = await db.select({ userId: careProfiles.userId })
       .from(careProfiles).where(eq(careProfiles.id, careProfileId)).limit(1)
+
     if (cp) {
-      const hasMatched = newUnnotified.some(m => m.matchCategory === 'matched')
-      const hasClose   = newUnnotified.some(m => m.matchCategory === 'close')
-      if (hasMatched) {
+      const highScoreMatches = newUnnotified
+        .filter(m => m.matchCategory === 'matched' && (m.matchScore ?? 0) >= 70)
+        .sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
+        .slice(0, 3) // cap at 3 specific notifications per run
+
+      const hasLowScoreMatch = newUnnotified.some(m => m.matchCategory === 'matched' && (m.matchScore ?? 0) < 70)
+      const hasClose         = newUnnotified.some(m => m.matchCategory === 'close')
+
+      // Specific notification per high-score match (score ≥ 70)
+      for (const trial of highScoreMatches) {
+        const { title, message } = buildMatchNotification(trial)
+        await db.insert(notifications).values({
+          userId:  cp.userId,
+          type:    'trial_match',
+          title,
+          message,
+        }).catch(() => {})
+      }
+
+      // One generic notification if there are low-score matched trials and no high-score ones
+      if (highScoreMatches.length === 0 && hasLowScoreMatch) {
         await db.insert(notifications).values({
           userId:  cp.userId,
           type:    'trial_match',
           title:   'New trial matches available',
-          message: 'New trial matches are available. Open CareCompanion to view.',
+          message: 'New trial matches are available. Open CareCompanion to review.',
         }).catch(() => {})
-      } else if (hasClose) {
+      }
+
+      // One generic notification for close trials
+      if (hasClose && highScoreMatches.length === 0 && !hasLowScoreMatch) {
         await db.insert(notifications).values({
           userId:  cp.userId,
           type:    'trial_close',
@@ -164,11 +194,30 @@ export async function saveMatchResults(
           message: "You're close to qualifying for new trials. Open CareCompanion to see what's changed.",
         }).catch(() => {})
       }
+
       await db.update(trialMatches)
         .set({ notifiedAt: new Date() })
         .where(and(eq(trialMatches.careProfileId, careProfileId), isNull(trialMatches.notifiedAt)))
     }
   }
+}
+
+function buildMatchNotification(trial: {
+  nctId:        string | null
+  title:        string | null
+  matchScore:   number | null
+  matchReasons: unknown
+  phase:        string | null
+}): { title: string; message: string } {
+  const phase      = trial.phase ? trial.phase.replace(/PHASE\s*/i, 'Phase ') : 'New'
+  const notifTitle = `${phase} trial match found`
+  const nctRef     = `Ask your oncologist about ${trial.nctId ?? 'this trial'}.`
+  const reasons    = Array.isArray(trial.matchReasons) ? (trial.matchReasons as string[]) : []
+  // matchReasons[0] is whyItMatches (set by clinicalTrialsAgent mapper)
+  const topReason  = reasons[0] ?? trial.title ?? 'A clinical trial may be a strong fit'
+  const budget     = 120 - nctRef.length - 1
+  const truncated  = topReason.length > budget ? topReason.slice(0, budget - 1) + '…' : topReason
+  return { title: notifTitle, message: `${nctRef} ${truncated}` }
 }
 
 async function claimQueueRow(careProfileId: string): Promise<string | null> {

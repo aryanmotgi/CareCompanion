@@ -12,6 +12,7 @@ interface VisitPrepTemplate {
   questions: string[]
   things_to_bring: string[]
   prep_tasks: string[]
+  post_visit_prompts: string[]
 }
 
 /**
@@ -32,13 +33,26 @@ export function detectVisitType(
     return 'first_oncology'
   }
 
-  // Scan/imaging results
-  if (purposeLower.includes('scan') || purposeLower.includes('ct result') || purposeLower.includes('mri result') || purposeLower.includes('pet result') || purposeLower.includes('imaging')) {
+  // Scan/imaging results — check before follow_up so "ct result follow up" routes correctly
+  if (
+    purposeLower.includes('scan') ||
+    purposeLower.includes('ct result') || purposeLower.includes('ct scan') ||
+    purposeLower.includes('mri result') || purposeLower.includes('mri scan') ||
+    purposeLower.includes('pet result') || purposeLower.includes('pet scan') || purposeLower.includes('petscan') ||
+    purposeLower.includes('imaging result') || purposeLower.includes('imaging review') ||
+    purposeLower.includes('scan result')
+  ) {
     return 'scan_results'
   }
 
   // Infusion/chemo
-  if (purposeLower.includes('infusion') || purposeLower.includes('chemo') || purposeLower.includes('treatment cycle')) {
+  if (
+    purposeLower.includes('infusion') ||
+    purposeLower.includes('chemo') ||
+    purposeLower.includes('chemotherapy') ||
+    purposeLower.includes('treatment cycle') ||
+    purposeLower.includes('iv treatment')
+  ) {
     return 'infusion'
   }
 
@@ -57,8 +71,13 @@ export function detectVisitType(
     return 'new_specialist'
   }
 
-  // Follow-up (default for known doctors)
-  if (patientHistory?.hasPriorVisitsWithDoctor) {
+  // Follow-up — explicit string match including spaced variant
+  if (
+    purposeLower.includes('follow-up') ||
+    purposeLower.includes('follow up') ||
+    purposeLower.includes('followup') ||
+    patientHistory?.hasPriorVisitsWithDoctor
+  ) {
     return 'follow_up'
   }
 
@@ -106,6 +125,11 @@ const TEMPLATES: Record<VisitType, VisitPrepTemplate> = {
       'Bring a phone to record the conversation (ask permission first)',
       'Plan for a longer appointment (1-2 hours for initial consultations)',
     ],
+    post_visit_prompts: [
+      'What is the confirmed diagnosis and stage? Write the exact words the doctor used.',
+      'What treatment plan did they recommend, and what are the next steps and timeline?',
+      'What warning signs or symptoms should trigger a call to the office before the next appointment?',
+    ],
   },
 
   follow_up: {
@@ -130,6 +154,11 @@ const TEMPLATES: Record<VisitType, VisitPrepTemplate> = {
       'Write down any new symptoms or side effects',
       'Note any medications you missed or had trouble with',
       'Track pain levels and energy for the week before the visit',
+    ],
+    post_visit_prompts: [
+      'Did they make any medication changes? Note the exact change (drug, dose, frequency).',
+      'What did the doctor say about how treatment is progressing? Any lab values discussed?',
+      'When is the next appointment and what will it focus on?',
     ],
   },
 
@@ -158,6 +187,11 @@ const TEMPLATES: Record<VisitType, VisitPrepTemplate> = {
       'Check if you need a referral or prior authorization',
       'Write a 1-page timeline of your cancer journey so far',
     ],
+    post_visit_prompts: [
+      'Does this specialist agree with the current diagnosis and treatment plan? Note any differences.',
+      'What, if anything, did they recommend changing or adding?',
+      'How will they coordinate with the existing care team going forward?',
+    ],
   },
 
   er_visit: {
@@ -184,11 +218,16 @@ const TEMPLATES: Record<VisitType, VisitPrepTemplate> = {
       'Know your most recent blood counts (ANC especially)',
       'If you have a port, mention it so they can use it for blood draws',
     ],
+    post_visit_prompts: [
+      'What did they diagnose and treat? Note any medications given in the ER.',
+      'Were you admitted or discharged? If discharged, what are the return-to-ER warning signs?',
+      'Did the ER contact your oncologist? What follow-up is required and when?',
+    ],
   },
 
   infusion: {
     type: 'infusion',
-    label: 'Infusion/Chemo Day',
+    label: 'Infusion / Chemo Day',
     questions: [
       'How long will today\'s infusion take?',
       'Any changes to my regimen based on recent labs?',
@@ -211,6 +250,11 @@ const TEMPLATES: Record<VisitType, VisitPrepTemplate> = {
       'Eat a light meal before the infusion',
       'Hydrate well the day before and day of',
       'Confirm your ride home',
+    ],
+    post_visit_prompts: [
+      'What cycle and day is this infusion? Note the regimen name if you heard it.',
+      'What anti-nausea or supportive medications were given or prescribed? Include schedule.',
+      'What is the expected nadir window, and what fever threshold should trigger a call to the oncologist?',
     ],
   },
 
@@ -238,6 +282,11 @@ const TEMPLATES: Record<VisitType, VisitPrepTemplate> = {
       'Have your support person ready to help take notes',
       'Review your previous scan results so you can compare',
       'Write down your questions — you will forget them when emotions hit',
+    ],
+    post_visit_prompts: [
+      'What did the scan show exactly? Use the doctor\'s words: stable, partial response, progression, complete response.',
+      'Is the treatment plan changing as a result of these results? If so, what changes?',
+      'When is the next scan and what will they be looking for?',
     ],
   },
 
@@ -267,6 +316,11 @@ const TEMPLATES: Record<VisitType, VisitPrepTemplate> = {
       'Prepare a concise 1-page cancer timeline (diagnosis date, treatments, responses)',
       'Check insurance coverage for second opinions at this facility',
     ],
+    post_visit_prompts: [
+      'Did this doctor agree or disagree with the current diagnosis and staging? Note any differences.',
+      'Did they recommend a different treatment approach? If so, what specifically?',
+      'Are there clinical trials or additional tests they recommended that your current team hasn\'t done?',
+    ],
   },
 
   general: {
@@ -289,6 +343,11 @@ const TEMPLATES: Record<VisitType, VisitPrepTemplate> = {
       'Write down your top 3 concerns in order of priority',
       'Update your medication list if anything changed',
       'Note any new symptoms since your last visit',
+    ],
+    post_visit_prompts: [
+      'Were any new medications prescribed or existing ones changed? Note the details.',
+      'Were any tests, referrals, or follow-up appointments ordered?',
+      'What did the doctor say about overall health status and any concerns?',
     ],
   },
 }
