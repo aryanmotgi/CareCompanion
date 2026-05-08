@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import { verifyCronRequest } from '@/lib/cron-auth'
 import { db } from '@/lib/db'
-import { careProfiles, matchingQueue, trialMatches, notifications } from '@/lib/db/schema'
+import { careProfiles, matchingQueue, trialMatches } from '@/lib/db/schema'
 import { eq, and, lt } from 'drizzle-orm'
-import { enqueueMatchingRun, releaseStaleClaimedRows, processMatchingQueueForProfile } from '@/lib/trials/matchingQueue'
+import { enqueueMatchingRun, releaseStaleClaimedRows, processMatchingQueueForProfile, saveMatchResults } from '@/lib/trials/matchingQueue'
+import type { TrialMatchResult } from '@/lib/trials/clinicalTrialsAgent'
 import { assembleProfile } from '@/lib/trials/assembleProfile'
 import { generateText, Output } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
@@ -12,7 +13,7 @@ import { z } from 'zod'
 export const maxDuration = 300
 export const dynamic = 'force-dynamic'
 
-const BATCH_SIZE  = 5
+const BATCH_SIZE  = 2
 const TIME_BUDGET = 270_000
 
 export async function GET(req: Request) {
@@ -78,7 +79,7 @@ export async function GET(req: Request) {
       })
 
       const { output } = await generateText({
-        model: anthropic('claude-haiku-4-5-20251001'),
+        model: anthropic('claude-sonnet-4-6'),
         output: Output.object({ schema: GapResolutionSchema }),
         prompt: `Given this patient profile:\n${JSON.stringify(profile, null, 2)}\n\nCheck which trials now have all gaps resolved:\n${gapCheckPrompt}\n\nReturn only NCT IDs where the patient NOW meets all previously blocking criteria.`,
       })
@@ -87,20 +88,21 @@ export async function GET(req: Request) {
         const trial = trials.find(t => t.nctId === nctId)
         if (!trial) continue
 
-        await db.update(trialMatches)
-          .set({ matchCategory: 'matched', notifiedAt: null, updatedAt: new Date() })
-          .where(and(eq(trialMatches.careProfileId, profileId), eq(trialMatches.nctId, nctId)))
-
-        const [cp] = await db.select({ userId: careProfiles.userId })
-          .from(careProfiles).where(eq(careProfiles.id, profileId)).limit(1)
-        if (cp) {
-          await db.insert(notifications).values({
-            userId:  cp.userId,
-            type:    'trial_gap_closed',
-            title:   'You now qualify for a trial you were close to',
-            message: `Good news — you now qualify for a trial you were close to: ${trial.title ?? 'a clinical trial'}. Open CareCompanion to view.`,
-          })
-        }
+        // Use saveMatchResults to handle upsert + gap-closure notification with dedup
+        await saveMatchResults(profileId, [{
+          nctId:                trial.nctId,
+          title:                trial.title ?? '',
+          matchCategory:        'matched',
+          matchScore:           trial.matchScore ?? 0,
+          matchReasons:         (trial.matchReasons as TrialMatchResult['matchReasons']) ?? [],
+          disqualifyingFactors: (trial.disqualifyingFactors as TrialMatchResult['disqualifyingFactors']) ?? [],
+          uncertainFactors:     (trial.uncertainFactors as TrialMatchResult['uncertainFactors']) ?? [],
+          eligibilityGaps:      null,
+          phase:                trial.phase,
+          enrollmentStatus:     trial.enrollmentStatus,
+          locations:            (trial.locations as TrialMatchResult['locations']) ?? [],
+          trialUrl:             trial.trialUrl,
+        }], [])
       }
     } catch (err) { console.error('[trials-match] gap-closure failed', profileId, err); }
   }
