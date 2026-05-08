@@ -139,7 +139,7 @@ test.describe('Production 24/7 Monitor', () => {
       }
     })
 
-    const chatInput = page.locator('input[type="text"]').first()
+    const chatInput = page.locator('textarea, input[type="text"]').first()
     await expect(chatInput).toBeVisible({ timeout: 10000 })
     await chatInput.fill('hello')
 
