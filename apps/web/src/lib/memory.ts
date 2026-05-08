@@ -290,32 +290,57 @@ export async function touchReferencedMemories(
 // ============================================================
 
 const summarySchema = z.object({
-  summary: z.string().describe('A 2-3 sentence summary of what was discussed and any decisions made'),
+  summary: z.string().describe('Structured summary with labeled sections: KEY MEDICAL FACTS, DECISIONS & ACTIONS, CAREGIVER EMOTIONAL STATE, OPEN QUESTIONS, TREATMENT CONTEXT. Max 200 words. Specific values, names, dates. URGENT prefix for crisis signals.'),
   topics: z.array(z.string()).describe('Key topics covered, e.g. ["medications", "insurance denial", "appointment scheduling"]'),
 });
 
 /**
  * Generate and save a conversation summary.
- * Call this when a conversation session ends or after a threshold of messages.
+ * Call this when a conversation session ends (force=true) or after a threshold of messages.
  */
 export async function summarizeConversation(
   userId: string,
   msgs: { role: string; content: string }[],
+  force = false,
 ): Promise<void> {
   if (msgs.length < 4) return;
-  if (msgs.length < 20 || msgs.length % 20 !== 0) return;
+  if (!force && (msgs.length < 20 || msgs.length % 20 !== 0)) return;
 
   try {
+    // Dedup guard: skip if last summary covered the same message count
+    const lastSummary = await db
+      .select({ messageCount: conversationSummaries.messageCount })
+      .from(conversationSummaries)
+      .where(eq(conversationSummaries.userId, userId))
+      .orderBy(desc(conversationSummaries.createdAt))
+      .limit(1);
+    if (lastSummary[0]?.messageCount === msgs.length) return;
+
     const transcript = msgs
-      .slice(-30) // Last 30 messages max
+      .slice(-50)
       .map((m) => `${m.role}: ${m.content}`)
       .join('\n');
 
     const { output } = await generateText({
-      model: anthropic('claude-haiku-4-5-20251001'),
+      model: anthropic('claude-sonnet-4-6'),
       output: Output.object({ schema: summarySchema }),
-      prompt: `Summarize this caregiver AI conversation. Focus on: decisions made, information shared, action items, and emotional state of the caregiver.
+      prompt: `You are summarizing a caregiver AI conversation for long-term memory. This summary will be read by an AI assistant in future sessions to recall what was discussed.
 
+RULES:
+- Only summarize what the USER shared — never summarize what the AI said
+- Be specific: include actual medication names, lab values, dates, doctor names mentioned
+- If nothing medically significant was discussed, say so briefly — do not pad
+- Maximum 200 words total across all sections
+- If the caregiver expressed crisis, severe burnout, or mentioned an urgent symptom (fever, chest pain, etc.), start the entire summary with: URGENT: [brief description]
+
+OUTPUT FORMAT — use exactly these section labels:
+KEY MEDICAL FACTS: [medications, labs, diagnoses, test results mentioned by user. Include actual values.]
+DECISIONS & ACTIONS: [doctor called, medication changed, appointment scheduled, anything decided or done]
+CAREGIVER EMOTIONAL STATE: [how the caregiver was feeling — exhausted, scared, hopeful, etc. If not mentioned, write "not discussed"]
+OPEN QUESTIONS: [things the user raised that need follow-up next session. If none, write "none"]
+TREATMENT CONTEXT: [cycle day, treatment phase, any treatment changes. If not mentioned, write "not discussed"]
+
+CONVERSATION:
 ${transcript}`,
     });
 

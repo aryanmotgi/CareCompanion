@@ -447,7 +447,7 @@ export function buildSystemPrompt(
       context += `Summary of past sessions (most recent first):\n`;
       for (const summary of recentSummaries) {
         const date = summary.createdAt ? new Date(summary.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-        const text = summary.summary.length > 150 ? summary.summary.slice(0, 150) + '...' : summary.summary;
+        const text = summary.summary.length > 800 ? summary.summary.slice(0, 800) + '...' : summary.summary;
         context += `- [${date}] ${text}`;
         if (summary.topics && summary.topics.length > 0) context += ` (topics: ${summary.topics.join(', ')})`;
         context += `\n`;
