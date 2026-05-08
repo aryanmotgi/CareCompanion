@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 
 /* ── Interactive demo button ── */
@@ -58,7 +58,7 @@ function DemoButton() {
 }
 
 /* ── Cycling keyword with typing effect ── */
-const CYCLING_WORDS = ['chemo schedules', 'tumor markers', 'oncology visits', 'treatment side effects', 'lab results'];
+const CYCLING_WORDS = ['medications', 'appointments', 'lab results', 'care team updates', 'treatment notes'];
 function CyclingWord() {
   const words = CYCLING_WORDS;
   const [wordIdx, setWordIdx] = useState(0);
@@ -131,94 +131,268 @@ function TabIconCare({ active, size = 14 }: { active: boolean; size?: number }) 
 }
 function TabIconScan({ active, size = 14 }: { active: boolean; size?: number }) {
   return (
-    <svg width={size} height={size} fill="none" stroke={active ? '#A78BFA' : 'rgba(255,255,255,0.25)'} strokeWidth="2" viewBox="0 0 24 24">
+    <svg width={size} height={size} fill="none" stroke={active ? '#67E8F9' : 'rgba(255,255,255,0.25)'} strokeWidth="2" viewBox="0 0 24 24">
       <rect x="3" y="3" width="18" height="18" rx="2" />
       <line x1="3" y1="9" x2="21" y2="9" />
       <line x1="9" y1="3" x2="9" y2="9" />
     </svg>
   );
 }
+function TabIconTrials({ active, size = 14 }: { active: boolean; size?: number }) {
+  return (
+    <svg width={size} height={size} fill="none" stroke={active ? '#34D399' : 'rgba(255,255,255,0.25)'} strokeWidth="2" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21a48.309 48.309 0 01-8.135-.687c-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+    </svg>
+  );
+}
 
 /* ── Phone mockup ── */
-function PhoneMockup({ className = '' }: { className?: string }) {
+const SCREEN_CONFIG = [
+  { glow: '99,102,241',  glowA: 0.22, tabColor: '#A78BFA' },
+  { glow: '167,139,250', glowA: 0.18, tabColor: '#A78BFA' },
+  { glow: '99,102,241',  glowA: 0.22, tabColor: '#A78BFA' },
+  { glow: '52,211,153',  glowA: 0.18, tabColor: '#34D399' },
+  { glow: '103,232,249', glowA: 0.15, tabColor: '#67E8F9' },
+] as const;
+
+function PhoneMockup({ className = '', onScreenChange }: { className?: string; onScreenChange?: (idx: number) => void }) {
   const [activeScreen, setActiveScreen] = useState(0);
+  const [screenKey, setScreenKey] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const [tilt, setTilt] = useState({ x: 3, y: -5 });
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
   const screens = [
-    { label: 'Home', content: <DashboardScreen /> },
-    { label: 'Chat', content: <ChatScreen /> },
-    { label: 'Care', content: <MedicationsScreen /> },
-    { label: 'Scan', content: <ScanScreen /> },
+    { label: 'Home',   content: <DashboardScreen /> },
+    { label: 'Chat',   content: <ChatScreen /> },
+    { label: 'Care',   content: <MedicationsScreen /> },
+    { label: 'Trials', content: <TrialsScreen /> },
+    { label: 'Scan',   content: <ScanScreen /> },
   ];
 
   useEffect(() => {
-    const durations = [4000, 5000, 4000, 4000];
+    const durations = [4000, 5000, 4000, 5000, 4000];
     let current = 0;
     let timer: NodeJS.Timeout;
     function next() {
-      current = (current + 1) % 4;
+      current = (current + 1) % 5;
+      setDirection(1);
       setActiveScreen(current);
+      setScreenKey(k => k + 1);
+      onScreenChange?.(current);
       timer = setTimeout(next, durations[current]);
     }
     timer = setTimeout(next, durations[0]);
     return () => clearTimeout(timer);
-  }, []);
+  }, [onScreenChange]);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = wrapperRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = (e.clientX - cx) / (rect.width * 0.65);
+    const dy = (e.clientY - cy) / (rect.height * 0.65);
+    setTilt({ x: dy * -9, y: dx * 11 });
+  };
+  const handleMouseLeave = () => setTilt({ x: 3, y: -5 });
+
+  const cfg = SCREEN_CONFIG[activeScreen];
 
   const tabIcons = [
-    { Icon: TabIconHome, label: 'Home', screenIdx: 0 },
-    { Icon: TabIconChat, label: 'Chat', screenIdx: 1 },
-    { Icon: TabIconCare, label: 'Care', screenIdx: 2 },
-    { Icon: TabIconScan, label: 'Scan', screenIdx: 3 },
+    { Icon: TabIconHome,   label: 'Home',   screenIdx: 0 },
+    { Icon: TabIconChat,   label: 'Chat',   screenIdx: 1 },
+    { Icon: TabIconCare,   label: 'Care',   screenIdx: 2 },
+    { Icon: TabIconTrials, label: 'Trials', screenIdx: 3 },
+    { Icon: TabIconScan,   label: 'Scan',   screenIdx: 4 },
   ];
 
   return (
-    <div className={`relative mx-auto ${className}`} style={{ width: 360, height: 720 }}>
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" style={{ width: '140%', height: '90%', background: 'radial-gradient(ellipse, rgba(99,102,241,0.14) 0%, rgba(167,139,250,0.07) 40%, transparent 70%)', filter: 'blur(60px)' }} />
-      <div className="absolute rounded-[48px]" style={{ left: 30, right: 30, top: 15, bottom: 15, background: 'linear-gradient(145deg, #3a3a56 0%, #252540 15%, #1e1e35 50%, #18182d 85%, #252540 100%)', boxShadow: '0 0 0 0.5px rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.4), 0 32px 80px rgba(0,0,0,0.3), 0 0 80px rgba(99,102,241,0.1), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
-        <div className="absolute top-[140px] w-[3px] h-[28px] rounded-l-sm" style={{ left: 27, background: 'linear-gradient(to right, #35355a, #2a2a42)' }} />
-        <div className="absolute top-[178px] w-[3px] h-[28px] rounded-l-sm" style={{ left: 27, background: 'linear-gradient(to right, #35355a, #2a2a42)' }} />
-        <div className="absolute top-[160px] w-[3px] h-[40px] rounded-r-sm" style={{ right: 27, background: 'linear-gradient(to left, #35355a, #2a2a42)' }} />
-        <div className="absolute top-[105px] w-[3px] h-[14px] rounded-l-sm" style={{ left: 27, background: 'linear-gradient(to right, #35355a, #2a2a42)' }} />
-        <div className="absolute inset-0 rounded-[48px] pointer-events-none z-30" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 15%, transparent 40%)' }} />
-        <div className="absolute inset-[4px] rounded-[44px] bg-[#0C0E1A] overflow-hidden" style={{ border: '0.5px solid rgba(255,255,255,0.04)' }}>
-          <div className="absolute inset-0 pointer-events-none z-10" style={{ background: 'linear-gradient(170deg, rgba(255,255,255,0.04) 0%, transparent 25%)' }} />
-          <div className="relative z-20 flex items-center justify-between px-6 pt-3 pb-1">
-            <span className="text-[10px] text-white/50 font-medium">9:41</span>
-            <div className="absolute left-1/2 -translate-x-1/2 top-2">
-              <div className="w-[90px] h-[18px] bg-black rounded-full flex items-center justify-center" style={{ boxShadow: 'inset 0 0 3px rgba(0,0,0,0.9)' }}>
-                <div className="w-2 h-2 rounded-full bg-[#0a0a15] border border-white/[0.05]" />
+    <div
+      ref={wrapperRef}
+      className={`relative mx-auto ${className}`}
+      style={{ width: 360, height: 760 }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* Ambient ground glow — shifts color per screen */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          bottom: -10,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 240,
+          height: 28,
+          borderRadius: '50%',
+          background: `radial-gradient(ellipse, rgba(${cfg.glow},${cfg.glowA}) 0%, transparent 80%)`,
+          filter: 'blur(10px)',
+          transition: 'background 0.8s ease',
+        }}
+      />
+
+      {/* Ambient orbs — shift color per active screen */}
+      <div className="absolute pointer-events-none" style={{ top: '12%', left: '50%', transform: 'translateX(-50%)', width: 280, height: 280, borderRadius: '50%', background: `radial-gradient(ellipse, rgba(${cfg.glow},0.13) 0%, transparent 70%)`, filter: 'blur(32px)', transition: 'background 1s ease', zIndex: 0 }} />
+      <div className="absolute pointer-events-none" style={{ bottom: '8%', left: '50%', transform: 'translateX(-50%)', width: 220, height: 180, borderRadius: '50%', background: `radial-gradient(ellipse, rgba(${cfg.glow},0.09) 0%, transparent 70%)`, filter: 'blur(24px)', transition: 'background 1s ease', zIndex: 0 }} />
+
+      {/* Floating chip — Refill alert (Home + Care) */}
+      <div className="absolute pointer-events-none" style={{ left: 335, top: '28%', zIndex: 20 }}>
+        {/* Parallax layer — floats opposite to phone tilt */}
+        <div style={{ transform: `translateX(${tilt.y * -1.6}px) translateY(${tilt.x * 1.2}px)`, transition: 'transform 0.18s ease-out' }}>
+          {/* Show/hide with spring entrance */}
+          <div style={{
+            opacity: (activeScreen === 0 || activeScreen === 2) ? 1 : 0,
+            transform: `translateX(${(activeScreen === 0 || activeScreen === 2) ? '0px' : '18px'})`,
+            transition: `opacity 0.3s ease, transform ${(activeScreen === 0 || activeScreen === 2) ? '0.45s cubic-bezier(0.34,1.56,0.64,1)' : '0.22s ease-in'}`,
+          }}>
+            <div className="animate-chip-drift rounded-2xl px-3.5 py-2.5" style={{ background: 'rgba(8,8,17,0.94)', border: '1px solid rgba(239,68,68,0.2)', boxShadow: '0 8px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(239,68,68,0.07)', backdropFilter: 'blur(16px)', minWidth: 168 }}>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse flex-shrink-0" />
+                <span className="text-[9px] text-red-400/80 font-bold tracking-wider uppercase">Medication Alert</span>
               </div>
-            </div>
-            <div className="flex items-center gap-1">
-              <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M1 6h1v3H1zM4 4h1v5H4zM7 2h1v7H7zM10 0h1v9h-1z" fill="rgba(255,255,255,0.5)"/></svg>
-              <svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0.5" y="0.5" width="17" height="9" rx="2" stroke="rgba(255,255,255,0.3)"/><rect x="2" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,0.5)"/><path d="M19 3.5v3a1 1 0 000-3z" fill="rgba(255,255,255,0.3)"/></svg>
+              <div className="text-[12px] text-white/90 font-semibold whitespace-nowrap">Lisinopril · 10mg</div>
+              <div className="text-[10px] text-white/40 whitespace-nowrap mt-0.5">Refill due in 2 days</div>
             </div>
           </div>
-          <div className="absolute top-10 left-0 right-0 bottom-14 overflow-hidden" style={{ background: 'linear-gradient(180deg, #0e1025 0%, #0C0E1A 100%)' }}>
-            {screens.map((screen, i) => (
-              <div key={i} className={`absolute inset-0 px-4 py-2 transition-opacity duration-700 ${i === activeScreen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                {screen.content}
+        </div>
+      </div>
+
+      {/* Floating chip — AI replied (Chat) */}
+      <div className="absolute pointer-events-none" style={{ left: 335, top: '22%', zIndex: 20 }}>
+        <div style={{ transform: `translateX(${tilt.y * -1.6}px) translateY(${tilt.x * 1.2}px)`, transition: 'transform 0.18s ease-out' }}>
+          <div style={{
+            opacity: activeScreen === 1 ? 1 : 0,
+            transform: `translateX(${activeScreen === 1 ? '0px' : '18px'})`,
+            transition: `opacity 0.3s ease, transform ${activeScreen === 1 ? '0.45s cubic-bezier(0.34,1.56,0.64,1)' : '0.22s ease-in'}`,
+          }}>
+            <div className="animate-chip-drift rounded-2xl px-3.5 py-2.5" style={{ background: 'rgba(8,8,17,0.94)', border: '1px solid rgba(167,139,250,0.2)', boxShadow: '0 8px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(167,139,250,0.07)', backdropFilter: 'blur(16px)', minWidth: 168, animationDelay: '0.6s' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[7px] text-white font-bold flex-shrink-0" style={{ background: 'rgba(167,139,250,0.22)' }}>AI</div>
+                <span className="text-[9px] text-violet-300/80 font-bold tracking-wider uppercase">AI Response</span>
               </div>
-            ))}
+              <div className="text-[12px] text-white/90 font-semibold whitespace-nowrap">3 questions ready</div>
+              <div className="text-[10px] text-white/40 whitespace-nowrap mt-0.5">For Dr. Patel · Cardiology</div>
+            </div>
           </div>
-          <div className="absolute bottom-0 left-0 right-0 z-20 bg-[#0C0E1A]/90 backdrop-blur border-t border-white/[0.06] pb-3 pt-2">
-            <div className="flex justify-around items-center px-4">
-              {tabIcons.map((tab) => {
-                const active = activeScreen === tab.screenIdx;
+        </div>
+      </div>
+
+      {/* Floating chip — Trial match (Trials) */}
+      <div className="absolute pointer-events-none" style={{ left: 335, top: '52%', zIndex: 20 }}>
+        <div style={{ transform: `translateX(${tilt.y * -1.6}px) translateY(${tilt.x * 1.2}px)`, transition: 'transform 0.18s ease-out' }}>
+          <div style={{
+            opacity: activeScreen === 3 ? 1 : 0,
+            transform: `translateX(${activeScreen === 3 ? '0px' : '18px'})`,
+            transition: `opacity 0.3s ease, transform ${activeScreen === 3 ? '0.45s cubic-bezier(0.34,1.56,0.64,1)' : '0.22s ease-in'}`,
+          }}>
+            <div className="animate-chip-drift rounded-2xl px-3.5 py-2.5" style={{ background: 'rgba(8,8,17,0.94)', border: '1px solid rgba(52,211,153,0.2)', boxShadow: '0 8px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(52,211,153,0.07)', backdropFilter: 'blur(16px)', minWidth: 168, animationDelay: '1.1s' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                <span className="text-[9px] text-emerald-400/80 font-bold tracking-wider uppercase">Trial Match</span>
+              </div>
+              <div className="text-[12px] text-white/90 font-semibold whitespace-nowrap">94% — KRAS G12C</div>
+              <div className="text-[10px] text-white/40 whitespace-nowrap mt-0.5">Phase 2 · Stanford Medical</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3D phone body */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          transform: `perspective(1400px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+          transition: 'transform 0.18s ease-out',
+        }}
+      >
+        <div
+          className="absolute rounded-[48px]"
+          style={{
+            left: 30, right: 30, top: 15, bottom: 15,
+            background: 'linear-gradient(145deg, #3a3a56 0%, #252540 15%, #1e1e35 50%, #18182d 85%, #252540 100%)',
+            boxShadow: `0 0 0 0.5px rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.4), 0 32px 80px rgba(0,0,0,0.3), 0 0 80px rgba(${cfg.glow},0.12), inset 0 1px 0 rgba(255,255,255,0.1)`,
+            transition: 'box-shadow 0.7s ease',
+          }}
+        >
+          {/* Physical buttons */}
+          <div className="absolute top-[140px] w-[3px] h-[28px] rounded-l-sm" style={{ left: 27, background: 'linear-gradient(to right, #35355a, #2a2a42)' }} />
+          <div className="absolute top-[178px] w-[3px] h-[28px] rounded-l-sm" style={{ left: 27, background: 'linear-gradient(to right, #35355a, #2a2a42)' }} />
+          <div className="absolute top-[160px] w-[3px] h-[40px] rounded-r-sm" style={{ right: 27, background: 'linear-gradient(to left, #35355a, #2a2a42)' }} />
+          <div className="absolute top-[105px] w-[3px] h-[14px] rounded-l-sm" style={{ left: 27, background: 'linear-gradient(to right, #35355a, #2a2a42)' }} />
+          {/* Glass reflection */}
+          <div className="absolute inset-0 rounded-[48px] pointer-events-none z-30" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 15%, transparent 40%)' }} />
+          {/* Screen bezel */}
+          <div className="absolute inset-[4px] rounded-[44px] bg-[#0C0E1A] overflow-hidden" style={{ border: '0.5px solid rgba(255,255,255,0.04)' }}>
+            <div className="absolute inset-0 pointer-events-none z-10" style={{ background: 'linear-gradient(170deg, rgba(255,255,255,0.04) 0%, transparent 25%)' }} />
+            {/* Status bar */}
+            <div className="relative z-20 flex items-center justify-between px-6 pt-3 pb-1">
+              <span className="text-[10px] text-white/50 font-medium">9:41</span>
+              <div className="absolute left-1/2 -translate-x-1/2 top-2">
+                <div className="w-[90px] h-[18px] bg-black rounded-full flex items-center justify-center" style={{ boxShadow: 'inset 0 0 3px rgba(0,0,0,0.9)' }}>
+                  <div className="w-2 h-2 rounded-full bg-[#0a0a15] border border-white/[0.05]" />
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M1 6h1v3H1zM4 4h1v5H4zM7 2h1v7H7zM10 0h1v9h-1z" fill="rgba(255,255,255,0.5)"/></svg>
+                <svg width="20" height="10" viewBox="0 0 20 10" fill="none"><rect x="0.5" y="0.5" width="17" height="9" rx="2" stroke="rgba(255,255,255,0.3)"/><rect x="2" y="2" width="12" height="6" rx="1" fill="rgba(255,255,255,0.5)"/><path d="M19 3.5v3a1 1 0 000-3z" fill="rgba(255,255,255,0.3)"/></svg>
+              </div>
+            </div>
+            {/* Screen content area */}
+            <div className="absolute top-10 left-0 right-0 bottom-14 overflow-hidden" style={{ background: 'linear-gradient(180deg, #0e1025 0%, #0C0E1A 100%)' }}>
+              {screens.map((screen, i) => {
+                const isActive = i === activeScreen;
                 return (
-                  <div key={tab.label} className="flex flex-col items-center gap-0.5">
-                    <tab.Icon active={active} size={14} />
-                    <span className={`text-[8px] ${active ? 'text-[#A78BFA] font-semibold' : 'text-white/25'}`}>{tab.label}</span>
-                    {active && <div className="w-1 h-1 rounded-full bg-[#A78BFA]" />}
+                  <div
+                    key={isActive ? `s-${i}-${screenKey}` : `s-${i}`}
+                    className="absolute inset-0 px-4 py-2"
+                    style={{
+                      opacity: isActive ? 1 : 0,
+                      pointerEvents: isActive ? 'auto' : 'none',
+                      animation: isActive ? `${direction > 0 ? 'screen-slide-forward' : 'screen-slide-back'} 0.38s cubic-bezier(0.2, 0, 0, 1) forwards` : undefined,
+                    }}
+                  >
+                    {screen.content}
                   </div>
                 );
               })}
             </div>
-            <div className="mx-auto mt-2 w-28 h-1 rounded-full bg-white/15" />
+            {/* Tab bar */}
+            <div className="absolute bottom-0 left-0 right-0 z-20 bg-[#0C0E1A]/90 backdrop-blur border-t border-white/[0.06] pb-3 pt-2">
+              <div className="flex justify-around items-center px-1">
+                {tabIcons.map((tab) => {
+                  const active = activeScreen === tab.screenIdx;
+                  const tabColor = SCREEN_CONFIG[tab.screenIdx].tabColor;
+                  return (
+                    <div key={tab.label} className="flex flex-col items-center gap-0.5 relative">
+                      <div className="relative">
+                        <tab.Icon active={active} size={13} />
+                      </div>
+                      <span className="text-[7px] font-medium" style={{ color: active ? tabColor : 'rgba(255,255,255,0.22)' }}>{tab.label}</span>
+                      {active && <div className="w-1 h-1 rounded-full transition-colors duration-500" style={{ background: tabColor }} />}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mx-auto mt-2 w-28 h-1 rounded-full bg-white/15" />
+            </div>
           </div>
         </div>
       </div>
-      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex gap-2">
+
+      {/* Page indicator dots */}
+      <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 flex gap-1.5">
         {screens.map((s, i) => (
-          <button key={i} onClick={() => setActiveScreen(i)} className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${i === activeScreen ? 'bg-[#A78BFA] w-5' : 'bg-white/15 w-2'}`} aria-label={s.label} />
+          <button
+            key={i}
+            onClick={() => { setDirection(i > activeScreen ? 1 : -1); setActiveScreen(i); setScreenKey(k => k + 1); onScreenChange?.(i); }}
+            className="h-1.5 rounded-full transition-all duration-300 cursor-pointer"
+            style={{
+              width: i === activeScreen ? 20 : 6,
+              background: i === activeScreen ? `rgb(${SCREEN_CONFIG[i].glow})` : 'rgba(255,255,255,0.12)',
+            }}
+            aria-label={s.label}
+          />
         ))}
       </div>
     </div>
@@ -443,10 +617,21 @@ function ScanScreen() {
   return (
     <div className="space-y-2.5">
       <div className="flex items-center gap-1.5">
-        <svg width="12" height="12" fill="none" stroke="#A78BFA" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="3" x2="9" y2="9" /></svg>
-        <span className="text-[10px] text-[#A78BFA] font-semibold">Scan Results</span>
+        <svg width="12" height="12" fill="none" stroke="#67E8F9" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="3" x2="9" y2="9" /></svg>
+        <span className="text-[10px] text-[#67E8F9] font-semibold">Scan Results</span>
       </div>
-      <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-2.5 space-y-2">
+      <div className="relative bg-white/[0.04] border border-white/[0.06] rounded-xl p-2.5 space-y-2 overflow-hidden">
+        {/* Scan line sweeping through the document */}
+        <div
+          className="animate-scan-sweep absolute left-0 right-0 pointer-events-none"
+          style={{
+            top: 0,
+            height: 2,
+            background: 'linear-gradient(90deg, transparent 0%, rgba(103,232,249,0.0) 10%, rgba(103,232,249,0.7) 50%, rgba(103,232,249,0.0) 90%, transparent 100%)',
+            boxShadow: '0 0 8px rgba(103,232,249,0.5), 0 0 16px rgba(103,232,249,0.2)',
+            zIndex: 10,
+          }}
+        />
         <div className="flex items-center gap-1.5">
           <div className="w-5 h-5 rounded-lg bg-[#6366F1]/15 flex items-center justify-center">
             <svg width="10" height="10" fill="none" stroke="#818CF8" strokeWidth="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -475,6 +660,90 @@ function ScanScreen() {
   );
 }
 
+function TrialsScreen() {
+  const [show, setShow] = useState(false);
+  const [activeTab, setActiveTab] = useState<'matched' | 'close'>('matched');
+
+  useEffect(() => {
+    const t = setTimeout(() => setShow(true), 480);
+    return () => clearTimeout(t);
+  }, []);
+
+  const trials = [
+    { name: 'KRAS G12C Inhibitor', phase: 'Phase 2', site: 'Stanford Medical', match: 94, delay: 0 },
+    { name: 'Pembrolizumab Combo', phase: 'Phase 3', site: 'UCSF Diller', match: 78, missing: 'PD-L1 biopsy needed', delay: 180 },
+  ];
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1.5">
+        <svg width="11" height="11" fill="none" stroke="#34D399" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21a48.309 48.309 0 01-8.135-.687c-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+        </svg>
+        <span className="text-[10px] text-[#34D399] font-semibold">Clinical Trials</span>
+        <div className="ml-auto flex items-center gap-0.5 rounded-full px-1.5 py-0.5" style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.18)' }}>
+          <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-[7px] text-emerald-400 font-medium">Matching</span>
+        </div>
+      </div>
+      <div className="flex gap-0.5 rounded-[10px] p-[2px]" style={{ background: 'rgba(52,211,153,0.04)', border: '1px solid rgba(52,211,153,0.08)' }}>
+        {(['matched', 'close'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className="flex-1 text-center text-[9px] py-1.5 rounded-[8px] font-semibold transition-all"
+            style={{
+              background: activeTab === tab ? 'rgba(52,211,153,0.1)' : 'transparent',
+              color: activeTab === tab ? '#34D399' : 'rgba(255,255,255,0.25)',
+              border: activeTab === tab ? '1px solid rgba(52,211,153,0.2)' : '1px solid transparent',
+            }}
+          >
+            {tab === 'matched' ? 'Matched (2)' : 'Close (5)'}
+          </button>
+        ))}
+      </div>
+      {trials.map((trial) => (
+        <div
+          key={trial.name}
+          className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2.5"
+          style={{
+            opacity: show ? 1 : 0,
+            transform: show ? 'translateY(0)' : 'translateY(8px)',
+            transition: `opacity 0.45s ease ${trial.delay}ms, transform 0.45s ease ${trial.delay}ms`,
+          }}
+        >
+          <div className="flex items-start gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="text-[7px] font-bold text-emerald-400 tracking-wider uppercase mb-0.5">{trial.phase}</div>
+              <div className="text-[10px] text-white/90 font-semibold leading-snug">{trial.name}</div>
+              <div className="text-[8px] text-white/35 mt-0.5">{trial.site}</div>
+            </div>
+            <div className="flex-shrink-0 mt-0.5">
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center"
+                style={{ background: `conic-gradient(#34D399 ${trial.match * 3.6}deg, rgba(255,255,255,0.05) 0deg)` }}
+              >
+                <div className="w-[26px] h-[26px] rounded-full bg-[#0C0E1A] flex items-center justify-center">
+                  <span className="text-[8px] text-emerald-400 font-bold">{trial.match}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          {trial.missing && (
+            <div className="mt-1.5 flex items-center gap-1 rounded-lg px-1.5 py-1" style={{ background: 'rgba(251,191,36,0.05)', border: '1px solid rgba(251,191,36,0.12)' }}>
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span className="text-[7px] text-amber-400/80 font-medium">{trial.missing}</span>
+            </div>
+          )}
+        </div>
+      ))}
+      <div className="rounded-xl py-1.5 text-center" style={{ background: 'rgba(10,26,16,0.7)', border: '1px solid rgba(52,211,153,0.14)' }}>
+        <span className="text-[9px] text-emerald-400 font-semibold">View 12 more trials →</span>
+      </div>
+    </div>
+  );
+}
+
 /* ── Animated stat counter ── */
 /* ── Main page ── */
 export default function LandingPage() {
@@ -482,6 +751,9 @@ export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeFeature, setActiveFeature] = useState(0);
+  const [heroScreen, setHeroScreen] = useState(0);
+  const compSectionRef = useRef<HTMLDivElement>(null);
+  const [compProgress, setCompProgress] = useState(0);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -492,17 +764,59 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [mobileMenuOpen]);
 
+  useEffect(() => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const el = compSectionRef.current;
+    if (!el) return;
+    if (reduced) { setCompProgress(1); return; }
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      // 0 when section bottom enters viewport, 1 when section top hits 15% from top
+      const p = (vh - rect.top) / (vh * 0.85);
+      setCompProgress(Math.max(0, Math.min(1, p)));
+    };
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+    return () => window.removeEventListener('scroll', update);
+  }, []);
+
+  const easeOut = (t: number) => 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3);
+  const flyP = easeOut(Math.min(1, compProgress / 0.7));
+  const dimP = easeOut(Math.max(0, (compProgress - 0.7) / 0.3));
+
+  const withoutAnimStyle: React.CSSProperties = {
+    opacity: flyP,
+    filter: `saturate(${1 - dimP * 0.6})`,
+    transform: `translateX(${(1 - flyP) * -80}px)`,
+    willChange: 'transform, opacity, filter',
+  };
+  const withAnimStyle: React.CSSProperties = {
+    opacity: flyP,
+    transform: `translateX(${(1 - flyP) * 80}px)`,
+    boxShadow: dimP > 0.05 ? `0 0 0 1px rgba(139,92,246,${0.08 + dimP * 0.22}), 0 0 ${Math.round(16 + 40 * dimP)}px rgba(139,92,246,${0.04 + dimP * 0.1})` : undefined,
+    border: `1px solid rgba(139,92,246,${0.14 + dimP * 0.22})`,
+    willChange: 'transform, opacity, box-shadow',
+  };
+
   const features = [
     { id: 0, badge: 'Treatment', color: '#818CF8', title: 'Treatment Tracker', desc: 'Chemo cycles, tumor markers, and blood counts — surfaced automatically and always current. Never lose track of where you are in treatment.', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg> },
-    { id: 1, badge: 'Scan', color: '#34D399', title: 'Scan Records', desc: 'Point your camera at any lab report, pathology result, or prescription. AI reads and organizes everything instantly — no manual entry.', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" /></svg> },
+    { id: 1, badge: 'Trials', color: '#34D399', title: 'Find Your Trial', desc: 'CareCompanion matches your loved one\'s cancer type, stage, and mutations against thousands of active clinical trials — and tells you exactly what\'s missing to qualify.', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21a48.309 48.309 0 01-8.135-.687c-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" /></svg> },
     { id: 2, badge: 'AI Chat', color: '#A78BFA', title: 'Oncology AI', desc: 'Ask anything about chemo side effects, tumor markers, or treatment options. Get clear, plain-language answers grounded in your actual records.', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg> },
     { id: 3, badge: 'Care Team', color: '#F472B6', title: 'Care Team', desc: 'One shared dashboard for your whole care team. Family caregivers, nurses, and oncologists stay aligned without endless phone calls.', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" /></svg> },
   ];
 
-  const stats = [
+  const stats: { value: React.ReactNode; label: string }[] = [
     { value: '50+', label: 'Chemo drugs tracked' },
     { value: '200+', label: 'Oncology visits managed' },
-    { value: '100%', label: 'Free to use' },
+    {
+      value: (
+        <svg className="w-8 h-8" viewBox="0 0 24 24" fill="#FF375F" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        </svg>
+      ),
+      label: 'Works with Apple Health',
+    },
     { value: '5 min', label: 'Setup time' },
   ];
 
@@ -562,9 +876,10 @@ export default function LandingPage() {
       <section className="relative min-h-screen flex items-center pt-20 pb-16 overflow-hidden">
         {/* Background */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[700px]" style={{ background: 'radial-gradient(ellipse, rgba(109,40,217,0.14) 0%, rgba(79,70,229,0.05) 45%, transparent 70%)' }} />
-          <div className="absolute top-24 right-0 w-px h-64 bg-gradient-to-b from-transparent via-violet-500/20 to-transparent" />
-          <div className="absolute bottom-32 left-0 w-px h-48 bg-gradient-to-b from-transparent via-indigo-500/20 to-transparent" />
+          <div className="absolute top-24 right-0 w-px h-64 bg-gradient-to-b from-transparent via-white/[0.06] to-transparent" />
+          <div className="absolute bottom-32 left-0 w-px h-48 bg-gradient-to-b from-transparent via-white/[0.04] to-transparent" />
+          {/* Ambient bleed — shifts color with active phone screen */}
+          <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 55% 60% at 72% 45%, rgba(${SCREEN_CONFIG[heroScreen].glow},0.045) 0%, transparent 68%)`, transition: 'background 1.4s ease' }} />
         </div>
 
         <div className="max-w-6xl mx-auto px-6 w-full relative">
@@ -572,18 +887,13 @@ export default function LandingPage() {
 
             {/* Left: text */}
             <div className="flex-1 min-w-0 text-center lg:text-left order-2 lg:order-1">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 mb-7 animate-fade-in">
-                <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-                <span className="text-violet-300 text-xs font-semibold tracking-widest uppercase">AI-Powered Cancer Care</span>
-              </div>
-
               <h1 className="font-display text-5xl sm:text-6xl lg:text-[4.5rem] font-bold leading-[1.06] tracking-tight mb-6 animate-fade-in-up">
                 <span className="text-white">Cancer care,</span><br />
                 <span className="bg-gradient-to-r from-violet-400 via-purple-300 to-indigo-400 bg-clip-text text-transparent">finally in one place</span>
               </h1>
 
               <p className="text-white/50 text-xl max-w-lg mx-auto lg:mx-0 mb-9 leading-relaxed animate-fade-in-up" style={{ animationDelay: '0.12s' }}>
-                Stop juggling 5 apps for <CyclingWord />. CareCompanion brings treatment tracking, chemo logs, and caregiver coordination together.
+                Stop juggling 5 apps for <CyclingWord />. CareCompanion brings your medications, appointments, lab results, and care team into one place.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start animate-fade-in-up" style={{ animationDelay: '0.22s' }}>
@@ -605,8 +915,8 @@ export default function LandingPage() {
             </div>
 
             {/* Right: phone — visible beside text on desktop, hidden on mobile to keep hero text above the fold */}
-            <div className="hidden lg:block flex-shrink-0 order-1 lg:order-2 animate-fade-in-up" style={{ animationDelay: '0.08s' }}>
-              <PhoneMockup />
+            <div className="hidden lg:block flex-shrink-0 order-1 lg:order-2 animate-phone-rise" style={{ animationDelay: '0.08s' }}>
+              <PhoneMockup onScreenChange={setHeroScreen} />
             </div>
           </div>
         </div>
@@ -675,65 +985,101 @@ export default function LandingPage() {
       </section>
 
       {/* ════════════════════════════════════════
-          SECTION 3 — BEFORE / AFTER
-          Two columns, no scrolling to find it.
+          SECTION 3 — BEFORE / AFTER (scroll-driven)
       ════════════════════════════════════════ */}
-      <section className="py-28 px-6" style={{ background: 'linear-gradient(180deg, #080A14 0%, #0C0A1A 100%)' }}>
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12 scroll-reveal">
-            <h2 className="font-display text-4xl md:text-5xl font-bold text-white mb-3">The difference</h2>
-            <p className="text-white/35 text-lg">One app. Zero juggling.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 scroll-reveal">
-            {/* Before */}
-            <div className="rounded-2xl border border-red-500/[0.15] overflow-hidden" style={{ background: 'rgba(239,68,68,0.03)' }}>
-              <div className="px-6 py-4 flex items-center gap-3 border-b border-red-500/[0.10]" style={{ background: 'rgba(239,68,68,0.05)' }}>
-                <div className="w-6 h-6 rounded-full bg-red-500/15 border border-red-500/25 flex items-center justify-center">
-                  <svg className="w-3.5 h-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                </div>
-                <span className="font-semibold text-red-400 text-sm">Without CareCompanion</span>
-              </div>
-              <div className="p-6 space-y-3.5">
-                {["5 separate apps for chemo, meds, labs, notes, and appointments","No idea which cycle day you're on","Can't remember what the oncologist actually said","Family caregivers always out of the loop","Tumor markers and blood counts make no sense","Side effects hit and you don't know if they're normal"].map((text, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="w-4 h-4 rounded-full border border-red-500/25 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-red-500/40" />
-                    </div>
-                    <span className="text-white/40 text-sm leading-relaxed">{text}</span>
-                  </div>
-                ))}
-              </div>
+      <section
+        ref={compSectionRef}
+        style={{ background: 'linear-gradient(180deg, #080A14 0%, #0C0A1A 100%)' }}
+      >
+          <div className="max-w-5xl mx-auto px-6 w-full py-24">
+            <div className="text-center mb-12">
+              <h2 className="font-display text-4xl md:text-5xl font-bold text-white mb-3">Why families choose CareCompanion</h2>
+              <p className="text-white/35 text-lg">One app. Zero juggling.</p>
             </div>
-            {/* After */}
-            <div className="rounded-2xl border border-violet-500/[0.18] overflow-hidden" style={{ background: 'rgba(139,92,246,0.04)' }}>
-              <div className="px-6 py-4 flex items-center gap-3 border-b border-violet-500/[0.12]" style={{ background: 'rgba(139,92,246,0.07)' }}>
-                <div className="w-6 h-6 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
-                  <svg className="w-3.5 h-3.5 text-violet-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                </div>
-                <span className="font-semibold text-violet-300 text-sm">With CareCompanion</span>
-              </div>
-              <div className="p-6 space-y-3.5">
-                {["Everything in one place — treatment, meds, labs, notes, team","Treatment tracker shows exactly where you are, cycle by cycle","AI captures and recalls what your oncologist said","Care team dashboard keeps everyone aligned in real time","AI explains every result and flags what actually matters","AI tells you what to expect on each cycle day"].map((text, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="w-4 h-4 rounded-full border border-violet-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-                    </div>
-                    <span className="text-white/70 text-sm leading-relaxed">{text}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Without — dims and desaturates as you scroll through */}
+              <div
+                className="rounded-2xl border border-red-500/[0.12] overflow-hidden"
+                style={{ background: '#0f0809', ...withoutAnimStyle }}
+              >
+                <div className="px-5 py-3.5 flex items-center gap-2.5 border-b border-red-500/[0.08]" style={{ background: 'rgba(239,68,68,0.04)' }}>
+                  <div className="w-5 h-5 rounded-md bg-red-500/10 border border-red-500/20 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-3 h-3 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                   </div>
-                ))}
+                  <span className="font-semibold text-red-400/80 text-xs tracking-wide uppercase">Without CareCompanion</span>
+                </div>
+                <div className="divide-y divide-red-500/[0.06]">
+                  {[
+                    { bold: '5 separate apps', detail: 'chemo, meds, labs, notes, and appointments' },
+                    { bold: 'No cycle tracking', detail: "no idea which day you're on" },
+                    { bold: 'Forgotten conversations', detail: "can't recall what the oncologist said" },
+                    { bold: 'Caregivers out of the loop', detail: 'family always behind on updates' },
+                    { bold: 'Lab results are cryptic', detail: 'tumor markers and blood counts make no sense' },
+                    { bold: 'No warning for side effects', detail: "don't know if what you feel is normal" },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-3 px-5 py-3.5">
+                      <div className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: 'rgba(239,68,68,0.08)' }}>
+                        <svg className="w-2.5 h-2.5 text-red-500/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-white/55 text-sm font-medium">{item.bold}</span>
+                        <span className="text-white/25 text-sm"> — {item.detail}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* CTA inline at bottom of this section */}
-          <div className="mt-12 text-center scroll-reveal">
-            <Link href="/login" className="inline-flex items-center gap-2 px-10 py-4 rounded-xl bg-violet-600 text-white font-semibold text-base hover:bg-violet-500 transition-colors shadow-2xl shadow-violet-600/25">
-              Get started — it&apos;s free
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
-            </Link>
-            <p className="text-white/25 text-sm mt-4">No credit card. No setup fee. 5 minutes to get started.</p>
+              {/* With — slides in and glows as you scroll through */}
+              <div
+                className="rounded-2xl overflow-hidden"
+                style={{ background: '#09090f', ...withAnimStyle }}
+              >
+                <div className="px-5 py-3.5 flex items-center gap-2.5 border-b border-violet-500/[0.08]" style={{ background: 'rgba(139,92,246,0.05)' }}>
+                  <div className="w-5 h-5 rounded-md bg-violet-500/15 border border-violet-500/25 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-3 h-3 text-violet-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                  </div>
+                  <span className="font-semibold text-violet-300/80 text-xs tracking-wide uppercase">With CareCompanion</span>
+                </div>
+                <div className="divide-y divide-violet-500/[0.06]">
+                  {[
+                    { bold: 'Everything in one place', detail: 'treatment, meds, labs, notes, care team' },
+                    { bold: 'Always know your cycle day', detail: 'treatment tracker, cycle by cycle' },
+                    { bold: 'Never forget a conversation', detail: 'what your oncologist said, recalled instantly' },
+                    { bold: 'Care team stays aligned', detail: 'shared dashboard, real-time updates' },
+                    { bold: 'Lab results in plain English', detail: 'explained simply, flagged when it matters' },
+                    { bold: 'Know what to expect', detail: 'every chemo day, no surprises' },
+                    { bold: 'Clinical trial matching', detail: 'matches your loved one automatically' },
+                  ].map((item, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-3 px-5 py-3.5"
+                      style={{
+                        opacity: Math.min(1, Math.max(0, flyP * 1.4 - i * 0.1)),
+                        transform: `translateY(${Math.max(0, (1 - flyP) * (6 + i * 2))}px)`,
+                      }}
+                    >
+                      <div className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: 'rgba(139,92,246,0.1)' }}>
+                        <svg className="w-2.5 h-2.5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-white/80 text-sm font-medium">{item.bold}</span>
+                        <span className="text-white/35 text-sm"> — {item.detail}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-12 text-center">
+              <Link href="/login" className="inline-flex items-center gap-2 px-10 py-4 rounded-xl text-white/85 font-semibold text-base transition-colors" style={{ background: '#2a1f4e', boxShadow: 'none' }} onMouseEnter={e => (e.currentTarget.style.background = '#332560')} onMouseLeave={e => (e.currentTarget.style.background = '#2a1f4e')}>
+                Get started free
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+              </Link>
+              <p className="text-white/25 text-sm mt-4">No credit card. No setup fee. 5 minutes to get started.</p>
+            </div>
           </div>
-        </div>
       </section>
 
       {/* ── Footer ── */}
