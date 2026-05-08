@@ -119,6 +119,9 @@ test.describe('Production 24/7 Monitor', () => {
   })
 
   test('AI chat responds to a message', async ({ page }) => {
+    // Aurora cold start + full pipeline (13 parallel DB queries + Claude) can
+    // take 30-90s. Override the 30s Playwright default for this test only.
+    test.setTimeout(150_000)
     try {
       await page.goto('/chat', { waitUntil: 'domcontentloaded', timeout: 20000 })
     } catch (e) {
