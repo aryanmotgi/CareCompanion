@@ -144,7 +144,7 @@ test.describe('Production 24/7 Monitor', () => {
     await chatInput.fill('hello')
 
     // Click send — more reliable than pressing Enter in headless mode.
-    const sendButton = page.locator('button[title="Send"]')
+    const sendButton = page.locator('button[title="Send message"]')
     await expect(sendButton).toBeVisible({ timeout: 5000 })
     await sendButton.click()
 
