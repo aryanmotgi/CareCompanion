@@ -2,6 +2,11 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.4.0.1] - 2026-05-08
+
+### Fixed
+- **Production monitor** — E2E send button selector updated from `button[title="Send"]` to `button[title="Send message"]` to match ChatInterface — fixes 5 consecutive failing smoke test runs
+
 ## [0.4.0.0] - 2026-05-06
 
 Oncology-aware radar, richer memory extraction, AI orchestration improvements, Premium Care OS DB migration, health API and middleware fixes.
