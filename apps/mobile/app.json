@@ -1,0 +1,74 @@
+{
+  "expo": {
+    "name": "CareCompanion",
+    "slug": "carecompanion",
+    "scheme": "carecompanion",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0C0E1A"
+    },
+    "ios": {
+      "bundleIdentifier": "com.aryanmotgi.carecompanion",
+      "deploymentTarget": "16.0",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "CareCompanion reads your health records to help manage cancer care — including medications, lab results, and appointments from your care team.",
+        "NSHealthUpdateUsageDescription": "CareCompanion saves care data to help you track your treatment progress.",
+        "NSCameraUsageDescription": "CareCompanion uses the camera to scan medical documents and prescriptions.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.healthkit.background-delivery": true,
+        "com.apple.developer.applesignin": ["Default"]
+      },
+      "usesAppleSignIn": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-apple-authentication",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "CareCompanion uses the camera to scan medical documents."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "CareCompanion accesses your photos to upload medical documents.",
+          "cameraPermission": "CareCompanion uses the camera to scan medical documents."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "runtimeVersion": "1.0.0",
+    "android": {
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.carecompanion.app"
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "845c42cd-33e6-42d0-8189-59131144999f"
+      }
+    },
+    "owner": "aryan1008",
+    "updates": {
+      "url": "https://u.expo.dev/845c42cd-33e6-42d0-8189-59131144999f"
+    }
+  }
+}

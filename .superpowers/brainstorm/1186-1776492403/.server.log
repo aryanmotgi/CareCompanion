@@ -1,0 +1,4 @@
+{"type":"server-started","port":52713,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:52713","screen_dir":"/Users/aryanmotgi/carecompanion/.superpowers/brainstorm/1186-1776492403"}
+{"type":"screen-added","file":"/Users/aryanmotgi/carecompanion/.superpowers/brainstorm/1186-1776492403/fhir-flow.html"}
+{"type":"screen-added","file":"/Users/aryanmotgi/carecompanion/.superpowers/brainstorm/1186-1776492403/fhir-simple.html"}
+{"type":"server-stopped","reason":"idle timeout"}

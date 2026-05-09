@@ -1,0 +1,65 @@
+<h2>How Manual FHIR Works — Simple Version</h2>
+<p class="subtitle">3 steps. One file. Profile fully populated.</p>
+
+<div style="display:flex;flex-direction:column;gap:0;margin-top:24px;">
+
+  <!-- Step 1 -->
+  <div style="display:flex;gap:0;align-items:stretch;">
+    <div style="display:flex;flex-direction:column;align-items:center;width:56px;flex-shrink:0;">
+      <div style="width:40px;height:40px;border-radius:50%;background:#6366f1;color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;z-index:1;">1</div>
+      <div style="width:2px;flex:1;background:#e5e7eb;margin:4px 0;"></div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px;flex:1;">
+      <h3 style="margin:0 0 8px;">Patient logs into their hospital portal</h3>
+      <p style="margin:0;color:var(--text-secondary);font-size:14px;">Epic MyChart, Kaiser, UCLA Health, Cerner — whatever their doctor uses. They already have an account. This is where they view their test results and appointments.</p>
+      <div style="margin-top:12px;background:#f8f9ff;border-radius:8px;padding:12px;font-size:13px;color:#6366f1;border:1px solid #e0e7ff;">
+        💡 Most cancer patients already use MyChart to see their lab results
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div style="display:flex;gap:0;align-items:stretch;">
+    <div style="display:flex;flex-direction:column;align-items:center;width:56px;flex-shrink:0;">
+      <div style="width:40px;height:40px;border-radius:50%;background:#6366f1;color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;z-index:1;">2</div>
+      <div style="width:2px;flex:1;background:#e5e7eb;margin:4px 0;"></div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px;flex:1;">
+      <h3 style="margin:0 0 8px;">They tap "Download My Health Data"</h3>
+      <p style="margin:0;color:var(--text-secondary);font-size:14px;">Every US hospital portal has this option — it's legally required. Usually under <em>Menu → Health → Download My Data</em>. Takes about 30 seconds. Downloads as a <code>.json</code> file.</p>
+      <div style="margin-top:12px;background:#f8f9ff;border-radius:8px;padding:12px;font-size:13px;color:#6366f1;border:1px solid #e0e7ff;">
+        💡 CareCompanion shows them exactly where to click with screenshots for their specific portal
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div style="display:flex;gap:0;align-items:stretch;">
+    <div style="display:flex;flex-direction:column;align-items:center;width:56px;flex-shrink:0;">
+      <div style="width:40px;height:40px;border-radius:50%;background:#6366f1;color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;z-index:1;">3</div>
+      <div style="width:2px;background:transparent;margin:4px 0;flex:1;"></div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px;flex:1;">
+      <h3 style="margin:0 0 8px;">They upload the file to CareCompanion</h3>
+      <p style="margin:0;color:var(--text-secondary);font-size:14px;">Drag & drop. We parse it in seconds. Everything auto-fills.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- What happens after -->
+<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:20px;margin-top:8px;">
+  <h3 style="margin:0 0 12px;color:#16a34a;">What CareCompanion auto-fills from that one file</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+    <div style="background:white;border-radius:8px;padding:10px;text-align:center;font-size:13px;border:1px solid #bbf7d0;">💊 All medications<br><span style="color:#6b7280;">name, dose, frequency</span></div>
+    <div style="background:white;border-radius:8px;padding:10px;text-align:center;font-size:13px;border:1px solid #bbf7d0;">🩺 Doctors<br><span style="color:#6b7280;">name, specialty, contact</span></div>
+    <div style="background:white;border-radius:8px;padding:10px;text-align:center;font-size:13px;border:1px solid #bbf7d0;">🔬 Lab results<br><span style="color:#6b7280;">values, dates, trends</span></div>
+    <div style="background:white;border-radius:8px;padding:10px;text-align:center;font-size:13px;border:1px solid #bbf7d0;">🏥 Diagnoses<br><span style="color:#6b7280;">cancer type, stage, conditions</span></div>
+    <div style="background:white;border-radius:8px;padding:10px;text-align:center;font-size:13px;border:1px solid #bbf7d0;">⚠️ Allergies<br><span style="color:#6b7280;">drug & food allergies</span></div>
+    <div style="background:white;border-radius:8px;padding:10px;text-align:center;font-size:13px;border:1px solid #bbf7d0;">📋 Procedures<br><span style="color:#6b7280;">surgeries, treatments</span></div>
+  </div>
+</div>
+
+<div style="margin-top:16px;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:14px;font-size:14px;color:#92400e;">
+  <strong>The only thing users type:</strong> their name, their relationship to the patient, and confirm what got imported. That's it.
+</div>

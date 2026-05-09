@@ -1,0 +1,55 @@
+<h2>Visual style for the redesign?</h2>
+<p class="subtitle">Your current app is dark + glassmorphic. What direction for the new layout?</p>
+
+<div class="cards">
+  <div class="card" data-choice="keep-dark" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: linear-gradient(135deg, #0f172a, #1e293b); padding: 24px; min-height: 160px; display: flex; flex-direction: column; justify-content: center; gap: 8px;">
+      <div style="background: rgba(255,255,255,0.08); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px 16px;">
+        <div style="color: #94a3b8; font-size: 11px;">HEALTH SCORE</div>
+        <div style="color: #fff; font-size: 22px; font-weight: 700;">87<span style="color:#38bdf8">/100</span></div>
+      </div>
+      <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 8px 12px; display: flex; gap: 8px; align-items: center;">
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: #22d3ee;"></div>
+        <span style="color: #e2e8f0; font-size: 12px;">Refill due tomorrow</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Keep dark + glass</h3>
+      <p>Refine the current dark theme. Cleaner layout but same vibe.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="light-clean" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #f8fafc; padding: 24px; min-height: 160px; display: flex; flex-direction: column; justify-content: center; gap: 8px;">
+      <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+        <div style="color: #64748b; font-size: 11px; font-weight: 600;">HEALTH SCORE</div>
+        <div style="color: #0f172a; font-size: 22px; font-weight: 700;">87<span style="color:#6366f1">/100</span></div>
+      </div>
+      <div style="background: #fff; border-radius: 8px; padding: 8px 12px; display: flex; gap: 8px; align-items: center; border: 1px solid #e2e8f0;">
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: #6366f1;"></div>
+        <span style="color: #334155; font-size: 12px;">Refill due tomorrow</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Light & clean</h3>
+      <p>Like Apple Health / Cash App. White backgrounds, clear hierarchy, bold accents.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="dark-bold" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #09090b; padding: 24px; min-height: 160px; display: flex; flex-direction: column; justify-content: center; gap: 8px;">
+      <div style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 12px 16px;">
+        <div style="color: #71717a; font-size: 11px; font-weight: 600; letter-spacing: 0.05em;">HEALTH SCORE</div>
+        <div style="color: #fafafa; font-size: 22px; font-weight: 700;">87<span style="color:#a78bfa">/100</span></div>
+      </div>
+      <div style="background: #18181b; border-radius: 8px; padding: 8px 12px; display: flex; gap: 8px; align-items: center; border: 1px solid #27272a;">
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: #a78bfa;"></div>
+        <span style="color: #d4d4d8; font-size: 12px;">Refill due tomorrow</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Dark & bold (no glass)</h3>
+      <p>Like Robinhood. Pure dark, no blur effects, sharp contrast, bold typography.</p>
+    </div>
+  </div>
+</div>

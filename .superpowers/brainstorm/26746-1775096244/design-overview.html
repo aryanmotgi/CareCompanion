@@ -1,0 +1,100 @@
+<h2>CareCompanion Frontend Redesign — Full Design</h2>
+<p class="subtitle">All pages brought to premium standard with consistent futuristic design language</p>
+
+<div class="section">
+  <h3>Design System (Applied Everywhere)</h3>
+  <div style="background:#1e293b;border-radius:12px;padding:20px;margin:12px 0;color:#e2e8f0;font-size:14px;line-height:1.8;">
+    <div style="margin-bottom:8px;"><strong style="color:#22d3ee;">Glass cards:</strong> bg-white/[0.04] with border-white/[0.06], backdrop-blur</div>
+    <div style="margin-bottom:8px;"><strong style="color:#22d3ee;">Gradient accents:</strong> indigo-500 → cyan-400 for CTAs, active states</div>
+    <div style="margin-bottom:8px;"><strong style="color:#22d3ee;">Animations:</strong> card-stagger-in on page load, slide-up for modals, press effect on taps</div>
+    <div style="margin-bottom:8px;"><strong style="color:#22d3ee;">Glow effects:</strong> subtle cyan glow on interactive elements, gradient borders on focus</div>
+    <div><strong style="color:#22d3ee;">Typography:</strong> slate-50 headers, slate-400 body, slate-500 secondary</div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>1. Dashboard (Polish)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Dashboard — Priority Card Feed</div>
+    <div class="mockup-body" style="background:#0f172a;padding:16px;">
+      <div style="color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Good evening, Aryan</div>
+      <div style="color:#f1f5f9;font-size:20px;font-weight:700;margin-bottom:16px;">3 items need attention</div>
+
+      <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:14px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:#ef4444;"></div>
+          <span style="color:#ef4444;font-size:12px;font-weight:600;">URGENT</span>
+        </div>
+        <div style="color:#f1f5f9;font-size:14px;font-weight:600;">Lisinopril refill due tomorrow</div>
+        <div style="color:#94a3b8;font-size:12px;">3 pills remaining • Dr. Patel</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:#22d3ee;"></div>
+          <span style="color:#22d3ee;font-size:12px;font-weight:600;">UPCOMING</span>
+        </div>
+        <div style="color:#f1f5f9;font-size:14px;font-weight:600;">Dr. Chen — Endocrinology</div>
+        <div style="color:#94a3b8;font-size:12px;">Tomorrow at 11:00 AM • A1C check</div>
+      </div>
+
+      <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:12px;padding:14px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:#fbbf24;"></div>
+          <span style="color:#fbbf24;font-size:12px;font-weight:600;">ALERT</span>
+        </div>
+        <div style="color:#f1f5f9;font-size:14px;font-weight:600;">LDL Cholesterol — 165 mg/dL</div>
+        <div style="color:#94a3b8;font-size:12px;">Above normal range (&lt;100) • 3 days ago</div>
+      </div>
+    </div>
+  </div>
+  <p style="color:#888;font-size:13px;margin-top:8px;">Polish: staggered card animations, expandable cards on tap, animated number counters, quick-ask AI card at bottom</p>
+</div>
+
+<div class="section">
+  <h3>2. Care Tab (Polish + Expandable Cards)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Care — Medications (expanded card)</div>
+    <div class="mockup-body" style="background:#0f172a;padding:16px;">
+      <div style="display:flex;background:rgba(255,255,255,0.06);border-radius:10px;padding:3px;margin-bottom:16px;">
+        <div style="flex:1;text-align:center;padding:8px;background:linear-gradient(135deg,#6366f1,#22d3ee);border-radius:8px;color:white;font-size:13px;font-weight:600;">Medications</div>
+        <div style="flex:1;text-align:center;padding:8px;color:#64748b;font-size:13px;">Appointments</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(34,211,238,0.2);border-radius:12px;padding:14px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="color:#f1f5f9;font-size:15px;font-weight:600;">Lisinopril</div>
+            <div style="color:#94a3b8;font-size:12px;">10mg • Once daily - Morning</div>
+          </div>
+          <div style="color:#22d3ee;font-size:20px;">▾</div>
+        </div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+            <div><span style="color:#64748b;">Doctor:</span> <span style="color:#e2e8f0;">Dr. Patel</span></div>
+            <div><span style="color:#64748b;">Refill:</span> <span style="color:#ef4444;">Tomorrow</span></div>
+            <div><span style="color:#64748b;">Remaining:</span> <span style="color:#fbbf24;">3 pills</span></div>
+            <div><span style="color:#64748b;">Frequency:</span> <span style="color:#e2e8f0;">Morning</span></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <button style="flex:1;padding:8px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#22d3ee);color:white;border:none;font-size:12px;font-weight:600;">Request Refill</button>
+            <button style="flex:1;padding:8px;border-radius:8px;background:rgba(255,255,255,0.06);color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);font-size:12px;">Edit</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="color:#f1f5f9;font-size:15px;font-weight:600;">Metformin</div>
+            <div style="color:#94a3b8;font-size:12px;">500mg • Twice daily - With meals</div>
+          </div>
+          <div style="color:#64748b;font-size:20px;">▸</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p style="color:#888;font-size:13px;margin-top:8px;">Tap to expand with smooth animation. Shows details grid + action buttons. Same pattern for appointments.</p>
+</div>
+
+<p class="subtitle" style="margin-top:24px;">Scroll down for Chat, Scans, Settings, and Profile designs ↓</p>

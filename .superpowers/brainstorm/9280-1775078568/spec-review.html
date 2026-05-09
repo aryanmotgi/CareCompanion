@@ -1,0 +1,182 @@
+<h2>Full Design Spec — Review</h2>
+<p class="subtitle">Scroll through the complete spec. Let me know if anything needs changing.</p>
+
+<div class="section">
+  <h3>Problem</h3>
+  <p style="color: #d4d4d8; line-height: 1.7;">8 pages with sidebar navigation feels scattered. Dashboard is overloaded. Navigation doesn't feel native on mobile. Goal: make it feel like a premium iPhone app (Cash App / Robinhood style) with the existing dark color palette.</p>
+</div>
+
+<div class="section">
+  <h3>Navigation — Bottom Tab Bar</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
+    <div style="background: #1e293b; border-radius: 10px; padding: 14px; text-align: center;">
+      <div style="font-size: 24px; margin-bottom: 4px;">🏠</div>
+      <div style="color: #f1f5f9; font-weight: 600; font-size: 14px;">Home</div>
+      <div style="color: #64748b; font-size: 11px; margin-top: 2px;">Priority card feed</div>
+    </div>
+    <div style="background: #1e293b; border-radius: 10px; padding: 14px; text-align: center;">
+      <div style="font-size: 24px; margin-bottom: 4px;">💬</div>
+      <div style="color: #f1f5f9; font-weight: 600; font-size: 14px;">Chat</div>
+      <div style="color: #64748b; font-size: 11px; margin-top: 2px;">AI assistant (unchanged)</div>
+    </div>
+    <div style="background: #1e293b; border-radius: 10px; padding: 14px; text-align: center;">
+      <div style="font-size: 24px; margin-bottom: 4px;">❤️</div>
+      <div style="color: #f1f5f9; font-weight: 600; font-size: 14px;">Care</div>
+      <div style="color: #64748b; font-size: 11px; margin-top: 2px;">Meds + Appointments</div>
+    </div>
+    <div style="background: #1e293b; border-radius: 10px; padding: 14px; text-align: center;">
+      <div style="font-size: 24px; margin-bottom: 4px;">📷</div>
+      <div style="color: #f1f5f9; font-weight: 600; font-size: 14px;">Scan</div>
+      <div style="color: #64748b; font-size: 11px; margin-top: 2px;">Document scanner</div>
+    </div>
+  </div>
+  <p style="color: #94a3b8; font-size: 13px; margin-top: 12px;">Sidebar removed entirely. Profile avatar (top right) opens slide-out menu with: Care Profile, Connected Accounts, Settings, Help, Sign Out.</p>
+</div>
+
+<div class="section">
+  <h3>Route Mapping</h3>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px;">
+    <tr style="border-bottom: 1px solid rgba(255,255,255,0.08);">
+      <td style="padding: 8px; color: #64748b;">Old Route</td>
+      <td style="padding: 8px; color: #64748b;">New Location</td>
+    </tr>
+    <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <td style="padding: 8px; color: #94a3b8; font-family: monospace; font-size: 12px;">/dashboard</td>
+      <td style="padding: 8px; color: #f1f5f9;">Home tab</td>
+    </tr>
+    <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <td style="padding: 8px; color: #94a3b8; font-family: monospace; font-size: 12px;">/chat</td>
+      <td style="padding: 8px; color: #f1f5f9;">Chat tab</td>
+    </tr>
+    <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <td style="padding: 8px; color: #94a3b8; font-family: monospace; font-size: 12px;">/medications</td>
+      <td style="padding: 8px; color: #f1f5f9;">Care tab → Medications segment</td>
+    </tr>
+    <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <td style="padding: 8px; color: #94a3b8; font-family: monospace; font-size: 12px;">/appointments</td>
+      <td style="padding: 8px; color: #f1f5f9;">Care tab → Appointments segment</td>
+    </tr>
+    <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <td style="padding: 8px; color: #94a3b8; font-family: monospace; font-size: 12px;">/scans</td>
+      <td style="padding: 8px; color: #f1f5f9;">Scan tab</td>
+    </tr>
+    <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <td style="padding: 8px; color: #94a3b8; font-family: monospace; font-size: 12px;">/connect</td>
+      <td style="padding: 8px; color: #f1f5f9;">Profile menu → Connected Accounts</td>
+    </tr>
+    <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <td style="padding: 8px; color: #94a3b8; font-family: monospace; font-size: 12px;">/profile</td>
+      <td style="padding: 8px; color: #f1f5f9;">Profile menu → Care Profile</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; color: #94a3b8; font-family: monospace; font-size: 12px;">/settings</td>
+      <td style="padding: 8px; color: #f1f5f9;">Profile menu → Settings</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h3>Home Screen — Priority Card Feed</h3>
+  <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
+    <div style="background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.05)); border: 1px solid rgba(239,68,68,0.2); border-radius: 10px; padding: 12px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444;"></div>
+        <span style="color: #fca5a5; font-size: 11px; font-weight: 600;">NEEDS ATTENTION</span>
+      </div>
+      <div style="color: #e2e8f0; font-size: 13px; margin-top: 4px;">Refills due, overdue appointments, denied claims</div>
+    </div>
+    <div style="background: #1e293b; border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: #38bdf8;"></div>
+        <span style="color: #38bdf8; font-size: 11px; font-weight: 600;">UPCOMING</span>
+      </div>
+      <div style="color: #e2e8f0; font-size: 13px; margin-top: 4px;">Appointments in the next few days</div>
+    </div>
+    <div style="background: #1e293b; border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: #f59e0b;"></div>
+        <span style="color: #fbbf24; font-size: 11px; font-weight: 600;">ALERTS</span>
+      </div>
+      <div style="color: #e2e8f0; font-size: 13px; margin-top: 4px;">Abnormal labs, insurance issues</div>
+    </div>
+    <div style="background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(56,189,248,0.08)); border: 1px solid rgba(99,102,241,0.2); border-radius: 10px; padding: 12px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: #818cf8;"></div>
+        <span style="color: #a5b4fc; font-size: 11px; font-weight: 600;">QUICK ASK</span>
+      </div>
+      <div style="color: #e2e8f0; font-size: 13px; margin-top: 4px;">One contextual AI prompt suggestion</div>
+    </div>
+  </div>
+  <p style="color: #94a3b8; font-size: 13px; margin-top: 12px;"><strong style="color: #e2e8f0;">Removed:</strong> Health score widget, quick prompts grid, activity timeline section, notification count. Cards fade in with staggered timing.</p>
+</div>
+
+<div class="section">
+  <h3>Care Tab — Segment Control</h3>
+  <p style="color: #d4d4d8; line-height: 1.7;">Toggle between Medications and Appointments via a sliding pill control. Meds grouped by "Refill Needed" → "Active". Appointments grouped by "This Week" → "Upcoming". Tap any card → bottom sheet detail overlay (slides up, swipe to dismiss). "+" button adds new items contextually.</p>
+</div>
+
+<div class="section">
+  <h3>Futuristic Visual Polish (all 7)</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 12px;">
+    <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px;">
+      <div style="color: #38bdf8; font-size: 12px; font-weight: 600;">1. Transitions</div>
+      <div style="color: #94a3b8; font-size: 11px; margin-top: 2px;">Slide, fade-in, spring</div>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px;">
+      <div style="color: #38bdf8; font-size: 12px; font-weight: 600;">2. Glow Effects</div>
+      <div style="color: #94a3b8; font-size: 11px; margin-top: 2px;">Pulsing urgency, cyan active</div>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px;">
+      <div style="color: #38bdf8; font-size: 12px; font-weight: 600;">3. Gradient Borders</div>
+      <div style="color: #94a3b8; font-size: 11px; margin-top: 2px;">Animated cyan→violet→blue</div>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px;">
+      <div style="color: #38bdf8; font-size: 12px; font-weight: 600;">4. Micro-interactions</div>
+      <div style="color: #94a3b8; font-size: 11px; margin-top: 2px;">Press scale, bounce, lift</div>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px;">
+      <div style="color: #38bdf8; font-size: 12px; font-weight: 600;">5. Ambient BG</div>
+      <div style="color: #94a3b8; font-size: 11px; margin-top: 2px;">Floating gradient blobs</div>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px;">
+      <div style="color: #38bdf8; font-size: 12px; font-weight: 600;">6. Skeleton Loading</div>
+      <div style="color: #94a3b8; font-size: 11px; margin-top: 2px;">Shimmer placeholders</div>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px; grid-column: 1 / -1;">
+      <div style="color: #38bdf8; font-size: 12px; font-weight: 600;">7. Number Animations</div>
+      <div style="color: #94a3b8; font-size: 11px; margin-top: 2px;">Count-up effects on health numbers</div>
+    </div>
+  </div>
+  <p style="color: #94a3b8; font-size: 13px; margin-top: 12px;">All CSS-based. No animation libraries. <code style="background: rgba(255,255,255,0.06); padding: 2px 5px; border-radius: 3px; font-size: 11px;">prefers-reduced-motion</code> supported for accessibility.</p>
+</div>
+
+<div class="section">
+  <h3>Component Changes</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+    <div>
+      <div style="color: #fbbf24; font-size: 11px; font-weight: 600; margin-bottom: 6px;">MODIFY (8)</div>
+      <div style="color: #d4d4d8; font-size: 12px; line-height: 1.8;">
+        AppShell<br>DashboardView<br>MedicationsView<br>AppointmentsView<br>ConnectAccounts<br>ProfileEditor<br>SettingsPage<br>ScanCenter
+      </div>
+    </div>
+    <div>
+      <div style="color: #22c55e; font-size: 11px; font-weight: 600; margin-bottom: 6px;">CREATE (8)</div>
+      <div style="color: #d4d4d8; font-size: 12px; line-height: 1.8;">
+        BottomTabBar<br>ProfileMenu<br>PriorityCard<br>SegmentControl<br>BottomSheet<br>SkeletonCard<br>AnimatedNumber<br>AmbientBackground
+      </div>
+    </div>
+  </div>
+  <div style="margin-top: 12px;">
+    <span style="color: #64748b; font-size: 11px; font-weight: 600;">UNCHANGED:</span>
+    <span style="color: #94a3b8; font-size: 12px;"> ChatInterface, DocumentScanner, MessageBubble, TypingIndicator</span>
+  </div>
+  <div style="margin-top: 6px;">
+    <span style="color: #ef4444; font-size: 11px; font-weight: 600;">REMOVE:</span>
+    <span style="color: #94a3b8; font-size: 12px;"> Sidebar nav, NotificationBell</span>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Architecture</h3>
+  <p style="color: #d4d4d8; line-height: 1.7;">Each tab keeps its own route (<code style="background: rgba(255,255,255,0.06); padding: 2px 5px; border-radius: 3px; font-size: 12px;">/dashboard</code>, <code style="background: rgba(255,255,255,0.06); padding: 2px 5px; border-radius: 3px; font-size: 12px;">/chat</code>, <code style="background: rgba(255,255,255,0.06); padding: 2px 5px; border-radius: 3px; font-size: 12px;">/care</code>, <code style="background: rgba(255,255,255,0.06); padding: 2px 5px; border-radius: 3px; font-size: 12px;">/scans</code>) under the App Router. Profile/Connect/Settings render inside the ProfileMenu slide-out (client-side, no route change). Home feed aggregates data client-side from existing Supabase queries — no new API endpoints needed.</p>
+</div>

@@ -1,0 +1,5 @@
+{"type":"server-started","port":59459,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:59459","screen_dir":"/Users/aryanmotgi/carecompanion/.superpowers/brainstorm/26746-1775096244"}
+{"type":"screen-added","file":"/Users/aryanmotgi/carecompanion/.superpowers/brainstorm/26746-1775096244/design-overview.html"}
+{"type":"screen-added","file":"/Users/aryanmotgi/carecompanion/.superpowers/brainstorm/26746-1775096244/design-part2.html"}
+{"type":"screen-added","file":"/Users/aryanmotgi/carecompanion/.superpowers/brainstorm/26746-1775096244/waiting.html"}
+{"type":"server-stopped","reason":"idle timeout"}
