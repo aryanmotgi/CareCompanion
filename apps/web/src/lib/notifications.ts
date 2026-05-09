@@ -374,7 +374,7 @@ export async function generateNotificationsForAllUsers(): Promise<{ total: numbe
   await db
     .delete(notifications)
     .where(and(eq(notifications.isRead, true), lt(notifications.createdAt, thirtyDaysAgo)))
-    .catch((err) => logger.error('[notifications] cleanup failed', { route: 'generateNotificationsForAllUsers' }));
+    .catch(() => logger.error('[notifications] cleanup failed', { route: 'generateNotificationsForAllUsers' }));
 
   while (true) {
     const page: Array<{ userId: string; id: string }> = await db

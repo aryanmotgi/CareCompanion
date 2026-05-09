@@ -76,7 +76,7 @@ export default function SetRolePage() {
             className="font-display text-4xl font-bold"
             style={{ color: 'var(--text, #EDE9FE)' }}
           >
-            You're in the right place.
+            You&apos;re in the right place.
           </h1>
           <p
             className="mt-4 text-base leading-relaxed"
