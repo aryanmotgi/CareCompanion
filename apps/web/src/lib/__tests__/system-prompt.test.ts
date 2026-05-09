@@ -73,7 +73,7 @@ describe('buildSystemPrompt', () => {
       careProfileId: 'p1',
       doctorName: 'Dr. Patel',
       specialty: null,
-      dateTime: new Date('2026-05-01T14:00:00Z'),
+      dateTime: new Date('2026-06-01T14:00:00Z'),
       location: null,
       purpose: 'Blood pressure check',
       createdAt: new Date('2026-01-01'),

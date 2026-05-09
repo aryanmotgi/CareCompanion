@@ -10,6 +10,8 @@ type FilterType = 'all' | 'medications' | 'appointments' | 'labs' | 'checkins' |
 
 interface TreatmentTimelineProps {
   events: TimelineEvent[];
+  hideHeader?: boolean;
+  sortAscending?: boolean;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -139,16 +141,19 @@ function EmptyTimeline() {
 
 // ─── Main component ──────────────────────────────────────────────────────────
 
-export function TreatmentTimeline({ events }: TreatmentTimelineProps) {
+export function TreatmentTimeline({ events, hideHeader = false, sortAscending = false }: TreatmentTimelineProps) {
   const [filter, setFilter] = useState<FilterType>('all');
   const [showTrends, setShowTrends] = useState(false);
 
   const today = useMemo(() => new Date(), []);
 
-  // Sort events descending by date
   const sortedEvents = useMemo(
-    () => [...events].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [events],
+    () => [...events].sort((a, b) =>
+      sortAscending
+        ? new Date(a.date).getTime() - new Date(b.date).getTime()
+        : new Date(b.date).getTime() - new Date(a.date).getTime()
+    ),
+    [events, sortAscending],
   );
 
   // Filter
@@ -194,13 +199,14 @@ export function TreatmentTimeline({ events }: TreatmentTimelineProps) {
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[var(--text)]">Treatment Timeline</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-1">
-          Your complete care journey &mdash; {sortedEvents.length} event{sortedEvents.length !== 1 ? 's' : ''}
-        </p>
-      </div>
+      {!hideHeader && (
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-[var(--text)]">Treatment Timeline</h1>
+          <p className="text-sm text-[var(--text-muted)] mt-1">
+            Your complete care journey &mdash; {sortedEvents.length} event{sortedEvents.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+      )}
 
       {/* Action buttons row */}
       <div className="flex items-center gap-2 mb-4">

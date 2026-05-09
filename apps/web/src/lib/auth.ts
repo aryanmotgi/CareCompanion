@@ -155,18 +155,26 @@ export const { handlers, auth } = NextAuth({
           token.displayName = dbDisplayName ?? user.name ?? socialEmail
           token.isDemo = false
 
-          // Fetch role to put on token
-          const socialDbUser = await db.query.users.findFirst({ where: eq(users.id, dbUserId) })
-          token.role = socialDbUser?.role ?? null
+          // Fetch role — non-critical; null sends user to /set-role after sign-in
+          try {
+            const socialDbUser = await db.query.users.findFirst({ where: eq(users.id, dbUserId) })
+            token.role = socialDbUser?.role ?? null
+          } catch {
+            token.role = null
+          }
         } else {
           // Credentials sign-in: user.id is the DB UUID from authorize()
           token.dbUserId = user.id
           token.displayName = user.name ?? user.email ?? ''
           token.isDemo = false
 
-          // Fetch role to put on token
-          const credDbUser = await db.query.users.findFirst({ where: eq(users.id, user.id as string) })
-          token.role = credDbUser?.role ?? null
+          // Fetch role — non-critical; null sends user to /set-role after sign-in
+          try {
+            const credDbUser = await db.query.users.findFirst({ where: eq(users.id, user.id as string) })
+            token.role = credDbUser?.role ?? null
+          } catch {
+            token.role = null
+          }
         }
       }
       return token

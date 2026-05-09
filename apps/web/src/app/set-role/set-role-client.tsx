@@ -23,9 +23,11 @@ export default function SetRolePage() {
     if (!role) { setError('Please select your role to continue'); return }
     setLoading(true)
     try {
+      const csrfMatch = document.cookie.match(/(^| )cc-csrf-token=([^;]+)/)
+      const csrfToken = csrfMatch ? csrfMatch[2] : ''
       const res = await fetch('/api/auth/set-role', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
         body: JSON.stringify({ role }),
       })
       if (!res.ok) { setError('Something went wrong. Try again.'); return }

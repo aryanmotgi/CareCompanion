@@ -17,6 +17,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
   }
 
-  await db.update(users).set({ role }).where(eq(users.id, session.user.id))
+  try {
+    await db.update(users).set({ role }).where(eq(users.id, session.user.id))
+  } catch (err) {
+    console.error('[set-role] db update failed:', err instanceof Error ? err.message : err)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+  }
   return NextResponse.json({ success: true })
 }
