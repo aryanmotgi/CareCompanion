@@ -12,7 +12,10 @@
  *   https://developer.apple.com/documentation/healthkit/hkclinicalrecord
  */
 import { NativeModules, Platform } from 'react-native'
+import * as SecureStore from 'expo-secure-store'
 import { apiClient } from './api'
+
+const CONNECTED_KEY = 'cc-healthkit-connected'
 import type {
   HealthKitRecord,
   HealthKitMedicationRecord,
@@ -58,6 +61,27 @@ export async function requestHealthKitPermissions(): Promise<boolean> {
 }
 
 /**
+ * Persist that the user has gone through the connect flow. Used to gate
+ * passive sync calls — Apple does not let apps query auth status for clinical
+ * records, so we track it ourselves.
+ */
+export async function markHealthKitConnected(): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(CONNECTED_KEY, '1')
+  } catch {
+    // SecureStore unavailable (e.g. in tests) — fail open, sync just won't run.
+  }
+}
+
+export async function isHealthKitConnected(): Promise<boolean> {
+  try {
+    return (await SecureStore.getItemAsync(CONNECTED_KEY)) === '1'
+  } catch {
+    return false
+  }
+}
+
+/**
  * Fetch clinical records from HealthKit, normalise them into HealthKitRecord
  * objects, and POST them to the backend sync endpoint.
  */
@@ -79,6 +103,53 @@ export async function syncHealthKitData(): Promise<{ synced: number }> {
 
   if (records.length === 0) return { synced: 0 }
   return apiClient.healthkit.sync(records)
+}
+
+/**
+ * Same shape as syncHealthKitData but hits /api/healthkit/replace.
+ * Backend wipes existing medical data + nulls care profile fields,
+ * then upserts the new HealthKit records in one round-trip.
+ */
+export async function replaceHealthKitData(): Promise<{
+  synced: number
+  errors: number
+  deleted: { medications: number; appointments: number; labResults: number }
+}> {
+  if (!Bridge) return { synced: 0, errors: 0, deleted: { medications: 0, appointments: 0, labResults: 0 } }
+
+  let raw: RawClinicalRecord[]
+  try {
+    raw = await Bridge.fetchClinicalRecords()
+  } catch (err) {
+    console.warn('[HealthKit] fetchClinicalRecords failed:', err)
+    return { synced: 0, errors: 0, deleted: { medications: 0, appointments: 0, labResults: 0 } }
+  }
+
+  const records: HealthKitRecord[] = raw.flatMap((r) => {
+    const parsed = normalise(r)
+    return parsed ? [parsed] : []
+  })
+
+  return apiClient.healthkit.replace(records)
+}
+
+/**
+ * Returns true if the user already has any meds/labs/appts in CC.
+ * Used to decide whether to show the merge/replace prompt vs. straight sync.
+ * Fails closed (returns false) — never blocks the connect flow on a preflight check.
+ */
+export async function hasExistingMedicalData(careProfileId: string): Promise<boolean> {
+  try {
+    const [meds, labs, appts] = await Promise.all([
+      apiClient.medications.list(careProfileId).catch(() => [] as unknown[]),
+      apiClient.labResults.list(careProfileId).catch(() => ({ labs: [] as unknown[] })),
+      apiClient.appointments.list(careProfileId).catch(() => [] as unknown[]),
+    ])
+    const labArr = Array.isArray(labs) ? labs : (labs as { labs: unknown[] }).labs
+    return (meds as unknown[]).length > 0 || labArr.length > 0 || (appts as unknown[]).length > 0
+  } catch {
+    return false
+  }
 }
 
 // ---------------------------------------------------------------------------
