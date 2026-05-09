@@ -28,7 +28,13 @@ import { BlurView } from 'expo-blur'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { requestHealthKitPermissions } from '../src/services/healthkit'
+import {
+  requestHealthKitPermissions,
+  markHealthKitConnected,
+  syncHealthKitData,
+  hasExistingMedicalData,
+} from '../src/services/healthkit'
+import { useProfile } from '../src/context/ProfileContext'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const CARD_WIDTH = SCREEN_WIDTH - 56
@@ -234,6 +240,7 @@ const MOCKUP_MAP = {
 
 export default function HealthConnectScreen() {
   const router = useRouter()
+  const { profile } = useProfile()
   const insets = useSafeAreaInsets()
   const flatListRef = useRef<FlatList>(null)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -263,17 +270,28 @@ export default function HealthConnectScreen() {
     setRequesting(true)
     try {
       const granted = await requestHealthKitPermissions()
-      if (granted) {
-        setPermissionGranted(true)
-        successScale.value = withSpring(1, { damping: 10, stiffness: 150 })
-        // Navigate back after success animation
-        setTimeout(() => {
-          router.back()
-        }, 2000)
-      } else {
-        // Permission denied — still let them go back
+      if (!granted) {
         setRequesting(false)
+        return
       }
+      await markHealthKitConnected()
+
+      // Decide path: existing data → prompt; first-time → straight sync
+      const hasData = profile?.careProfileId
+        ? await hasExistingMedicalData(profile.careProfileId)
+        : false
+
+      if (hasData) {
+        setRequesting(false)
+        router.replace('/health-replace-prompt' as any)
+        return
+      }
+
+      // First-time flow: existing success animation + back-nav, with sync
+      syncHealthKitData().catch((err) => console.warn('[HealthKit] first-time sync failed:', err))
+      setPermissionGranted(true)
+      successScale.value = withSpring(1, { damping: 10, stiffness: 150 })
+      setTimeout(() => { router.back() }, 2000)
     } catch {
       setRequesting(false)
     }
