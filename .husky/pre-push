@@ -1,6 +1,9 @@
 echo "🔍 Pre-push: running typecheck..."
 npm run typecheck
 
+echo "🔍 Pre-push: running lint..."
+npm run lint
+
 # ── Schema drift check ────────────────────────────────────────────────────────
 # If schema.ts changed in this push, remind the dev to migrate Aurora.
 # Aurora is VPC-only — drizzle-kit push can't reach it from CI.
