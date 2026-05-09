@@ -3,9 +3,6 @@
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { registerSchema } from '@carecompanion/utils'
-import { RoleSelector } from '@/components/RoleSelector'
-
-type Role = 'caregiver' | 'patient' | 'self'
 
 function FloatingInput({
   id, label, type = 'text', value, onChange, autoComplete, required, minLength,
@@ -140,18 +137,10 @@ export function SignupForm({ joinGroup, joinToken }: { joinGroup?: string; joinT
   const [consent, setConsent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>()
-  const [role, setRole] = useState<Role | null>(null)
-  const [roleError, setRoleError] = useState('')
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(undefined)
-
-    if (!role) {
-      setRoleError('Please select your role to continue')
-      return
-    }
-    setRoleError('')
 
     if (password !== confirmPassword) {
       setError('Passwords do not match.')
@@ -185,7 +174,6 @@ export function SignupForm({ joinGroup, joinToken }: { joinGroup?: string; joinT
           password: parsed.data.password,
           displayName: parsed.data.displayName,
           hipaaConsent: true,
-          role,
         }),
       })
 
@@ -215,7 +203,7 @@ export function SignupForm({ joinGroup, joinToken }: { joinGroup?: string; joinT
         if (joinGroup && joinToken) {
           window.location.href = `/join?group=${joinGroup}&token=${joinToken}`
         } else {
-          window.location.href = '/onboarding'
+          window.location.href = '/set-role'
         }
       } else {
         setError('Something went wrong. Please try again.')
@@ -247,11 +235,7 @@ export function SignupForm({ joinGroup, joinToken }: { joinGroup?: string; joinT
           {/* Social sign-in — shown before email fields for discoverability */}
           <button
             type="button"
-            onClick={() => {
-              if (!role) { setRoleError('Please choose your role before continuing'); return }
-              setRoleError('')
-              signIn('apple', { callbackUrl: `/onboarding?role=${role}` })
-            }}
+            onClick={() => signIn('apple', { callbackUrl: '/set-role' })}
             className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.98] hover:opacity-90"
             style={{ background: '#FFFFFF', color: '#000000' }}
           >
@@ -263,11 +247,7 @@ export function SignupForm({ joinGroup, joinToken }: { joinGroup?: string; joinT
 
           <button
             type="button"
-            onClick={() => {
-              if (!role) { setRoleError('Please choose your role before continuing'); return }
-              setRoleError('')
-              signIn('google', { callbackUrl: `/onboarding?role=${role}` })
-            }}
+            onClick={() => signIn('google', { callbackUrl: '/set-role' })}
             className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.98] hover:opacity-90"
             style={{ background: '#FFFFFF', color: '#1F1F1F' }}
           >
@@ -285,8 +265,6 @@ export function SignupForm({ joinGroup, joinToken }: { joinGroup?: string; joinT
             <span className="text-[10px] font-medium uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.2)' }}>or</span>
             <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
           </div>
-
-          <RoleSelector value={role} onChange={setRole} error={roleError} />
 
           <FloatingInput id="signup-name" label="Display name" value={displayName} onChange={setDisplayName} autoComplete="name" required />
           <FloatingInput id="signup-email" label="Email address" type="email" value={email} onChange={setEmail} autoComplete="email" required />

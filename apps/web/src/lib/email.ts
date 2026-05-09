@@ -4,6 +4,7 @@
  */
 
 import { Resend } from 'resend';
+import { logger } from '@/lib/logger';
 
 let resendClient: Resend | null = null;
 
@@ -29,7 +30,7 @@ export async function sendEmail({
   const resend = getResend();
 
   if (!resend) {
-    console.warn(`[email] RESEND_API_KEY not set — logging instead. To: ${to}, Subject: ${subject}`);
+    logger.warn('[email] RESEND_API_KEY not set — skipping send');
     return { success: false, reason: 'no_api_key' };
   }
 
@@ -37,15 +38,15 @@ export async function sendEmail({
     const { error } = await resend.emails.send({ from, to, subject, html });
 
     if (error) {
-      console.error('[email] Resend API error:', error);
+      logger.error('[email] Resend API error', { route: 'sendEmail' });
       return { success: false, reason: error.message };
     }
 
-    console.log(`[email] Sent "${subject}" to ${to}`);
+    logger.info('[email] sent');
     return { success: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    console.error('[email] Failed to send:', message);
+    logger.error('[email] send failed', { route: 'sendEmail' });
     return { success: false, reason: message };
   }
 }

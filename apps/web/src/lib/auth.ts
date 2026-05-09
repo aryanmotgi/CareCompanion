@@ -88,26 +88,14 @@ export const { handlers, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async signIn({ user, account, ...rest }: any) {
-      const request = rest.request as { cookies?: { get(name: string): { value: string } | undefined } } | undefined
-      if (request && (account?.provider === 'google' || account?.provider === 'apple')) {
-        const cookie = request.cookies?.get('pending_role')?.value
-        if (cookie && ['caregiver', 'patient', 'self'].includes(cookie)) {
-          if (user?.email) {
-            const email = (user.email as string).toLowerCase().trim()
-            const existing = await db.query.users.findFirst({ where: eq(users.email, email) })
-            if (existing && !existing.role) {
-              await db.update(users).set({ role: cookie }).where(eq(users.id, existing.id))
-            }
-          }
-        }
-      }
-      return true
-    },
-    async jwt({ token, user, account, profile, trigger }) {
-      // On session update (e.g. after /set-role saves to DB), re-read role from DB
+    async jwt({ token, user, account, profile, trigger, session }) {
+      // On session update (e.g. after /set-role saves to DB), update token immediately
+      // from the data passed to update(), falling back to a DB re-read if not provided.
       if (trigger === 'update' && token.dbUserId) {
+        if (session?.role !== undefined) {
+          token.role = session.role
+          return token
+        }
         const refreshed = await db.query.users.findFirst({
           where: eq(users.id, token.dbUserId as string),
           columns: { role: true, displayName: true },

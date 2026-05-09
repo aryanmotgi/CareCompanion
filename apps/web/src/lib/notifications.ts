@@ -6,6 +6,7 @@ import {
 import { eq, and, gte, desc, isNull, lt, asc } from 'drizzle-orm';
 import { sendPushNotification } from '@/lib/push';
 import { generateAppointmentPrepForUser } from '@/lib/appointment-prep';
+import { logger } from '@/lib/logger';
 
 /**
  * Proactive notification engine for CareCompanion.
@@ -373,7 +374,7 @@ export async function generateNotificationsForAllUsers(): Promise<{ total: numbe
   await db
     .delete(notifications)
     .where(and(eq(notifications.isRead, true), lt(notifications.createdAt, thirtyDaysAgo)))
-    .catch((err) => console.error('[notifications] cleanup failed:', err));
+    .catch((err) => logger.error('[notifications] cleanup failed', { route: 'generateNotificationsForAllUsers' }));
 
   while (true) {
     const page: Array<{ userId: string; id: string }> = await db
@@ -399,7 +400,7 @@ export async function generateNotificationsForAllUsers(): Promise<{ total: numbe
         if (result.status === 'fulfilled') {
           total += result.value;
         } else {
-          console.error('[notifications] user generation failed:', result.reason);
+          logger.error('[notifications] user generation failed', { route: 'generateNotificationsForAllUsers' });
         }
       }
     }
