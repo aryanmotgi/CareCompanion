@@ -451,6 +451,7 @@ export function ChatInterface({ initialMessages, patientName, recentConversation
               onBlur={() => setInputFocused(false)}
               placeholder="Ask about your care, how you're feeling, or what to expect…"
               aria-label="Message CareCompanion AI"
+              data-testid="chat-input"
               className="flex-1 bg-transparent text-[#e2e8f0] text-sm outline-none placeholder:text-[#64748b] min-h-[32px]"
             />
             {isStreaming ? (
@@ -471,6 +472,7 @@ export function ChatInterface({ initialMessages, patientName, recentConversation
                 className="w-11 h-11 rounded-full bg-gradient-to-br from-[#6366F1] to-[#A78BFA] flex items-center justify-center text-white disabled:opacity-40 transition-opacity animate-press flex-shrink-0"
                 aria-label="Send message"
                 title="Send message"
+                data-testid="send-button"
               >
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
