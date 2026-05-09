@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-01T00:00:00.000Z",
+  "title": "Design System: CareCompanion AI",
+  "extensions": {
+    "colorMeta": {
+      "midnight-base": {
+        "role": "neutral",
+        "displayName": "Midnight Base",
+        "canonical": "#0C0E1A",
+        "tonalRamp": ["#050609", "#0A0C15", "#0C0E1A", "#0F1221", "#141728", "#1A1F35", "#262D4D", "#3B4470"]
+      },
+      "deep-cosmos": {
+        "role": "neutral",
+        "displayName": "Deep Cosmos",
+        "canonical": "#10112B",
+        "tonalRamp": ["#060710", "#0D0E21", "#10112B", "#141535", "#1A1B42", "#252653", "#3A3B70", "#565790"]
+      },
+      "trust-indigo": {
+        "role": "primary",
+        "displayName": "Trust Indigo",
+        "canonical": "#6366F1",
+        "tonalRamp": ["#1A1B6B", "#2A2C8F", "#3B3DBF", "#4F51D8", "#6366F1", "#818CF8", "#A5B4FC", "#C7D2FE"]
+      },
+      "trust-indigo-hover": {
+        "role": "primary",
+        "displayName": "Trust Indigo Hover",
+        "canonical": "#818CF8",
+        "tonalRamp": ["#2A2C8F", "#3B3DBF", "#5355D0", "#6366F1", "#818CF8", "#A5B4FC", "#C7D2FE", "#E0E7FF"]
+      },
+      "calm-lavender": {
+        "role": "secondary",
+        "displayName": "Calm Lavender",
+        "canonical": "#A78BFA",
+        "tonalRamp": ["#3B1F8C", "#5A35C4", "#7C5CDE", "#9470F0", "#A78BFA", "#BDA8FB", "#D4C5FC", "#EDE9FE"]
+      },
+      "vital-cyan": {
+        "role": "tertiary",
+        "displayName": "Vital Cyan",
+        "canonical": "#67E8F9",
+        "tonalRamp": ["#0A4F5E", "#0E7A8E", "#12A3BC", "#3CC8DE", "#67E8F9", "#93F0FB", "#BAF5FD", "#DFFAFE"]
+      },
+      "clear-signal": {
+        "role": "tertiary",
+        "displayName": "Clear Signal",
+        "canonical": "#6EE7B7",
+        "tonalRamp": ["#064E3B", "#065F46", "#0A7A5A", "#14A873", "#6EE7B7", "#A7F3D0", "#D1FAE5", "#ECFDF5"]
+      },
+      "caution-amber": {
+        "role": "tertiary",
+        "displayName": "Caution Amber",
+        "canonical": "#FCD34D",
+        "tonalRamp": ["#78350F", "#92400E", "#B45309", "#D97706", "#F59E0B", "#FCD34D", "#FDE68A", "#FEF9C3"]
+      },
+      "alert-rose": {
+        "role": "tertiary",
+        "displayName": "Alert Rose",
+        "canonical": "#FCA5A5",
+        "tonalRamp": ["#7F1D1D", "#991B1B", "#B91C1C", "#DC2626", "#EF4444", "#FCA5A5", "#FECACA", "#FEE2E2"]
+      },
+      "text-primary": {
+        "role": "neutral",
+        "displayName": "Text Primary",
+        "canonical": "#EDE9FE",
+        "tonalRamp": ["#4C1D95", "#6D28D9", "#7C3AED", "#8B5CF6", "#A78BFA", "#C4B5FD", "#DDD6FE", "#EDE9FE"]
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Text Secondary",
+        "canonical": "#A5B4CF",
+        "tonalRamp": ["#1E293B", "#334155", "#475569", "#64748B", "#94A3B8", "#A5B4CF", "#CBD5E1", "#E2E8F0"]
+      },
+      "text-muted": {
+        "role": "neutral",
+        "displayName": "Text Muted",
+        "canonical": "#5B6785",
+        "tonalRamp": ["#0F172A", "#1E293B", "#334155", "#475569", "#5B6785", "#94A3B8", "#CBD5E1", "#F1F5F9"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page titles and primary headings. One per screen. Also used for critical health data values at large scale." },
+      "headline": { "displayName": "Headline", "purpose": "Section headings and feature card titles." },
+      "title": { "displayName": "Title", "purpose": "Card titles, list item headers, navigation labels." },
+      "body": { "displayName": "Body", "purpose": "All body copy, descriptions, chat messages. Max 65ch line length." },
+      "label": { "displayName": "Label", "purpose": "Metadata, timestamps, field labels, badge text." }
+    },
+    "shadows": [
+      { "name": "glow-indigo", "value": "0 0 0 1px rgba(99,102,241,0.3), 0 0 20px rgba(99,102,241,0.15)", "purpose": "Active states, selected cards, primary focus treatment." },
+      { "name": "glow-lavender", "value": "0 0 0 1px rgba(167,139,250,0.25), 0 0 20px rgba(167,139,250,0.1)", "purpose": "Featured cards, ambient highlights." },
+      { "name": "glow-cyan", "value": "0 0 0 1px rgba(103,232,249,0.2), 0 0 16px rgba(103,232,249,0.1)", "purpose": "Lab result panels when highlighted." },
+      { "name": "shadow-sm", "value": "0 2px 8px rgba(0,0,0,0.3)", "purpose": "Subtle depth for modals and elevated panels." },
+      { "name": "shadow-md", "value": "0 4px 20px rgba(0,0,0,0.4)", "purpose": "Hover lift shadow for interactive cards." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default easing for state transitions (200ms)." },
+      { "name": "ease-out-fast", "value": "cubic-bezier(0, 0, 0.2, 1)", "purpose": "Interaction responses — hover, focus (150ms)." },
+      { "name": "ease-ambient", "value": "cubic-bezier(0.45, 0, 0.55, 1)", "purpose": "Slow ambient animations — orb drift, glow pulse (2–55s)." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "390px" },
+      { "name": "tablet", "value": "768px" },
+      { "name": "desktop", "value": "1024px" },
+      { "name": "content-max", "value": "672px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action. Trust Indigo fill, quietly powerful, no decorative elements.",
+      "html": "<button class=\"ds-btn-primary\">Continue</button>",
+      "css": ".ds-btn-primary { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; background: #6366F1; color: #EDE9FE; font-family: 'Figtree', system-ui, sans-serif; font-size: 0.9375rem; font-weight: 600; padding: 14px 24px; border-radius: 14px; border: none; cursor: pointer; transition: background 200ms cubic-bezier(0,0,0.2,1), transform 150ms cubic-bezier(0,0,0.2,1); } .ds-btn-primary:hover { background: #818CF8; } .ds-btn-primary:active { transform: scale(0.97); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(99,102,241,0.6); } .ds-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary action. Transparent at rest, lavender text, subtle border on hover.",
+      "html": "<button class=\"ds-btn-ghost\">Back</button>",
+      "css": ".ds-btn-ghost { display: flex; align-items: center; justify-content: center; gap: 8px; background: transparent; color: #A78BFA; font-family: 'Figtree', system-ui, sans-serif; font-size: 0.9375rem; font-weight: 500; padding: 12px 20px; border-radius: 14px; border: 1px solid transparent; cursor: pointer; transition: border-color 200ms ease, color 200ms ease; } .ds-btn-ghost:hover { border-color: rgba(167,139,250,0.3); color: #C4B5FD; } .ds-btn-ghost:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(167,139,250,0.4); } .ds-btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card-base",
+      "description": "Information tray. Flat at rest, indigo glow on selected, lift on hover.",
+      "html": "<div class=\"ds-card\"><p class=\"ds-card-title\">Metformin 500mg</p><p class=\"ds-card-body\">Twice daily with meals</p></div>",
+      "css": ".ds-card { background: rgba(167,139,250,0.04); border: 1px solid rgba(167,139,250,0.12); border-radius: 20px; padding: 16px; transition: background 200ms ease, transform 200ms ease, box-shadow 200ms ease; cursor: pointer; } .ds-card:hover { background: rgba(167,139,250,0.08); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.4); } .ds-card.selected { border-color: #6366F1; background: rgba(99,102,241,0.12); box-shadow: 0 0 0 1px rgba(99,102,241,0.3), 0 0 20px rgba(99,102,241,0.15); } .ds-card-title { font-family: 'Figtree', system-ui, sans-serif; font-size: 1rem; font-weight: 600; color: #EDE9FE; margin: 0 0 4px; } .ds-card-body { font-family: 'Noto Sans', system-ui, sans-serif; font-size: 0.875rem; color: #A5B4CF; margin: 0; }"
+    },
+    {
+      "name": "Floating Label Input",
+      "kind": "input",
+      "refersTo": "input-base",
+      "description": "Floating label pattern — label always visible. Placeholder-only inputs are prohibited.",
+      "html": "<div class=\"ds-field\"><input class=\"ds-input\" type=\"text\" id=\"ds-med-name\" placeholder=\" \" /><label class=\"ds-label\" for=\"ds-med-name\">Medication name</label></div>",
+      "css": ".ds-field { position: relative; width: 100%; } .ds-input { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 20px 16px 8px; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 0.875rem; color: #EDE9FE; outline: none; transition: border-color 150ms ease; box-sizing: border-box; } .ds-input:focus { border-color: rgba(99,102,241,0.6); box-shadow: 0 0 0 2px rgba(99,102,241,0.2); } .ds-input.error { border-color: rgba(252,165,165,0.6); } .ds-label { position: absolute; left: 16px; top: 14px; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 0.875rem; color: #5B6785; pointer-events: none; transition: top 150ms ease, font-size 150ms ease, color 150ms ease; } .ds-input:focus ~ .ds-label, .ds-input:not(:placeholder-shown) ~ .ds-label { top: 6px; font-size: 0.625rem; color: #A78BFA; font-weight: 500; }"
+    },
+    {
+      "name": "Navigation Tab Item",
+      "kind": "nav",
+      "refersTo": "card-base",
+      "description": "Bottom tab bar item. Muted at rest, Trust Indigo when active.",
+      "html": "<div class=\"ds-tab ds-tab--active\"><svg class=\"ds-tab-icon\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"/><polyline points=\"9 22 9 12 15 12 15 22\"/></svg><span class=\"ds-tab-label\">Home</span></div>",
+      "css": ".ds-tab { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 12px; color: #5B6785; transition: color 200ms ease; cursor: pointer; } .ds-tab--active { color: #6366F1; } .ds-tab-icon { width: 20px; height: 20px; } .ds-tab-label { font-family: 'Noto Sans', system-ui, sans-serif; font-size: 0.625rem; font-weight: 500; letter-spacing: 0.02em; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "card-base",
+      "description": "Health status indicator. Always pairs color with a text label — never color alone.",
+      "html": "<span class=\"ds-badge ds-badge--success\"><svg width=\"10\" height=\"10\" viewBox=\"0 0 10 10\" fill=\"currentColor\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>On track</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 10px; font-family: 'Noto Sans', system-ui, sans-serif; font-size: 0.6875rem; font-weight: 500; } .ds-badge--success { background: rgba(110,231,183,0.15); color: #6EE7B7; } .ds-badge--warning { background: rgba(252,211,77,0.15); color: #FCD34D; } .ds-badge--alert { background: rgba(252,165,165,0.15); color: #FCA5A5; } .ds-badge--info { background: rgba(103,232,249,0.15); color: #67E8F9; }"
+    },
+    {
+      "name": "Lab Value Display",
+      "kind": "custom",
+      "refersTo": "card-base",
+      "description": "Prominent clinical data value. Vital Cyan for the number, secondary text for context.",
+      "html": "<div class=\"ds-lab-value\"><span class=\"ds-lab-number\">7.2</span><span class=\"ds-lab-unit\">mmol/L</span><p class=\"ds-lab-label\">Blood glucose</p></div>",
+      "css": ".ds-lab-value { display: flex; flex-direction: column; gap: 2px; } .ds-lab-number { font-family: 'Figtree', system-ui, sans-serif; font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 700; color: #67E8F9; line-height: 1.1; letter-spacing: -0.01em; } .ds-lab-unit { font-family: 'Noto Sans', system-ui, sans-serif; font-size: 0.75rem; color: #A5B4CF; margin-top: -2px; } .ds-lab-label { font-family: 'Noto Sans', system-ui, sans-serif; font-size: 0.75rem; color: #5B6785; margin: 4px 0 0; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Clear Horizon",
+    "overview": "CareCompanion exists for people navigating one of the hardest experiences life can produce: serious illness, their own or a loved one's. The design system's job is to deliver clarity under pressure. Not the false calm of a spa app, not the clinical density of a hospital portal. The Clear Horizon means: when you open CareCompanion, the fog lifts. You can see what matters, what needs to happen next, and that you are capable of handling it.\n\nThe visual language is dark, settled, and precise. Deep indigo surfaces absorb visual noise. Lavender accents surface information without demanding attention. Glass layers create depth without heaviness. The ambient orb system provides atmosphere — the quiet hum of a system that is always working, always watching, always ready — without adding a single click of cognitive load.\n\nThis product occupies a deliberate middle space: the organized intelligence of Linear, the human warmth of Calm, the flexible structure of Notion, filtered through the specific emotional demands of healthcare caregiving.",
+    "keyCharacteristics": [
+      "Dark-first, settled palette built from deep indigo — warmth through tinting, never coldness",
+      "Tonal and glass layering for depth — no Material-style shadow stacks",
+      "Indigo and lavender as primary dual-accent: trust and compassion in tandem",
+      "Full semantic color vocabulary for health data (cyan for labs, emerald for success, rose for alerts)",
+      "Figtree display + Noto Sans body — personality paired with precision",
+      "Floating label inputs as the only permitted input pattern",
+      "Ambient orbs at the system level; precise, short transitions at the component level"
+    ],
+    "rules": [
+      { "name": "The Semantic Lock Rule", "body": "Vital Cyan is for clinical data only. Clear Signal is for success states only. Alert Rose is for genuine alerts only. Status colors are never used decoratively.", "section": "colors" },
+      { "name": "The Indigo Restraint Rule", "body": "Trust Indigo appears on interactive elements only — buttons, links, focus states, selected items. Never as a background fill, gradient overlay, or decorative surface tint. Its scarcity is the point.", "section": "colors" },
+      { "name": "The Figtree Boundary Rule", "body": "Figtree handles personality; Noto Sans handles information. Figtree is not used for body copy, form field text, or data table values.", "section": "typography" },
+      { "name": "The Data Size Rule", "body": "Prominent health data values — medication dosages, lab numbers, appointment times — are set at Display scale in Figtree, colored with the appropriate semantic token.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. Glow shadows appear only in response to state: active card, selected navigation, featured panel.", "section": "elevation" },
+      { "name": "The No Decorative Shadow Rule", "body": "A shadow in CareCompanion communicates state, not position. Elevation stacks are absent. If a surface needs to feel elevated at rest, use a higher-opacity background tint, not a shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use CSS custom properties (--bg, --text, --accent, --border) for all color values",
+      "Do pair every color-coded status signal with an icon or text label",
+      "Do apply pb-24 (96px) to every app page container for bottom tab bar clearance",
+      "Do use floating labels on all form inputs",
+      "Do wrap all keyframe animations in @media (prefers-reduced-motion: no-preference)",
+      "Do use Figtree for headings, Noto Sans for body text and data values",
+      "Do test every new component in both dark and light mode via [data-theme=\"light\"]",
+      "Do keep <AmbientBackground /> in the app shell only"
+    ],
+    "donts": [
+      "Don't design like Epic or MyChart — sterile hospital EHR density is the exact opposite of this system's intent",
+      "Don't reach for generic SaaS dashboard patterns — no hero metrics, no blue gradient analytics templates",
+      "Don't gamify — no streaks, no score badges, no motivational copy",
+      "Don't use neon colors or aggressive glow effects",
+      "Don't use border-left greater than 1px as a colored accent stripe",
+      "Don't apply gradient text (background-clip: text with a gradient)",
+      "Don't use glassmorphism decoratively — glass is for elevated surfaces that need to float, not a default card style",
+      "Don't use purple or violet gradient backgrounds — gradient fills belong to primary buttons only",
+      "Don't use icon-in-colored-circle decoration",
+      "Don't nest cards",
+      "Don't center-align prose or list content"
+    ]
+  }
+}
