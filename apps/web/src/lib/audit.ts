@@ -26,6 +26,7 @@ type AuditAction =
   | 'delete_account'
   | 'switch_profile'
   | 'sync_data'
+  | 'replace_data'
   | 'view_records'
   | 'hipaa_consent_accepted'
   | 'integration_disconnected'
