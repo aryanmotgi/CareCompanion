@@ -470,7 +470,7 @@ export default function HealthConnectScreen() {
             ]}
           >
             <LinearGradient
-              colors={['rgba(99,102,241,0.4)', 'rgba(129,140,248,0.4)']}
+              colors={['#6366F1', '#818CF8']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.connectGradient}
@@ -843,7 +843,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   skipText: {
-    color: 'rgba(255,255,255,0.3)',
+    color: 'rgba(167,139,250,0.85)',
     fontSize: 13,
   },
   // Success state
