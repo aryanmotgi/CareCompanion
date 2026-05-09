@@ -77,3 +77,6 @@ apps/web/test-results/
 AUDIT_PLAN.md
 CARECOMPANION_FULL_BREAKDOWN.md
 docs/superpowers/plans/2026-05-03-in-app-guidance.md
+.agents/
+.codex/
+AGENTS.md
