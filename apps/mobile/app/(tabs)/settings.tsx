@@ -139,14 +139,17 @@ export default function SettingsScreen() {
 
   return (
     <TabFadeWrapper>
-      <ScrollView style={[styles.root, { paddingTop: insets.top + 16 }]} contentContainerStyle={{ paddingBottom: insets.bottom + 140 }}>
+      <View style={styles.root}>
         <LinearGradient
           colors={theme.gradientAMuted as [string, string, ...string[]]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 140 }}
+        >
         <Animated.View style={stagger[0]}>
           <Text style={[styles.title, { color: theme.text }]}>Settings</Text>
         </Animated.View>
@@ -232,6 +235,22 @@ export default function SettingsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.editProfileLabel, { color: theme.text }]}>Edit Profile & Preferences</Text>
                   <Text style={[styles.editProfileSub, { color: theme.textMuted }]}>Update cancer type, treatment phase, and priorities</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+              </View>
+            </View>
+          </Pressable>
+        </Animated.View>
+
+        {/* Connect Health Records */}
+        <Animated.View style={stagger[3]}>
+          <Pressable onPress={() => router.push('/health-connect' as any)}>
+            <View style={styles.section}>
+              <View style={styles.editProfileRow}>
+                <Ionicons name="medkit-outline" size={20} color={theme.accent} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.editProfileLabel, { color: theme.text }]}>Connect Health Records</Text>
+                  <Text style={[styles.editProfileSub, { color: theme.textMuted }]}>Sync medications, labs, and conditions from Apple Health</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
               </View>
@@ -417,13 +436,15 @@ export default function SettingsScreen() {
             </View>
           </Pressable>
         </Animated.View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </TabFadeWrapper>
   )
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, paddingHorizontal: 20 },
+  root: { flex: 1 },
+  scroll: { flex: 1 },
   title: { fontSize: 28, fontWeight: '700', marginBottom: 24 },
   section: { marginBottom: 16 },
   sectionLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8 },
