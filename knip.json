@@ -1,0 +1,44 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "ignore": [
+    "apps/web/scripts/**"
+  ],
+  "ignoreDependencies": [
+    "husky",
+    "lint-staged",
+    "turbo"
+  ],
+  "workspaces": {
+    "apps/web": {
+      "entry": [
+        "src/app/**/*.{ts,tsx}",
+        "src/middleware.ts",
+        "src/lib/**/*.ts",
+        "src/components/**/*.tsx",
+        "src/**/__tests__/**/*.{ts,tsx}",
+        "src/**/*.test.{ts,tsx}",
+        "src/test/**/*.{ts,tsx}",
+        "vitest.config.ts",
+        "next.config.mjs",
+        "tailwind.config.ts",
+        "drizzle.config.ts"
+      ]
+    },
+    "packages/utils": {
+      "entry": [
+        "src/**/*.ts",
+        "src/**/__tests__/**/*.ts",
+        "src/**/*.test.ts",
+        "vitest.config.ts"
+      ]
+    },
+    "packages/api": {
+      "entry": [
+        "src/**/*.ts",
+        "src/**/__tests__/**/*.ts",
+        "src/**/*.test.ts",
+        "vitest.config.ts"
+      ]
+    }
+  }
+}

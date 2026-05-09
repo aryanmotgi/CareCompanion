@@ -1,0 +1,211 @@
+name: Production 24/7 Monitor
+
+on:
+  schedule:
+    # Run every 4 hours
+    - cron: '0 */4 * * *'
+  workflow_dispatch: # Allow manual triggers
+
+jobs:
+  smoke-test:
+    name: Production Smoke Test
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.11
+
+      - run: bun install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: cd apps/web && bunx playwright install --with-deps chromium
+
+      - name: Wait for Vercel deployment to be live
+        env:
+          E2E_AUTH_SECRET: ${{ secrets.E2E_AUTH_SECRET }}
+        run: |
+          echo "Waiting up to 4 minutes for the new deployment to go live..."
+          # GET /api/e2e/signin returns {"ready":true,"v":19} in this version.
+          # Poll until we see v=19 so we know the exact code we expect is live.
+          for i in $(seq 1 24); do
+            BODY=$(curl -s --max-time 10 -H "x-e2e-secret: $E2E_AUTH_SECRET" https://carecompanionai.org/api/e2e/signin 2>/dev/null || echo "")
+            if echo "$BODY" | grep -q '"v":19'; then
+              echo "New deployment is live (attempt $i)"
+              break
+            fi
+            echo "Attempt $i: response='$BODY' — waiting for new code to deploy..."
+            sleep 10
+          done
+
+      - name: Run E2E Production Monitor
+        id: e2e
+        continue-on-error: true
+        working-directory: apps/web
+        run: |
+          set -o pipefail
+          bunx playwright test e2e/production-monitor.spec.ts 2>&1 | tee ../../playwright-output.txt
+        env:
+          # Point the Playwright test directly at the live Production URL
+          PLAYWRIGHT_BASE_URL: https://carecompanionai.org
+          E2E_MONITOR_EMAIL: ${{ secrets.E2E_MONITOR_EMAIL }}
+          E2E_AUTH_SECRET: ${{ secrets.E2E_AUTH_SECRET }}
+
+      - name: Upload Report on Failure
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: steps.e2e.outcome == 'failure'
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
+
+      - name: Send failure email alert
+        if: steps.e2e.outcome == 'failure'
+        uses: dawidd6/action-send-mail@611879133a9569642c41be66f4a323286e9b8a3b # v4
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.ALERT_EMAIL_USERNAME }}
+          password: ${{ secrets.ALERT_EMAIL_PASSWORD }}
+          subject: "🚨 CareCompanion Production Monitor Failed"
+          to: ${{ secrets.ALERT_EMAIL_TO }}
+          from: CareCompanion Alerts <${{ secrets.ALERT_EMAIL_USERNAME }}>
+          body: |
+            The CareCompanion production monitor detected a failure on carecompanionai.org.
+
+            A critical user-facing feature may be broken. Please investigate immediately.
+
+            Workflow run details:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            This alert was triggered automatically by the scheduled Playwright smoke test.
+
+      - name: Create tracking issue
+        if: steps.e2e.outcome == 'failure'
+        id: issue
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        with:
+          script: |
+            const fs = require('fs');
+            const output = fs.readFileSync('playwright-output.txt', 'utf8');
+
+            // Check for an existing open auto-fix issue to avoid duplicates
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'playwright-auto-fix',
+              state: 'open',
+            });
+            if (existing.data.length > 0) {
+              console.log('Open auto-fix issue already exists, skipping creation.');
+              core.setOutput('issue_number', existing.data[0].number);
+              core.setOutput('skipped', 'true');
+              return;
+            }
+
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const date = new Date().toISOString().split('T')[0];
+
+            const failedTests = output
+              .split('\n')
+              .filter(line => /^\s+[✗×✘]|FAILED|─ FAIL/.test(line))
+              .map(line => line.trim())
+              .slice(0, 10);
+
+            const failedList = failedTests.length > 0
+              ? failedTests.map(t => `- ${t}`).join('\n')
+              : '- (could not parse failed test names from output)';
+
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🔧 Auto-fix: Production monitor failure (${date})`,
+              labels: ['playwright-auto-fix', 'bug'],
+              body: [
+                '## Production Monitor Failure',
+                '',
+                `The production monitor detected failures on **${date}**.`,
+                '',
+                `**Workflow run:** ${runUrl}`,
+                '',
+                '**Failed tests:**',
+                failedList,
+                '',
+                '### Playwright Output',
+                '',
+                '```',
+                output.slice(-3000),
+                '```',
+              ].join('\n'),
+            });
+            core.setOutput('issue_number', issue.data.number);
+            core.setOutput('skipped', 'false');
+
+      - name: Auto-fix with Claude Code
+        if: steps.e2e.outcome == 'failure' && steps.issue.outputs.skipped != 'true'
+        uses: anthropics/claude-code-action@38ec876110f9fbf8b950c79f534430740c3ac009
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-6
+          allowed_tools: "Bash,Read,Write,Edit,Glob,Grep,WebSearch,WebFetch"
+          prompt: |
+            The CareCompanion production monitor just failed. Read the Playwright output from `playwright-output.txt` in the repo root to understand what broke.
+
+            Your job:
+            1. Read `playwright-output.txt` to see which tests failed and why
+            2. Find the root cause in the **application code** under `apps/web/src/` — do NOT modify the test file
+            3. Fix the root cause
+            4. Run `npm run typecheck` to confirm no type errors
+            5. Create a PR with your fix targeting `main`
+
+            Key facts about this codebase:
+            - Next.js App Router monorepo (Turborepo). Web app is under `apps/web/src/`
+            - Auth: NextAuth v5 with Aurora Serverless (not Supabase). Session cookie is `authjs.session-token`
+            - E2E monitor account auth is in `apps/web/src/app/api/e2e/signin/route.ts`
+            - If multiple tests fail, they almost always share one root cause (auth, DB, middleware)
+            - Known pitfall: Aurora cold-starts cause DB errors — the signin route retries up to 4 times
+            - Known pitfall: middleware redirects users with no `role` to `/set-role` — the JWT must include `role`
+
+            Tracking issue: #${{ steps.issue.outputs.issue_number }}
+
+      - name: Send success email alert
+        if: steps.e2e.outcome == 'success'
+        uses: dawidd6/action-send-mail@611879133a9569642c41be66f4a323286e9b8a3b # v4
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.ALERT_EMAIL_USERNAME }}
+          password: ${{ secrets.ALERT_EMAIL_PASSWORD }}
+          subject: "✅ CareCompanion Production Monitor — All Clear"
+          to: ${{ secrets.ALERT_EMAIL_TO }}
+          from: CareCompanion Alerts <${{ secrets.ALERT_EMAIL_USERNAME }}>
+          body: |
+            The CareCompanion production monitor ran successfully against carecompanionai.org.
+
+            All checks passed:
+            - Dashboard renders and shows navigation
+            - Care page loads without errors
+            - 1upHealth connect page renders
+            - AI chat interface renders
+            - Medications data renders on care page
+            - AI chat responds to a message
+            - Page load performance within budgets
+            - No unexpected console errors
+            - Notifications exist (cron health)
+
+            Workflow run details:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            This alert was triggered automatically by the scheduled Playwright smoke test.
+
+      - name: Fail job if tests failed
+        if: steps.e2e.outcome == 'failure'
+        run: exit 1

@@ -1,0 +1,36 @@
+{
+  "crons": [
+    {
+      "path": "/api/notifications/generate",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/reminders/check",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/purge",
+      "schedule": "0 3 * * 0"
+    },
+    {
+      "path": "/api/cron/retention",
+      "schedule": "0 4 * * 0"
+    },
+    {
+      "path": "/api/cron/weekly-summary",
+      "schedule": "0 8 * * 0"
+    },
+    {
+      "path": "/api/cron/radar",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/trials-match",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/trials-status",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}
