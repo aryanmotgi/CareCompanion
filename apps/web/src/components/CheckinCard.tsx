@@ -58,7 +58,7 @@ export function CheckinCard({ careProfileId }: CheckinCardProps) {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-[var(--border)] bg-white/[0.02] p-4 mb-4 animate-pulse">
+      <div className="p-4 animate-pulse">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <div className="h-3.5 w-28 bg-white/[0.06] rounded-md" />
@@ -73,7 +73,7 @@ export function CheckinCard({ careProfileId }: CheckinCardProps) {
   // Already checked in today
   if (checkin) {
     return (
-      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 mb-4">
+      <div className="bg-emerald-500/5 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-[var(--text)]">
             <span>Today: {MOOD_EMOJI[checkin.mood] ?? ''}</span>
@@ -96,7 +96,7 @@ export function CheckinCard({ careProfileId }: CheckinCardProps) {
     <>
       <button
         onClick={() => setModalOpen(true)}
-        className="w-full text-left rounded-2xl border border-[var(--accent)]/20 bg-[var(--accent-light)] p-4 mb-4 hover:bg-[var(--accent-glow)] transition-colors card-hover-glow"
+        className="w-full text-left bg-[var(--accent-light)] p-4 hover:bg-[var(--accent-glow)] transition-colors card-hover-glow"
       >
         <div className="flex items-center justify-between">
           <div>

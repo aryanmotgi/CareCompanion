@@ -1,6 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "ignore": [
-    "apps/web/scripts/**"
+    "apps/web/scripts/**",
+    ".agents/**"
   ]
 }

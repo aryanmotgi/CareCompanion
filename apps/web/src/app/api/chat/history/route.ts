@@ -2,7 +2,7 @@ import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { validateCsrf } from '@/lib/csrf'
 import { db } from '@/lib/db'
-import { messages } from '@/lib/db/schema'
+import { conversations, messages } from '@/lib/db/schema'
 import { eq, lt, desc, and } from 'drizzle-orm'
 
 /**
@@ -62,6 +62,27 @@ export async function DELETE(req: Request) {
 
     const { user, error: authError } = await getAuthenticatedUser()
     if (authError) return authError
+
+    // Archive the conversation before clearing if client provided metadata
+    let title: string | undefined
+    let lastMessagePreview: string | undefined
+    try {
+      const body = await req.json()
+      if (typeof body.title === 'string' && body.title.trim()) {
+        title = body.title.trim().slice(0, 100)
+      }
+      if (typeof body.lastMessagePreview === 'string') {
+        lastMessagePreview = body.lastMessagePreview.trim().slice(0, 200) || undefined
+      }
+    } catch {}
+
+    if (title) {
+      await db.insert(conversations).values({
+        userId: user!.id,
+        title,
+        lastMessagePreview: lastMessagePreview ?? null,
+      })
+    }
 
     await db.delete(messages).where(eq(messages.userId, user!.id))
 

@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { PriorityCard } from './PriorityCard'
 import { AlertInsights } from './AlertInsights'
 import { AppealGenerator } from './AppealGenerator'
 import { CheckinCard } from './CheckinCard'
 import { HealthDataChart } from './HealthDataChart'
+import { TreatmentTimeline } from './TreatmentTimeline'
 import GuidedTour from './GuidedTour'
 import { parseLabValue } from '@/lib/lab-parsing'
 import type { Medication, Appointment, LabResult, Claim } from '@/lib/types'
+import type { TimelineEvent } from './TimelineNode'
 
 interface DashboardViewProps {
   patientName: string
@@ -41,6 +43,38 @@ const PHASE_LABELS: Record<string, { label: string; color: string }> = {
   between_treatments: { label: 'Between Cycles', color: 'text-cyan-400 bg-cyan-500/10' },
   remission: { label: 'In Remission', color: 'text-emerald-400 bg-emerald-500/10' },
   unsure: { label: 'Evaluating', color: 'text-violet-400 bg-violet-500/10' },
+}
+
+function parseCycleInfoFromMeds(meds: Medication[]): {
+  drugName: string; currentCycle: number; totalCycles: number;
+  cycleLengthDays: number; dayInCycle: number; phaseLabel: string; phaseColor: string;
+} | null {
+  for (const med of meds) {
+    const notes = (med.notes || '').toLowerCase()
+    const freq = (med.frequency || '').toLowerCase()
+    const cycleMatch = notes.match(/cycle\s*(\d+)\s*(?:of|\/)\s*(\d+)/i)
+    if (!cycleMatch) continue
+    const currentCycle = parseInt(cycleMatch[1])
+    const totalCycles = parseInt(cycleMatch[2])
+    let cycleLengthDays = 21
+    if (freq.includes('every 2 weeks') || freq.includes('every 14')) cycleLengthDays = 14
+    if (freq.includes('every 3 weeks') || freq.includes('every 21')) cycleLengthDays = 21
+    if (freq.includes('every 4 weeks') || freq.includes('every 28')) cycleLengthDays = 28
+    if (freq.includes('weekly')) cycleLengthDays = 7
+    let dayInCycle = 1
+    if (med.refillDate) {
+      const nextInfusion = new Date(med.refillDate)
+      const daysUntilNext = Math.ceil((nextInfusion.getTime() - Date.now()) / 86400000)
+      dayInCycle = Math.min(Math.max(1, cycleLengthDays - daysUntilNext), cycleLengthDays)
+    }
+    let phaseLabel = 'Recovery'
+    let phaseColor = '#10b981'
+    if (dayInCycle <= 2) { phaseLabel = 'Infusion Days'; phaseColor = '#6366F1' }
+    else if (dayInCycle >= 8 && dayInCycle <= 14) { phaseLabel = 'Nadir Period'; phaseColor = '#ef4444' }
+    else if (dayInCycle >= cycleLengthDays - 3) { phaseLabel = 'Pre-Infusion'; phaseColor = '#f59e0b' }
+    return { drugName: med.name, currentCycle, totalCycles, cycleLengthDays, dayInCycle, phaseLabel, phaseColor }
+  }
+  return null
 }
 
 const TOUR_STEPS = [
@@ -81,6 +115,7 @@ interface CardItem {
   expandedContent?: React.ReactNode
   isPriority?: boolean
   name?: string
+  daysUntil?: number
 }
 
 interface CardGroup {
@@ -184,7 +219,6 @@ export function DashboardView({
   treatmentPhase,
   priorities,
   profileId,
-  shareHealthCard,
 }: DashboardViewProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('today')
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -196,6 +230,10 @@ export function DashboardView({
   } | null>(null)
   const [copiedLink, setCopiedLink] = useState(false)
   const [weeklyUpdateError, setWeeklyUpdateError] = useState(false)
+  const [careTeam, setCareTeam] = useState<{ display_name: string; role: string; email: string | null }[]>([])
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[] | null>(null)
+  const [timelineLoading, setTimelineLoading] = useState(false)
+  const timelineFetched = useRef(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !localStorage.getItem('dashboard_tour_seen')) {
@@ -214,6 +252,24 @@ export function DashboardView({
   useEffect(() => {
     fetchWeeklyUpdate()
   }, [fetchWeeklyUpdate])
+
+  useEffect(() => {
+    fetch('/api/care-team')
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d.members)) setCareTeam(d.members) })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (activeTab !== 'care' || !profileId || timelineFetched.current) return
+    timelineFetched.current = true
+    setTimelineLoading(true)
+    fetch(`/api/timeline?profileId=${encodeURIComponent(profileId)}`)
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d.data)) setTimelineEvents(d.data) })
+      .catch(() => { setTimelineEvents([]) })
+      .finally(() => setTimelineLoading(false))
+  }, [activeTab, profileId, timelineFetched])
 
   const dismissTooltip = () => {
     setShowTourTooltip(false)
@@ -306,6 +362,7 @@ export function DashboardView({
           title: `${appt.doctorName} — ${appt.specialty}`,
           subtitle: `${dayStr} at ${timeStr} · ${appt.purpose || ''}`,
           priority: 3,
+          daysUntil,
           expandedContent: (
             <AlertInsights
               details={
@@ -463,6 +520,27 @@ export function DashboardView({
     () => cards.filter(c => c.variant === 'upcoming'),
     [cards]
   )
+
+  const nextAppointment = useMemo(() => {
+    const now = new Date()
+    return appointments
+      .filter(a => a.dateTime && new Date(a.dateTime) > now)
+      .sort((a, b) => new Date(a.dateTime!).getTime() - new Date(b.dateTime!).getTime())[0] ?? null
+  }, [appointments])
+
+  const contextualMessage = useMemo(() => {
+    if (!nextAppointment?.dateTime) return null
+    const days = Math.ceil((new Date(nextAppointment.dateTime).getTime() - Date.now()) / 86400000)
+    const label = (nextAppointment.purpose || nextAppointment.specialty || 'appointment').replace(/\s*\(.*?\)\s*/g, '').trim()
+    const short = label.length > 40 ? label.slice(0, 37) + '…' : label
+    if (days === 0) return `${short} is today — make sure you're prepared`
+    if (days === 1) return `${short} tomorrow — write down your questions tonight`
+    if (days <= 4) return `${short} in ${days} days — here's what to prep`
+    if (days <= 7) return `${short} in ${days} days — coming up this week`
+    return null
+  }, [nextAppointment])
+
+  const cycleInfo = useMemo(() => parseCycleInfoFromMeds(medications), [medications])
 
   const groupedTodayCards = useMemo(() => {
     const medItems = todayCards.filter(c => c.id.startsWith('med-'))
@@ -714,50 +792,164 @@ export function DashboardView({
       {/* ── CARE TAB ── */}
       {activeTab === 'care' && (
         <>
-          {/* Daily Check-in */}
-          {profileId && <CheckinCard careProfileId={profileId} />}
-
-          {/* Care Timeline */}
-          <a
-            href="/timeline"
-            className="flex items-center gap-3 p-4 rounded-2xl border border-white/[0.06] mt-4 mb-4 transition-colors hover:bg-white/[0.06] active:scale-[0.98]"
-            style={{ background: 'rgba(99,102,241,0.06)' }}
-          >
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(99,102,241,0.15)' }}>
-              <svg width="20" height="20" fill="none" stroke="#A78BFA" strokeWidth="1.75" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          {/* Contextual message — derived from next upcoming appointment */}
+          {contextualMessage && (
+            <div className="flex items-start gap-2.5 mb-4 px-3.5 py-3 rounded-xl bg-[#6366F1]/[0.06] border border-[#6366F1]/[0.12]">
+              <svg className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#818CF8]" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
               </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white">Care Timeline</p>
-              <p className="text-xs text-white/50">Medications, appointments &amp; milestones</p>
-            </div>
-            <svg width="16" height="16" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-          </a>
-
-          {/* Next appointment cards */}
-          {upcomingCards.length > 0 && (
-            <div className="space-y-3 mb-4">
-              {upcomingCards.map((card, i) => (
-                <PriorityCard
-                  key={card.id}
-                  variant={card.variant}
-                  label={card.label}
-                  title={card.title}
-                  subtitle={card.subtitle}
-                  action={card.action}
-                  href={card.href}
-                  index={i}
-                  expanded={expandedId === card.id}
-                  onToggle={() => setExpandedId(expandedId === card.id ? null : card.id)}
-                  expandedContent={card.expandedContent}
-                  isPriority={card.isPriority}
-                />
-              ))}
+              <p className="text-xs text-[#a5b4fc] leading-relaxed">{contextualMessage}</p>
             </div>
           )}
+
+          {/* Daily Check-in — primary action, indigo-violet gradient border */}
+          {profileId && (
+            <div className="relative mb-4">
+              <div
+                className="absolute inset-0 rounded-[1.25rem] pointer-events-none"
+                style={{ boxShadow: '0 0 28px rgba(99,102,241,0.35), 0 0 56px rgba(99,102,241,0.12)' }}
+                aria-hidden="true"
+              />
+              <div className="p-[2px] rounded-[1.25rem] bg-gradient-to-br from-[#6366F1] via-[#8B5CF6] to-[#9333EA]">
+                <div className="rounded-[1.15rem] overflow-hidden bg-[#0f1120]">
+                  <CheckinCard careProfileId={profileId} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* What's Next — future events only, timeline format */}
+          <div className="mb-4">
+            <div className="text-[var(--text-secondary)] text-[11px] uppercase tracking-wider mb-3">What&apos;s Next</div>
+            {timelineLoading && (
+              <div className="space-y-3 pl-8 animate-pulse">
+                {[1, 2, 3].map(i => (
+                  <div key={i}>
+                    <div className="h-2.5 w-20 bg-white/[0.06] rounded mb-1.5" />
+                    <div className="h-14 bg-white/[0.03] rounded-xl border border-white/[0.05]" />
+                  </div>
+                ))}
+              </div>
+            )}
+            {!timelineLoading && timelineEvents !== null && (
+              <TreatmentTimeline
+                events={timelineEvents.filter(e => new Date(e.date) >= new Date())}
+                hideHeader
+                sortAscending
+              />
+            )}
+          </div>
+
+          {/* Upcoming appointment cards — colored left border by time urgency */}
+          {upcomingCards.length > 0 && (
+            <div className="space-y-3 mb-4">
+              {upcomingCards.map((card, i) => {
+                const days = card.daysUntil ?? 999
+                const accentColor = days === 0 ? '#ef4444' : days === 1 ? '#fbbf24' : '#6366F1'
+                return (
+                  <PriorityCard
+                    key={card.id}
+                    variant={card.variant}
+                    label={card.label}
+                    title={card.title}
+                    subtitle={card.subtitle}
+                    action={card.action}
+                    href={card.href}
+                    index={i}
+                    expanded={expandedId === card.id}
+                    onToggle={() => setExpandedId(expandedId === card.id ? null : card.id)}
+                    expandedContent={card.expandedContent}
+                    isPriority={card.isPriority}
+                    accentBorder={accentColor}
+                  />
+                )
+              })}
+            </div>
+          )}
+
+          {/* Treatment Cycle mini card — shown when cycle info detected in medication notes */}
+          {cycleInfo && (
+            <div className="mb-4 p-4 rounded-2xl border border-white/[0.06]" style={{ background: 'rgba(99,102,241,0.04)' }}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${cycleInfo.phaseColor}1a` }}>
+                  <svg width="20" height="20" fill="none" stroke={cycleInfo.phaseColor} strokeWidth="1.75" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white">Treatment Cycle</p>
+                  <p className="text-xs" style={{ color: cycleInfo.phaseColor }}>
+                    Cycle {cycleInfo.currentCycle} of {cycleInfo.totalCycles} · Day {cycleInfo.dayInCycle} of {cycleInfo.cycleLengthDays}
+                  </p>
+                </div>
+                <span
+                  className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                  style={{ background: `${cycleInfo.phaseColor}20`, color: cycleInfo.phaseColor }}
+                >
+                  {cycleInfo.phaseLabel}
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden bg-white/[0.06]">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.round((cycleInfo.dayInCycle / cycleInfo.cycleLengthDays) * 100)}%`,
+                    background: cycleInfo.phaseColor,
+                  }}
+                />
+              </div>
+              <div className="flex justify-between mt-1.5">
+                <span className="text-[10px] text-white/30">Day 1</span>
+                <span className="text-[10px] text-white/30">Day {cycleInfo.cycleLengthDays}</span>
+              </div>
+              {cycleInfo.phaseLabel === 'Nadir Period' && (
+                <div className="mt-3 p-2.5 rounded-xl border border-red-500/20" style={{ background: 'rgba(239,68,68,0.06)' }}>
+                  <p className="text-xs text-red-400">Watch for fever &gt;100.4°F — immune system is at its lowest. Call your care team immediately if this occurs.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Care Team row — avatars + invite */}
+          <div className="mb-4 p-4 rounded-2xl border border-white/[0.06]" style={{ background: 'rgba(255,255,255,0.02)' }}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(99,102,241,0.12)' }}>
+                <svg width="20" height="20" fill="none" stroke="#818CF8" strokeWidth="1.75" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white">Care Team</p>
+                <p className="text-xs text-white/50">
+                  {careTeam.length === 0
+                    ? 'No members yet — invite family or doctors'
+                    : `${careTeam.length} member${careTeam.length !== 1 ? 's' : ''} with access`}
+                </p>
+              </div>
+              <div className="flex items-center">
+                {careTeam.slice(0, 3).map((m, i) => (
+                  <div
+                    key={m.email ?? i}
+                    title={m.display_name}
+                    className="w-7 h-7 rounded-full bg-[#6366F1]/20 border-2 border-[#0f1120] flex items-center justify-center text-[10px] font-bold text-[#818CF8]"
+                    style={{ marginLeft: i > 0 ? '-8px' : '0', zIndex: 3 - i, position: 'relative' }}
+                  >
+                    {(m.display_name || '?').charAt(0).toUpperCase()}
+                  </div>
+                ))}
+                <a
+                  href="/care-team"
+                  title="Manage care team"
+                  className="w-7 h-7 rounded-full bg-white/[0.06] border-2 border-[#0f1120] flex items-center justify-center hover:bg-white/[0.1] transition-colors"
+                  style={{ marginLeft: careTeam.length > 0 ? '-8px' : '0', position: 'relative', zIndex: 0 }}
+                >
+                  <svg width="12" height="12" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
 
           {/* Weekly family update */}
           {weeklyUpdate && (
@@ -813,9 +1005,6 @@ export function DashboardView({
               </button>
             </div>
           )}
-
-          {/* Share Health Summary */}
-          {shareHealthCard}
         </>
       )}
 

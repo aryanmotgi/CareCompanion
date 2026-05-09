@@ -4,19 +4,54 @@ import { useState, useRef, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import type { UIMessage } from 'ai';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { MessageBubble } from '@/components/MessageBubble';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { DocumentScanner } from '@/components/DocumentScanner';
 import { ChatSearch } from '@/components/ChatSearch';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 
+interface RecentConversation {
+  id: string;
+  title: string | null;
+  lastMessagePreview: string | null;
+  updatedAt: Date | null;
+}
+
 interface ChatInterfaceProps {
   initialMessages: UIMessage[];
   patientName?: string;
+  recentConversations?: RecentConversation[];
 }
 
-export function ChatInterface({ initialMessages, patientName }: ChatInterfaceProps) {
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function formatRelativeTime(date: Date | null | undefined): string {
+  if (!date) return '';
+  const diff = Date.now() - new Date(date).getTime();
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(hours / 24);
+  if (hours < 1) return 'just now';
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function getMessageText(msg: UIMessage): string {
+  for (const part of msg.parts) {
+    if (part.type === 'text' && 'text' in part) {
+      return (part as { type: 'text'; text: string }).text;
+    }
+  }
+  return '';
+}
+
+export function ChatInterface({ initialMessages, patientName, recentConversations = [] }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -24,9 +59,12 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
   const [promptSent, setPromptSent] = useState(false);
   const [, setIsNewChat] = useState(false);
   const [confirmingNewChat, setConfirmingNewChat] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
+  const [pulsingCard, setPulsingCard] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const searchParams = useSearchParams();
+  const router = useRouter();
   const promptFromUrl = searchParams.get('prompt');
 
   const { messages, sendMessage, status, error, regenerate, stop, setMessages } = useChat({
@@ -48,16 +86,29 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
       return;
     }
     setConfirmingNewChat(false);
+
+    // Extract title + preview from current messages for archiving
+    const firstUserMsg = messages.find(m => m.role === 'user');
+    const title = firstUserMsg ? getMessageText(firstUserMsg).slice(0, 100) : 'Conversation';
+    const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
+    const lastMessagePreview = lastAssistantMsg ? getMessageText(lastAssistantMsg).slice(0, 200) : '';
+
     setMessages([]);
     setIsNewChat(true);
     setInput('');
-    // Clear conversation from DB (best-effort, non-blocking)
-    fetch('/api/chat/history', {
-      method: 'DELETE',
-      headers: {
-        'x-csrf-token': document.cookie.match(/(^| )cc-csrf-token=([^;]+)/)?.[2] ?? '',
-      },
-    }).catch(() => {});
+
+    // Archive conversation, then refresh server component to update recent list
+    try {
+      await fetch('/api/chat/history', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': document.cookie.match(/(^| )cc-csrf-token=([^;]+)/)?.[2] ?? '',
+        },
+        body: JSON.stringify({ title, lastMessagePreview }),
+      });
+    } catch {}
+    router.refresh();
   };
 
   const isStreaming = status === 'streaming';
@@ -74,6 +125,12 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
 
   // Fix hydration mismatch — voice button only renders after mount
   useEffect(() => { setMounted(true) }, []);
+
+  // Cycle the pulsing emoji card every 3s
+  useEffect(() => {
+    const interval = setInterval(() => setPulsingCard(p => (p + 1) % 4), 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Cmd+F / Ctrl+F opens search; Escape closes it
   useEffect(() => {
@@ -161,10 +218,10 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
   };
 
   const quickPrompts = [
-    'Explain my tumor markers',
-    'What does low hemoglobin mean?',
-    'Prep me for my oncology appointment',
-    'What side effects should I watch for?',
+    { icon: '🧪', text: 'Explain my tumor markers' },
+    { icon: '❤️', text: 'What does low hemoglobin mean?' },
+    { icon: '📋', text: 'Prep me for my oncology appointment' },
+    { icon: '⚠️', text: 'What side effects should I watch for?' },
   ];
 
   return (
@@ -207,8 +264,8 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
       {/* Messages */}
       <div className="flex-1 overflow-y-auto chat-scroll px-4 sm:px-6 lg:px-8 py-6" role="log" aria-label="Conversation" aria-live="polite">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center px-6">
-            {/* Logo */}
+          <div className="flex flex-col items-center justify-center h-full text-center px-4">
+            {/* Sparkle icon */}
             <div style={{
               width: 72,
               height: 72,
@@ -218,36 +275,99 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: 18,
+              marginBottom: 14,
               boxShadow: '0 0 40px rgba(139,92,246,0.2), inset 0 1px 0 rgba(255,255,255,0.08)',
               position: 'relative',
+              animation: 'chatFadeUp 0.4s ease forwards',
+              opacity: 0,
             }}>
               <div style={{ position: 'absolute', inset: -12, borderRadius: 34, background: 'radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)', filter: 'blur(8px)' }} />
               <svg style={{ width: 36, height: 36, color: '#A78BFA', position: 'relative' }} fill="none" viewBox="0 0 24 24" strokeWidth={1.25} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z" />
               </svg>
             </div>
-            <h2 className="font-display text-2xl font-bold text-[var(--text)] mb-2" style={{ letterSpacing: '-0.02em' }}>
-              Ask anything about {patientName ? `${patientName}'s care` : 'your care'}
+
+            {/* Greeting */}
+            <p
+              className="text-[12px] font-medium uppercase tracking-widest mb-1"
+              style={{ color: '#A78BFA', opacity: 0, animation: 'chatFadeUp 0.4s ease 60ms forwards' }}
+            >
+              {getGreeting()}
+            </p>
+
+            {/* Heading */}
+            <h2
+              className="font-display text-[22px] font-bold text-[var(--text)] mb-2"
+              style={{ letterSpacing: '-0.02em', opacity: 0, animation: 'chatFadeUp 0.4s ease 100ms forwards' }}
+            >
+              Ask anything about {patientName ? `${patientName}’s care` : 'your care'}
             </h2>
-            <p className="text-[var(--text-secondary)] mb-8 text-[14px] leading-relaxed max-w-xs">
+
+            {/* Subtext */}
+            <p
+              className="text-[var(--text-secondary)] mb-5 text-[13px] leading-relaxed max-w-[260px]"
+              style={{ opacity: 0, animation: 'chatFadeUp 0.4s ease 140ms forwards' }}
+            >
               Medications, lab results, appointments, side effects — I know the full picture.
             </p>
-            <div className="flex flex-wrap justify-center gap-2 max-w-sm">
-              {quickPrompts.map((prompt) => (
+
+            {/* 2×2 prompt grid */}
+            <div
+              className="grid grid-cols-2 gap-2 w-full max-w-[320px]"
+              style={{ opacity: 0, animation: 'chatFadeUp 0.4s ease 180ms forwards' }}
+            >
+              {quickPrompts.map((prompt, i) => (
                 <button
-                  key={prompt}
-                  onClick={() => handleSend(prompt)}
-                  className="px-4 py-2 rounded-full text-[13px] font-medium text-[var(--text-secondary)] hover:text-[#A78BFA] active:scale-95 transition-all"
+                  key={prompt.text}
+                  onClick={() => handleSend(prompt.text)}
+                  className="flex flex-col gap-1.5 px-3 py-3 rounded-xl text-left active:scale-95 transition-all min-h-[72px]"
                   style={{
-                    background: 'rgba(167,139,250,0.07)',
+                    background: 'rgba(167,139,250,0.06)',
                     border: '1px solid rgba(167,139,250,0.15)',
+                    boxShadow: '0 1px 8px rgba(99,102,241,0.06), inset 0 1px 0 rgba(255,255,255,0.04)',
+                    backdropFilter: 'blur(8px)',
                   }}
                 >
-                  {prompt}
+                  <span className={pulsingCard === i ? 'emoji-pulse' : ''} style={{ fontSize: 16, lineHeight: 1 }}>
+                    {prompt.icon}
+                  </span>
+                  <span className="text-[12px] font-medium leading-snug text-[var(--text-secondary)]" style={{ lineHeight: '1.35' }}>
+                    {prompt.text}
+                  </span>
                 </button>
               ))}
             </div>
+
+            {/* Recent conversations */}
+            {recentConversations.length > 0 && (
+              <div
+                className="w-full max-w-[320px] mt-5"
+                style={{ opacity: 0, animation: 'chatFadeUp 0.4s ease 260ms forwards' }}
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-left mb-1.5 px-0.5" style={{ color: 'rgba(167,139,250,0.45)' }}>
+                  Recent
+                </p>
+                <div className="flex flex-col gap-0.5">
+                  {recentConversations.map((convo) => (
+                    <div
+                      key={convo.id}
+                      className="flex items-center gap-2 px-2.5 py-2 rounded-lg transition-colors"
+                      style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(167,139,250,0.06)' }}
+                    >
+                      <svg className="w-3 h-3 flex-shrink-0" style={{ color: 'rgba(167,139,250,0.4)' }} fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 0 1 .778-.332 48.294 48.294 0 0 0 5.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                      </svg>
+                      <span className="flex-1 truncate text-[12px] text-left" style={{ color: 'rgba(226,232,240,0.6)' }}>
+                        {convo.title ?? 'Conversation'}
+                      </span>
+                      <span className="text-[10px] flex-shrink-0" style={{ color: 'rgba(167,139,250,0.35)' }}>
+                        {formatRelativeTime(convo.updatedAt)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="max-w-5xl mx-auto space-y-4">
@@ -290,7 +410,7 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
       <div className="border-t px-4 sm:px-6 lg:px-8 py-4" style={{ borderColor: 'rgba(139,92,246,0.1)', background: 'linear-gradient(to top, rgba(10,8,20,0.95), rgba(10,8,20,0.8))', backdropFilter: 'blur(20px)' }}>
         <div className="max-w-5xl mx-auto">
           {/* Glass input bar */}
-          <div className="flex items-center gap-2 rounded-2xl px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(139,92,246,0.2)', boxShadow: '0 0 20px rgba(139,92,246,0.08), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+          <div className="flex items-center gap-2 rounded-2xl px-3 py-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(139,92,246,0.2)', boxShadow: inputFocused ? '0 0 0 2px rgba(139,92,246,0.4), 0 0 20px rgba(139,92,246,0.15), inset 0 1px 0 rgba(255,255,255,0.05)' : '0 0 20px rgba(139,92,246,0.08), inset 0 1px 0 rgba(255,255,255,0.05)', transition: 'box-shadow 0.2s ease' }}>
             {/* Scan button */}
             <button
               onClick={() => setShowScanner(true)}
@@ -327,6 +447,8 @@ export function ChatInterface({ initialMessages, patientName }: ChatInterfacePro
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
               placeholder="Ask about your care, how you're feeling, or what to expect…"
               aria-label="Message CareCompanion AI"
               className="flex-1 bg-transparent text-[#e2e8f0] text-sm outline-none placeholder:text-[#64748b] min-h-[32px]"
