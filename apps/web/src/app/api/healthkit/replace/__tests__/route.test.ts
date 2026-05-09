@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
+import { NextResponse } from 'next/server'
 
-vi.mock('@/lib/auth', () => ({ auth: vi.fn() }))
+vi.mock('@/lib/api-helpers', () => ({ getAuthenticatedUser: vi.fn() }))
 vi.mock('@/lib/db', () => {
   const txStub = {
     update: vi.fn(() => ({
@@ -34,8 +35,11 @@ vi.mock('@/lib/audit', () => ({ logAudit: vi.fn() }))
 
 describe('POST /api/healthkit/replace', () => {
   it('returns 401 when not authenticated', async () => {
-    const { auth } = await import('@/lib/auth')
-    vi.mocked(auth).mockResolvedValueOnce(null as never)
+    const { getAuthenticatedUser } = await import('@/lib/api-helpers')
+    vi.mocked(getAuthenticatedUser).mockResolvedValueOnce({
+      user: null,
+      error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+    } as never)
     const { POST } = await import('../route')
     const res = await POST(new Request('http://localhost/api/healthkit/replace', {
       method: 'POST',
@@ -45,8 +49,8 @@ describe('POST /api/healthkit/replace', () => {
   })
 
   it('returns 404 when no care profile', async () => {
-    const { auth } = await import('@/lib/auth')
-    vi.mocked(auth).mockResolvedValueOnce({ user: { id: 'user-1' } } as never)
+    const { getAuthenticatedUser } = await import('@/lib/api-helpers')
+    vi.mocked(getAuthenticatedUser).mockResolvedValueOnce({ user: { id: 'user-1' }, error: null } as never)
     const { db } = await import('@/lib/db')
     vi.mocked(db.query.careProfiles.findFirst).mockResolvedValueOnce(undefined as never)
     const { POST } = await import('../route')
@@ -58,8 +62,8 @@ describe('POST /api/healthkit/replace', () => {
   })
 
   it('runs wipe in transaction and inserts records, returns counts', async () => {
-    const { auth } = await import('@/lib/auth')
-    vi.mocked(auth).mockResolvedValueOnce({ user: { id: 'user-1' } } as never)
+    const { getAuthenticatedUser } = await import('@/lib/api-helpers')
+    vi.mocked(getAuthenticatedUser).mockResolvedValueOnce({ user: { id: 'user-1' }, error: null } as never)
     const { db } = await import('@/lib/db')
     vi.mocked(db.query.careProfiles.findFirst).mockResolvedValueOnce({ id: 'profile-1' } as never)
 
@@ -81,8 +85,8 @@ describe('POST /api/healthkit/replace', () => {
   })
 
   it('logs replace_data audit entry with counts only', async () => {
-    const { auth } = await import('@/lib/auth')
-    vi.mocked(auth).mockResolvedValueOnce({ user: { id: 'user-1' } } as never)
+    const { getAuthenticatedUser } = await import('@/lib/api-helpers')
+    vi.mocked(getAuthenticatedUser).mockResolvedValueOnce({ user: { id: 'user-1' }, error: null } as never)
     const { db } = await import('@/lib/db')
     vi.mocked(db.query.careProfiles.findFirst).mockResolvedValueOnce({ id: 'profile-1' } as never)
     const { logAudit } = await import('@/lib/audit')

@@ -1,21 +1,19 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { medications, labResults, appointments, careProfiles } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import type { HealthKitRecord } from '@carecompanion/types'
 import { logAudit } from '@/lib/audit'
+import { getAuthenticatedUser } from '@/lib/api-helpers'
 
 export async function POST(req: Request) {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const { user, error: authError } = await getAuthenticatedUser()
+  if (authError) return authError
 
   const { records = [] }: { records: HealthKitRecord[] } = await req.json()
 
   const careProfile = await db.query.careProfiles.findFirst({
-    where: eq(careProfiles.userId, session.user.id),
+    where: eq(careProfiles.userId, user.id),
   })
   if (!careProfile) {
     return NextResponse.json({ error: 'No care profile found' }, { status: 404 })
@@ -55,7 +53,7 @@ export async function POST(req: Request) {
       try {
         await db.insert(labResults)
           .values({
-            userId: session.user.id,      // labResults uses userId, not careProfileId
+            userId: user.id,      // labResults uses userId, not careProfileId
             testName: record.testName,
             value: record.value,
             unit: record.unit,
@@ -100,7 +98,7 @@ export async function POST(req: Request) {
 
   // HIPAA audit log — counts only, NO PHI (no medication names, lab values, etc.)
   await logAudit({
-    user_id: session.user.id,
+    user_id: user.id,
     action: 'sync_data',
     resource_type: 'healthkit',
     details: { counts }, // counts only — medications: N, labResults: N, appointments: N
