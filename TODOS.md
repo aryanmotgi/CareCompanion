@@ -171,6 +171,34 @@ Deferred work from gstack plan reviews. One item per section. Priority: P1 (bloc
 
 ---
 
+## [P1] Add Redis to eliminate serverless rate limit bypass
+
+**What:** Rate limiting in `src/lib/rate-limit.ts` falls back to in-memory `Map` when `KV_REST_API_URL`/`KV_REST_API_TOKEN` are absent. On Vercel, each cold function instance starts fresh — 14 requests per instance × N cold starts = unlimited free model calls.
+
+**Why:** An attacker can exceed the 15/hour guest limit by simply triggering cold starts across Vercel regions. No Redis = no real rate limit in production.
+
+**Fix:** Ensure `KV_REST_API_URL` and `KV_REST_API_TOKEN` are set in Vercel environment. Upstash Redis is already wired in `.env.example`.
+
+**Effort:** XS (human: ~15 min / CC: ~5 min)
+**Priority:** P1 — rate limit bypass exposes unlimited AI cost
+**Depends on:** Upstash Redis account setup
+
+---
+
+## [P2] Filter PHI fields before sending to specialist agents (Haiku)
+
+**What:** `src/lib/agents/orchestrator.ts` serializes full insurance records, claims, and prior auth data via `JSON.stringify()` into Haiku prompts. These include policy numbers, claim denial reasons, and auth codes.
+
+**Why:** Haiku is a smaller model potentially under a different logging/retention policy than Sonnet. Full PHI serialization to specialist prompts increases HIPAA BAA scope.
+
+**Fix:** Create a `scrubForSpecialist()` helper that strips or masks non-essential PHI fields before passing to Haiku. Pass summaries, not raw DB rows.
+
+**Effort:** M (human: ~2h / CC: ~20 min)
+**Priority:** P2 — HIPAA data minimization principle
+**Depends on:** Agreement on which fields are "essential" for specialist routing
+
+---
+
 ## [P1] Gate e2e/signin endpoint to non-production only
 
 **What:** `apps/web/src/app/api/e2e/signin/route.ts` is live in production. It mints a full session JWT for any email in the DB and sets `hipaaConsent: true` + `role: 'patient'` on that user. If `E2E_AUTH_SECRET` is compromised, any user account can be impersonated and HIPAA consent bypassed.
