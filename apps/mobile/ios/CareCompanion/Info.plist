@@ -63,6 +63,8 @@
     <string>CareCompanion reads your health records to help manage cancer care — including medications, lab results, and appointments from your care team.</string>
     <key>NSHealthUpdateUsageDescription</key>
     <string>CareCompanion saves care data to help you track your treatment progress.</string>
+    <key>NSHealthClinicalHealthRecordsShareUsageDescription</key>
+    <string>CareCompanion reads your clinical records — medications, lab results, conditions, and appointments — from your care team so it can help you understand and manage your treatment.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your microphone</string>
     <key>NSMotionUsageDescription</key>

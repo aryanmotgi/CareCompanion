@@ -32,7 +32,7 @@ import { GlassCard } from '../../src/components/GlassCard'
 import { AmbientOrbs } from '../../src/components/AmbientOrbs'
 import { AnimatedCounter } from '../../src/components/AnimatedCounter'
 import { Drawer } from '../../src/components/Drawer'
-import { syncHealthKitData } from '../../src/services/healthkit'
+import { syncHealthKitData, isHealthKitConnected } from '../../src/services/healthkit'
 import { WellnessCard } from '../../src/components/WellnessCard'
 import { requestWellnessPermissions } from '../../src/services/healthkit-vitals'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
@@ -257,7 +257,9 @@ export default function HomeScreen() {
   }))
 
   useEffect(() => {
-    syncHealthKitData().catch(console.error)
+    isHealthKitConnected().then((connected) => {
+      if (connected) syncHealthKitData().catch(console.error)
+    })
   }, [])
 
   return (
