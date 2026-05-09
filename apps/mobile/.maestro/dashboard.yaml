@@ -1,0 +1,8 @@
+appId: com.carecompanion.app
+---
+- launchApp
+- runFlow: login.yaml
+- assertVisible: "Dashboard"
+- tapOn: "Medications"
+- assertVisible: "Test Medication A"
+- back

@@ -1,0 +1,89 @@
+// apps/mobile/app/_layout.tsx
+import { initSentry } from '../src/lib/sentry'
+import { initAnalytics } from '../src/lib/analytics'
+import { useEffect, useState, useCallback } from 'react'
+
+initSentry()
+import { Stack, useRouter, useSegments } from 'expo-router'
+import * as SecureStore from 'expo-secure-store'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { StatusBar, ActivityIndicator, View, Platform } from 'react-native'
+import { useTheme } from '../src/theme'
+import { TestModeBanner } from '../src/components/TestModeBanner'
+import { useShakeDetector } from '../src/hooks/useShakeDetector'
+import { BugReportSheet } from '../src/components/BugReportSheet'
+import { ProfileProvider } from '../src/context/ProfileContext'
+
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const segments = useSegments()
+  const router = useRouter()
+  const theme = useTheme()
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    async function check() {
+      try {
+        if (Platform.OS === 'web') { setReady(true); return }
+        const token = await SecureStore.getItemAsync('cc-session-token')
+        const isAuthScreen = segments[0] === 'login' || segments[0] === 'signup'
+        if (!token && !isAuthScreen) router.replace('/login')
+        else if (token && isAuthScreen) router.replace('/(tabs)')
+      } catch {
+        // fail safe — show whatever screen we're on
+      } finally {
+        setReady(true)
+      }
+    }
+    void check()
+  }, [segments, router])
+
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={theme.accent} />
+      </View>
+    )
+  }
+
+  return <>{children}</>
+}
+
+function ThemedStatusBar() {
+  const theme = useTheme()
+  return <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} />
+}
+
+export default function RootLayout() {
+  const segments = useSegments()
+  const [bugReportVisible, setBugReportVisible] = useState(false)
+  const currentScreen = segments.join('/')
+
+  useEffect(() => {
+    void initAnalytics()
+  }, [])
+
+  const handleShake = useCallback(() => {
+    setBugReportVisible(true)
+  }, [])
+
+  useShakeDetector(handleShake)
+
+  const theme = useTheme()
+
+  return (
+    <SafeAreaProvider style={{ backgroundColor: theme.bg }}>
+      <ThemedStatusBar />
+      <TestModeBanner />
+      <AuthGate>
+        <ProfileProvider>
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }} />
+        </ProfileProvider>
+      </AuthGate>
+      <BugReportSheet
+        visible={bugReportVisible}
+        currentScreen={currentScreen}
+        onClose={() => setBugReportVisible(false)}
+      />
+    </SafeAreaProvider>
+  )
+}
