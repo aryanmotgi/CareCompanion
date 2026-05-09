@@ -24,17 +24,22 @@ export async function POST(req: Request) {
   // ── Wipe phase: atomic via transaction ─────────────────────────────────────
   const deleted = { medications: 0, appointments: 0, labResults: 0 }
   await db.transaction(async (tx) => {
-    await tx
+    const medsRows = await tx
       .update(medications)
       .set({ deletedAt: new Date() })
       .where(and(eq(medications.careProfileId, careProfile.id), isNull(medications.deletedAt)))
+      .returning({ id: medications.id })
+    deleted.medications = medsRows.length
 
-    await tx
+    const apptRows = await tx
       .update(appointments)
       .set({ deletedAt: new Date() })
       .where(and(eq(appointments.careProfileId, careProfile.id), isNull(appointments.deletedAt)))
+      .returning({ id: appointments.id })
+    deleted.appointments = apptRows.length
 
-    await tx.delete(labResults).where(eq(labResults.userId, session.user!.id))
+    const labRows = await tx.delete(labResults).where(eq(labResults.userId, session.user!.id)).returning({ id: labResults.id })
+    deleted.labResults = labRows.length
 
     await tx
       .update(careProfiles)

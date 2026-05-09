@@ -3,8 +3,22 @@ import { describe, it, expect, vi } from 'vitest'
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }))
 vi.mock('@/lib/db', () => {
   const txStub = {
-    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn().mockResolvedValue([]) })) })),
-    delete: vi.fn(() => ({ where: vi.fn().mockResolvedValue([]) })),
+    update: vi.fn(() => ({
+      set: vi.fn(() => ({
+        where: vi.fn(() => {
+          const p: Promise<unknown> & { returning: () => Promise<unknown[]> } = Promise.resolve([]) as never
+          ;(p as { returning: () => Promise<unknown[]> }).returning = () => Promise.resolve([])
+          return p
+        }),
+      })),
+    })),
+    delete: vi.fn(() => ({
+      where: vi.fn(() => {
+        const p: Promise<unknown> & { returning: () => Promise<unknown[]> } = Promise.resolve([]) as never
+        ;(p as { returning: () => Promise<unknown[]> }).returning = () => Promise.resolve([])
+        return p
+      }),
+    })),
   }
   return {
     db: {
