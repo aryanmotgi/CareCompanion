@@ -138,6 +138,11 @@ export function createApiClient(config: ApiClientConfig) {
           method: 'POST',
           body: JSON.stringify({ records }),
         }) as Promise<{ synced: number }>,
+      replace: (records: HealthKitRecord[]) =>
+        apiFetch(config, '/api/healthkit/replace', {
+          method: 'POST',
+          body: JSON.stringify({ records }),
+        }) as Promise<{ synced: number; errors: number; deleted: { medications: number; appointments: number; labResults: number } }>,
     },
     auth: {
       register: (data: { email: string; password: string; displayName: string }) =>
