@@ -17,7 +17,7 @@
  *    against prod requires it). Rotate E2E_AUTH_SECRET on each CI secret rotation.
  */
 import { db } from '@/lib/db'
-import { users, careProfiles } from '@/lib/db/schema'
+import { users, careProfiles, messages } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { encode, decode } from 'next-auth/jwt'
 import { NextResponse } from 'next/server'
@@ -155,6 +155,12 @@ export async function POST(req: Request) {
           onboardingCompleted: true,
         })
       }
+
+      // Clear chat history on each signin. Failed test runs save user messages
+      // without a paired assistant response; Anthropic rejects consecutive
+      // same-role messages, causing every subsequent run to fail too.
+      await db.delete(messages).where(eq(messages.userId, user.id))
+
       break // success — exit retry loop
     } catch (err) {
       const e = err as { message?: string }
