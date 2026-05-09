@@ -12,6 +12,8 @@ interface SymptomRadarCardProps {
   adherencePercent: number
   patientFirstName?: string
   onRemind?: () => void
+  reminding?: boolean
+  remindSent?: boolean
 }
 
 const ENERGY_MAP: Record<string, number> = { low: 1, med: 2, medium: 2, high: 3 }
@@ -105,6 +107,8 @@ export function SymptomRadarCard({
   adherencePercent,
   patientFirstName,
   onRemind,
+  reminding,
+  remindSent,
 }: SymptomRadarCardProps) {
   const sorted = [...recentCheckins].sort(
     (a, b) => new Date(a.checkedInAt).getTime() - new Date(b.checkedInAt).getTime(),
@@ -189,14 +193,15 @@ export function SymptomRadarCard({
           {onRemind && (
             <button
               onClick={onRemind}
-              className="text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80"
+              disabled={reminding || remindSent}
+              className="text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-all hover:opacity-80 disabled:opacity-60"
               style={{
-                background: 'rgba(99,102,241,0.15)',
-                border: '1px solid rgba(99,102,241,0.3)',
-                color: '#818CF8',
+                background: remindSent ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.15)',
+                border: `1px solid ${remindSent ? 'rgba(16,185,129,0.3)' : 'rgba(99,102,241,0.3)'}`,
+                color: remindSent ? '#6EE7B7' : '#818CF8',
               }}
             >
-              Remind {patientFirstName ?? 'them'} →
+              {remindSent ? '✓ Sent!' : reminding ? 'Sending…' : `Remind ${patientFirstName ?? 'them'} →`}
             </button>
           )}
         </div>

@@ -196,7 +196,7 @@ function ClinicalAlertsSection({ insights }: { insights: CareHubData['insights']
     alerts.push({
       key: 'auth',
       text: `Insurance action needed · ${authInsight.title}`,
-      sub: authInsight.body,
+      sub: authInsight.body?.slice(0, 200),
       color: '#FBBF24',
       bg: 'rgba(245,158,11,0.08)',
       border: 'rgba(245,158,11,0.22)',
@@ -304,6 +304,8 @@ export default function CareHubView({ careProfileId, patientName, careGroupName 
   const [data, setData] = useState<CareHubData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [reminding, setReminding] = useState(false)
+  const [remindSent, setRemindSent] = useState(false)
 
   const patientFirstName = patientName.split(' ')[0]
 
@@ -335,9 +337,24 @@ export default function CareHubView({ careProfileId, patientName, careGroupName 
     return () => { stopPolling(); document.removeEventListener('visibilitychange', handleVisibility) }
   }, [fetchData])
 
-  function handleRemind() {
-    // TODO: wire to push notification API
-    alert(`A gentle check-in reminder will be sent to ${patientFirstName}.`)
+  async function handleRemind() {
+    if (reminding || remindSent) return
+    setReminding(true)
+    try {
+      const csrfToken = document.cookie.match(/(^| )cc-csrf-token=([^;]+)/)?.[2] ?? ''
+      await fetch('/api/care-hub/remind', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
+        body: JSON.stringify({ careProfileId, patientFirstName }),
+        credentials: 'include',
+      })
+      setRemindSent(true)
+      setTimeout(() => setRemindSent(false), 4000)
+    } catch {
+      // silent — non-critical action
+    } finally {
+      setReminding(false)
+    }
   }
 
   if (loading) return <CareHubSkeleton />
@@ -453,6 +470,8 @@ export default function CareHubView({ careProfileId, patientName, careGroupName 
           adherencePercent={adherencePercent}
           patientFirstName={patientFirstName}
           onRemind={handleRemind}
+          reminding={reminding}
+          remindSent={remindSent}
         />
 
         {/* Today's Medications */}
