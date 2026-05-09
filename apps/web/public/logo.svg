@@ -1,0 +1,10 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="112" fill="#6366F1"/>
+  <rect width="512" height="512" rx="112" fill="#A78BFA" opacity="0.5"/>
+  <!-- Heart shape -->
+  <path d="M256 400C256 400 120 308 120 216C120 168 158 132 206 132C235 132 254 150 256 158C258 150 277 132 306 132C354 132 392 168 392 216C392 308 256 400 256 400Z" fill="white"/>
+  <!-- Medical cross -->
+  <rect x="242" y="210" width="28" height="88" rx="5" fill="#6366F1"/>
+  <rect x="212" y="240" width="88" height="28" rx="5" fill="#6366F1"/>
+</svg>

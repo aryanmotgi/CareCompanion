@@ -1,0 +1,21 @@
+import 'next-auth'
+
+declare module 'next-auth' {
+  interface Session {
+    user: {
+      id: string
+      email: string
+      name?: string | null
+      image?: string | null
+      displayName: string
+      isDemo: boolean
+      role: string | null
+    }
+  }
+  interface JWT {
+    role?: string | null
+    isDemo?: boolean
+    dbUserId?: string | null
+    displayName?: string | null
+  }
+}
