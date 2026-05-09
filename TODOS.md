@@ -171,6 +171,34 @@ Deferred work from gstack plan reviews. One item per section. Priority: P1 (bloc
 
 ---
 
+## [P1] Gate e2e/signin endpoint to non-production only
+
+**What:** `apps/web/src/app/api/e2e/signin/route.ts` is live in production. It mints a full session JWT for any email in the DB and sets `hipaaConsent: true` + `role: 'patient'` on that user. If `E2E_AUTH_SECRET` is compromised, any user account can be impersonated and HIPAA consent bypassed.
+
+**Why:** E2E test endpoints should never be accessible in production environments. Middleware or build-time exclusion should prevent this route from being compiled into production.
+
+**Fix:** Add `if (process.env.NODE_ENV === 'production') return NextResponse.json({ error: 'Not found' }, { status: 404 })` at the top of the handler. Or exclude via Next.js route rewrites in `vercel.json` for production.
+
+**Effort:** S (human: ~30 min / CC: ~10 min)
+**Priority:** P1 — live production attack surface
+**Depends on:** Nothing
+
+---
+
+## [P1] Add audit logging to share link views
+
+**What:** `apps/web/src/app/api/share/[token]/route.ts` returns full PHI data blob (health summaries, medications, labs) with no auth required and no audit trail of who viewed what.
+
+**Why:** HIPAA requires audit trails for PHI access. Currently no record is written when a share link is accessed, violating access audit requirements.
+
+**Fix:** INSERT a `shareLink_access_log` record (or write to the existing audit log table) whenever this endpoint returns a 200, including: timestamp, token, IP (hashed), user-agent.
+
+**Effort:** S (human: ~1h / CC: ~15 min)
+**Priority:** P1 — HIPAA audit requirement
+**Depends on:** Aurora migration for audit_log table (or use existing logs table)
+
+---
+
 ## [P0] Fix system-prompt appointment data not appearing in output
 
 **What:** `src/lib/__tests__/system-prompt.test.ts:82` fails — `expect(result).toContain('Dr. Patel')` — appointment doctor name missing from built system prompt.
