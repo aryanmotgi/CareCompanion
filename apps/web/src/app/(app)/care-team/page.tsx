@@ -7,11 +7,16 @@ export default async function CareTeamPage({
 }: {
   searchParams: Promise<{ accept?: string }>;
 }) {
-  const session = await auth();
-  if (!session?.user?.id) redirect('/login?error=session');
-
   const params = await searchParams;
   const acceptInviteId = params.accept || null;
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    const callbackUrl = acceptInviteId
+      ? '/care-team?accept=' + acceptInviteId
+      : '/care-team';
+    redirect('/login?error=session&callbackUrl=' + encodeURIComponent(callbackUrl));
+  }
 
   return <CareTeamView acceptInviteId={acceptInviteId} />;
 }

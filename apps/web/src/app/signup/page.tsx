@@ -5,9 +5,9 @@ import { AuthPageBackground } from '@/components/AuthPageBackground';
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ joinGroup?: string; joinToken?: string }>
+  searchParams: Promise<{ joinGroup?: string; joinToken?: string; callbackUrl?: string }>
 }) {
-  const { joinGroup, joinToken } = await searchParams
+  const { joinGroup, joinToken, callbackUrl } = await searchParams
 
   return (
     <AuthPageBackground>
@@ -26,7 +26,7 @@ export default async function SignupPage({
           <p className="text-sm text-white/40">Let&apos;s set up your account — it only takes a minute.</p>
         </div>
 
-        <SignupForm joinGroup={joinGroup} joinToken={joinToken} />
+        <SignupForm joinGroup={joinGroup} joinToken={joinToken} callbackUrl={callbackUrl} />
       </div>
     </AuthPageBackground>
   );
