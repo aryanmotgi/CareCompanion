@@ -291,7 +291,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
               <button
                 type="submit"
                 disabled={sending || !inviteEmail.trim()}
-                className="rounded-xl bg-blue-600 px-5 py-3 text-white font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="rounded-xl bg-[#6366F1] px-5 py-3 text-[#EDE9FE] font-medium hover:bg-[#818CF8] disabled:opacity-50 transition-colors duration-200 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-indigo-500/60"
               >
                 {sending ? 'Sending...' : 'Invite'}
               </button>
