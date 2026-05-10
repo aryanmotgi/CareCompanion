@@ -184,7 +184,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
   if (acceptingInvite) {
     return (
       <div className="px-5 py-8 text-center">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
         <p className="text-sm text-[var(--text-secondary)]">Accepting invitation...</p>
       </div>
     );
@@ -193,7 +193,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
   if (loading) {
     return (
       <div className="px-5 py-8 text-center">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
       </div>
     );
   }
@@ -292,7 +292,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
               <select
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value as 'editor' | 'viewer')}
-                className="flex-1 rounded-xl border-2 border-[var(--border)] bg-[var(--bg-elevated)] py-3 px-4 text-white focus:outline-none focus:border-blue-600 transition-colors"
+                className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60 transition-colors"
               >
                 <option value="viewer">View Only — can see everything</option>
                 <option value="editor">Editor — can add and update data</option>
@@ -321,7 +321,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
           <div className="space-y-1">
             {activity.map((a) => (
               <div key={a.id} className="flex items-center gap-2 py-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[#6366F1] flex-shrink-0" />
                 <p className="text-sm text-[var(--text-secondary)]">
                   <span className="text-white font-medium">{a.userName || 'Someone'}</span>{' '}
                   {a.action}
