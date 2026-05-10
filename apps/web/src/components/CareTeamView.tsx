@@ -88,6 +88,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [acceptingInvite, setAcceptingInvite] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
 
   const canManage = myRole === 'owner' || myRole === 'editor';
 
@@ -160,6 +161,26 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
       showToast(data.error || 'Failed to send invite', 'error');
     }
     setSending(false);
+  }
+
+  async function revokeInvite(inviteId: string) {
+    setRevokingId(inviteId);
+    try {
+      const res = await fetch(`/api/care-team/invite/${inviteId}`, {
+        method: 'DELETE',
+        headers: { 'x-csrf-token': csrfToken },
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Invite revoked', 'success');
+        loadTeam();
+      } else {
+        showToast(data.error || 'Failed to revoke invite', 'error');
+      }
+    } catch {
+      showToast('Something went wrong', 'error');
+    }
+    setRevokingId(null);
   }
 
   async function removeMember(memberId: string) {
@@ -254,6 +275,17 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
                 <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${ROLE_COLORS[inv.role]}`}>
                   {ROLE_LABELS[inv.role]}
                 </span>
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={() => revokeInvite(inv.id)}
+                    disabled={revokingId === inv.id}
+                    className="text-[11px] font-medium text-[#A78BFA] hover:text-[#EDE9FE] transition-colors disabled:opacity-40 ml-1"
+                    aria-label={`Revoke invite for ${inv.invitedEmail}`}
+                  >
+                    {revokingId === inv.id ? 'Revoking…' : 'Revoke'}
+                  </button>
+                )}
               </div>
             ))}
           </div>
