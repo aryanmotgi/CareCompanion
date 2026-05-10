@@ -271,14 +271,23 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
             Viewers can see medications, appointments, and your health summary — but cannot make changes or view chat history.
           </p>
           <form onSubmit={sendInvite} className="space-y-3">
-            <input
-              type="email"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="Email address"
-              className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--bg-elevated)] py-3 px-4 text-white placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-600 transition-colors"
-              required
-            />
+            <div className="relative rounded-xl" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+              <input
+                id="invite-email"
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder=" "
+                className="w-full rounded-xl pt-5 pb-2 px-4 text-sm text-white/90 placeholder:text-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500/60 transition-all peer bg-transparent"
+                required
+              />
+              <label
+                htmlFor="invite-email"
+                className="absolute left-4 transition-all duration-150 pointer-events-none peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm peer-placeholder-shown:text-white/30 peer-focus:top-1.5 peer-focus:text-[10px] peer-focus:text-[#A78BFA] top-1.5 text-[10px] text-[#A78BFA]"
+              >
+                Email address
+              </label>
+            </div>
             <div className="flex gap-3">
               <select
                 value={inviteRole}
