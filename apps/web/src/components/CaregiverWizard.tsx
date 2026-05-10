@@ -30,6 +30,10 @@ const PHASE_LABELS: Record<string, string> = {
   between_treatments: 'Between treatments', remission: 'Remission', unsure: 'Unsure',
 }
 
+function getCsrfToken(): string {
+  return document.cookie.match(/(^| )cc-csrf-token=([^;]+)/)?.[2] ?? ''
+}
+
 async function patchProfile(careProfileId: string, data: Record<string, unknown>): Promise<boolean> {
   try {
     const res = await fetch(`/api/care-profiles/${careProfileId}`, {
@@ -91,7 +95,7 @@ export function CaregiverWizard({
     }
     await fetch('/api/onboarding/complete', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': getCsrfToken() },
       body: JSON.stringify({ careProfileId }),
     }).catch(() => {})
     onComplete()

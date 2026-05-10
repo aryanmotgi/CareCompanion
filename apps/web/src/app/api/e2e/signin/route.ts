@@ -78,6 +78,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
+  // Gate: only the designated monitor account may use this endpoint.
+  // Check early so a missing env var returns 500 (misconfiguration) not 403 (auth fail).
+  const monitorEmail = process.env.E2E_MONITOR_EMAIL
+  if (!monitorEmail) {
+    return NextResponse.json({ error: 'E2E_MONITOR_EMAIL not configured' }, { status: 500 })
+  }
+
   // Rate limit: 20 requests per minute per IP
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1'
   const { success } = await limiter.check(`e2e-signin:${ip}`)
@@ -159,8 +166,7 @@ export async function POST(req: Request) {
       // Clear chat history on each signin. Failed test runs save user messages
       // without a paired assistant response; Anthropic rejects consecutive
       // same-role messages, causing every subsequent run to fail too.
-      // Guard: only delete messages for the designated E2E monitor account.
-      if (email !== process.env.E2E_MONITOR_EMAIL) {
+      if (email !== monitorEmail) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
       await db.delete(messages).where(eq(messages.userId, user.id))
