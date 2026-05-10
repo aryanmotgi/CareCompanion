@@ -398,7 +398,7 @@ export function CareGroupScreen({
             className="text-xs text-center py-2 px-3 rounded-lg transition-colors hover:text-white/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-400/40"
             style={{ color: 'rgba(255,255,255,0.45)' }}
           >
-            Continue on my own — I&apos;ll invite them from settings later
+            Continue on my own — I&apos;ll invite them later from the Care Team page
           </button>
         </>
       )}
