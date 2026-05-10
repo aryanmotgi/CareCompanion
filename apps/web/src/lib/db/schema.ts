@@ -397,10 +397,12 @@ export const sharedLinks = pgTable('shared_links', {
   title: text('title'),
   data: jsonb('data').notNull().default({}),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-  viewCount: integer('view_count').default(0),
+  viewCount: integer('view_count').notNull().default(0),
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-})
+}, (table) => ({
+  userTypExpiryIdx: index('shared_links_user_type_expiry_idx').on(table.userId, table.type, table.expiresAt, table.revokedAt),
+}))
 
 // ── Scanned Documents ─────────────────────────────────────────────────────────
 export const scannedDocuments = pgTable('scanned_documents', {

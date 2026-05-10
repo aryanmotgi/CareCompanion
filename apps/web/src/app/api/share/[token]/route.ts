@@ -42,8 +42,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
     return apiError('This share link has been revoked', 410)
   }
 
-  // Increment view count (fire-and-forget, but actually execute the query)
-  db.update(sharedLinks)
+  await db.update(sharedLinks)
     .set({ viewCount: sql`${sharedLinks.viewCount} + 1` })
     .where(eq(sharedLinks.token, token))
     .execute()
