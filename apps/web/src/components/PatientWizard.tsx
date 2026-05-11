@@ -11,6 +11,10 @@ const PRIORITY_LABELS: Record<string, string> = {
   lab_results: 'Lab results', insurance: 'Insurance', emotional_support: 'Emotional support',
 }
 
+function getCsrfToken(): string {
+  return document.cookie.match(/(^| )cc-csrf-token=([^;]+)/)?.[2] ?? ''
+}
+
 async function patchProfile(careProfileId: string, data: Record<string, unknown>): Promise<boolean> {
   try {
     const res = await fetch(`/api/care-profiles/${careProfileId}`, {
@@ -95,7 +99,7 @@ export function PatientWizard({
     }
     await fetch('/api/onboarding/complete', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': getCsrfToken() },
       body: JSON.stringify({ careProfileId }),
     }).catch(() => {})
     onComplete()

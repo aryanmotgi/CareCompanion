@@ -17,7 +17,7 @@
  *    against prod requires it). Rotate E2E_AUTH_SECRET on each CI secret rotation.
  */
 import { db } from '@/lib/db'
-import { users, careProfiles } from '@/lib/db/schema'
+import { users, careProfiles, messages } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { encode, decode } from 'next-auth/jwt'
 import { NextResponse } from 'next/server'
@@ -76,6 +76,13 @@ export async function POST(req: Request) {
   const providedSecret = req.headers.get('x-e2e-secret')
   if (providedSecret !== e2eSecret) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
+  // Gate: only the designated monitor account may use this endpoint.
+  // Check early so a missing env var returns 500 (misconfiguration) not 403 (auth fail).
+  const monitorEmail = process.env.E2E_MONITOR_EMAIL
+  if (!monitorEmail) {
+    return NextResponse.json({ error: 'E2E_MONITOR_EMAIL not configured' }, { status: 500 })
   }
 
   // Rate limit: 20 requests per minute per IP
@@ -155,6 +162,22 @@ export async function POST(req: Request) {
           onboardingCompleted: true,
         })
       }
+
+      // Gate: only allowed accounts may use this endpoint.
+      // E2E_MONITOR_EMAIL is the primary account (chat cleared on each signin).
+      // E2E_ALLOWED_EMAILS is a comma-separated list of additional QA accounts.
+      const allowedExtras = (process.env.E2E_ALLOWED_EMAILS ?? '')
+        .split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+      const isMonitor = email === monitorEmail
+      const isAllowed = isMonitor || allowedExtras.includes(email.toLowerCase())
+      if (!isAllowed) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      // Clear chat history only for the monitor account.
+      if (isMonitor) {
+        await db.delete(messages).where(eq(messages.userId, user.id))
+      }
+
       break // success — exit retry loop
     } catch (err) {
       const e = err as { message?: string }

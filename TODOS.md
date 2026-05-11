@@ -168,3 +168,87 @@ Deferred work from gstack plan reviews. One item per section. Priority: P1 (bloc
 **Effort:** M (human: ~2h / CC: ~15 min)
 **Priority:** P2
 **Depends on:** Aurora Serverless v2 migration (Data API v1 has limited transaction support)
+
+---
+
+## [P1] Add Redis to eliminate serverless rate limit bypass
+
+**What:** Rate limiting in `src/lib/rate-limit.ts` falls back to in-memory `Map` when `KV_REST_API_URL`/`KV_REST_API_TOKEN` are absent. On Vercel, each cold function instance starts fresh — 14 requests per instance × N cold starts = unlimited free model calls.
+
+**Why:** An attacker can exceed the 15/hour guest limit by simply triggering cold starts across Vercel regions. No Redis = no real rate limit in production.
+
+**Fix:** Ensure `KV_REST_API_URL` and `KV_REST_API_TOKEN` are set in Vercel environment. Upstash Redis is already wired in `.env.example`.
+
+**Effort:** XS (human: ~15 min / CC: ~5 min)
+**Priority:** P1 — rate limit bypass exposes unlimited AI cost
+**Depends on:** Upstash Redis account setup
+
+---
+
+## [P2] Filter PHI fields before sending to specialist agents (Haiku)
+
+**What:** `src/lib/agents/orchestrator.ts` serializes full insurance records, claims, and prior auth data via `JSON.stringify()` into Haiku prompts. These include policy numbers, claim denial reasons, and auth codes.
+
+**Why:** Haiku is a smaller model potentially under a different logging/retention policy than Sonnet. Full PHI serialization to specialist prompts increases HIPAA BAA scope.
+
+**Fix:** Create a `scrubForSpecialist()` helper that strips or masks non-essential PHI fields before passing to Haiku. Pass summaries, not raw DB rows.
+
+**Effort:** M (human: ~2h / CC: ~20 min)
+**Priority:** P2 — HIPAA data minimization principle
+**Depends on:** Agreement on which fields are "essential" for specialist routing
+
+---
+
+## [P1] Gate e2e/signin endpoint to non-production only
+
+**What:** `apps/web/src/app/api/e2e/signin/route.ts` is live in production. It mints a full session JWT for any email in the DB and sets `hipaaConsent: true` + `role: 'patient'` on that user. If `E2E_AUTH_SECRET` is compromised, any user account can be impersonated and HIPAA consent bypassed.
+
+**Why:** E2E test endpoints should never be accessible in production environments. Middleware or build-time exclusion should prevent this route from being compiled into production.
+
+**Fix:** Add `if (process.env.NODE_ENV === 'production') return NextResponse.json({ error: 'Not found' }, { status: 404 })` at the top of the handler. Or exclude via Next.js route rewrites in `vercel.json` for production.
+
+**Effort:** S (human: ~30 min / CC: ~10 min)
+**Priority:** P1 — live production attack surface
+**Depends on:** Nothing
+
+---
+
+## [P1] Add audit logging to share link views
+
+**What:** `apps/web/src/app/api/share/[token]/route.ts` returns full PHI data blob (health summaries, medications, labs) with no auth required and no audit trail of who viewed what.
+
+**Why:** HIPAA requires audit trails for PHI access. Currently no record is written when a share link is accessed, violating access audit requirements.
+
+**Fix:** INSERT a `shareLink_access_log` record (or write to the existing audit log table) whenever this endpoint returns a 200, including: timestamp, token, IP (hashed), user-agent.
+
+**Effort:** S (human: ~1h / CC: ~15 min)
+**Priority:** P1 — HIPAA audit requirement
+**Depends on:** Aurora migration for audit_log table (or use existing logs table)
+
+---
+
+## [P0] Fix system-prompt appointment data not appearing in output
+
+**What:** `src/lib/__tests__/system-prompt.test.ts:82` fails — `expect(result).toContain('Dr. Patel')` — appointment doctor name missing from built system prompt.
+
+**Why:** Tests confirm the system prompt builder isn't including appointment details (doctor name, procedure) when appointments are passed in. AI responses will be missing clinical context about upcoming appointments.
+
+**Error:** `expect(result).toContain('Dr. Patel')` failed — value not in output despite appointments being passed to `buildSystemPrompt`.
+
+**Effort:** S (human: ~30 min / CC: ~5 min)
+**Priority:** P0 — AI loses appointment context
+**Depends on:** Nothing
+
+---
+
+## [P0] Fix medications API test timeout
+
+**What:** `src/__tests__/api/medications.test.ts:41` times out at 5000ms — `'returns medications for authenticated user'` test.
+
+**Why:** Mock setup or import chain is slow. Real API calls may be leaking through mocks, causing network timeouts in test environment.
+
+**Error:** `Test timed out in 5000ms` at `medications.test.ts:41`.
+
+**Effort:** S (human: ~30 min / CC: ~10 min)
+**Priority:** P0 — test suite unreliable
+**Depends on:** Nothing

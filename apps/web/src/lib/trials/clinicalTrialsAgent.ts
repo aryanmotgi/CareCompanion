@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { searchTrials } from './tools'
 import { buildScoringSystemPrompt, isCloseTrial } from './gapAnalysis'
 import type { PatientProfile, EligibilityGap } from './assembleProfile'
+import { logger } from '@/lib/logger'
 
 export type TrialMatchResult = {
   nctId:                string
@@ -62,23 +63,23 @@ export async function runTrialsAgent(profile: PatientProfile): Promise<AgentMatc
   const locationFilter = profile.zipCode ?? undefined
   const condition = (profile.cancerType ?? 'cancer').replace(/\s*\(TEST[^)]*\)/gi, '').trim() || 'cancer'
 
-  console.log('[trials-agent] starting CT.gov fetch')
+  logger.info('[trials-agent] starting CT.gov fetch')
   const result = await searchTrials({ condition, location: locationFilter, status: 'RECRUITING', pageSize: 40 })
-  console.log(`[trials-agent] CT.gov fetch done in ${Date.now() - t0}ms`)
+  logger.info(`[trials-agent] CT.gov fetch done in ${Date.now() - t0}ms`)
 
   if ('error' in result) {
-    console.warn('[trials-agent] CT.gov error, returning empty result:', result.error)
+    logger.warn('[trials-agent] CT.gov error, returning empty result')
     return { matched: [], close: [] }
   }
 
   const allTrials: object[] = result.trials
 
   if (allTrials.length === 0) {
-    console.log('[trials-agent] no trials found from CT.gov')
+    logger.info('[trials-agent] no trials found from CT.gov')
     return { matched: [], close: [] }
   }
 
-  console.log(`[trials-agent] scoring ${allTrials.length} trials with Sonnet`)
+  logger.info(`[trials-agent] scoring ${allTrials.length} trials with Sonnet`)
   const t1 = Date.now()
 
   const { output } = await generateText({
@@ -93,7 +94,7 @@ Trials to score:
 ${JSON.stringify(allTrials, null, 2)}`,
   })
 
-  console.log(`[trials-agent] Claude scoring done in ${Date.now() - t1}ms, total ${Date.now() - t0}ms`)
+  logger.info(`[trials-agent] Claude scoring done in ${Date.now() - t1}ms, total ${Date.now() - t0}ms`)
 
   // NCT IDs must be NCT + 4+ digits
   const NCT_RE = /^NCT\d{4,}$/
@@ -103,7 +104,7 @@ ${JSON.stringify(allTrials, null, 2)}`,
     .filter(t => {
       const id = String(t.nct_id ?? '').trim()
       if (!NCT_RE.test(id)) {
-        console.warn('[trials-agent] skipping trial with invalid nctId:', id)
+        logger.warn('[trials-agent] skipping trial with invalid nctId')
         return false
       }
       return true
@@ -158,6 +159,6 @@ ${JSON.stringify(allTrials, null, 2)}`,
     .sort((a, b) => b.matchScore - a.matchScore)
   const close = results.filter(r => r.matchCategory === 'close')
 
-  console.log(`[trials-agent] returned ${matched.length} matched, ${close.length} close (from ${output.trials?.length ?? 0} scored)`)
+  logger.info(`[trials-agent] returned ${matched.length} matched, ${close.length} close (from ${output.trials?.length ?? 0} scored)`)
   return { matched, close }
 }

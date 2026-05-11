@@ -6,6 +6,36 @@ import { eq, sql } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
+export async function generateMetadata({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
+  const [link] = await db
+    .select({ title: sharedLinks.title, type: sharedLinks.type, data: sharedLinks.data, expiresAt: sharedLinks.expiresAt, revokedAt: sharedLinks.revokedAt })
+    .from(sharedLinks)
+    .where(eq(sharedLinks.token, token))
+    .limit(1);
+
+  if (!link || link.revokedAt || new Date(link.expiresAt) < new Date()) {
+    return { title: 'CareCompanion' };
+  }
+
+  const data = link.data as { patient?: { name?: string; cancerType?: string } };
+  const patientName = data?.patient?.name;
+  const pageTitle = link.title || (patientName ? `${patientName}'s Health Summary` : 'Health Summary');
+  const description = patientName
+    ? `View ${patientName}'s health summary — medications, appointments, and care team — shared via CareCompanion.`
+    : 'View a shared health summary including medications, appointments, and care team — shared via CareCompanion.';
+
+  return {
+    title: `${pageTitle} | CareCompanion`,
+    description,
+    openGraph: {
+      title: `${pageTitle} | CareCompanion`,
+      description,
+      type: 'website' as const,
+    },
+  };
+}
+
 interface SharedData {
   patient?: { name?: string; cancerType?: string; cancerStage?: string; treatmentPhase?: string; conditions?: string; allergies?: string };
   medications?: { name: string; dose?: string | null; frequency?: string | null; prescribingDoctor?: string | null; notes?: string | null }[];
@@ -298,8 +328,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
     );
   }
 
-  // Increment view count (fire-and-forget)
-  db.update(sharedLinks).set({ viewCount: sql`${sharedLinks.viewCount} + 1` }).where(eq(sharedLinks.token, token)).catch(() => {});
+  await db.update(sharedLinks).set({ viewCount: sql`${sharedLinks.viewCount} + 1` }).where(eq(sharedLinks.token, token)).catch(() => {});
 
   // Weekly summary gets its own layout
   if (link.type === 'weekly_summary') {

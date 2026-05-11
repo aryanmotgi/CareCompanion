@@ -65,6 +65,12 @@ export async function POST(req: Request) {
       })
     }
 
+    const ALLOWED_ROLES = new Set(['user', 'assistant'])
+    const invalidRole = messages.find((msg: { role: string }) => !ALLOWED_ROLES.has(msg.role))
+    if (invalidRole) {
+      return apiError('Invalid message role', 400, { code: 'INVALID_ROLE' })
+    }
+
     const conversationMessages = messages.map((msg: { role: string; content?: string; parts?: Array<{ type: string; text: string }> }) => ({
       role: msg.role as 'user' | 'assistant',
       content: msg.parts

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 export function AuthPageBackground({ children }: { children: ReactNode }) {
   return (
     <div
-      className="relative min-h-screen min-h-dvh flex flex-col items-center justify-center px-4 sm:px-6 overflow-hidden"
+      className="relative min-h-screen min-h-dvh flex flex-col items-center justify-center px-4 sm:px-6 pt-20 pb-8 overflow-hidden"
       style={{ background: '#05060F' }}
     >
       {/* Ambient glow orbs */}
