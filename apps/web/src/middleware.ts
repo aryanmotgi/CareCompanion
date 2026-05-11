@@ -40,6 +40,7 @@ const PUBLIC_PATHS = [
   // '/api/debug-auth' intentionally omitted — dev-only, requires NODE_ENV check internally
   '/shared',                 // Public share pages
   '/reset-password',          // Password reset pages
+  '/join',                    // Care Group invite landing — page handles new-user redirect to /signup
 ]
 
 export default auth((req) => {
@@ -70,7 +71,9 @@ export default auth((req) => {
       return new NextResponse(null, { status: 204 })
     }
     const url = req.nextUrl.clone()
+    const callbackPath = pathname + req.nextUrl.search
     url.pathname = '/login'
+    url.search = '?callbackUrl=' + encodeURIComponent(callbackPath)
     return NextResponse.redirect(url)
   }
 
