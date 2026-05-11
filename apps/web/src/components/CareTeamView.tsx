@@ -269,7 +269,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white truncate">{inv.invitedEmail}</p>
                   <p className="text-xs text-[var(--text-muted)]">
-                    Invited {inv.createdAt ? timeAgo(inv.createdAt.toISOString()) : ''} · Expires {inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : '—'}
+                    Invited {inv.createdAt ? timeAgo(new Date(inv.createdAt).toISOString()) : ''} · Expires {inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : '—'}
                   </p>
                 </div>
                 <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${ROLE_COLORS[inv.role]}`}>
@@ -359,7 +359,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
                   {a.action}
                 </p>
                 <span className="text-[10px] text-[var(--text-muted)] ml-auto flex-shrink-0">
-                  {a.createdAt ? timeAgo(a.createdAt.toISOString()) : ''}
+                  {a.createdAt ? timeAgo(new Date(a.createdAt).toISOString()) : ''}
                 </span>
               </div>
             ))}
