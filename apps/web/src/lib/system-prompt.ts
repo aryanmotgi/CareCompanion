@@ -39,6 +39,7 @@ export function buildRoleContext(opts: {
     } else if (opts.caregivingExperience === 'experienced') {
       parts.push('They are an experienced caregiver — be direct and clinical when appropriate.')
     }
+    parts.push('Be concise and task-oriented. Do not proactively check in on the caregiver\'s emotional state — focus on actionable next steps: medication adherence, upcoming appointments, care coordination. Only address caregiver wellbeing if the caregiver raises it.')
   } else if (opts.role === 'patient') {
     parts.push('The user is a patient managing their own cancer care.')
   } else if (opts.role === 'self') {

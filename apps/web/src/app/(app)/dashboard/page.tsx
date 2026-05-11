@@ -2,9 +2,11 @@ import { Suspense } from 'react'
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { users, careProfiles, medications, appointments, labResults, claims, reminderLogs, scannedDocuments, doctors } from '@/lib/db/schema';
+import { users, medications, appointments, labResults, claims, reminderLogs, scannedDocuments, doctors } from '@/lib/db/schema';
 import { eq, and, gte, lte, desc, asc, count, isNull } from 'drizzle-orm';
 import { DashboardView } from '@/components/DashboardView';
+import { CaregiverDashboardView } from '@/components/CaregiverDashboardView';
+import { getActiveProfile } from '@/lib/active-profile';
 import { DashboardSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { MedicationReminders } from '@/components/MedicationReminders';
 import { DashboardInsights } from '@/components/DashboardInsights';
@@ -19,10 +21,12 @@ async function DashboardContent() {
   const userEmail = session.user.email
   if (!userEmail) redirect('/login?error=session');
 
+  const role = (session.user as { role?: string }).role ?? null;
+
   const [dbUser] = await db.select({ id: users.id, providerSub: users.providerSub, email: users.email, displayName: users.displayName, isDemo: users.isDemo, createdAt: users.createdAt }).from(users).where(eq(users.email, userEmail)).limit(1);
   if (!dbUser) redirect('/login?error=session');
 
-  const [profile] = await db.select().from(careProfiles).where(eq(careProfiles.userId, dbUser.id)).limit(1);
+  const profile = await getActiveProfile(dbUser.id);
   if (!profile) redirect('/onboarding');
 
   const onboardingComplete = profile.onboardingCompleted === true;
@@ -64,6 +68,27 @@ async function DashboardContent() {
   const hasDocumentsScanned = (scannedDocCount?.value ?? 0) > 0;
 
   const patientName = profile.patientName || 'your loved one';
+
+  if (role === 'caregiver') {
+    return (
+      <>
+        <OnboardingWelcomeBanner />
+        <CaregiverDashboardView
+          patientName={patientName}
+          medications={meds}
+          appointments={appts}
+          labResults={labs}
+          reminderLogs={reminderLogsData}
+          cancerType={profile.cancerType ?? null}
+          cancerStage={profile.cancerStage ?? null}
+          treatmentPhase={profile.treatmentPhase ?? null}
+          emergencyContactName={profile.emergencyContactName ?? null}
+          emergencyContactPhone={profile.emergencyContactPhone ?? null}
+          profileId={profile.id}
+        />
+      </>
+    )
+  }
 
   return (
     <>
