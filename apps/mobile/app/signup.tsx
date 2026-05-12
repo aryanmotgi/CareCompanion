@@ -10,6 +10,7 @@ import {
   Alert,
   ScrollView,
 } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -19,16 +20,22 @@ import Animated, {
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 import { signInWithCredentials } from '../src/services/auth'
 import { signInWithApple, isAppleSignInAvailable } from '../src/services/apple-auth'
 import { signInWithGoogle } from '../src/services/google-auth'
 import { RippleButton } from '../src/components/RippleButton'
+import { useTokenContext } from './_layout'
 
 export default function SignupScreen() {
   const router = useRouter()
-  const [role, setRole] = useState<'caregiver' | 'patient' | 'self' | null>(null)
-  const [roleError, setRoleError] = useState('')
+  const insets = useSafeAreaInsets()
+  const params = useLocalSearchParams<{ role?: string; type?: string }>()
+  const { markSignedIn } = useTokenContext()
+  const role: 'caregiver' | 'patient' | 'self' =
+    params.role === 'caregiver' || params.role === 'patient' ? params.role : 'self'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -48,7 +55,8 @@ export default function SignupScreen() {
     try {
       setSocialLoading('apple')
       await signInWithApple()
-      router.replace('/(tabs)')
+      markSignedIn()
+      router.replace('/onboarding-records' as any)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Apple Sign-In failed'
       if (msg !== 'ERR_REQUEST_CANCELED') {
@@ -63,7 +71,8 @@ export default function SignupScreen() {
     try {
       setSocialLoading('google')
       await signInWithGoogle()
-      router.replace('/(tabs)')
+      markSignedIn()
+      router.replace('/onboarding-records' as any)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Google Sign-In failed'
       Alert.alert('Google Sign-In Failed', msg)
@@ -96,21 +105,22 @@ export default function SignupScreen() {
       Alert.alert('Missing fields', 'Please enter your email and password.')
       return
     }
+    // Basic RFC-5322-ish email format check — local + @ + domain with a dot.
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRe.test(email.trim())) {
+      Alert.alert('Invalid email', 'Please enter a valid email address.')
+      return
+    }
     if (password.length < 8) {
       Alert.alert('Weak password', 'Password must be at least 8 characters.')
       return
     }
     if (password !== confirmPassword) {
-      Alert.alert('Mismatch', 'Passwords do not match.')
+      Alert.alert('Passwords don’t match', 'Please make sure both password fields are the same.')
       return
     }
     if (!consent) {
       Alert.alert('Consent required', 'Please accept the Terms and Privacy Policy to continue.')
-      return
-    }
-
-    if (!role) {
-      setRoleError('Please select your role')
       return
     }
 
@@ -131,19 +141,41 @@ export default function SignupScreen() {
       })
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error ?? 'Registration failed')
+        const data: any = await res.json().catch(() => ({}))
+        // Backend can return error as a string, { message }, { error: '...' }, or
+        // { error: { message: '...' } }. Coerce all into a readable string.
+        const errStr =
+          typeof data === 'string'
+            ? data
+            : typeof data?.error === 'string'
+              ? data.error
+              : typeof data?.error?.message === 'string'
+                ? data.error.message
+                : typeof data?.message === 'string'
+                  ? data.message
+                  : null
+        throw new Error(errStr ?? 'Registration failed. Please try again.')
       }
 
-      // Auto-login after registration
+      // Save display name locally so home/settings can fall back to it when the
+      // backend profile fetch isn't available.
+      if (displayName.trim()) {
+        await AsyncStorage.setItem('cc-display-name', displayName.trim()).catch(() => {})
+      }
+
+      // Auto-login best-effort, then route into the medical records connect flow
+      // regardless. If the auto-login succeeds we mark the session in the
+      // context; if it fails (e.g. demo backend), we still send the user into
+      // /health-connect — that screen is onboarding and AuthGate keeps them
+      // there even without a valid session.
       try {
         await signInWithCredentials(email.trim().toLowerCase(), password)
-        router.replace('/(tabs)')
+        markSignedIn()
       } catch {
-        // Registration succeeded but auto-login failed — send to login screen
-        Alert.alert('Account Created', 'Please sign in with your new account.')
-        router.replace('/login')
+        // Auto-login failed — swallow and continue to the health-connect screen
+        // so the user isn't dumped back to /login after just creating an account.
       }
+      router.replace('/onboarding-records' as any)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Sign-up failed'
       Alert.alert('Sign Up Failed', msg)
@@ -160,6 +192,14 @@ export default function SignupScreen() {
       <LinearGradient colors={['#05060F', '#0C0E1A', '#05060F']} style={StyleSheet.absoluteFill} />
       <View style={[styles.orb, { top: -100, left: -80, backgroundColor: 'rgba(99,102,241,0.12)', width: 300, height: 300 }]} />
       <View style={[styles.orb, { bottom: 0, right: -80, backgroundColor: 'rgba(167,139,250,0.08)', width: 280, height: 280 }]} />
+
+      <Pressable
+        onPress={() => router.back()}
+        hitSlop={16}
+        style={{ position: 'absolute', left: 12, top: insets.top + 8, padding: 8, zIndex: 10 }}
+      >
+        <Ionicons name="chevron-back" size={28} color="white" />
+      </Pressable>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Animated.View style={[styles.logoSection, logoStyle]}>
@@ -181,43 +221,6 @@ export default function SignupScreen() {
           />
 
           <Text style={styles.heading}>Sign Up</Text>
-
-          {/* Role selector */}
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginBottom: 8 }}>
-              I am joining as *
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {([
-                { value: 'caregiver', emoji: '🧑‍⚕️', label: 'Caregiver' },
-                { value: 'patient', emoji: '🤒', label: 'Patient' },
-                { value: 'self', emoji: '👤', label: 'Self-care' },
-              ] as const).map((r) => {
-                const selected = role === r.value
-                return (
-                  <Pressable
-                    key={r.value}
-                    onPress={() => { setRole(r.value); setRoleError('') }}
-                    style={{
-                      flex: 1,
-                      borderRadius: 12,
-                      padding: 10,
-                      alignItems: 'center',
-                      backgroundColor: selected ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.05)',
-                      borderWidth: selected ? 2 : 1,
-                      borderColor: selected ? '#6366F1' : 'rgba(255,255,255,0.1)',
-                    }}
-                  >
-                    <Text style={{ fontSize: 20, marginBottom: 4 }}>{r.emoji}</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: selected ? '#A78BFA' : '#f1f5f9' }}>
-                      {r.label}
-                    </Text>
-                  </Pressable>
-                )
-              })}
-            </View>
-            {!!roleError && <Text style={{ color: '#FCA5A5', fontSize: 11, marginTop: 4 }}>{roleError}</Text>}
-          </View>
 
           {/* Social sign-up buttons */}
           {appleAvailable && (
@@ -274,22 +277,30 @@ export default function SignupScreen() {
           />
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.passwordInput]}
             placeholder="Password (min. 8 characters)"
             placeholderTextColor="rgba(255,255,255,0.3)"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            textContentType="newPassword"
+            autoComplete="new-password"
+            autoCorrect={false}
+            spellCheck={false}
             returnKeyType="next"
           />
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.passwordInput]}
             placeholder="Confirm password"
             placeholderTextColor="rgba(255,255,255,0.3)"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
+            textContentType="newPassword"
+            autoComplete="new-password"
+            autoCorrect={false}
+            spellCheck={false}
             returnKeyType="done"
             onSubmitEditing={handleSignup}
           />
@@ -310,7 +321,7 @@ export default function SignupScreen() {
             </Text>
           </RippleButton>
 
-          <Pressable onPress={() => router.replace('/login')}>
+          <Pressable onPress={() => router.push('/login')}>
             <Text style={styles.linkText}>
               Already have an account? <Text style={styles.linkHighlight}>Sign in</Text>
             </Text>
@@ -387,6 +398,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     color: '#EDE9FE',
     fontSize: 15,
+  },
+  passwordInput: {
+    fontSize: 16,
+    color: '#FFFFFF',
   },
   consentRow: {
     flexDirection: 'row',

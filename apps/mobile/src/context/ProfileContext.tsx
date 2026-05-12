@@ -3,6 +3,7 @@ import { Platform } from 'react-native'
 import * as SecureStore from 'expo-secure-store'
 import { useRouter } from 'expo-router'
 import { createApiClient } from '@carecompanion/api'
+import { useTokenContext } from '../../app/_layout'
 
 // SecureStore is native-only — provide no-op shims for web
 const store = {
@@ -65,6 +66,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<Error | null>(null)
   const [csrfToken, setCsrfToken] = useState<string | null>(null)
   const router = useRouter()
+  const { markSignedOut } = useTokenContext()
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -85,7 +87,10 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       if (error.message.includes('401') || error.message.includes('403')) {
         await store.deleteItem('cc-session-token')
         await store.deleteItem('cc-profile')
-        router.replace('/login')
+        // Clear via the context so AuthGate sees it; AuthGate decides where to go
+        // (and notably does NOT kick users off /health-connect or /setup so they
+        // can finish onboarding even when the backend is unreachable).
+        markSignedOut()
         return
       }
 
@@ -98,7 +103,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [router])
+  }, [router, markSignedOut])
 
   useEffect(() => {
     fetchProfile()

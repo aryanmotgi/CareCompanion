@@ -1,6 +1,6 @@
 // apps/mobile/app/(tabs)/settings.tsx
 import React, { useState } from 'react'
-import { View, Text, TextInput, Pressable, StyleSheet, Alert, Switch, Linking, ScrollView } from 'react-native'
+import { View, Text, Pressable, StyleSheet, Alert, Linking, ScrollView } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
@@ -23,68 +23,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const stagger = useStaggerEntrance(12)
-  const { profile, apiClient, csrfToken, refetch } = useProfile()
-
-  const [selectedRole, setSelectedRole] = useState<'patient' | 'caregiver'>(
-    (profile?.role as 'patient' | 'caregiver') || 'patient'
-  )
-  const [caregiverName, setCaregiverName] = useState(profile?.caregiverForName || '')
-  const [roleSaving, setRoleSaving] = useState(false)
-
-  // Sync local state when profile loads/changes
-  React.useEffect(() => {
-    if (profile) {
-      setSelectedRole((profile.role as 'patient' | 'caregiver') || 'patient')
-      setCaregiverName(profile.caregiverForName || '')
-    }
-  }, [profile?.role, profile?.caregiverForName])
-
-  async function saveRole() {
-    if (selectedRole === 'caregiver' && !caregiverName.trim()) {
-      Alert.alert('Name Required', 'Please enter the name of the person you are caring for.')
-      return
-    }
-    setRoleSaving(true)
-    try {
-      const token = await SecureStore.getItemAsync('cc-session-token')
-      if (!token) return
-      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
-      const isSecure = baseUrl.startsWith('https://')
-      const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
-      const res = await fetch(`${baseUrl}/api/records/profile`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': `${cookieName}=${token}; cc-csrf-token=${csrfToken}`,
-          'x-csrf-token': csrfToken || '',
-        },
-        body: JSON.stringify({
-          role: selectedRole,
-          caregiver_for_name: selectedRole === 'caregiver' ? caregiverName.trim() : null,
-        }),
-      })
-      if (!res.ok) throw new Error('Save failed')
-      await refetch()
-      Alert.alert('Saved', 'Your role has been updated.')
-    } catch {
-      Alert.alert('Error', 'Failed to save role. Please try again.')
-    } finally {
-      setRoleSaving(false)
-    }
-  }
-
-  const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({
-    medications: true,
-    refillReminders: true,
-    doseReminders: true,
-    interactionAlerts: true,
-    appointments: true,
-    twentyFourHour: true,
-  })
-
-  function toggleNotif(key: string) {
-    setNotifPrefs((prev) => ({ ...prev, [key]: !prev[key] }))
-  }
+  const { profile } = useProfile()
 
   function changeTheme(value: ThemeOverride) {
     void setThemeOverride(value)
@@ -173,56 +112,15 @@ export default function SettingsScreen() {
           </View>
         </Animated.View>
 
-        {/* Role */}
+        {/* Care Group */}
         <Animated.View style={stagger[2]}>
-          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>ROLE</Text>
+          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>CARE GROUP</Text>
           <View style={styles.section}>
-            <View style={[styles.segmentRow, { backgroundColor: theme.bgElevated }]}>
-              <Pressable
-                style={[
-                  styles.segBtn,
-                  selectedRole === 'patient' && { backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 8 },
-                ]}
-                onPress={() => setSelectedRole('patient')}
-              >
-                <Text style={[styles.segLabel, { color: selectedRole === 'patient' ? theme.accentHover : theme.textMuted }]}>
-                  I am the patient
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.segBtn,
-                  selectedRole === 'caregiver' && { backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 8 },
-                ]}
-                onPress={() => setSelectedRole('caregiver')}
-              >
-                <Text style={[styles.segLabel, { color: selectedRole === 'caregiver' ? theme.accentHover : theme.textMuted }]}>
-                  I am a caregiver
-                </Text>
-              </Pressable>
-            </View>
-            {selectedRole === 'caregiver' && (
-              <TextInput
-                style={[
-                  styles.caregiverInput,
-                  {
-                    backgroundColor: theme.bgCard,
-                    borderColor: theme.bgCardBorder,
-                    color: theme.text,
-                  },
-                ]}
-                value={caregiverName}
-                onChangeText={setCaregiverName}
-                placeholder="Who are you caring for? (e.g. Mom, Dad, Sarah)"
-                placeholderTextColor={theme.textMuted}
-              />
-            )}
             <Pressable
-              style={[styles.saveRoleBtn, { backgroundColor: theme.accent, opacity: roleSaving ? 0.6 : 1 }]}
-              onPress={saveRole}
-              disabled={roleSaving}
+              style={[styles.saveRoleBtn, { backgroundColor: theme.accent }]}
+              onPress={() => router.push('/edit-care-group' as any)}
             >
-              <Text style={styles.saveRoleBtnText}>{roleSaving ? 'Saving...' : 'Save Role'}</Text>
+              <Text style={styles.saveRoleBtnText}>Edit Care Group</Text>
             </Pressable>
           </View>
         </Animated.View>
@@ -284,66 +182,24 @@ export default function SettingsScreen() {
         {/* Notifications */}
         <Animated.View style={stagger[5]}>
           <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>NOTIFICATIONS</Text>
-
-          {/* Medications group */}
-          <Text style={[styles.subHeader, { color: theme.textMuted }]}>Medication Alerts</Text>
           <View style={styles.section}>
-            {([
-              { key: 'medications', label: 'Medications', description: 'Medication reminders and alerts' },
-              { key: 'refillReminders', label: 'Refill Reminders', description: 'Alert when medications are running low' },
-              { key: 'doseReminders', label: 'Dose Reminders', description: 'Scheduled medication dose alerts' },
-              { key: 'interactionAlerts', label: 'Interaction Alerts', description: 'Warnings about drug interactions' },
-            ] as const).map((item, i, arr) => (
-              <View key={item.key} style={[styles.toggleRow, i < arr.length - 1 && styles.toggleRowBorder]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.toggleLabel, { color: theme.text }]}>{item.label}</Text>
-                  <Text style={[styles.toggleDesc, { color: theme.textMuted }]}>{item.description}</Text>
-                </View>
-                <Switch
-                  value={notifPrefs[item.key]}
-                  onValueChange={() => toggleNotif(item.key)}
-                  trackColor={{ false: 'rgba(255,255,255,0.15)', true: '#818CF8' }}
-                  thumbColor="#fff"
-                  ios_backgroundColor="rgba(255,255,255,0.1)"
-                />
-              </View>
-            ))}
+            <Pressable style={styles.linkRow} onPress={() => router.push('/notification-settings' as any)}>
+              <Ionicons name="notifications-outline" size={18} color={theme.textMuted} />
+              <Text style={[styles.linkLabel, { color: theme.text }]}>Notifications</Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
+            </Pressable>
           </View>
         </Animated.View>
 
-        <Animated.View style={stagger[6]}>
-          {/* Appointments group */}
-          <Text style={[styles.subHeader, { color: theme.textMuted }]}>Appointments</Text>
+        {/* Documents */}
+        <Animated.View style={stagger[5]}>
+          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>DOCUMENTS</Text>
           <View style={styles.section}>
-            {([
-              { key: 'appointments', label: 'Appointments', description: 'Appointment reminders' },
-              { key: 'twentyFourHour', label: '24-Hour Reminder', description: 'Reminder 24 hours before appointments' },
-            ] as const).map((item, i, arr) => (
-              <View key={item.key} style={[styles.toggleRow, i < arr.length - 1 && styles.toggleRowBorder]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.toggleLabel, { color: theme.text }]}>{item.label}</Text>
-                  <Text style={[styles.toggleDesc, { color: theme.textMuted }]}>{item.description}</Text>
-                </View>
-                <Switch
-                  value={notifPrefs[item.key]}
-                  onValueChange={() => toggleNotif(item.key)}
-                  trackColor={{ false: 'rgba(255,255,255,0.15)', true: '#818CF8' }}
-                  thumbColor="#fff"
-                  ios_backgroundColor="rgba(255,255,255,0.1)"
-                />
-              </View>
-            ))}
-          </View>
-        </Animated.View>
-
-        {/* About */}
-        <Animated.View style={stagger[7]}>
-          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>ABOUT</Text>
-          <View style={styles.section}>
-            <View style={styles.aboutRow}>
-              <Text style={[styles.aboutLabel, { color: theme.text }]}>App Version</Text>
-              <Text style={[styles.aboutValue, { color: theme.textMuted }]}>{APP_VERSION} ({BUILD_NUMBER})</Text>
-            </View>
+            <Pressable style={styles.linkRow} onPress={() => router.push('/scanned-docs' as any)}>
+              <Ionicons name="scan-outline" size={18} color={theme.textMuted} />
+              <Text style={[styles.linkLabel, { color: theme.text }]}>Scanned Documents</Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
+            </Pressable>
           </View>
         </Animated.View>
 
@@ -436,6 +292,11 @@ export default function SettingsScreen() {
             </View>
           </Pressable>
         </Animated.View>
+
+        {/* App version — non-interactive footer */}
+        <Text style={[styles.versionFooter, { color: theme.textMuted }]} accessible={false}>
+          Version {APP_VERSION} ({BUILD_NUMBER})
+        </Text>
         </ScrollView>
       </View>
     </TabFadeWrapper>
@@ -457,27 +318,14 @@ const styles = StyleSheet.create({
   segBtn: { flex: 1, paddingVertical: 8, alignItems: 'center' },
   segLabel: { fontSize: 14, fontWeight: '600' },
   signOut: { fontSize: 16, fontWeight: '600', textAlign: 'center' },
+  versionFooter: { fontSize: 12, textAlign: 'center', opacity: 0.5, marginTop: 16, marginBottom: 8 },
   editProfileRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   editProfileLabel: { fontSize: 15, fontWeight: '600' },
   editProfileSub: { fontSize: 12, marginTop: 2 },
   chevron: { fontSize: 18, fontWeight: '600' },
-  subHeader: { fontSize: 12, fontWeight: '600', marginBottom: 6, marginTop: 4 },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingRight: 12 },
   toggleRowBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(150,150,150,0.2)' },
-  toggleLabel: { fontSize: 14, fontWeight: '600' },
-  toggleDesc: { fontSize: 12, marginTop: 2 },
-  aboutRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 },
-  aboutLabel: { fontSize: 14, fontWeight: '600' },
-  aboutValue: { fontSize: 14 },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
   linkLabel: { flex: 1, fontSize: 14, fontWeight: '600' },
-  caregiverInput: {
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 15,
-    marginTop: 12,
-  },
   saveRoleBtn: {
     marginTop: 12,
     paddingVertical: 10,

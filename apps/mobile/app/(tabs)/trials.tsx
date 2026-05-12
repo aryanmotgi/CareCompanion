@@ -1,6 +1,7 @@
 // apps/mobile/app/(tabs)/trials.tsx
 import React, { useEffect, useState } from 'react'
 import {
+  Alert,
   View,
   Text,
   ScrollView,
@@ -218,13 +219,21 @@ export default function TrialsScreen() {
   }
 
   async function saveCancerType() {
-    if (!cancerTypeInput.trim() || !csrfToken) return
+    const value = cancerTypeInput.trim()
+    if (!value) {
+      Alert.alert('Diagnosis required', 'Enter your cancer type to find matching trials.')
+      return
+    }
+    if (!csrfToken) {
+      Alert.alert('Session not ready', 'Restart the app and try again.')
+      return
+    }
     setSubmittingCancerType(true)
     try {
-      await apiClient.updateMe({ cancerType: cancerTypeInput.trim() }, csrfToken)
+      await apiClient.careProfile.update({ cancer_type: value }, csrfToken)
       await refetch()
-    } catch {
-      // Silent fail — user sees the input still populated
+    } catch (err: any) {
+      Alert.alert('Could not save diagnosis', err?.message || 'Try again.')
     } finally {
       setSubmittingCancerType(false)
     }
