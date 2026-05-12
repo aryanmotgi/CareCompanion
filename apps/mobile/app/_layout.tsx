@@ -247,6 +247,12 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   // Both prevent reaching (tabs) until their respective onboarding completes.
   const isCaregiver = userTypeState === 'caregiver'
   const isPatient = userTypeState === 'patient'
+  // Signed-in user who hasn't picked patient-or-caregiver yet (post-signup or
+  // returning user on a fresh device) needs to go through /care-type before
+  // any onboarding can happen.
+  const onCareType = route === 'care-type'
+  const needsCareTypePick =
+    tokenState === 'present' && userTypeState === 'unset' && !onCareType
   const needsRecordsOnboarding = isPatient && recordsState === 'pending' && onTabs
   const needsCaregiverOnboarding = isCaregiver && caregiverJoinedState === 'pending' && onTabs
   const needsTabs =
@@ -302,6 +308,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   if (needsFunnelRestart) redirectTo = '/welcome'
   else if (needsWelcome) redirectTo = '/welcome'
   else if (needsLogin) redirectTo = '/login'
+  else if (needsCareTypePick) redirectTo = '/care-type'
   else if (needsRecordsOnboarding) redirectTo = '/onboarding-records'
   else if (needsCaregiverOnboarding) redirectTo = '/care-group-join'
   else if (needsTabs) redirectTo = '/(tabs)'

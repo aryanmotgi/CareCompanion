@@ -25,14 +25,6 @@ export default function CareTypeScreen() {
       <View style={[styles.orb, { top: -120, left: -100, backgroundColor: ACCENT, opacity: 0.18 }]} />
       <View style={[styles.orb, { bottom: -80, right: -120, backgroundColor: '#A78BFA', opacity: 0.12 }]} />
 
-      <Pressable
-        onPress={() => router.back()}
-        hitSlop={16}
-        style={[styles.backBtn, { top: insets.top + 8 }]}
-      >
-        <Ionicons name="chevron-back" size={28} color="white" />
-      </Pressable>
-
       <View style={[styles.content, { paddingTop: insets.top + 80, paddingBottom: insets.bottom + 24 }]}>
         <Text style={styles.title}>Who are you?</Text>
         <Text style={styles.subtitle}>
@@ -46,7 +38,7 @@ export default function CareTypeScreen() {
             body="Manage your medications, appointments, and care team — with help from an AI companion that knows your case."
             onPress={() => {
               setUserType('patient')
-              router.push('/signup?type=patient' as any)
+              router.replace('/onboarding-records' as any)
             }}
           />
           <OptionCard
@@ -55,20 +47,10 @@ export default function CareTypeScreen() {
             body="Join a patient's care circle to keep up with their medications, appointments, and how they're doing."
             onPress={() => {
               setUserType('caregiver')
-              router.push('/signup?type=caregiver' as any)
+              router.replace('/care-group-join' as any)
             }}
           />
         </View>
-
-        <Pressable
-          onPress={() => router.push('/login')}
-          hitSlop={12}
-          style={styles.signInLink}
-        >
-          <Text style={styles.signInText}>
-            Already have an account? <Text style={styles.signInBold}>Sign in</Text>
-          </Text>
-        </Pressable>
       </View>
     </View>
   )
@@ -109,7 +91,6 @@ function OptionCard({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#05060F' },
   orb: { position: 'absolute', width: 360, height: 360, borderRadius: 180 },
-  backBtn: { position: 'absolute', left: 12, zIndex: 10, padding: 8 },
   content: { flex: 1, paddingHorizontal: 24, justifyContent: 'center' },
   title: { color: 'white', fontSize: 28, fontWeight: '800', letterSpacing: -0.7, marginBottom: 10 },
   subtitle: { color: '#FFFFFFAA', fontSize: 15, lineHeight: 22, marginBottom: 32 },
@@ -128,7 +109,4 @@ const styles = StyleSheet.create({
   iconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   cardTitle: { color: 'white', fontSize: 16, fontWeight: '700' },
   cardBody: { color: '#FFFFFFB0', fontSize: 13, lineHeight: 18, marginTop: 4 },
-  signInLink: { alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 16 },
-  signInText: { color: '#FFFFFFAA', fontSize: 14 },
-  signInBold: { color: ACCENT, fontWeight: '700' },
 })

@@ -56,7 +56,7 @@ export default function SignupScreen() {
       setSocialLoading('apple')
       await signInWithApple()
       markSignedIn()
-      router.replace('/onboarding-records' as any)
+      router.replace('/care-type' as any)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Apple Sign-In failed'
       if (msg !== 'ERR_REQUEST_CANCELED') {
@@ -72,7 +72,7 @@ export default function SignupScreen() {
       setSocialLoading('google')
       await signInWithGoogle()
       markSignedIn()
-      router.replace('/onboarding-records' as any)
+      router.replace('/care-type' as any)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Google Sign-In failed'
       Alert.alert('Google Sign-In Failed', msg)
@@ -175,7 +175,7 @@ export default function SignupScreen() {
         // Auto-login failed — swallow and continue to the health-connect screen
         // so the user isn't dumped back to /login after just creating an account.
       }
-      router.replace('/onboarding-records' as any)
+      router.replace('/care-type' as any)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Sign-up failed'
       Alert.alert('Sign Up Failed', msg)
