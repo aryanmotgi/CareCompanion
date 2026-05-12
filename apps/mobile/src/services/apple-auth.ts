@@ -41,8 +41,16 @@ export async function signInWithApple(): Promise<void> {
   })
 
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error(data.error ?? 'Apple Sign-In failed')
+    const data = await res.json().catch(() => ({})) as {
+      error?: string; code?: string; existingProvider?: string
+    }
+    const err = new Error(data.error ?? 'Apple Sign-In failed') as Error & {
+      code?: string; existingProvider?: string; status?: number
+    }
+    err.status = res.status
+    if (data.code) err.code = data.code
+    if (data.existingProvider) err.existingProvider = data.existingProvider
+    throw err
   }
 
   const data = await res.json()
