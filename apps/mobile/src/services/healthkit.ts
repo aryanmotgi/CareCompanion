@@ -12,12 +12,14 @@
  *   https://developer.apple.com/documentation/healthkit/hkclinicalrecord
  */
 import { NativeModules, Platform } from 'react-native'
+import * as SecureStore from 'expo-secure-store'
 import { apiClient } from './api'
+
+const CONNECTED_KEY = 'cc-healthkit-connected'
 import type {
   HealthKitRecord,
   HealthKitMedicationRecord,
   HealthKitLabRecord,
-  HealthKitAppointmentRecord,
 } from '@carecompanion/types'
 
 // ---------------------------------------------------------------------------
@@ -35,6 +37,37 @@ interface RawClinicalRecord {
 interface NativeHealthKitBridge {
   requestAuthorization(): Promise<boolean>
   fetchClinicalRecords(): Promise<RawClinicalRecord[]>
+  requestBaselineAuthorization(): Promise<boolean>
+  getBaselineCharacteristics(): Promise<{
+    dateOfBirth: string | null  // YYYY-MM-DD
+    sexAtBirth: 'female' | 'male' | 'intersex' | null
+  }>
+}
+
+export type BaselineCharacteristics = {
+  dateOfBirth: string | null
+  sexAtBirth: 'female' | 'male' | 'intersex' | null
+}
+
+/**
+ * Ask HealthKit for read permission on baseline characteristics (DOB + sex)
+ * and return the values. These come from `HKCharacteristicType.dateOfBirth` /
+ * `.biologicalSex` and do NOT require the restricted `health-records`
+ * entitlement, so they work on a sim with ad-hoc signing.
+ */
+export async function fetchHealthKitBaseline(): Promise<BaselineCharacteristics> {
+  const empty: BaselineCharacteristics = { dateOfBirth: null, sexAtBirth: null }
+  if (!Bridge) return empty
+  try {
+    await Bridge.requestBaselineAuthorization()
+  } catch {
+    return empty
+  }
+  try {
+    return await Bridge.getBaselineCharacteristics()
+  } catch {
+    return empty
+  }
 }
 
 const Bridge: NativeHealthKitBridge | null =
@@ -52,6 +85,27 @@ export async function requestHealthKitPermissions(): Promise<boolean> {
   if (!Bridge) return false
   try {
     return await Bridge.requestAuthorization()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Persist that the user has gone through the connect flow. Used to gate
+ * passive sync calls — Apple does not let apps query auth status for clinical
+ * records, so we track it ourselves.
+ */
+export async function markHealthKitConnected(): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(CONNECTED_KEY, '1')
+  } catch {
+    // SecureStore unavailable (e.g. in tests) — fail open, sync just won't run.
+  }
+}
+
+export async function isHealthKitConnected(): Promise<boolean> {
+  try {
+    return (await SecureStore.getItemAsync(CONNECTED_KEY)) === '1'
   } catch {
     return false
   }
@@ -81,6 +135,54 @@ export async function syncHealthKitData(): Promise<{ synced: number }> {
   return apiClient.healthkit.sync(records)
 }
 
+/**
+ * Read clinical records from HealthKit, normalise, and POST to the backend
+ * replace endpoint. Care profile fields (patient name, cancer type, etc.) are
+ * preserved; only the medical-data tables are wiped and re-populated.
+ */
+export async function replaceHealthKitData(): Promise<{
+  synced: number
+  errors: number
+  deleted: { medications: number; appointments: number; labResults: number }
+}> {
+  const empty = { synced: 0, errors: 0, deleted: { medications: 0, appointments: 0, labResults: 0 } }
+  if (!Bridge) return empty
+
+  let raw: RawClinicalRecord[]
+  try {
+    raw = await Bridge.fetchClinicalRecords()
+  } catch (err) {
+    console.warn('[HealthKit] fetchClinicalRecords failed:', err)
+    return empty
+  }
+
+  const records: HealthKitRecord[] = raw.flatMap((r) => {
+    const parsed = normalise(r)
+    return parsed ? [parsed] : []
+  })
+
+  return apiClient.healthkit.replace(records, { keepCareProfile: true })
+}
+
+/**
+ * Returns true if the user already has any meds/labs/appts in CC.
+ * Used to decide whether to show the merge/replace prompt vs. straight sync.
+ * Fails closed (returns false) — never blocks the connect flow on a preflight check.
+ */
+export async function hasExistingMedicalData(careProfileId: string): Promise<boolean> {
+  try {
+    const [meds, labs, appts] = await Promise.all([
+      apiClient.medications.list(careProfileId).catch(() => [] as unknown[]),
+      apiClient.labResults.list(careProfileId).catch(() => ({ labs: [] as unknown[] })),
+      apiClient.appointments.list(careProfileId).catch(() => [] as unknown[]),
+    ])
+    const labArr = Array.isArray(labs) ? labs : (labs as { labs: unknown[] }).labs
+    return (meds as unknown[]).length > 0 || labArr.length > 0 || (appts as unknown[]).length > 0
+  } catch {
+    return false
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Normalisation helpers
 // ---------------------------------------------------------------------------
@@ -93,12 +195,9 @@ function normalise(r: RawClinicalRecord): HealthKitRecord | null {
       return normaliseMedication(r, fhir)
     case 'HKClinicalTypeIdentifierLabResultRecord':
       return normaliseLabResult(r, fhir)
-    case 'HKClinicalTypeIdentifierConditionRecord':
-    case 'HKClinicalTypeIdentifierProcedureRecord':
-      // Map conditions/procedures to appointments (closest existing type).
-      return normaliseAsAppointment(r, fhir)
     default:
-      // AllergyRecord, VitalSignRecord, ImmunizationRecord — no mapped type yet.
+      // Condition, Procedure, Allergy, VitalSign, Immunization records — no
+      // CC type maps cleanly to them yet, skip rather than coerce.
       return null
   }
 }
@@ -145,20 +244,6 @@ function normaliseLabResult(
   }
 }
 
-function normaliseAsAppointment(
-  r: RawClinicalRecord,
-  fhir: Record<string, unknown> | null,
-): HealthKitAppointmentRecord {
-  return {
-    type: 'appointment',
-    healthkitFhirId: r.id,
-    doctorName: extractPractitionerName(fhir) ?? 'Unknown provider',
-    specialty: null,
-    dateTime: r.startDate,
-    location: extractLocation(fhir),
-  }
-}
-
 // ---------------------------------------------------------------------------
 // FHIR utilities
 // ---------------------------------------------------------------------------
@@ -191,14 +276,6 @@ function extractPractitionerName(fhir: Record<string, unknown> | null): string |
     firstPath<Record<string, unknown>>(fhir, 'requester') ??
     firstPath<Record<string, unknown>[]>(fhir, 'performer')?.[0]
   return (ref?.display as string) ?? null
-}
-
-function extractLocation(fhir: Record<string, unknown> | null): string | null {
-  return (
-    firstPath<string>(fhir, 'location', 'display') ??
-    firstPath<string>(fhir, 'serviceProvider', 'display') ??
-    null
-  )
 }
 
 function stringifyTiming(timing: Record<string, unknown> | null): string | null {

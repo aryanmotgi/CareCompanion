@@ -19,6 +19,7 @@
       "infoPlist": {
         "NSHealthShareUsageDescription": "CareCompanion reads your health records to help manage cancer care — including medications, lab results, and appointments from your care team.",
         "NSHealthUpdateUsageDescription": "CareCompanion saves care data to help you track your treatment progress.",
+        "NSHealthClinicalHealthRecordsShareUsageDescription": "CareCompanion reads your clinical records — medications, lab results, conditions, and appointments — from your care team so it can help you understand and manage your treatment.",
         "NSCameraUsageDescription": "CareCompanion uses the camera to scan medical documents and prescriptions.",
         "ITSAppUsesNonExemptEncryption": false
       },
@@ -66,7 +67,7 @@
         "projectId": "845c42cd-33e6-42d0-8189-59131144999f"
       }
     },
-    "owner": "aryan1008",
+    "owner": "carecompanion",
     "updates": {
       "url": "https://u.expo.dev/845c42cd-33e6-42d0-8189-59131144999f"
     }

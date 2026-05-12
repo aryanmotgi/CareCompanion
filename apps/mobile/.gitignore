@@ -5,3 +5,8 @@
 expo-env.d.ts
 # @end expo-cli
 .vercel
+
+# Local iOS sim builds + bundled archives — never commit
+CareCompanion.app/
+build-*.tar.gz
+

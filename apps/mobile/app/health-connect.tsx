@@ -28,7 +28,12 @@ import { BlurView } from 'expo-blur'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { requestHealthKitPermissions } from '../src/services/healthkit'
+import {
+  requestHealthKitPermissions,
+  markHealthKitConnected,
+  replaceHealthKitData,
+} from '../src/services/healthkit'
+import { useProfile } from '../src/context/ProfileContext'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const CARD_WIDTH = SCREEN_WIDTH - 56
@@ -234,6 +239,7 @@ const MOCKUP_MAP = {
 
 export default function HealthConnectScreen() {
   const router = useRouter()
+  const { refetch } = useProfile()
   const insets = useSafeAreaInsets()
   const flatListRef = useRef<FlatList>(null)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -263,18 +269,22 @@ export default function HealthConnectScreen() {
     setRequesting(true)
     try {
       const granted = await requestHealthKitPermissions()
-      if (granted) {
-        setPermissionGranted(true)
-        successScale.value = withSpring(1, { damping: 10, stiffness: 150 })
-        // Navigate back after success animation
-        setTimeout(() => {
-          router.back()
-        }, 2000)
-      } else {
-        // Permission denied — still let them go back
+      if (!granted) {
         setRequesting(false)
+        return
       }
-    } catch {
+      await markHealthKitConnected()
+
+      // Always replace stored medical data with the HealthKit sample set.
+      // Care profile fields are preserved (keepCareProfile=true server-side).
+      await replaceHealthKitData()
+      await refetch()
+
+      setPermissionGranted(true)
+      successScale.value = withSpring(1, { damping: 10, stiffness: 150 })
+      setTimeout(() => { router.back() }, 2000)
+    } catch (err) {
+      console.warn('[HealthKit] connect failed:', err)
       setRequesting(false)
     }
   }
@@ -452,7 +462,7 @@ export default function HealthConnectScreen() {
             ]}
           >
             <LinearGradient
-              colors={['rgba(99,102,241,0.4)', 'rgba(129,140,248,0.4)']}
+              colors={['#6366F1', '#818CF8']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.connectGradient}
@@ -825,7 +835,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   skipText: {
-    color: 'rgba(255,255,255,0.3)',
+    color: 'rgba(167,139,250,0.85)',
     fontSize: 13,
   },
   // Success state

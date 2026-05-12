@@ -32,14 +32,16 @@ import { GlassCard } from '../../src/components/GlassCard'
 import { AmbientOrbs } from '../../src/components/AmbientOrbs'
 import { AnimatedCounter } from '../../src/components/AnimatedCounter'
 import { Drawer } from '../../src/components/Drawer'
-import { syncHealthKitData } from '../../src/services/healthkit'
-import { WellnessCard } from '../../src/components/WellnessCard'
-import { requestWellnessPermissions } from '../../src/services/healthkit-vitals'
+import { syncHealthKitData, isHealthKitConnected } from '../../src/services/healthkit'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { ShimmerSkeleton } from '../../src/components/ShimmerSkeleton'
+import { DailyAlertsCard } from '../../src/components/DailyAlertsCard'
+import { TodaysMedicationsCard } from '../../src/components/TodaysMedicationsCard'
+import { HomeTabPills, type HomeTab } from '../../src/components/home/HomeTabPills'
+import { MyCarePanel } from '../../src/components/home/MyCarePanel'
+import { HealthDataPanel } from '../../src/components/home/HealthDataPanel'
 import { TabFadeWrapper } from './_layout'
 import { useProfile } from '../../src/context/ProfileContext'
-import { useOnboardingState } from '../../src/hooks/useOnboardingState'
 import { apiClient } from '../../src/services/api'
 
 interface Profile {
@@ -79,38 +81,34 @@ function getGreeting() {
   return 'Good evening'
 }
 
-function AnimatedBorderCard({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+function AnimatedBorderCard({ children, style, onPress }: { children: React.ReactNode; style?: ViewStyle; onPress?: () => void }) {
   const theme = useTheme()
-  const reduceMotion = useReducedMotion()
-  const rotation = useSharedValue(0)
+  const pressed = useSharedValue(0)
 
-  useEffect(() => {
-    if (reduceMotion) return
-    rotation.value = withRepeat(
-      withTiming(360, { duration: 8000, easing: Easing.linear }),
-      -1,
-      false,
-    )
-  }, [rotation, reduceMotion])
-
-  const rotateStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }, { scale: 1.5 }],
+  const glowStyle = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(pressed.value, [0, 1], ['rgba(139,92,246,0.22)', 'rgba(139,92,246,0.8)']),
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: pressed.value * 14,
+    shadowOpacity: pressed.value * 0.65,
   }))
 
+  function onPressIn() {
+    pressed.value = withTiming(1, { duration: 120 })
+  }
+
+  function onPressOut() {
+    pressed.value = withTiming(0, { duration: 280 })
+  }
+
   return (
-    <View style={[styles.borderCardOuter, style]}>
-      <Animated.View style={[StyleSheet.absoluteFill, styles.borderCardGradientWrap, rotateStyle]}>
-        <LinearGradient
-          colors={[theme.accent, theme.lavender, theme.cyan, theme.accent]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
+    <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
+      <Animated.View style={[styles.borderCardOuter, glowStyle, style]}>
+        <View style={[styles.borderCardInner, { backgroundColor: theme.isDark ? '#0C0E1A' : '#FAFAFA' }]}>
+          {children}
+        </View>
       </Animated.View>
-      <View style={[styles.borderCardInner, { backgroundColor: theme.isDark ? '#0C0E1A' : '#FAFAFA' }]}>
-        {children}
-      </View>
-    </View>
+    </Pressable>
   )
 }
 
@@ -120,6 +118,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<HomeTab>('today')
 
   // --- Real data from API ---
   const { profile, loading: profileLoading } = useProfile()
@@ -149,18 +148,18 @@ export default function HomeScreen() {
     })
   }, [profile?.careProfileId])
 
-  const displayName = profile?.patientName?.trim() || profile?.displayName?.trim() || 'there'
-  const medCount = meds.length
-
-  // --- Wellness vitals (HealthKit steps/heart rate/sleep) ---
-  const [wellnessAvailable, setWellnessAvailable] = useState(false)
-
+  const [localDisplayName, setLocalDisplayName] = useState<string | null>(null)
   useEffect(() => {
-    // Request wellness permissions; show card only if granted
-    requestWellnessPermissions().then((granted) => {
-      setWellnessAvailable(granted)
-    })
+    AsyncStorage.getItem('cc-display-name')
+      .then((v) => { if (v) setLocalDisplayName(v) })
+      .catch(() => {})
   }, [])
+  const displayName =
+    profile?.patientName?.trim() ||
+    profile?.displayName?.trim() ||
+    localDisplayName?.trim() ||
+    'there'
+  const medCount = meds.length
 
   // --- Profile completion tracker ---
   const { percent: profilePercent, remaining: profileRemaining } = computeCompletion(profile as Profile | null)
@@ -257,7 +256,9 @@ export default function HomeScreen() {
   }))
 
   useEffect(() => {
-    syncHealthKitData().catch(console.error)
+    isHealthKitConnected().then((connected) => {
+      if (connected) syncHealthKitData().catch(console.error)
+    })
   }, [])
 
   return (
@@ -305,95 +306,24 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Cards at 0.6x parallax */}
+          {/* Today / My Care / Health Data segmented control */}
+          <HomeTabPills active={activeTab} onChange={setActiveTab} todayCount={5} />
+
+          {activeTab === 'myCare' && <MyCarePanel />}
+          {activeTab === 'healthData' && <HealthDataPanel />}
+
+          {/* Today panel — existing home content at 0.6x parallax */}
+          {activeTab === 'today' && (
           <Animated.View style={cardParallaxStyle}>
-            {/* Medications card — only show when user has meds */}
-            {!loaded || dataLoading ? (
-              <Animated.View style={card1Style}>
-                <GlassCard style={styles.card}>
-                  <ShimmerSkeleton width="60%" height={12} style={{ marginBottom: 12 }} />
-                  <ShimmerSkeleton width="100%" height={16} style={{ marginBottom: 8 }} />
-                  <ShimmerSkeleton width="100%" height={16} style={{ marginBottom: 8 }} />
-                  <ShimmerSkeleton width="80%" height={16} />
-                </GlassCard>
-              </Animated.View>
-            ) : meds.length > 0 ? (
-              <Animated.View style={card1Style}>
-                <GlassCard style={styles.card} onPress={() => router.push('/(tabs)/care')}>
-                  <View style={styles.cardHeader}>
-                    <Text style={[styles.cardLabel, { color: theme.textMuted }]}>
-                      TODAY'S MEDICATIONS
-                    </Text>
-                    <View style={[styles.badge, { backgroundColor: 'rgba(99,102,241,0.2)' }]}>
-                      <AnimatedCounter
-                        value={medCount}
-                        style={{ ...styles.badgeText, color: theme.accent }}
-                        suffix={medCount === 1 ? ' med' : ' meds'}
-                      />
-                    </View>
-                  </View>
-                  {meds.map((med) => (
-                    <View key={med.id} style={styles.medRow}>
-                      <View style={[styles.dot, { backgroundColor: theme.amber }]} />
-                      <Text style={[styles.medName, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">
-                        {med.name}{med.dose ? ` · ${med.dose}` : ''}
-                      </Text>
-                      <Text style={[styles.medTime, { color: theme.textMuted }]} numberOfLines={1}>
-                        {med.frequency || ''}
-                      </Text>
-                    </View>
-                  ))}
-                </GlassCard>
-              </Animated.View>
-            ) : (
-              /* Welcome section when no data */
-              <Animated.View style={card1Style}>
-                <View style={{ marginBottom: 16 }}>
-                  <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', fontWeight: '600', marginBottom: 12 }}>
-                    GET STARTED
-                  </Text>
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <Pressable
-                      onPress={() => router.push('/(tabs)/chat')}
-                      style={{ flex: 1, backgroundColor: 'rgba(99,102,241,0.12)', borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(99,102,241,0.15)' }}
-                    >
-                      <Ionicons name="chatbubble-outline" size={22} color="#A78BFA" style={{ marginBottom: 6 }} />
-                      <Text style={{ color: theme.text, fontSize: 12, fontWeight: '600' }}>Talk to AI</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => router.push('/(tabs)/scan')}
-                      style={{ flex: 1, backgroundColor: 'rgba(103,232,249,0.08)', borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(103,232,249,0.12)' }}
-                    >
-                      <Ionicons name="scan-outline" size={22} color="#67E8F9" style={{ marginBottom: 6 }} />
-                      <Text style={{ color: theme.text, fontSize: 12, fontWeight: '600' }}>Scan Doc</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => router.push('/setup' as any)}
-                      style={{ flex: 1, backgroundColor: 'rgba(110,231,183,0.08)', borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(110,231,183,0.12)' }}
-                    >
-                      <Ionicons name="heart-outline" size={22} color="#6EE7B7" style={{ marginBottom: 6 }} />
-                      <Text style={{ color: theme.text, fontSize: 12, fontWeight: '600' }}>Connect</Text>
-                    </Pressable>
-                  </View>
-                </View>
-                <GlassCard style={{ padding: 14 }}>
-                  <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>DID YOU KNOW</Text>
-                  <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, lineHeight: 19 }}>
-                    Keeping a digital record of your medications and lab results helps your care team make better decisions. Start by connecting your health records or talking to your AI companion.
-                  </Text>
-                </GlassCard>
-              </Animated.View>
-            )}
-
-            {/* Wellness vitals card */}
-            {wellnessAvailable && <WellnessCard />}
-
-            {/* Profile completion card removed — nudge pill handles onboarding */}
+            <Animated.View style={card1Style}>
+              <DailyAlertsCard careProfileId={profile?.careProfileId} />
+              <TodaysMedicationsCard meds={!loaded || dataLoading ? null : meds} />
+            </Animated.View>
 
             {/* Appointment card */}
             <Animated.View style={card2Style}>
               {dataLoading ? (
-                <AnimatedBorderCard>
+                <AnimatedBorderCard onPress={() => router.push('/appointments' as any)}>
                   <View style={{ padding: 16 }}>
                     <ShimmerSkeleton width="50%" height={12} style={{ marginBottom: 12 }} />
                     <ShimmerSkeleton width="80%" height={16} style={{ marginBottom: 8 }} />
@@ -407,7 +337,7 @@ export default function HomeScreen() {
                   .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
                   .find((a) => new Date(a.dateTime).getTime() >= Date.now()) || appointments[0]
                 return (
-                  <AnimatedBorderCard>
+                  <AnimatedBorderCard onPress={() => router.push('/appointments' as any)}>
                     <View style={{ padding: 16 }}>
                       <Text style={[styles.cardLabel, { color: theme.textMuted }]}>NEXT APPOINTMENT</Text>
                       {!nextAppt ? (
@@ -438,24 +368,6 @@ export default function HomeScreen() {
               })()}
             </Animated.View>
 
-            {/* Care Hub Radar shortcut */}
-            <Animated.View style={card3Style}>
-              <GlassCard style={styles.card} onPress={() => router.push('/care-hub' as any)}>
-                <View style={styles.timelineRow}>
-                  <View style={[styles.timelineIcon, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
-                    <Ionicons name="pulse-outline" size={20} color="#6EE7B7" />
-                  </View>
-                  <View style={styles.timelineText}>
-                    <Text style={[styles.ctaTitle, { color: theme.text, fontSize: 14 }]}>Care Hub Radar</Text>
-                    <Text style={[styles.ctaSub, { color: theme.textMuted, fontSize: 12 }]}>
-                      Symptom trends, insights & activity
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
-                </View>
-              </GlassCard>
-            </Animated.View>
-
             {/* Timeline shortcut */}
             <Animated.View style={card3Style}>
               <GlassCard style={styles.card} onPress={() => router.push('/timeline' as any)}>
@@ -474,31 +386,45 @@ export default function HomeScreen() {
               </GlassCard>
             </Animated.View>
 
+            {/* Care Hub Radar shortcut */}
+            <Animated.View style={card3Style}>
+              <GlassCard style={styles.card} onPress={() => router.push('/care-hub' as any)}>
+                <View style={styles.timelineRow}>
+                  <View style={[styles.timelineIcon, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
+                    <Ionicons name="pulse-outline" size={20} color="#6EE7B7" />
+                  </View>
+                  <View style={styles.timelineText}>
+                    <Text style={[styles.ctaTitle, { color: theme.text, fontSize: 14 }]}>Care Hub Radar</Text>
+                    <Text style={[styles.ctaSub, { color: theme.textMuted, fontSize: 12 }]}>
+                      Symptom trends, insights & activity
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+                </View>
+              </GlassCard>
+            </Animated.View>
+
             {/* AI CTA card */}
             <View style={theme.shadowGlowViolet}>
               <Animated.View style={card3Style}>
-                <Pressable onPress={() => router.push('/(tabs)/chat')}>
-                  <AnimatedBorderCard>
-                    <View style={{ padding: 16 }}>
-                      <View style={styles.ctaRow}>
-                        <Text style={styles.ctaIcon}>✨</Text>
-                        <View style={styles.ctaText}>
-                          <Text style={[styles.ctaTitle, { color: theme.text }]}>Ask your AI companion</Text>
-                          <Text style={[styles.ctaSub, { color: theme.textMuted }]}>
-                            Side effects, dosing questions, what to expect…
-                          </Text>
-                        </View>
+                <AnimatedBorderCard onPress={() => router.push('/(tabs)/chat')}>
+                  <View style={{ padding: 16 }}>
+                    <View style={styles.ctaRow}>
+                      <Text style={styles.ctaIcon}>✨</Text>
+                      <View style={styles.ctaText}>
+                        <Text style={[styles.ctaTitle, { color: theme.text }]}>Ask your AI companion</Text>
+                        <Text style={[styles.ctaSub, { color: theme.textMuted }]}>
+                          Side effects, dosing questions, what to expect…
+                        </Text>
                       </View>
                     </View>
-                  </AnimatedBorderCard>
-                </Pressable>
+                  </View>
+                </AnimatedBorderCard>
               </Animated.View>
             </View>
           </Animated.View>
+          )}
         </ScrollView>
-
-        {/* Floating onboarding nudge */}
-        <OnboardingNudge />
 
         <Drawer
           visible={drawerOpen}
@@ -508,75 +434,6 @@ export default function HomeScreen() {
         />
       </View>
     </TabFadeWrapper>
-  )
-}
-
-/** Floating 3D pill that nudges user to complete onboarding */
-function OnboardingNudge() {
-  const theme = useTheme()
-  const onboarding = useOnboardingState()
-  const router = useRouter()
-  const [expanded, setExpanded] = useState(false)
-  const [dismissed, setDismissed] = useState(false)
-  const pulseAnim = useSharedValue(0)
-  const expandAnim = useSharedValue(0)
-
-  useEffect(() => {
-    // Gentle pulse glow
-    pulseAnim.value = withRepeat(
-      withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-      -1,
-      true,
-    )
-  }, [pulseAnim])
-
-  useEffect(() => {
-    expandAnim.value = withSpring(expanded ? 1 : 0, { damping: 15, stiffness: 150 })
-  }, [expanded, expandAnim])
-
-  const pillStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: 1 + pulseAnim.value * 0.03 },
-      { perspective: 800 },
-      { rotateX: `${pulseAnim.value * 2}deg` },
-    ],
-    shadowOpacity: 0.3 + pulseAnim.value * 0.2,
-  }))
-
-  const expandedStyle = useAnimatedStyle(() => ({
-    opacity: expandAnim.value,
-    maxHeight: expandAnim.value * 300,
-    transform: [{ translateY: (1 - expandAnim.value) * 20 }],
-  }))
-
-  if (onboarding.isComplete || dismissed) return null
-
-  const nextStep = onboarding.steps.find(s => !s.done) ?? onboarding.steps[0]!
-
-  return (
-    <Animated.View style={[styles.nudgeContainer, pillStyle]}>
-      <Pressable onPress={() => router.push('/setup' as any)}>
-        <LinearGradient
-          colors={['rgba(99,102,241,0.9)', 'rgba(167,139,250,0.9)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.nudgePill}
-        >
-          <View style={styles.nudgeRing}>
-            <Text style={styles.nudgeRingText}>
-              {onboarding.completedCount}/{onboarding.totalCount}
-            </Text>
-          </View>
-          <View style={styles.nudgeTextWrap}>
-            <Text style={styles.nudgeTitle} numberOfLines={1}>{nextStep.title}</Text>
-            <Text style={styles.nudgeSub} numberOfLines={1}>
-              {nextStep.description}
-            </Text>
-          </View>
-          <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.7)" />
-        </LinearGradient>
-      </Pressable>
-    </Animated.View>
   )
 }
 
@@ -713,9 +570,8 @@ const styles = StyleSheet.create({
   timelineRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   timelineIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   timelineText: { flex: 1 },
-  borderCardOuter: { borderRadius: 15, overflow: 'hidden', marginBottom: 12 },
-  borderCardGradientWrap: { alignItems: 'center', justifyContent: 'center' },
-  borderCardInner: { margin: 1.5, borderRadius: 14, overflow: 'hidden' },
+  borderCardOuter: { borderRadius: 15, marginBottom: 12, borderWidth: 1 },
+  borderCardInner: { borderRadius: 14, overflow: 'hidden' },
   profileCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -773,98 +629,5 @@ const styles = StyleSheet.create({
   profileChevron: {
     fontSize: 20,
     fontWeight: '600',
-  },
-  nudgeContainer: {
-    position: 'absolute',
-    bottom: 110,
-    left: 20,
-    right: 20,
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 24,
-    shadowOpacity: 0.4,
-    elevation: 12,
-    zIndex: 100,
-  },
-  nudgePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  nudgeRing: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2.5,
-    borderColor: 'rgba(255,255,255,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  nudgeRingText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  nudgeTextWrap: {
-    flex: 1,
-  },
-  nudgeTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  nudgeSub: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 11,
-    marginTop: 1,
-  },
-  nudgeExpanded: {
-    overflow: 'hidden',
-  },
-  nudgePanel: {
-    backgroundColor: 'rgba(12,14,26,0.97)',
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.25)',
-    backdropFilter: 'blur(20px)',
-  },
-  nudgeStepTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  nudgeStepDesc: {
-    fontSize: 12,
-    lineHeight: 16,
-    marginBottom: 12,
-  },
-  nudgeAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#6366F1',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    marginBottom: 8,
-  },
-  nudgeActionText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  nudgeDismiss: {
-    alignItems: 'center',
-    paddingVertical: 4,
   },
 })

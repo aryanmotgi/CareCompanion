@@ -277,7 +277,7 @@ PODS:
     - ExpoModulesCore
   - ExpoSystemUI (4.0.9):
     - ExpoModulesCore
-  - ExpoWebBrowser (13.0.3):
+  - ExpoWebBrowser (55.0.15):
     - ExpoModulesCore
   - EXStructuredHeaders (4.0.0)
   - EXUpdates (0.27.5):
@@ -2014,7 +2014,7 @@ DEPENDENCIES:
   - "ExpoSecureStore (from `../../../node_modules/.bun/expo-secure-store@13.0.2+ef5b2661220d5932/node_modules/expo-secure-store/ios`)"
   - "ExpoSensors (from `../../../node_modules/.bun/expo-sensors@14.0.2+ef5b2661220d5932/node_modules/expo-sensors/ios`)"
   - "ExpoSystemUI (from `../../../node_modules/.bun/expo-system-ui@4.0.9+c1f8088d7d2df354/node_modules/expo-system-ui/ios`)"
-  - "ExpoWebBrowser (from `../../../node_modules/.bun/expo-web-browser@13.0.3+9a1a613f606ebb7a/node_modules/expo-web-browser/ios`)"
+  - "ExpoWebBrowser (from `../../../node_modules/.bun/expo-web-browser@55.0.15+ef5b2661220d5932/node_modules/expo-web-browser/ios`)"
   - "EXStructuredHeaders (from `../../../node_modules/.bun/expo-structured-headers@4.0.0/node_modules/expo-structured-headers/ios`)"
   - "EXUpdates (from `../../../node_modules/.bun/expo-updates@0.27.5+ef5b2661220d5932/node_modules/expo-updates/ios`)"
   - "EXUpdatesInterface (from `../../../node_modules/.bun/expo-updates-interface@1.0.0+ef5b2661220d5932/node_modules/expo-updates-interface/ios`)"
@@ -2155,7 +2155,7 @@ EXTERNAL SOURCES:
   ExpoSystemUI:
     :path: "../../../node_modules/.bun/expo-system-ui@4.0.9+c1f8088d7d2df354/node_modules/expo-system-ui/ios"
   ExpoWebBrowser:
-    :path: "../../../node_modules/.bun/expo-web-browser@13.0.3+9a1a613f606ebb7a/node_modules/expo-web-browser/ios"
+    :path: "../../../node_modules/.bun/expo-web-browser@55.0.15+ef5b2661220d5932/node_modules/expo-web-browser/ios"
   EXStructuredHeaders:
     :path: "../../../node_modules/.bun/expo-structured-headers@4.0.0/node_modules/expo-structured-headers/ios"
   EXUpdates:
@@ -2328,7 +2328,7 @@ SPEC CHECKSUMS:
   ExpoSecureStore: 6506992a9f53c94ea716c54d4a63144965945c2c
   ExpoSensors: 02a52ddab1e3a8a1438258c3d87d1ee5f721743a
   ExpoSystemUI: b82a45cf0f6a4fa18d07c46deba8725dd27688b4
-  ExpoWebBrowser: cf10afe886891ab495877dada977fe6c269614a4
+  ExpoWebBrowser: 231c91ddd1e445d81d4a4cac364360354200c32f
   EXStructuredHeaders: 09c70347b282e3d2507e25fb4c747b1b885f87f6
   EXUpdates: 7483f5d63c87133a8b666048b4a460f1fae23a64
   EXUpdatesInterface: 7c977640bdd8b85833c19e3959ba46145c5719db

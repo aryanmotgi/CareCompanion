@@ -26,6 +26,11 @@ const TAB_BAR_CONTENT_HEIGHT = 68  // paddingTop(8)+icon(36)+dot(7)+label(13)+pa
 
 const STEPS = [
   {
+    tabIndex: 0,
+    label: 'Home',
+    text: 'Your dashboard — care progress, schedule, and quick actions at a glance.',
+  },
+  {
     tabIndex: 1,
     label: 'Chat',
     text: "Ask me anything about your loved one's care",
@@ -128,13 +133,64 @@ export function GuidedTour() {
 
   const isLast = step === STEPS.length - 1
 
+  // Restructured overlay: dim everything except a transparent rectangle over
+  // the target tab icon, so the highlighted tab stands out instead of being
+  // dimmed along with the rest of the screen.
+  const tabBarTotalHeight = TAB_BAR_CONTENT_HEIGHT + insets.bottom
+  const cutoutLeft = current.tabIndex * tabWidth
+  const cutoutWidth = tabWidth
+  const dimColor = 'rgba(0,0,0,0.72)'
+
   return (
     <Animated.View
-      style={[StyleSheet.absoluteFill, styles.overlay, overlayStyle]}
+      style={[StyleSheet.absoluteFill, overlayStyle]}
       pointerEvents="box-none"
     >
-      {/* Tap anywhere on backdrop to advance */}
-      <Pressable style={StyleSheet.absoluteFill} onPress={handleNext} />
+      {/* Top dim — everything above the tab bar. Catches taps so nothing behind it is interactive. */}
+      <View
+        style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: tabBarTotalHeight,
+          backgroundColor: dimColor,
+        }}
+        pointerEvents="auto"
+      />
+
+      {/* Tab bar row: dim everywhere except the target tab's column. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: 0, right: 0, bottom: 0,
+          height: tabBarTotalHeight,
+          flexDirection: 'row',
+        }}
+        pointerEvents="box-none"
+      >
+        <View style={{ width: cutoutLeft, height: '100%', backgroundColor: dimColor }} pointerEvents="auto" />
+        {/* Cutout — clear, but still blocks taps so user uses Next button. */}
+        <View style={{ width: cutoutWidth, height: '100%' }} pointerEvents="auto" />
+        <View style={{ flex: 1, height: '100%', backgroundColor: dimColor }} pointerEvents="auto" />
+      </View>
+
+      {/* Highlight ring around the target tab icon. Tab bar layout:
+          paddingTop(8) + iconWrapper(36) → icon vertical center sits 26px from
+          the top of the tab bar (i.e. tabBarContentHeight - 26 from its bottom).
+          We size the ring to just hug the 36px icon wrapper. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: cutoutLeft + cutoutWidth / 2 - 22,
+          bottom: insets.bottom + (TAB_BAR_CONTENT_HEIGHT - 26) - 22,
+          width: 44, height: 44, borderRadius: 22,
+          borderWidth: 2,
+          borderColor: theme.accent,
+          shadowColor: theme.accent,
+          shadowOpacity: 0.8,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 0 },
+        }}
+        pointerEvents="none"
+      />
 
       {/* Tooltip card */}
       <Animated.View

@@ -19,13 +19,18 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
 import { useRouter } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 import { signInWithCredentials, signInWithCareGroup } from '../src/services/auth'
 import { signInWithApple, isAppleSignInAvailable } from '../src/services/apple-auth'
 import { signInWithGoogle } from '../src/services/google-auth'
 import { RippleButton } from '../src/components/RippleButton'
+import { useTokenContext } from './_layout'
 
 export default function LoginScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const { markSignedIn } = useTokenContext()
   const [tab, setTab] = useState<'email' | 'care-group'>('email')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -46,6 +51,7 @@ export default function LoginScreen() {
     try {
       setSocialLoading('apple')
       await signInWithApple()
+      markSignedIn()
       router.replace('/(tabs)')
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Apple Sign-In failed'
@@ -62,6 +68,7 @@ export default function LoginScreen() {
     try {
       setSocialLoading('google')
       await signInWithGoogle()
+      markSignedIn()
       router.replace('/(tabs)')
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Google Sign-In failed'
@@ -96,6 +103,7 @@ export default function LoginScreen() {
           return
         }
         await signInWithCareGroup(groupName, groupPassword)
+        markSignedIn()
         router.replace('/(tabs)')
       } else {
         if (!email.trim() || !password) {
@@ -103,6 +111,7 @@ export default function LoginScreen() {
           return
         }
         await signInWithCredentials(email.trim().toLowerCase(), password)
+        markSignedIn()
         router.replace('/(tabs)')
       }
     } catch (e: unknown) {
@@ -125,6 +134,16 @@ export default function LoginScreen() {
       <LinearGradient colors={['#05060F', '#0C0E1A', '#05060F']} style={StyleSheet.absoluteFill} />
       <View style={[styles.orb, { top: -100, left: -80, backgroundColor: 'rgba(99,102,241,0.12)', width: 300, height: 300 }]} />
       <View style={[styles.orb, { bottom: 0, right: -80, backgroundColor: 'rgba(167,139,250,0.08)', width: 280, height: 280 }]} />
+
+      {router.canGoBack() && (
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={16}
+          style={{ position: 'absolute', left: 12, top: insets.top + 8, padding: 8, zIndex: 10 }}
+        >
+          <Ionicons name="chevron-back" size={28} color="white" />
+        </Pressable>
+      )}
 
       <View style={styles.content}>
         <Animated.View style={[styles.logoSection, logoStyle]}>
@@ -254,7 +273,7 @@ export default function LoginScreen() {
             </Text>
           </RippleButton>
 
-          <Pressable onPress={() => router.replace('/signup')}>
+          <Pressable onPress={() => router.push('/care-type' as any)}>
             <Text style={styles.createAccountText}>
               Don't have an account? <Text style={styles.createAccountLink}>Create one</Text>
             </Text>
