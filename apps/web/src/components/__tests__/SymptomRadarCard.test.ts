@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 // ── Pure logic inlined from SymptomRadarCard (private fns) ────────────────────
 
@@ -66,6 +66,17 @@ const HOUR = 60 * MIN
 const DAY = 24 * HOUR
 
 describe('hasCheckinToday', () => {
+  // Pin clock to mid-day so 1h/30min-ago offsets don't cross local midnight.
+  beforeEach(() => {
+    vi.useFakeTimers()
+    const fixed = new Date()
+    fixed.setHours(12, 0, 0, 0)
+    vi.setSystemTime(fixed)
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('returns false for empty array', () => {
     expect(hasCheckinToday([])).toBe(false)
   })
