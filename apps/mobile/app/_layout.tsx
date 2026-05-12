@@ -129,7 +129,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     void refreshTokenIfNeeded()
   }, [])
 
-  const route = segments[0]
+  const route = segments[0] as string | undefined
   const onWelcome = route === 'welcome'
   const isPublicRoute =
     route === 'login' ||
