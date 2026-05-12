@@ -44,7 +44,7 @@ interface NativeHealthKitBridge {
   }>
 }
 
-type BaselineCharacteristics = {
+export type BaselineCharacteristics = {
   dateOfBirth: string | null
   sexAtBirth: 'female' | 'male' | 'intersex' | null
 }
@@ -169,7 +169,7 @@ export async function replaceHealthKitData(): Promise<{
  * Used to decide whether to show the merge/replace prompt vs. straight sync.
  * Fails closed (returns false) — never blocks the connect flow on a preflight check.
  */
-async function hasExistingMedicalData(careProfileId: string): Promise<boolean> {
+export async function hasExistingMedicalData(careProfileId: string): Promise<boolean> {
   try {
     const [meds, labs, appts] = await Promise.all([
       apiClient.medications.list(careProfileId).catch(() => [] as unknown[]),

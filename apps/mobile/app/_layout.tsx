@@ -125,10 +125,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { state: tokenState } = useTokenContext()
   const { state: recordsState } = useRecordsContext()
 
-  useEffect(() => {
-    void refreshTokenIfNeeded()
-  }, [])
-
   const route = segments[0] as string | undefined
   const onWelcome = route === 'welcome'
   const isPublicRoute =
@@ -221,6 +217,10 @@ export default function RootLayout() {
 
   useEffect(() => {
     void initAnalytics()
+  }, [])
+
+  useEffect(() => {
+    void refreshTokenIfNeeded()
   }, [])
 
   const handleShake = useCallback(() => {
