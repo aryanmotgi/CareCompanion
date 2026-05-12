@@ -564,7 +564,12 @@ export const careGroups = pgTable('care_groups', {
 export const careGroupMembers = pgTable('care_group_members', {
   careGroupId: uuid('care_group_id').notNull().references(() => careGroups.id, { onDelete: 'cascade' }),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  role: text('role').notNull(),  // 'owner' | 'member'
+  role: text('role').notNull(),  // 'owner' | 'member' — group leadership axis
+  // ── Caregiver split (migration 011) ────────────────────────────────────────
+  userType: text('user_type').notNull().default('patient'),  // 'patient' | 'caregiver' — user type axis
+  relationship: text('relationship'),                         // 'spouse'|'parent'|'child'|'sibling'|'friend'|'other' (null for patients)
+  perms: jsonb('perms').notNull().default({}),                // { can_read_meds, can_read_appts, can_read_labs, can_chat, can_edit_appts }
+  paused: boolean('paused').notNull().default(false),         // patient's privacy mute toggle (deferred UI — see TODOS)
   joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow(),
 }, (t) => ({
   pk: primaryKey({ columns: [t.careGroupId, t.userId] }),
@@ -579,6 +584,36 @@ export const careGroupInvites = pgTable('care_group_invites', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+// ── Care Group Codes (migration 011) ──────────────────────────────────────────
+// 5-char invite codes (Crockford base32 minus 0/O/1/I/L/U). Replaces the long
+// invite token for new caregiver onboarding flows. Old `careGroupInvites`
+// coexists for 30 days behind a deprecation header.
+export const careGroupCodes = pgTable('care_group_codes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  careGroupId: uuid('care_group_id').notNull().references(() => careGroups.id, { onDelete: 'cascade' }),
+  code: text('code').notNull().unique(),
+  createdBy: uuid('created_by').notNull().references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  maxUses: integer('max_uses').notNull().default(5),
+  useCount: integer('use_count').notNull().default(0),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+})
+
+// ── Care Group Join Requests (migration 011) ──────────────────────────────────
+// Caregiver-first email fallback: when a caregiver downloads the app before
+// the patient has sent them a code, they enter the patient's email and the
+// patient gets an in-app approval prompt.
+export const careGroupJoinRequests = pgTable('care_group_join_requests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  patientUserId: uuid('patient_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  caregiverUserId: uuid('caregiver_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('pending'),  // 'pending' | 'approved' | 'denied' | 'expired'
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
 })
 
 // ── Clinical Trials — Mutations ───────────────────────────────────────────────
