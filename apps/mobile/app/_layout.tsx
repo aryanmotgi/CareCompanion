@@ -1,7 +1,7 @@
 // apps/mobile/app/_layout.tsx
 import { initSentry } from '../src/lib/sentry'
 import { initAnalytics } from '../src/lib/analytics'
-import { useEffect, useState, useCallback, createContext, useContext } from 'react'
+import { useEffect, useState, useCallback, useRef, createContext, useContext } from 'react'
 
 initSentry()
 import { Stack, Redirect, useSegments } from 'expo-router'
@@ -149,17 +149,42 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const needsRecordsOnboarding = recordsState === 'pending' && onTabs
   const needsTabs = tokenState === 'present' && isPublicRoute && recordsState !== 'pending'
 
+  // Cold-launch funnel restart. Until the user completes records onboarding,
+  // every cold launch routes to /welcome. That covers two cases:
+  //   1. No token: expo-router can restore to an onboarding route, and the
+  //      `!isOnboardingRoute` exemption on `needsLogin` would leave an
+  //      unauthenticated user stuck there. Force /welcome instead.
+  //   2. Token + records pending: the user created an account but hasn't
+  //      finished onboarding. Resuming mid-flow on cold launch is unwanted
+  //      product behavior — restart the funnel so they see the carousel and
+  //      can sign back in (or get started), then land back on
+  //      /onboarding-records via the gate below.
+  // Fully-onboarded users (tokenState='present' AND recordsState='onboarded')
+  // are unaffected — they go straight to /(tabs).
+  const hasCommittedSettled = useRef(false)
+  const allStatesReady = welcomeState !== 'loading' && tokenState !== 'loading' && recordsState !== 'loading'
+  useEffect(() => {
+    if (allStatesReady) hasCommittedSettled.current = true
+  }, [allStatesReady])
+  const needsFunnelRestart =
+    allStatesReady &&
+    !hasCommittedSettled.current &&
+    (tokenState === 'absent' || recordsState === 'pending') &&
+    !onWelcome
+
   // The Stack must mount on the first render (otherwise expo-router throws
   // "Attempted to navigate before mounting the Root Layout"). We render it
   // unconditionally and use <Redirect> as a sibling to drive navigation, plus
   // an overlay during the initial read so the underlying route never flashes.
   const loading = tokenState === 'loading' || welcomeState === 'loading' || recordsState === 'loading'
 
-  // Single redirect target with explicit priority: welcome trumps records
-  // onboarding, which trumps login, etc. Rendering multiple <Redirect> siblings
-  // produces undefined ordering — only one should ever be active per render.
+  // Single redirect target with explicit priority: cold-launch-without-token
+  // restart trumps everything, then welcome, then records onboarding, then
+  // login. Rendering multiple <Redirect> siblings produces undefined ordering —
+  // only one should ever be active per render.
   let redirectTo: string | null = null
-  if (needsWelcome) redirectTo = '/welcome'
+  if (needsFunnelRestart) redirectTo = '/welcome'
+  else if (needsWelcome) redirectTo = '/welcome'
   else if (needsLogin) redirectTo = '/login'
   else if (needsRecordsOnboarding) redirectTo = '/onboarding-records'
   // needsTabs already requires recordsState !== 'pending', so always /(tabs).

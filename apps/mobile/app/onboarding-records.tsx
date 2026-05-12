@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons'
 import {
   requestHealthKitPermissions,
   markHealthKitConnected,
+  syncHealthKitData,
 } from '../src/services/healthkit'
 import { useRecordsContext } from './_layout'
 
@@ -37,22 +38,51 @@ export default function OnboardingRecordsScreen() {
     if (requesting) return
     setRequesting(true)
     try {
-      // Triggers Apple Health's full "Share Health Records" flow (Add Account →
-      // provider portal). Works fully on real devices. On simulator the user
-      // can dismiss/cancel and we still proceed — that's the only way to test
-      // without a real hospital portal account.
+      // Apple's requestAuthorization returns success=true whenever iOS shows
+      // the picker, regardless of what the user actually chose — Apple
+      // deliberately hides clinical-record auth decisions for privacy. So
+      // `granted` only tells us the dialog wasn't blocked by an error; it
+      // does NOT tell us whether the user picked a provider.
       const granted = await requestHealthKitPermissions()
-      if (granted) {
-        await markHealthKitConnected().catch(() => {})
+      if (!granted) return
+
+      // Proxy for "did the user actually connect a provider": try to sync
+      // clinical records. If any flow back, they picked a provider. Zero =
+      // they cancelled the picker (or haven't completed provider sign-in
+      // yet) and we keep them on this screen. No back door to /(tabs)
+      // without real records.
+      const { synced } = await syncHealthKitData()
+      if (synced === 0) {
+        Alert.alert(
+          'No health records found',
+          __DEV__
+            ? 'Simulator can\'t reach real provider portals. Use Skip (dev only) to bypass this screen for testing.'
+            : 'Tap Connect Apple Health and select your healthcare provider. If you just added one, give it a moment to sync, then try again.',
+          __DEV__
+            ? [
+                { text: 'Try Again', style: 'cancel' },
+                {
+                  text: 'Skip (dev only)',
+                  onPress: () => {
+                    markOnboarded()
+                    router.replace('/(tabs)')
+                  },
+                },
+              ]
+            : [{ text: 'OK' }]
+        )
+        return
       }
-      // Mark onboarded whether granted or not — they've been through the flow.
+
+      await markHealthKitConnected().catch(() => {})
       markOnboarded()
       router.replace('/(tabs)')
     } catch (err) {
-      console.warn('[onboarding-records] HealthKit request failed:', err)
-      // Still let them through so they aren't stuck.
-      markOnboarded()
-      router.replace('/(tabs)')
+      console.warn('[onboarding-records] HealthKit connect failed:', err)
+      Alert.alert(
+        'Could not connect Apple Health',
+        'Please try again. If the problem persists, restart the app.'
+      )
     } finally {
       setRequesting(false)
     }
