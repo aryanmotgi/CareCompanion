@@ -74,6 +74,96 @@ const Bridge: NativeHealthKitBridge | null =
   Platform.OS === 'ios' ? (NativeModules.HealthKitBridge ?? null) : null
 
 // ---------------------------------------------------------------------------
+// __DEV__ mock data
+// ---------------------------------------------------------------------------
+//
+// The iOS Simulator can't connect to real healthcare provider OAuth portals,
+// so HKClinicalRecord queries always return []. This mock substitutes 5
+// FHIR-shaped records on simulator builds (gated by __DEV__) so we can walk
+// the post-onboarding screens with realistic shapes. Production builds are
+// unaffected — the mock array is never read when __DEV__ is false.
+
+const DEV_MOCK_RECORDS: RawClinicalRecord[] = [
+  {
+    id: 'mock-med-1',
+    type: 'HKClinicalTypeIdentifierMedicationRecord',
+    displayName: 'Tamoxifen',
+    startDate: '2026-04-15T09:00:00Z',
+    fhirData: JSON.stringify({
+      resourceType: 'MedicationRequest',
+      status: 'active',
+      medicationCodeableConcept: {
+        coding: [{ display: 'Tamoxifen 20 mg oral tablet', code: '198240', system: 'http://www.nlm.nih.gov/research/umls/rxnorm' }],
+      },
+      dosageInstruction: [{
+        text: '20 mg once daily',
+        timing: { repeat: { frequency: 1, period: 1, periodUnit: 'd' } },
+      }],
+      requester: { display: 'Dr. Sarah Chen, MD — Memorial Oncology' },
+    }),
+  },
+  {
+    id: 'mock-med-2',
+    type: 'HKClinicalTypeIdentifierMedicationRecord',
+    displayName: 'Trastuzumab',
+    startDate: '2026-03-01T10:30:00Z',
+    fhirData: JSON.stringify({
+      resourceType: 'MedicationRequest',
+      status: 'active',
+      medicationCodeableConcept: {
+        coding: [{ display: 'Trastuzumab 420 mg IV infusion', code: '224905', system: 'http://www.nlm.nih.gov/research/umls/rxnorm' }],
+      },
+      dosageInstruction: [{
+        text: '420 mg IV every 3 weeks',
+        timing: { repeat: { frequency: 1, period: 3, periodUnit: 'wk' } },
+      }],
+      requester: { display: 'Dr. Sarah Chen, MD — Memorial Oncology' },
+    }),
+  },
+  {
+    id: 'mock-lab-1',
+    type: 'HKClinicalTypeIdentifierLabResultRecord',
+    displayName: 'Hemoglobin',
+    startDate: '2026-05-08T08:15:00Z',
+    fhirData: JSON.stringify({
+      resourceType: 'Observation',
+      status: 'final',
+      code: { coding: [{ display: 'Hemoglobin', code: '718-7', system: 'http://loinc.org' }] },
+      valueQuantity: { value: 11.2, unit: 'g/dL', system: 'http://unitsofmeasure.org', code: 'g/dL' },
+      referenceRange: [{ low: { value: 12.0 }, high: { value: 15.5 }, text: '12.0 – 15.5 g/dL' }],
+      interpretation: [{ coding: [{ code: 'L', display: 'Low' }] }],
+    }),
+  },
+  {
+    id: 'mock-lab-2',
+    type: 'HKClinicalTypeIdentifierLabResultRecord',
+    displayName: 'Absolute Neutrophil Count',
+    startDate: '2026-05-08T08:15:00Z',
+    fhirData: JSON.stringify({
+      resourceType: 'Observation',
+      status: 'final',
+      code: { coding: [{ display: 'Neutrophils [#/volume] in Blood', code: '751-8', system: 'http://loinc.org' }] },
+      valueQuantity: { value: 1.8, unit: '10*3/uL', system: 'http://unitsofmeasure.org' },
+      referenceRange: [{ low: { value: 1.5 }, high: { value: 8.0 }, text: '1.5 – 8.0 ×10³/μL' }],
+    }),
+  },
+  {
+    id: 'mock-lab-3',
+    type: 'HKClinicalTypeIdentifierLabResultRecord',
+    displayName: 'Platelets',
+    startDate: '2026-05-08T08:15:00Z',
+    fhirData: JSON.stringify({
+      resourceType: 'Observation',
+      status: 'final',
+      code: { coding: [{ display: 'Platelets [#/volume] in Blood', code: '777-3', system: 'http://loinc.org' }] },
+      valueQuantity: { value: 145, unit: '10*3/uL', system: 'http://unitsofmeasure.org' },
+      referenceRange: [{ low: { value: 150 }, high: { value: 400 }, text: '150 – 400 ×10³/μL' }],
+      interpretation: [{ coding: [{ code: 'L', display: 'Low' }] }],
+    }),
+  },
+]
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -124,6 +214,15 @@ export async function syncHealthKitData(): Promise<{ synced: number }> {
   } catch (err) {
     console.warn('[HealthKit] fetchClinicalRecords failed:', err)
     return { synced: 0 }
+  }
+
+  // __DEV__ MOCK: the simulator can never surface real HKClinicalRecord data
+  // (no path to provider OAuth portals). Substitute hardcoded FHIR-shaped
+  // records so we can walk the post-onboarding screens (home, timeline, AI)
+  // with realistic shapes. Production builds are unaffected.
+  if (__DEV__ && raw.length === 0) {
+    raw = DEV_MOCK_RECORDS
+    console.log('[HealthKit] __DEV__: substituting', raw.length, 'mock clinical records (simulator has no real provider portal)')
   }
 
   const records: HealthKitRecord[] = raw.flatMap((r) => {
