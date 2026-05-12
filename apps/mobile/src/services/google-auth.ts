@@ -52,26 +52,24 @@ export async function signInWithGoogle(): Promise<void> {
     throw new Error(data.error ?? 'Google Sign-In failed')
   }
 
-  const setCookie = res.headers.get('set-cookie') ?? ''
-  const sessionCookieName =
-    setCookie.includes('__Secure-authjs.session-token')
-      ? '__Secure-authjs.session-token'
-      : 'authjs.session-token'
-  const match = setCookie.match(new RegExp(`${sessionCookieName}=([^;]+)`))
-  const sessionToken = match?.[1]
+  const data = await res.json()
 
-  if (!sessionToken) {
-    const data = await res.json().catch(() => ({}))
-    if (data.sessionToken) {
-      await SecureStore.setItemAsync('cc-session-token', data.sessionToken, {
-        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-      })
-      return
-    }
+  if (!data.token) {
     throw new Error('No session token received from Google Sign-In')
   }
 
-  await SecureStore.setItemAsync('cc-session-token', sessionToken, {
+  await SecureStore.setItemAsync('cc-session-token', data.token, {
     keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
   })
+
+  if (data.user?.id) {
+    await SecureStore.setItemAsync('cc-user-id', data.user.id, {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    })
+  }
+  if (data.user?.email) {
+    await SecureStore.setItemAsync('cc-user-email', data.user.email, {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    })
+  }
 }

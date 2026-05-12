@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
-import { jwtVerify, createRemoteJWKSet } from 'jose'
+import { jwtVerify, createRemoteJWKSet, SignJWT } from 'jose'
 
 /**
  * POST /api/auth/social
@@ -82,15 +82,27 @@ export async function POST(req: Request) {
       user = newUser
     }
 
-    // Return user info for the mobile app to establish a session
-    // The mobile app will use this to call the NextAuth credentials callback
-    // or store the session directly
+    const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!)
+    const token = await new SignJWT({
+      sub: user.id,
+      id: user.id,
+      email: user.email ?? '',
+      name: user.displayName ?? user.email ?? '',
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('30d')
+      .sign(secret)
+
     return NextResponse.json(
       {
-        id: user.id,
-        email: user.email,
-        displayName: user.displayName,
-        provider,
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          displayName: user.displayName,
+          provider,
+        },
       },
       { status: 200 },
     )

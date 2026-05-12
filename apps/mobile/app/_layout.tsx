@@ -13,12 +13,17 @@ import { TestModeBanner } from '../src/components/TestModeBanner'
 import { useShakeDetector } from '../src/hooks/useShakeDetector'
 import { BugReportSheet } from '../src/components/BugReportSheet'
 import { ProfileProvider } from '../src/context/ProfileContext'
+import { refreshTokenIfNeeded } from '../src/services/token-refresh'
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const segments = useSegments()
   const router = useRouter()
   const theme = useTheme()
   const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    void refreshTokenIfNeeded()
+  }, [])
 
   useEffect(() => {
     async function check() {
