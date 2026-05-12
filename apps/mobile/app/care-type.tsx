@@ -32,31 +32,35 @@ export default function CareTypeScreen() {
       </Pressable>
 
       <View style={[styles.content, { paddingTop: insets.top + 80, paddingBottom: insets.bottom + 24 }]}>
-        <Text style={styles.title}>How would you like to use CareCompanion?</Text>
-        <Text style={styles.subtitle}>Pick the option that fits you best — you can change this later.</Text>
+        <Text style={styles.title}>Who are you?</Text>
+        <Text style={styles.subtitle}>
+          CareCompanion adapts to your role — patients manage their care, caregivers help someone else.
+        </Text>
 
         <View style={styles.cards}>
           <OptionCard
             icon="person-outline"
-            title="Self Care"
-            body="Manage your own care — medications, appointments, AI support."
-            onPress={() => router.push('/signup?type=self&role=self' as any)}
-            primary
+            title="I'm a patient"
+            body="Manage your medications, appointments, and care team — with help from an AI companion that knows your case."
+            onPress={() => router.push('/signup?type=patient' as any)}
           />
           <OptionCard
             icon="people-outline"
-            title="Assisted Care"
-            body="Patient and caregiver coordinate together in one shared view."
-            onPress={() => router.push('/care-role' as any)}
-            primary
-          />
-          <OptionCard
-            icon="log-in-outline"
-            title="I already have an account"
-            body="Sign in to your existing CareCompanion account."
-            onPress={() => router.push('/login')}
+            title="I'm a caregiver"
+            body="Join a patient's care circle to keep up with their medications, appointments, and how they're doing."
+            onPress={() => router.push('/signup?type=caregiver' as any)}
           />
         </View>
+
+        <Pressable
+          onPress={() => router.push('/login')}
+          hitSlop={12}
+          style={styles.signInLink}
+        >
+          <Text style={styles.signInText}>
+            Already have an account? <Text style={styles.signInBold}>Sign in</Text>
+          </Text>
+        </Pressable>
       </View>
     </View>
   )
@@ -67,25 +71,22 @@ function OptionCard({
   title,
   body,
   onPress,
-  primary = false,
 }: {
   icon: keyof typeof Ionicons.glyphMap
   title: string
   body: string
   onPress: () => void
-  primary?: boolean
 }) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        primary && styles.cardPrimary,
         pressed && { transform: [{ scale: 0.98 }] },
       ]}
     >
       <BlurView intensity={36} tint="dark" style={StyleSheet.absoluteFillObject} />
-      <View style={[styles.iconWrap, { backgroundColor: ACCENT + (primary ? '33' : '22') }]}>
+      <View style={[styles.iconWrap, { backgroundColor: ACCENT + '33' }]}>
         <Ionicons name={icon} size={22} color={ACCENT} />
       </View>
       <View style={{ flex: 1 }}>
@@ -99,37 +100,12 @@ function OptionCard({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#05060F' },
-  orb: {
-    position: 'absolute',
-    width: 360,
-    height: 360,
-    borderRadius: 180,
-  },
-  backBtn: {
-    position: 'absolute',
-    left: 12,
-    zIndex: 10,
-    padding: 8,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    justifyContent: 'center',
-  },
-  title: {
-    color: 'white',
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: -0.7,
-    marginBottom: 10,
-  },
-  subtitle: {
-    color: '#FFFFFFAA',
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 32,
-  },
-  cards: { gap: 14 },
+  orb: { position: 'absolute', width: 360, height: 360, borderRadius: 180 },
+  backBtn: { position: 'absolute', left: 12, zIndex: 10, padding: 8 },
+  content: { flex: 1, paddingHorizontal: 24, justifyContent: 'center' },
+  title: { color: 'white', fontSize: 28, fontWeight: '800', letterSpacing: -0.7, marginBottom: 10 },
+  subtitle: { color: '#FFFFFFAA', fontSize: 15, lineHeight: 22, marginBottom: 32 },
+  cards: { gap: 14, marginBottom: 32 },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -137,20 +113,14 @@ const styles = StyleSheet.create({
     padding: 18,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#FFFFFF14',
+    borderColor: ACCENT + '55',
     overflow: 'hidden',
     backgroundColor: '#FFFFFF06',
   },
-  cardPrimary: {
-    borderColor: ACCENT + '55',
-  },
-  iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  iconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   cardTitle: { color: 'white', fontSize: 16, fontWeight: '700' },
   cardBody: { color: '#FFFFFFB0', fontSize: 13, lineHeight: 18, marginTop: 4 },
+  signInLink: { alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 16 },
+  signInText: { color: '#FFFFFFAA', fontSize: 14 },
+  signInBold: { color: ACCENT, fontWeight: '700' },
 })

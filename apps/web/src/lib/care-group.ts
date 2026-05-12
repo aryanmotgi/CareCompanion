@@ -15,7 +15,7 @@
  * See ~/.gstack/projects/aryanmotgi-CareCompanion/ceo-plans/2026-05-12-patient-caregiver-onboarding.md
  */
 import { db } from './db'
-import { careGroupMembers, careGroups } from './db/schema'
+import { careGroupMembers } from './db/schema'
 import { and, eq } from 'drizzle-orm'
 import { randomBytes } from 'crypto'
 

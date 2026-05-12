@@ -219,6 +219,67 @@ export function createApiClient(config: ApiClientConfig) {
           joined: boolean
           name?: string
         }>,
+      // ── 5-char code flow (migration 011) ────────────────────────────────────
+      codeCurrent: (careGroupId: string) =>
+        apiFetch(config, `/api/care-group/code?careGroupId=${encodeURIComponent(careGroupId)}`, { method: 'GET' }) as Promise<{
+          code: string | null
+          expiresAt?: string
+          useCount?: number
+          maxUses?: number
+        }>,
+      codeGenerate: (careGroupId: string, csrfToken: string) =>
+        apiFetch(config, '/api/care-group/code', {
+          method: 'POST',
+          body: JSON.stringify({ careGroupId }),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ code: string; expiresAt: string; useCount: number; maxUses: number }>,
+      codeRotate: (careGroupId: string, csrfToken: string) =>
+        apiFetch(config, '/api/care-group/code/rotate', {
+          method: 'POST',
+          body: JSON.stringify({ careGroupId }),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ code: string; expiresAt: string; useCount: number; maxUses: number }>,
+      codeRevoke: (careGroupId: string, csrfToken: string) =>
+        apiFetch(config, '/api/care-group/code/revoke', {
+          method: 'POST',
+          body: JSON.stringify({ careGroupId }),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ revoked: true }>,
+      joinByCode: (code: string, relationship: string, csrfToken: string) =>
+        apiFetch(config, '/api/care-group/join-by-code', {
+          method: 'POST',
+          body: JSON.stringify({ code, relationship }),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ careGroupId: string; patientName: string | null; patientPhotoUrl: string | null }>,
+      // ── Caregiver-first email fallback ──────────────────────────────────────
+      requestJoinByEmail: (patientEmail: string, csrfToken: string) =>
+        apiFetch(config, '/api/care-group/request-join', {
+          method: 'POST',
+          body: JSON.stringify({ patientEmail }),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ sent: true }>,
+      pendingRequests: () =>
+        apiFetch(config, '/api/care-group/request-join', { method: 'GET' }) as Promise<{
+          requests: Array<{
+            id: string
+            createdAt: string
+            caregiverUserId: string
+            caregiverDisplayName: string | null
+            caregiverEmail: string
+          }>
+        }>,
+      approveRequest: (id: string, relationship: string, careGroupId: string, csrfToken: string) =>
+        apiFetch(config, `/api/care-group/request-join/${id}/approve`, {
+          method: 'POST',
+          body: JSON.stringify({ relationship, careGroupId }),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ approved: true; careGroupId: string }>,
+      denyRequest: (id: string, csrfToken: string) =>
+        apiFetch(config, `/api/care-group/request-join/${id}/deny`, {
+          method: 'POST',
+          body: JSON.stringify({}),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ denied: true }>,
     },
     community: {
       list: (params: { cancerType?: string; limit?: number; offset?: number } = {}) => {
