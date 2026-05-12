@@ -63,8 +63,40 @@ export function createApiClient(config: ApiClientConfig) {
     medications: {
       list: (careProfileId: string) =>
         apiFetch(config, `/api/records/medications?care_profile_id=${careProfileId}`, { method: 'GET' }) as Promise<Medication[]>,
-      create: (data: Partial<Medication>) =>
-        apiFetch(config, '/api/records/medications', { method: 'POST', body: JSON.stringify(data) }) as Promise<Medication>,
+      create: (data: Partial<Medication>, csrfToken: string) =>
+        apiFetch(config, '/api/records/medications', {
+          method: 'POST',
+          headers: { 'x-csrf-token': csrfToken },
+          body: JSON.stringify(data),
+        }) as Promise<Medication>,
+      delete: (id: string, csrfToken: string) =>
+        apiFetch(config, '/api/records/medications', {
+          method: 'DELETE',
+          headers: { 'x-csrf-token': csrfToken },
+          body: JSON.stringify({ id }),
+        }) as Promise<{ ok: boolean }>,
+    },
+    interactions: {
+      checkAll: (csrfToken: string) =>
+        apiFetch(config, '/api/interactions/check', {
+          method: 'POST',
+          headers: { 'x-csrf-token': csrfToken },
+          body: JSON.stringify({ check_all: true }),
+        }) as Promise<{
+          ok: boolean
+          data: {
+            interactions: Array<{
+              drug_a: string
+              drug_b: string
+              severity: 'major' | 'moderate' | 'minor'
+              description: string
+              recommendation: string
+            }>
+            allergy_warnings: Array<{ medication: string; allergy: string; risk: string }>
+            summary: string
+            safe_to_combine: boolean
+          }
+        }>,
     },
     labResults: {
       list: (careProfileId: string) =>
@@ -73,6 +105,18 @@ export function createApiClient(config: ApiClientConfig) {
     appointments: {
       list: (careProfileId: string) =>
         apiFetch(config, `/api/records/appointments?care_profile_id=${careProfileId}`, { method: 'GET' }) as Promise<Appointment[]>,
+      create: (data: Record<string, unknown>, csrfToken: string) =>
+        apiFetch(config, '/api/records/appointments', {
+          method: 'POST',
+          headers: { 'x-csrf-token': csrfToken },
+          body: JSON.stringify(data),
+        }) as Promise<Appointment>,
+      delete: (id: string, csrfToken: string) =>
+        apiFetch(config, '/api/records/appointments', {
+          method: 'DELETE',
+          headers: { 'x-csrf-token': csrfToken },
+          body: JSON.stringify({ id }),
+        }) as Promise<{ ok: boolean }>,
     },
     timeline: {
       list: (profileId: string, days = 7) =>
@@ -138,10 +182,10 @@ export function createApiClient(config: ApiClientConfig) {
           method: 'POST',
           body: JSON.stringify({ records }),
         }) as Promise<{ synced: number }>,
-      replace: (records: HealthKitRecord[]) =>
+      replace: (records: HealthKitRecord[], options?: { keepCareProfile?: boolean }) =>
         apiFetch(config, '/api/healthkit/replace', {
           method: 'POST',
-          body: JSON.stringify({ records }),
+          body: JSON.stringify({ records, keepCareProfile: options?.keepCareProfile ?? false }),
         }) as Promise<{ synced: number; errors: number; deleted: { medications: number; appointments: number; labResults: number } }>,
     },
     auth: {
@@ -273,12 +317,19 @@ export function createApiClient(config: ApiClientConfig) {
           headers: { 'x-csrf-token': csrfToken },
         }) as Promise<{ ok: boolean }>,
     },
-    updateMe: (data: Record<string, unknown>, csrfToken: string) =>
-      apiFetch(config, '/api/me', {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-        headers: { 'x-csrf-token': csrfToken },
-      }) as Promise<{ ok: boolean }>,
+    /**
+     * Update care profile fields. Backend expects snake_case keys
+     * (cancer_type, cancer_stage, treatment_phase, conditions, allergies,
+     * onboarding_completed). See apps/web/src/app/api/records/profile/route.ts.
+     */
+    careProfile: {
+      update: (data: Record<string, unknown>, csrfToken: string) =>
+        apiFetch(config, '/api/records/profile', {
+          method: 'PATCH',
+          body: JSON.stringify(data),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ ok: boolean; data?: unknown }>,
+    },
     me: () =>
       apiFetch(config, '/api/me', { method: 'GET' }) as Promise<{
         userId: string
