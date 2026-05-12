@@ -12,13 +12,18 @@ import { useTheme } from '../src/theme'
 import { TestModeBanner } from '../src/components/TestModeBanner'
 import { useShakeDetector } from '../src/hooks/useShakeDetector'
 import { BugReportSheet } from '../src/components/BugReportSheet'
-import { ProfileProvider } from '../src/context/ProfileContext'
+import { ProfileProvider, useProfile } from '../src/context/ProfileContext'
+import { refreshTokenIfNeeded } from '../src/services/token-refresh'
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const segments = useSegments()
   const router = useRouter()
   const theme = useTheme()
   const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    void refreshTokenIfNeeded()
+  }, [])
 
   useEffect(() => {
     async function check() {
@@ -44,6 +49,23 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       </View>
     )
   }
+
+  return <>{children}</>
+}
+
+function OnboardingGate({ children }: { children: React.ReactNode }) {
+  const { profile, loading } = useProfile()
+  const segments = useSegments()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (loading) return
+    if (!profile) return
+    const onSetup = segments[0] === 'setup' || segments[0] === 'health-consent' || segments[0] === 'health-connect'
+    if (!profile.onboardingCompleted && !onSetup) {
+      router.replace('/setup')
+    }
+  }, [profile, loading, segments, router])
 
   return <>{children}</>
 }
@@ -76,7 +98,9 @@ export default function RootLayout() {
       <TestModeBanner />
       <AuthGate>
         <ProfileProvider>
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }} />
+          <OnboardingGate>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }} />
+          </OnboardingGate>
         </ProfileProvider>
       </AuthGate>
       <BugReportSheet

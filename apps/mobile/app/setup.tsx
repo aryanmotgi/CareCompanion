@@ -184,6 +184,25 @@ export default function SetupScreen() {
     }
 
     if (isLastStep) {
+      if (profile?.careProfileId) {
+        try {
+          const token = await SecureStore.getItemAsync('cc-session-token')
+          const isSecure = API_BASE.startsWith('https://')
+          const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
+          await fetch(`${API_BASE}/api/onboarding/complete`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cookie': `${cookieName}=${token}`,
+              'x-csrf-token': csrfToken || '',
+            },
+            body: JSON.stringify({ careProfileId: profile.careProfileId }),
+          })
+          await refetch()
+        } catch (e) {
+          console.error('[Setup] onboarding/complete failed:', e)
+        }
+      }
       router.back()
     } else {
       setManualStep(prev => prev + 1)
