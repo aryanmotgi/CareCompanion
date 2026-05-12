@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   const { user, error: authError } = await getAuthenticatedUser()
   if (authError) return authError
 
-  const { records = [] }: { records: HealthKitRecord[] } = await req.json()
+  const { records = [], keepCareProfile = false }: { records: HealthKitRecord[]; keepCareProfile?: boolean } = await req.json()
 
   const careProfile = await db.query.careProfiles.findFirst({
     where: eq(careProfiles.userId, user.id),
@@ -39,29 +39,31 @@ export async function POST(req: Request) {
     const labRows = await tx.delete(labResults).where(eq(labResults.userId, user.id)).returning({ id: labResults.id })
     deleted.labResults = labRows.length
 
-    await tx
-      .update(careProfiles)
-      .set({
-        patientName: null,
-        patientAge: null,
-        relationship: null,
-        cancerType: null,
-        cancerStage: null,
-        treatmentPhase: null,
-        conditions: null,
-        allergies: null,
-        onboardingCompleted: false,
-        onboardingPriorities: [],
-        emergencyContactName: null,
-        emergencyContactPhone: null,
-        caregivingExperience: null,
-        primaryConcern: null,
-        city: null,
-        state: null,
-        zipCode: null,
-        fieldOverrides: null,
-      })
-      .where(eq(careProfiles.id, careProfile.id))
+    if (!keepCareProfile) {
+      await tx
+        .update(careProfiles)
+        .set({
+          patientName: null,
+          patientAge: null,
+          relationship: null,
+          cancerType: null,
+          cancerStage: null,
+          treatmentPhase: null,
+          conditions: null,
+          allergies: null,
+          onboardingCompleted: false,
+          onboardingPriorities: [],
+          emergencyContactName: null,
+          emergencyContactPhone: null,
+          caregivingExperience: null,
+          primaryConcern: null,
+          city: null,
+          state: null,
+          zipCode: null,
+          fieldOverrides: null,
+        })
+        .where(eq(careProfiles.id, careProfile.id))
+    }
   })
 
   // ── Sync phase: best-effort upserts (matches /api/healthkit/sync) ──────────
@@ -146,7 +148,7 @@ export async function POST(req: Request) {
     user_id: user.id,
     action: 'replace_data',
     resource_type: 'healthkit',
-    details: { deleted, synced: counts, careProfileReset: true },
+    details: { deleted, synced: counts, careProfileReset: !keepCareProfile },
   })
 
   return NextResponse.json({ deleted, synced, errors })

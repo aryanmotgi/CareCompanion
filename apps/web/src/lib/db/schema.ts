@@ -56,6 +56,13 @@ export const careProfiles = pgTable('care_profiles', {
   city:    text('city'),
   state:   text('state'),
   zipCode: text('zip_code'),
+  // ── Tier-1 onboarding additions (migration 010) ─────────────────────────
+  dateOfBirth:     date('date_of_birth'),               // PHI — never log
+  sexAtBirth:      text('sex_at_birth'),                // 'female' | 'male' | 'intersex' | 'prefer_not'
+  biomarkers:      jsonb('biomarkers'),                 // cancer-type-specific keys: HER2, ER, PR, EGFR, ALK, PD-L1, KRAS, …
+  diagnosisDate:   date('diagnosis_date'),
+  ecogStatus:      integer('ecog_status'),              // 0..4
+  priorTreatments: text('prior_treatments'),
   fieldOverrides: jsonb('field_overrides'),            // { cancerType: true, stage: true, ... } — FHIR sync skips true fields
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })
