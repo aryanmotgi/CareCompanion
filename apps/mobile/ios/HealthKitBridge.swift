@@ -22,6 +22,62 @@ class HealthKitBridge: NSObject {
 
   // MARK: - Authorization
 
+  // Characteristic types — read-only, do NOT require clinical-records entitlement.
+  // Safe to read on a sim with ad-hoc signing.
+  private let characteristicTypes: Set<HKObjectType> = {
+    let types: [HKCharacteristicTypeIdentifier] = [.dateOfBirth, .biologicalSex]
+    return Set(types.compactMap { HKObjectType.characteristicType(forIdentifier: $0) })
+  }()
+
+  // MARK: - Baseline characteristics (DOB, sex at birth)
+
+  @objc func requestBaselineAuthorization(_ resolve: @escaping RCTPromiseResolveBlock,
+                                           rejecter reject: @escaping RCTPromiseRejectBlock) {
+    guard HKHealthStore.isHealthDataAvailable() else { resolve(false); return }
+    store.requestAuthorization(toShare: [], read: characteristicTypes) { success, error in
+      if let error = error {
+        reject("HK_AUTH_ERROR", error.localizedDescription, error)
+      } else {
+        resolve(success)
+      }
+    }
+  }
+
+  /// Returns { dateOfBirth: "YYYY-MM-DD" | null, sexAtBirth: "female"|"male"|"other"|"prefer_not"|null }.
+  /// HealthKit doesn't tell us whether the user denied vs. just hasn't entered the value, so a null
+  /// field just means "not available" — the JS layer should fall back to manual entry.
+  @objc func getBaselineCharacteristics(_ resolve: @escaping RCTPromiseResolveBlock,
+                                         rejecter reject: @escaping RCTPromiseRejectBlock) {
+    guard HKHealthStore.isHealthDataAvailable() else {
+      resolve(["dateOfBirth": NSNull(), "sexAtBirth": NSNull()])
+      return
+    }
+
+    var dobIso: Any = NSNull()
+    if let components = try? store.dateOfBirthComponents(),
+       let date = Calendar(identifier: .gregorian).date(from: components) {
+      let fmt = DateFormatter()
+      fmt.dateFormat = "yyyy-MM-dd"
+      fmt.timeZone = TimeZone(identifier: "UTC")
+      dobIso = fmt.string(from: date)
+    }
+
+    var sex: Any = NSNull()
+    if let obj = try? store.biologicalSex() {
+      switch obj.biologicalSex {
+      case .female: sex = "female"
+      case .male: sex = "male"
+      case .other: sex = "intersex"
+      case .notSet: sex = NSNull()
+      @unknown default: sex = NSNull()
+      }
+    }
+
+    resolve(["dateOfBirth": dobIso, "sexAtBirth": sex])
+  }
+
+  // MARK: - Clinical records (separate flow; requires health-records entitlement)
+
   @objc func requestAuthorization(_ resolve: @escaping RCTPromiseResolveBlock,
                                    rejecter reject: @escaping RCTPromiseRejectBlock) {
     guard HKHealthStore.isHealthDataAvailable() else {

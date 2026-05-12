@@ -20,7 +20,6 @@ import type {
   HealthKitRecord,
   HealthKitMedicationRecord,
   HealthKitLabRecord,
-  HealthKitAppointmentRecord,
 } from '@carecompanion/types'
 
 // ---------------------------------------------------------------------------
@@ -38,6 +37,37 @@ interface RawClinicalRecord {
 interface NativeHealthKitBridge {
   requestAuthorization(): Promise<boolean>
   fetchClinicalRecords(): Promise<RawClinicalRecord[]>
+  requestBaselineAuthorization(): Promise<boolean>
+  getBaselineCharacteristics(): Promise<{
+    dateOfBirth: string | null  // YYYY-MM-DD
+    sexAtBirth: 'female' | 'male' | 'intersex' | null
+  }>
+}
+
+export type BaselineCharacteristics = {
+  dateOfBirth: string | null
+  sexAtBirth: 'female' | 'male' | 'intersex' | null
+}
+
+/**
+ * Ask HealthKit for read permission on baseline characteristics (DOB + sex)
+ * and return the values. These come from `HKCharacteristicType.dateOfBirth` /
+ * `.biologicalSex` and do NOT require the restricted `health-records`
+ * entitlement, so they work on a sim with ad-hoc signing.
+ */
+export async function fetchHealthKitBaseline(): Promise<BaselineCharacteristics> {
+  const empty: BaselineCharacteristics = { dateOfBirth: null, sexAtBirth: null }
+  if (!Bridge) return empty
+  try {
+    await Bridge.requestBaselineAuthorization()
+  } catch {
+    return empty
+  }
+  try {
+    return await Bridge.getBaselineCharacteristics()
+  } catch {
+    return empty
+  }
 }
 
 const Bridge: NativeHealthKitBridge | null =
@@ -106,23 +136,24 @@ export async function syncHealthKitData(): Promise<{ synced: number }> {
 }
 
 /**
- * Same shape as syncHealthKitData but hits /api/healthkit/replace.
- * Backend wipes existing medical data + nulls care profile fields,
- * then upserts the new HealthKit records in one round-trip.
+ * Read clinical records from HealthKit, normalise, and POST to the backend
+ * replace endpoint. Care profile fields (patient name, cancer type, etc.) are
+ * preserved; only the medical-data tables are wiped and re-populated.
  */
 export async function replaceHealthKitData(): Promise<{
   synced: number
   errors: number
   deleted: { medications: number; appointments: number; labResults: number }
 }> {
-  if (!Bridge) return { synced: 0, errors: 0, deleted: { medications: 0, appointments: 0, labResults: 0 } }
+  const empty = { synced: 0, errors: 0, deleted: { medications: 0, appointments: 0, labResults: 0 } }
+  if (!Bridge) return empty
 
   let raw: RawClinicalRecord[]
   try {
     raw = await Bridge.fetchClinicalRecords()
   } catch (err) {
     console.warn('[HealthKit] fetchClinicalRecords failed:', err)
-    return { synced: 0, errors: 0, deleted: { medications: 0, appointments: 0, labResults: 0 } }
+    return empty
   }
 
   const records: HealthKitRecord[] = raw.flatMap((r) => {
@@ -130,7 +161,7 @@ export async function replaceHealthKitData(): Promise<{
     return parsed ? [parsed] : []
   })
 
-  return apiClient.healthkit.replace(records)
+  return apiClient.healthkit.replace(records, { keepCareProfile: true })
 }
 
 /**
@@ -164,12 +195,9 @@ function normalise(r: RawClinicalRecord): HealthKitRecord | null {
       return normaliseMedication(r, fhir)
     case 'HKClinicalTypeIdentifierLabResultRecord':
       return normaliseLabResult(r, fhir)
-    case 'HKClinicalTypeIdentifierConditionRecord':
-    case 'HKClinicalTypeIdentifierProcedureRecord':
-      // Map conditions/procedures to appointments (closest existing type).
-      return normaliseAsAppointment(r, fhir)
     default:
-      // AllergyRecord, VitalSignRecord, ImmunizationRecord — no mapped type yet.
+      // Condition, Procedure, Allergy, VitalSign, Immunization records — no
+      // CC type maps cleanly to them yet, skip rather than coerce.
       return null
   }
 }
@@ -216,20 +244,6 @@ function normaliseLabResult(
   }
 }
 
-function normaliseAsAppointment(
-  r: RawClinicalRecord,
-  fhir: Record<string, unknown> | null,
-): HealthKitAppointmentRecord {
-  return {
-    type: 'appointment',
-    healthkitFhirId: r.id,
-    doctorName: extractPractitionerName(fhir) ?? 'Unknown provider',
-    specialty: null,
-    dateTime: r.startDate,
-    location: extractLocation(fhir),
-  }
-}
-
 // ---------------------------------------------------------------------------
 // FHIR utilities
 // ---------------------------------------------------------------------------
@@ -262,14 +276,6 @@ function extractPractitionerName(fhir: Record<string, unknown> | null): string |
     firstPath<Record<string, unknown>>(fhir, 'requester') ??
     firstPath<Record<string, unknown>[]>(fhir, 'performer')?.[0]
   return (ref?.display as string) ?? null
-}
-
-function extractLocation(fhir: Record<string, unknown> | null): string | null {
-  return (
-    firstPath<string>(fhir, 'location', 'display') ??
-    firstPath<string>(fhir, 'serviceProvider', 'display') ??
-    null
-  )
 }
 
 function stringifyTiming(timing: Record<string, unknown> | null): string | null {

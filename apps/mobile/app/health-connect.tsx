@@ -31,8 +31,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   requestHealthKitPermissions,
   markHealthKitConnected,
-  syncHealthKitData,
-  hasExistingMedicalData,
+  replaceHealthKitData,
 } from '../src/services/healthkit'
 import { useProfile } from '../src/context/ProfileContext'
 
@@ -240,7 +239,7 @@ const MOCKUP_MAP = {
 
 export default function HealthConnectScreen() {
   const router = useRouter()
-  const { profile } = useProfile()
+  const { refetch } = useProfile()
   const insets = useSafeAreaInsets()
   const flatListRef = useRef<FlatList>(null)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -276,23 +275,16 @@ export default function HealthConnectScreen() {
       }
       await markHealthKitConnected()
 
-      // Decide path: existing data → prompt; first-time → straight sync
-      const hasData = profile?.careProfileId
-        ? await hasExistingMedicalData(profile.careProfileId)
-        : false
+      // Always replace stored medical data with the HealthKit sample set.
+      // Care profile fields are preserved (keepCareProfile=true server-side).
+      await replaceHealthKitData()
+      await refetch()
 
-      if (hasData) {
-        setRequesting(false)
-        router.replace('/health-replace-prompt' as any)
-        return
-      }
-
-      // First-time flow: existing success animation + back-nav, with sync
-      syncHealthKitData().catch((err) => console.warn('[HealthKit] first-time sync failed:', err))
       setPermissionGranted(true)
       successScale.value = withSpring(1, { damping: 10, stiffness: 150 })
       setTimeout(() => { router.back() }, 2000)
-    } catch {
+    } catch (err) {
+      console.warn('[HealthKit] connect failed:', err)
       setRequesting(false)
     }
   }

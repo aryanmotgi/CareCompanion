@@ -23,6 +23,8 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import * as ImagePicker from 'expo-image-picker'
+import * as SecureStore from 'expo-secure-store'
 import { useTheme } from '../../src/theme'
 import { hapticAIMessage } from '../../src/utils/haptics'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
@@ -460,6 +462,77 @@ export default function ChatScreen() {
     sendWithText(failedText)
   }
 
+  function handleScanDoc() {
+    Alert.alert('Scan document', 'AI will analyze it and update your care profile with what it finds.', [
+      { text: 'Take Photo', onPress: () => pickAndUpload('camera') },
+      { text: 'Choose from Library', onPress: () => pickAndUpload('library') },
+      { text: 'Cancel', style: 'cancel' },
+    ])
+  }
+
+  async function pickAndUpload(source: 'camera' | 'library') {
+    try {
+      const perm = source === 'camera'
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (!perm.granted) {
+        Alert.alert('Permission required', `Grant ${source} access in Settings to scan documents.`)
+        return
+      }
+      const result = source === 'camera'
+        ? await ImagePicker.launchCameraAsync({ allowsEditing: false, quality: 0.8 })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.8 })
+      if (result.canceled || !result.assets[0]) return
+      await uploadScan(result.assets[0])
+    } catch (err: any) {
+      Alert.alert('Scan failed', err?.message || 'Try again.')
+    }
+  }
+
+  async function uploadScan(asset: ImagePicker.ImagePickerAsset) {
+    const fd = new FormData()
+    fd.append('file', {
+      uri: asset.uri,
+      name: asset.fileName || 'scan.jpg',
+      type: asset.mimeType || 'image/jpeg',
+    } as any)
+
+    if (!csrfTokenRef.current) {
+      try {
+        const { csrfToken } = await apiClient.csrfToken()
+        csrfTokenRef.current = csrfToken
+      } catch {
+        // No CSRF — the call below will likely 403; fall through to a graceful Alert.
+      }
+    }
+    const token = await SecureStore.getItemAsync('cc-session-token')
+    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
+    const isSecure = baseUrl.startsWith('https://')
+    const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
+
+    try {
+      const res = await fetch(`${baseUrl}/api/scan-document`, {
+        method: 'POST',
+        headers: {
+          Cookie: `${cookieName}=${token}`,
+          'x-csrf-token': csrfTokenRef.current || '',
+        },
+        body: fd,
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      const summary =
+        data?.summary ||
+        data?.extracted?.summary ||
+        (typeof data?.extracted === 'object'
+          ? JSON.stringify(data.extracted).slice(0, 400)
+          : 'Document received — fields will populate your profile shortly.')
+      Alert.alert('Scan complete', summary)
+    } catch (err: any) {
+      Alert.alert('Scan upload failed', err?.message || 'Backend may not be ready yet.')
+    }
+  }
+
   // ─── Conversations list ──────────────────────────────────────────────────
   if (activeConversationId === null) {
     return (
@@ -618,6 +691,25 @@ export default function ChatScreen() {
           backgroundColor: theme.isDark ? 'rgba(12,14,26,0.95)' : 'rgba(255,255,255,0.95)',
         }]}>
           <BlurView intensity={60} tint={theme.isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+          <Pressable
+            onPress={handleScanDoc}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Scan document"
+            style={({ pressed }) => ({
+              width: 44,
+              height: 44,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: theme.bgCardBorder,
+              backgroundColor: theme.bgCard,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.5 : 1,
+            })}
+          >
+            <Ionicons name="scan-outline" size={20} color={theme.accent} />
+          </Pressable>
           <TextInput
             style={[styles.input, { backgroundColor: theme.bgCard, borderColor: theme.bgCardBorder, color: theme.text }]}
             value={input}

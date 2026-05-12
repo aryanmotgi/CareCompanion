@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import {
+  Alert,
   View,
   Text,
   TextInput,
@@ -31,6 +32,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useProfile } from '../src/context/ProfileContext'
+import { fetchHealthKitBaseline } from '../src/services/healthkit'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -71,6 +73,15 @@ const MANUAL_STEPS: StepConfig[] = [
     ],
   },
   {
+    key: 'cancerStage',
+    icon: 'layers-outline',
+    emoji: '📊',
+    title: 'What stage?',
+    subtitle: 'Approximate is fine — affects trial eligibility',
+    type: 'chips',
+    options: ['Stage 0', 'Stage I', 'Stage II', 'Stage III', 'Stage IV', 'Not sure'],
+  },
+  {
     key: 'treatmentPhase',
     icon: 'pulse-outline',
     emoji: '💊',
@@ -84,6 +95,75 @@ const MANUAL_STEPS: StepConfig[] = [
     ],
   },
   {
+    key: 'dateOfBirth',
+    icon: 'calendar-outline',
+    emoji: '🎂',
+    title: 'Date of birth',
+    subtitle: 'Used for trial age eligibility — never displayed publicly',
+    type: 'text',
+    placeholder: 'YYYY-MM-DD',
+  },
+  {
+    key: 'sexAtBirth',
+    icon: 'person-outline',
+    emoji: '⚧',
+    title: 'Sex assigned at birth',
+    subtitle: 'Many trials and dosing decisions reference this',
+    type: 'chips',
+    options: ['Female', 'Male', 'Intersex', 'Prefer not to say'],
+  },
+  {
+    key: 'zipCode',
+    icon: 'location-outline',
+    emoji: '📍',
+    title: 'Your postal code',
+    subtitle: 'Finds trial sites near you',
+    type: 'text',
+    placeholder: 'e.g. 10065',
+  },
+  {
+    key: 'diagnosisDate',
+    icon: 'calendar-clear-outline',
+    emoji: '📅',
+    title: 'When were you diagnosed?',
+    subtitle: 'Anchors your treatment timeline — approximate is fine',
+    type: 'text',
+    placeholder: 'YYYY-MM-DD',
+  },
+  {
+    key: 'biomarkers',
+    icon: 'flask-outline',
+    emoji: '🧬',
+    title: 'Biomarkers (if known)',
+    subtitle: 'Breast: HER2, ER, PR · Lung: EGFR, ALK, PD-L1 · Colorectal: KRAS, MSI',
+    type: 'text',
+    placeholder: 'e.g. HER2+, ER+, PR-',
+  },
+  {
+    key: 'ecogStatus',
+    icon: 'walk-outline',
+    emoji: '🏃',
+    title: 'Performance status (ECOG)',
+    subtitle: 'Many trials require ≤2',
+    type: 'chips',
+    options: [
+      '0 — Fully active',
+      '1 — Restricted strenuous activity',
+      '2 — Ambulatory, up >50% of day',
+      '3 — Limited self-care, up <50%',
+      '4 — Confined to bed',
+    ],
+  },
+  {
+    key: 'priorTreatments',
+    icon: 'time-outline',
+    emoji: '📋',
+    title: 'Prior treatments',
+    subtitle: 'List previous chemo / radiation / surgery (free-form)',
+    type: 'text',
+    placeholder: 'e.g. Lumpectomy 2024, Tamoxifen 6 months',
+  },
+  {
     key: 'medications',
     icon: 'medical-outline',
     emoji: '💉',
@@ -93,6 +173,60 @@ const MANUAL_STEPS: StepConfig[] = [
     placeholder: 'e.g. Methotrexate 15mg',
   },
 ]
+
+// Maps step.key → backend snake_case key for PATCH /api/records/profile.
+const PROFILE_PATCH_KEYS: Record<string, string> = {
+  cancerType: 'cancer_type',
+  cancerStage: 'cancer_stage',
+  treatmentPhase: 'treatment_phase',
+  dateOfBirth: 'date_of_birth',
+  sexAtBirth: 'sex_at_birth',
+  zipCode: 'zip_code',
+  diagnosisDate: 'diagnosis_date',
+  biomarkers: 'biomarkers',
+  ecogStatus: 'ecog_status',
+  priorTreatments: 'prior_treatments',
+}
+
+// Maps step.key → care_profile column name (camelCase) so we can detect
+// already-filled fields and skip those steps.
+const PROFILE_COLUMN_KEYS: Record<string, string> = {
+  cancerType: 'cancerType',
+  cancerStage: 'cancerStage',
+  treatmentPhase: 'treatmentPhase',
+  dateOfBirth: 'dateOfBirth',
+  sexAtBirth: 'sexAtBirth',
+  zipCode: 'zipCode',
+  diagnosisDate: 'diagnosisDate',
+  biomarkers: 'biomarkers',
+  ecogStatus: 'ecogStatus',
+  priorTreatments: 'priorTreatments',
+}
+
+// ISO date YYYY-MM-DD validator.
+function isValidISODate(s: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(new Date(s + 'T00:00:00').getTime())
+}
+
+// Convert step value → API payload value. Handles ECOG → integer, sex chip → enum,
+// biomarkers free-text → { raw } JSONB.
+function valueForApi(stepKey: string, raw: string): unknown {
+  if (stepKey === 'ecogStatus') {
+    const m = raw.match(/^(\d)/)
+    return m ? Number(m[1]) : null
+  }
+  if (stepKey === 'sexAtBirth') {
+    const lower = raw.toLowerCase()
+    if (lower.startsWith('fem')) return 'female'
+    if (lower.startsWith('male')) return 'male'
+    if (lower.startsWith('inter')) return 'intersex'
+    return 'prefer_not'
+  }
+  if (stepKey === 'biomarkers') {
+    return { raw }
+  }
+  return raw
+}
 
 export default function SetupScreen() {
   const router = useRouter()
@@ -111,12 +245,25 @@ export default function SetupScreen() {
   const [saving, setSaving] = useState(false)
   const progressWidth = useSharedValue(0)
 
+  // Filter manual steps to skip any field the profile already has a value for.
+  // Computed from the initial profile snapshot so the list is stable mid-flow.
+  const [initialProfile] = useState(() => profile as unknown as Record<string, unknown> | null)
+  const filteredManualSteps = React.useMemo(() => {
+    return MANUAL_STEPS.filter((s) => {
+      const col = PROFILE_COLUMN_KEYS[s.key]
+      if (!col) return true // not a profile field (e.g. 'medications') — always show
+      const existing = initialProfile?.[col]
+      if (existing === null || existing === undefined || existing === '') return true
+      return false
+    })
+  }, [initialProfile])
+
   const isHealthKitStep = mode === 'healthkit'
-  const STEPS = isHealthKitStep ? [HEALTHKIT_STEP] : MANUAL_STEPS
+  const STEPS = isHealthKitStep ? [HEALTHKIT_STEP] : filteredManualSteps
   const currentStep = isHealthKitStep ? 0 : manualStep
-  const step = STEPS[currentStep]
-  const totalSteps = isHealthKitStep ? 1 : MANUAL_STEPS.length
-  const isLastStep = isHealthKitStep || manualStep === MANUAL_STEPS.length - 1
+  const step = STEPS[currentStep] ?? filteredManualSteps[0] ?? HEALTHKIT_STEP
+  const totalSteps = isHealthKitStep ? 1 : Math.max(1, filteredManualSteps.length)
+  const isLastStep = isHealthKitStep || manualStep >= filteredManualSteps.length - 1
 
   useEffect(() => {
     progressWidth.value = withTiming(((currentStep + 1) / totalSteps) * 100, {
@@ -124,6 +271,40 @@ export default function SetupScreen() {
       easing: Easing.out(Easing.cubic),
     })
   }, [currentStep, totalSteps, progressWidth])
+
+  // Best-effort HealthKit auto-fill on first entry to the wizard. Pulls DOB +
+  // sex at birth from HKCharacteristicType (no clinical-records entitlement
+  // needed), patches the profile, and refetches so those steps drop out of
+  // filteredManualSteps. Silent: failures just leave the user to type manually.
+  const [baselineTried, setBaselineTried] = useState(false)
+  useEffect(() => {
+    if (baselineTried) return
+    if (!csrfToken || !profile) return
+    setBaselineTried(true)
+    let cancelled = false
+    ;(async () => {
+      try {
+        const baseline = await fetchHealthKitBaseline()
+        if (cancelled) return
+        const patch: Record<string, unknown> = {}
+        const existing = profile as unknown as Record<string, unknown>
+        if (baseline.dateOfBirth && !existing.dateOfBirth) {
+          patch.date_of_birth = baseline.dateOfBirth
+        }
+        if (baseline.sexAtBirth && !existing.sexAtBirth) {
+          patch.sex_at_birth = baseline.sexAtBirth
+        }
+        if (Object.keys(patch).length === 0) return
+        await apiClient.careProfile.update(patch, csrfToken)
+        await refetch()
+      } catch {
+        // Silent — user falls back to manual entry.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [baselineTried, csrfToken, profile, apiClient, refetch])
 
   const progressStyle = useAnimatedStyle(() => ({
     width: `${progressWidth.value}%`,
@@ -150,30 +331,24 @@ export default function SetupScreen() {
     }
 
     if (val) {
+      // Validate dates inline before saving.
+      if ((step.key === 'dateOfBirth' || step.key === 'diagnosisDate') && !isValidISODate(val)) {
+        Alert.alert('Invalid date', 'Use YYYY-MM-DD format (e.g. 1985-03-12).')
+        return
+      }
       setSaving(true)
       try {
         if (step.key === 'medications' && profile?.careProfileId) {
-          await apiClient.medications.create({
-            name: val,
-            careProfileId: profile.careProfileId,
-          } as any)
-        } else if (step.key === 'cancerType' || step.key === 'treatmentPhase') {
-          const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
-          const token = await require('expo-secure-store').getItemAsync('cc-session-token')
-          const isSecure = baseUrl.startsWith('https://')
-          const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
-
-          await fetch(`${baseUrl}/api/records/profile`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'Cookie': `${cookieName}=${token}`,
-              'x-csrf-token': csrfToken || '',
-            },
-            body: JSON.stringify({
-              [step.key === 'cancerType' ? 'cancer_type' : 'treatment_phase']: val,
-            }),
-          })
+          await apiClient.medications.create(
+            { name: val, care_profile_id: profile.careProfileId } as any,
+            csrfToken || '',
+          )
+        } else if (PROFILE_PATCH_KEYS[step.key]) {
+          // Generic care-profile PATCH for any field listed in PROFILE_PATCH_KEYS.
+          await apiClient.careProfile.update(
+            { [PROFILE_PATCH_KEYS[step.key]!]: valueForApi(step.key, val) },
+            csrfToken || '',
+          )
         }
         await refetch()
       } catch (e) {
