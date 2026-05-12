@@ -12,10 +12,18 @@ export async function signInWithCredentials(
     body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
   })
 
-  const data = await res.json() as { token?: string; error?: string }
+  const data = await res.json() as {
+    token?: string; error?: string; code?: string; provider?: string
+  }
 
   if (!res.ok || !data.token) {
-    throw new Error(data.error ?? 'Invalid email or password')
+    const err = new Error(data.error ?? 'Invalid email or password') as Error & {
+      code?: string; provider?: string; status?: number
+    }
+    err.status = res.status
+    if (data.code) err.code = data.code
+    if (data.provider) err.provider = data.provider
+    throw err
   }
 
   // Clear previous session cache before storing new token

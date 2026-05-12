@@ -219,8 +219,13 @@ export function DashboardView({
   treatmentPhase,
   priorities,
   profileId,
+  onboardingComplete,
 }: DashboardViewProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('today')
+  const [iOSBannerDismissed, setIOSBannerDismissed] = useState(() => {
+    if (typeof window === 'undefined') return true
+    return localStorage.getItem('ios_nudge_dismissed') === '1'
+  })
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null)
   const [expandedChildId, setExpandedChildId] = useState<string | null>(null)
@@ -642,6 +647,43 @@ export function DashboardView({
     <>
     <GuidedTour steps={TOUR_STEPS} patientName={patientName} />
     <div className="px-4 sm:px-5 py-5 sm:py-6">
+
+      {/* iOS app nudge — shown to users who completed onboarding, dismissible */}
+      {onboardingComplete && !iOSBannerDismissed && (
+        <div
+          className="flex items-center justify-between gap-3 mb-4 px-3.5 py-2.5 rounded-xl"
+          style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.18)' }}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="text-lg flex-shrink-0">📱</span>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-white/90 leading-tight">CareCompanion is on iOS</p>
+              <p className="text-[11px] text-white/45 leading-tight mt-0.5 truncate">Track your health on the go — Apple Health sync included</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <a
+              href="https://apps.apple.com/app/carecompanion/id6746841246"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors"
+              style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc' }}
+            >
+              Get app
+            </a>
+            <button
+              onClick={() => {
+                localStorage.setItem('ios_nudge_dismissed', '1')
+                setIOSBannerDismissed(true)
+              }}
+              className="text-white/25 hover:text-white/50 transition-colors text-base leading-none"
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Slim tab bar — no glow */}
       <div

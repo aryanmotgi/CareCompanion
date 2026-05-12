@@ -4,7 +4,7 @@ import { initAnalytics } from '../src/lib/analytics'
 import { useEffect, useState, useCallback, createContext, useContext } from 'react'
 
 initSentry()
-import { Stack, Redirect, useSegments } from 'expo-router'
+import { Stack, Redirect, useSegments, useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
@@ -13,7 +13,7 @@ import { useTheme } from '../src/theme'
 import { TestModeBanner } from '../src/components/TestModeBanner'
 import { useShakeDetector } from '../src/hooks/useShakeDetector'
 import { BugReportSheet } from '../src/components/BugReportSheet'
-import { ProfileProvider } from '../src/context/ProfileContext'
+import { ProfileProvider, useProfile } from '../src/context/ProfileContext'
 import { refreshTokenIfNeeded } from '../src/services/token-refresh'
 import { WELCOME_SEEN_KEY } from './welcome'
 
@@ -188,6 +188,23 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   )
 }
 
+function OnboardingGate({ children }: { children: React.ReactNode }) {
+  const { profile, loading } = useProfile()
+  const segments = useSegments()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (loading) return
+    if (!profile) return
+    const onSetup = segments[0] === 'setup' || segments[0] === 'health-consent' || segments[0] === 'health-connect'
+    if (!profile.onboardingCompleted && !onSetup) {
+      router.replace('/setup')
+    }
+  }, [profile, loading, segments, router])
+
+  return <>{children}</>
+}
+
 function ThemedStatusBar() {
   const theme = useTheme()
   return <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} />
@@ -223,7 +240,9 @@ export default function RootLayout() {
           <RecordsProvider>
             <AuthGate>
               <ProfileProvider>
-                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }} />
+                <OnboardingGate>
+                  <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }} />
+                </OnboardingGate>
               </ProfileProvider>
             </AuthGate>
           </RecordsProvider>

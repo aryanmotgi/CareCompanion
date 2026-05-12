@@ -288,7 +288,10 @@ export function CaregiverWizard({
         })}
       </div>
       {SaveError}
-      <NextButton onClick={() => advance({ onboardingPriorities: priorities })} />
+      <NextButton onClick={() => {
+        try { localStorage.setItem('onboarding_priorities', JSON.stringify(priorities)) } catch { /* storage disabled */ }
+        void advance({ onboardingPriorities: priorities })
+      }} />
     </div>
   )
 

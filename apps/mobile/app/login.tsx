@@ -47,6 +47,28 @@ export default function LoginScreen() {
     }
   }, [])
 
+  function handleSocialError(provider: 'Apple' | 'Google', e: unknown) {
+    const err = e as Error & { code?: string; existingProvider?: string }
+    const msg = err?.message ?? `${provider} Sign-In failed`
+    if (msg === 'ERR_REQUEST_CANCELED') return
+    if (err?.code === 'PASSWORD_ACCOUNT_EXISTS') {
+      Alert.alert(
+        'Use your password',
+        'This email already has a password account. Sign in with your password, then link ' + provider + ' from settings.',
+      )
+      return
+    }
+    if (err?.code === 'PROVIDER_MISMATCH') {
+      const other = err.existingProvider ?? 'a different provider'
+      Alert.alert(
+        'Use a different sign-in',
+        `This email is already linked to ${other}. Use that to sign in instead.`,
+      )
+      return
+    }
+    Alert.alert(`${provider} Sign-In Failed`, msg)
+  }
+
   async function handleAppleSignIn() {
     try {
       setSocialLoading('apple')
@@ -54,11 +76,7 @@ export default function LoginScreen() {
       markSignedIn()
       router.replace('/(tabs)')
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Apple Sign-In failed'
-      // Don't show alert if user cancelled
-      if (msg !== 'ERR_REQUEST_CANCELED') {
-        Alert.alert('Apple Sign-In Failed', msg)
-      }
+      handleSocialError('Apple', e)
     } finally {
       setSocialLoading(null)
     }
@@ -71,8 +89,7 @@ export default function LoginScreen() {
       markSignedIn()
       router.replace('/(tabs)')
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Google Sign-In failed'
-      Alert.alert('Google Sign-In Failed', msg)
+      handleSocialError('Google', e)
     } finally {
       setSocialLoading(null)
     }
@@ -115,9 +132,17 @@ export default function LoginScreen() {
         router.replace('/(tabs)')
       }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Sign-in failed'
+      const err = e as Error & { code?: string; provider?: string }
+      const msg = err?.message ?? 'Sign-in failed'
       if (tab === 'care-group') {
         setError(msg)
+      } else if (err?.code === 'SOCIAL_ONLY') {
+        const prov = err.provider
+        const label = prov === 'apple' ? 'Apple' : prov === 'google' ? 'Google' : prov ?? 'a social provider'
+        Alert.alert(
+          `Use ${label} to sign in`,
+          `This account uses ${label}. Use the "Continue with ${label}" button above instead.`,
+        )
       } else {
         Alert.alert('Sign In Failed', msg)
       }

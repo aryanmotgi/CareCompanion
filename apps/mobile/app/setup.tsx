@@ -13,6 +13,7 @@ import {
   SafeAreaView,
 } from 'react-native'
 import * as SecureStore from 'expo-secure-store'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
 import Animated, {
@@ -243,6 +244,7 @@ export default function SetupScreen() {
   const [selectedChip, setSelectedChip] = useState<string | null>(null)
   const [textValue, setTextValue] = useState('')
   const [saving, setSaving] = useState(false)
+  const [showWebNudge, setShowWebNudge] = useState(false)
   const progressWidth = useSharedValue(0)
 
   // Filter manual steps to skip any field the profile already has a value for.
@@ -359,12 +361,81 @@ export default function SetupScreen() {
     }
 
     if (isLastStep) {
-      router.back()
+      if (profile?.careProfileId) {
+        try {
+          const token = await SecureStore.getItemAsync('cc-session-token')
+          const isSecure = API_BASE.startsWith('https://')
+          const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
+          await fetch(`${API_BASE}/api/onboarding/complete`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cookie': `${cookieName}=${token}`,
+              'x-csrf-token': csrfToken || '',
+            },
+            body: JSON.stringify({ careProfileId: profile.careProfileId }),
+          })
+          await refetch()
+        } catch (e) {
+          console.error('[Setup] onboarding/complete failed:', e)
+        }
+      }
+      // One-time web-app nudge after onboarding completion.
+      const nudgeShown = await AsyncStorage.getItem('cc-web-nudge-shown')
+      if (nudgeShown) {
+        router.back()
+      } else {
+        setShowWebNudge(true)
+      }
     } else {
       setManualStep(prev => prev + 1)
       setSelectedChip(null)
       setTextValue('')
     }
+  }
+
+  if (showWebNudge) {
+    return (
+      <View style={[styles.root, { paddingTop: insets.top }]}>
+        <LinearGradient
+          colors={['#05060F', '#0C0E1A', '#12143A', '#0C0E1A']}
+          locations={[0, 0.3, 0.6, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.glowOrb1} />
+        <View style={styles.glowOrb2} />
+        <View style={{ flex: 1, paddingHorizontal: 28, alignItems: 'center', justifyContent: 'center' }}>
+          <Animated.View entering={FadeIn.duration(400).delay(100)} style={styles.emojiWrap}>
+            <Text style={styles.emoji}>✨</Text>
+          </Animated.View>
+          <Animated.View entering={FadeIn.duration(400).delay(200)}>
+            <Text style={styles.title}>You&apos;re all set</Text>
+            <Text style={styles.subtitle}>
+              Your data is also available at carecompanionai.org — log in from any browser to access your full care dashboard.
+            </Text>
+          </Animated.View>
+        </View>
+        <View style={[styles.bottom, { paddingBottom: insets.bottom + 12 }]}>
+          <Pressable
+            onPress={async () => {
+              try { await AsyncStorage.setItem('cc-web-nudge-shown', '1') } catch { /* storage unavailable */ }
+              router.replace('/(tabs)' as any)
+            }}
+            style={({ pressed }) => [styles.nextButton, pressed && { transform: [{ scale: 0.97 }] }]}
+          >
+            <LinearGradient
+              colors={['#6366F1', '#818CF8']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.nextGradient}
+            >
+              <Text style={styles.nextText}>Got it</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </LinearGradient>
+          </Pressable>
+        </View>
+      </View>
+    )
   }
 
   if (setupPhase === 'care-group') {

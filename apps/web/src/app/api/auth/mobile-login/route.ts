@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { users } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { users, userIdentities } from '@/lib/db/schema'
+import { and, eq, ne } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
 import { SignJWT } from 'jose'
 import { rateLimit } from '@/lib/rate-limit'
@@ -27,6 +27,27 @@ export async function POST(req: Request) {
       .from(users)
       .where(eq(users.email, email.trim().toLowerCase()))
       .limit(1)
+
+    if (user && !user.passwordHash) {
+      // User exists but has no password — likely social-only. Check identities
+      // and surface a hint so the mobile UI can route them to the right button.
+      const [socialIdentity] = await db
+        .select({ provider: userIdentities.provider })
+        .from(userIdentities)
+        .where(and(eq(userIdentities.userId, user.id), ne(userIdentities.provider, 'password')))
+        .limit(1)
+      if (socialIdentity) {
+        return NextResponse.json(
+          {
+            error: `This account uses ${socialIdentity.provider} sign in. Please use that to sign in.`,
+            code: 'SOCIAL_ONLY',
+            provider: socialIdentity.provider,
+          },
+          { status: 409 },
+        )
+      }
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+    }
 
     if (!user?.passwordHash) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
