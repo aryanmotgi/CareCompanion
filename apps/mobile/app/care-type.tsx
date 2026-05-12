@@ -5,12 +5,14 @@ import { BlurView } from 'expo-blur'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
+import { useUserTypeContext } from './_layout'
 
 const ACCENT = '#818CF8'
 
 export default function CareTypeScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const { setUserType } = useUserTypeContext()
 
   return (
     <View style={styles.root}>
@@ -42,13 +44,19 @@ export default function CareTypeScreen() {
             icon="person-outline"
             title="I'm a patient"
             body="Manage your medications, appointments, and care team — with help from an AI companion that knows your case."
-            onPress={() => router.push('/signup?type=patient' as any)}
+            onPress={() => {
+              setUserType('patient')
+              router.push('/signup?type=patient' as any)
+            }}
           />
           <OptionCard
             icon="people-outline"
             title="I'm a caregiver"
             body="Join a patient's care circle to keep up with their medications, appointments, and how they're doing."
-            onPress={() => router.push('/signup?type=caregiver' as any)}
+            onPress={() => {
+              setUserType('caregiver')
+              router.push('/signup?type=caregiver' as any)
+            }}
           />
         </View>
 

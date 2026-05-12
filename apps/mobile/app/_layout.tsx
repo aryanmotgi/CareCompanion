@@ -58,6 +58,97 @@ const RecordsContext = createContext<{ state: RecordsState; markOnboarded: () =>
 })
 export const useRecordsContext = () => useContext(RecordsContext)
 
+// User-type axis (migration 011). Decided at /care-type: are they the patient
+// being cared for, or a caregiver joining someone else's care circle? Drives
+// onboarding routing.
+const USER_TYPE_KEY = 'cc-user-type'
+type UserType = 'patient' | 'caregiver'
+type UserTypeState = 'loading' | UserType | 'unset'
+const UserTypeContext = createContext<{
+  state: UserTypeState
+  setUserType: (t: UserType) => void
+  reset: () => void
+}>({
+  state: 'loading',
+  setUserType: () => {},
+  reset: () => {},
+})
+export const useUserTypeContext = () => useContext(UserTypeContext)
+
+function UserTypeProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<UserTypeState>(Platform.OS === 'web' ? 'unset' : 'loading')
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    let cancelled = false
+    AsyncStorage.getItem(USER_TYPE_KEY)
+      .then((v) => {
+        if (cancelled) return
+        if (v === 'patient' || v === 'caregiver') setState(v)
+        else setState('unset')
+      })
+      .catch(() => { if (!cancelled) setState('unset') })
+    return () => { cancelled = true }
+  }, [])
+
+  const setUserType = useCallback((t: UserType) => {
+    setState(t)
+    AsyncStorage.setItem(USER_TYPE_KEY, t).catch(() => {})
+  }, [])
+
+  const reset = useCallback(() => {
+    setState('unset')
+    AsyncStorage.removeItem(USER_TYPE_KEY).catch(() => {})
+  }, [])
+
+  return (
+    <UserTypeContext.Provider value={{ state, setUserType, reset }}>{children}</UserTypeContext.Provider>
+  )
+}
+
+// Caregiver joined state — has the caregiver successfully attached to a
+// patient's care group yet? Mirrors the records-onboarded pattern but for
+// the caregiver lane.
+const CAREGIVER_JOINED_KEY = 'cc-caregiver-joined'
+type CaregiverJoinedState = 'loading' | 'joined' | 'pending'
+const CaregiverJoinedContext = createContext<{
+  state: CaregiverJoinedState
+  markJoined: () => void
+  reset: () => void
+}>({
+  state: 'loading',
+  markJoined: () => {},
+  reset: () => {},
+})
+export const useCaregiverJoinedContext = () => useContext(CaregiverJoinedContext)
+
+function CaregiverJoinedProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<CaregiverJoinedState>(Platform.OS === 'web' ? 'joined' : 'loading')
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    let cancelled = false
+    AsyncStorage.getItem(CAREGIVER_JOINED_KEY)
+      .then((v) => { if (!cancelled) setState(v === '1' ? 'joined' : 'pending') })
+      .catch(() => { if (!cancelled) setState('pending') })
+    return () => { cancelled = true }
+  }, [])
+
+  const markJoined = useCallback(() => {
+    setState('joined')
+    AsyncStorage.setItem(CAREGIVER_JOINED_KEY, '1').catch(() => {})
+  }, [])
+
+  const reset = useCallback(() => {
+    setState('pending')
+    AsyncStorage.removeItem(CAREGIVER_JOINED_KEY).catch(() => {})
+  }, [])
+
+  return (
+    <CaregiverJoinedContext.Provider value={{ state, markJoined, reset }}>{children}</CaregiverJoinedContext.Provider>
+  )
+}
+
 function RecordsProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<RecordsState>(Platform.OS === 'web' ? 'onboarded' : 'loading')
 
@@ -123,6 +214,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { state: welcomeState } = useWelcomeContext()
   const { state: tokenState } = useTokenContext()
   const { state: recordsState } = useRecordsContext()
+  const { state: userTypeState } = useUserTypeContext()
+  const { state: caregiverJoinedState } = useCaregiverJoinedContext()
 
   const route = segments[0]
   const onWelcome = route === 'welcome'
@@ -132,11 +225,14 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     route === 'welcome' ||
     route === 'care-type' ||
     route === 'care-role'
-  // Mandatory post-signup screen — user can't reach (tabs) until they
+  // Mandatory post-signup patient screen — user can't reach (tabs) until they
   // explicitly Connect or Skip on this screen.
   const onRecordsOnboarding = route === 'onboarding-records'
+  // Caregiver lane onboarding screens — must complete before reaching (tabs).
+  const onCaregiverOnboarding = route === 'care-group-join' || route === 'care-relationship'
   // Optional in-app screens that should also tolerate token-clears mid-flow.
-  const isOnboardingRoute = route === 'health-connect' || route === 'setup' || onRecordsOnboarding
+  const isOnboardingRoute =
+    route === 'health-connect' || route === 'setup' || onRecordsOnboarding || onCaregiverOnboarding
   const onTabs = route === '(tabs)' || route === undefined
 
   // Welcome takes priority over any token state. On iOS Simulator, SecureStore
@@ -145,9 +241,21 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   // restores on real devices.
   const needsWelcome = welcomeState === 'unseen' && !onWelcome && !isOnboardingRoute
   const needsLogin = tokenState === 'absent' && welcomeState === 'seen' && !isPublicRoute && !isOnboardingRoute
-  // Hard gate: if records onboarding isn't complete, no access to the tab bar.
-  const needsRecordsOnboarding = recordsState === 'pending' && onTabs
-  const needsTabs = tokenState === 'present' && isPublicRoute && recordsState !== 'pending'
+  // Hard gates by user type:
+  //   - patient → records onboarding gate (existing)
+  //   - caregiver → care-group join gate (NEW)
+  // Both prevent reaching (tabs) until their respective onboarding completes.
+  const isCaregiver = userTypeState === 'caregiver'
+  const isPatient = userTypeState === 'patient'
+  const needsRecordsOnboarding = isPatient && recordsState === 'pending' && onTabs
+  const needsCaregiverOnboarding = isCaregiver && caregiverJoinedState === 'pending' && onTabs
+  const needsTabs =
+    tokenState === 'present' &&
+    isPublicRoute &&
+    (
+      (isPatient && recordsState !== 'pending') ||
+      (isCaregiver && caregiverJoinedState === 'joined')
+    )
 
   // Cold-launch funnel restart. Until the user completes records onboarding,
   // every cold launch routes to /welcome. That covers two cases:
@@ -162,14 +270,22 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   // Fully-onboarded users (tokenState='present' AND recordsState='onboarded')
   // are unaffected — they go straight to /(tabs).
   const hasCommittedSettled = useRef(false)
-  const allStatesReady = welcomeState !== 'loading' && tokenState !== 'loading' && recordsState !== 'loading'
+  const allStatesReady =
+    welcomeState !== 'loading' &&
+    tokenState !== 'loading' &&
+    recordsState !== 'loading' &&
+    userTypeState !== 'loading' &&
+    caregiverJoinedState !== 'loading'
   useEffect(() => {
     if (allStatesReady) hasCommittedSettled.current = true
   }, [allStatesReady])
+  const onboardingComplete =
+    (isPatient && recordsState === 'onboarded') ||
+    (isCaregiver && caregiverJoinedState === 'joined')
   const needsFunnelRestart =
     allStatesReady &&
     !hasCommittedSettled.current &&
-    (tokenState === 'absent' || recordsState === 'pending') &&
+    (tokenState === 'absent' || !onboardingComplete) &&
     !onWelcome
 
   // The Stack must mount on the first render (otherwise expo-router throws
@@ -178,16 +294,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   // an overlay during the initial read so the underlying route never flashes.
   const loading = tokenState === 'loading' || welcomeState === 'loading' || recordsState === 'loading'
 
-  // Single redirect target with explicit priority: cold-launch-without-token
-  // restart trumps everything, then welcome, then records onboarding, then
-  // login. Rendering multiple <Redirect> siblings produces undefined ordering —
-  // only one should ever be active per render.
+  // Single redirect target with explicit priority. Funnel restart trumps
+  // everything; then welcome; then user-type-specific onboarding gates; then
+  // login; then tabs. Rendering multiple <Redirect> siblings produces
+  // undefined ordering — only one should ever be active per render.
   let redirectTo: string | null = null
   if (needsFunnelRestart) redirectTo = '/welcome'
   else if (needsWelcome) redirectTo = '/welcome'
   else if (needsLogin) redirectTo = '/login'
   else if (needsRecordsOnboarding) redirectTo = '/onboarding-records'
-  // needsTabs already requires recordsState !== 'pending', so always /(tabs).
+  else if (needsCaregiverOnboarding) redirectTo = '/care-group-join'
   else if (needsTabs) redirectTo = '/(tabs)'
 
   return (
@@ -241,11 +357,15 @@ export default function RootLayout() {
       <WelcomeProvider>
         <TokenProvider>
           <RecordsProvider>
-            <AuthGate>
-              <ProfileProvider>
-                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }} />
-              </ProfileProvider>
-            </AuthGate>
+            <UserTypeProvider>
+              <CaregiverJoinedProvider>
+                <AuthGate>
+                  <ProfileProvider>
+                    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }} />
+                  </ProfileProvider>
+                </AuthGate>
+              </CaregiverJoinedProvider>
+            </UserTypeProvider>
           </RecordsProvider>
         </TokenProvider>
       </WelcomeProvider>

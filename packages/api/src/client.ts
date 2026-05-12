@@ -280,6 +280,12 @@ export function createApiClient(config: ApiClientConfig) {
           body: JSON.stringify({}),
           headers: { 'x-csrf-token': csrfToken },
         }) as Promise<{ denied: true }>,
+      updateRelationship: (careGroupId: string, relationship: string, csrfToken: string) =>
+        apiFetch(config, '/api/care-group/member/relationship', {
+          method: 'POST',
+          body: JSON.stringify({ careGroupId, relationship }),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ updated: true }>,
     },
     community: {
       list: (params: { cancerType?: string; limit?: number; offset?: number } = {}) => {

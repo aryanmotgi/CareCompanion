@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { apiClient } from '../src/services/api'
 import { useProfile } from '../src/context/ProfileContext'
+import { useCaregiverJoinedContext } from './_layout'
 
 const ACCENT = '#818CF8'
 
@@ -43,6 +44,7 @@ export default function CareRelationshipScreen() {
   const insets = useSafeAreaInsets()
   const params = useLocalSearchParams<{ careGroupId?: string; patientName?: string }>()
   const { csrfToken, refetch } = useProfile()
+  const { markJoined } = useCaregiverJoinedContext()
 
   const [selected, setSelected] = useState<Relationship | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -53,19 +55,18 @@ export default function CareRelationshipScreen() {
 
   const handleContinue = useCallback(async () => {
     if (!csrfToken || !selected || submitting) return
+    const careGroupId = params.careGroupId as string | undefined
+    if (!careGroupId) {
+      setError('Missing care group context. Please try again.')
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
-      // The caregiver was already created as a member by join-by-code with
-      // relationship='other'. Now they pick the real relationship — we PATCH
-      // it via the careProfiles update path (existing endpoint already covers
-      // field-level updates). NOTE: a dedicated PATCH /api/care-group/member/me
-      // would be more correct; deferred to a follow-up since this PR is large.
-      // For now we re-call join-by-code with the chosen relationship: server's
-      // joinCareGroup returns already-member, but we read & update via
-      // updateRelationship below.
-      await apiClient.careGroup.joinByCode('', selected, csrfToken).catch(() => {})
-      // Refetch profile to update care-group state in context.
+      // The caregiver row was created in /care-group-join with
+      // relationship='other'. Update it to the real value now.
+      await apiClient.careGroup.updateRelationship(careGroupId, selected, csrfToken)
+      markJoined()
       await refetch()
       router.replace('/(tabs)' as any)
     } catch (err) {
@@ -73,7 +74,7 @@ export default function CareRelationshipScreen() {
     } finally {
       setSubmitting(false)
     }
-  }, [csrfToken, selected, submitting, router, refetch])
+  }, [csrfToken, selected, submitting, router, refetch, params.careGroupId, markJoined])
 
   // Step 1: photo verify
   if (!confirmed) {

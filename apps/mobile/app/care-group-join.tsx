@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { apiClient } from '../src/services/api'
 import { useProfile } from '../src/context/ProfileContext'
+import { useCaregiverJoinedContext } from './_layout'
 
 const ACCENT = '#818CF8'
 const SAFE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ'
@@ -36,6 +37,7 @@ export default function CareGroupJoinScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { csrfToken, refetch } = useProfile()
+  const { markJoined } = useCaregiverJoinedContext()
 
   const [mode, setMode] = useState<Mode>('code')
   const [code, setCode] = useState('')
