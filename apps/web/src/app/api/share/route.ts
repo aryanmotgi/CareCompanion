@@ -114,8 +114,7 @@ export async function POST(request: Request) {
       ip_address: request.headers.get('x-forwarded-for') || undefined,
     });
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://carecompanionai.org'
-    const shareUrl = `${appUrl}/shared/${link.token}`;
+    const shareUrl = `${new URL(request.url).origin}/shared/${link.token}`;
     return apiSuccess({ url: shareUrl, expiresAt: expiresAt.toISOString() });
   } catch (err) {
     console.error('[share] POST error:', err);
@@ -123,12 +122,13 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const { user, error: authError } = await getAuthenticatedUser();
   if (authError) return authError;
 
-  const now = new Date()
-  const links = await db
+  const now = new Date();
+  const baseUrl = new URL(request.url).origin;
+  const rows = await db
     .select({
       token: sharedLinks.token,
       title: sharedLinks.title,
@@ -145,7 +145,8 @@ export async function GET() {
         gt(sharedLinks.expiresAt, now)
       )
     )
-    .orderBy(desc(sharedLinks.createdAt))
+    .orderBy(desc(sharedLinks.createdAt));
 
-  return apiSuccess({ links })
+  const links = rows.map(l => ({ ...l, url: `${baseUrl}/shared/${l.token}` }));
+  return apiSuccess({ links });
 }

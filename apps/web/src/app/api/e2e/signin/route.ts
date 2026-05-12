@@ -163,13 +163,20 @@ export async function POST(req: Request) {
         })
       }
 
-      // Clear chat history on each signin. Failed test runs save user messages
-      // without a paired assistant response; Anthropic rejects consecutive
-      // same-role messages, causing every subsequent run to fail too.
-      if (email !== monitorEmail) {
+      // Gate: only allowed accounts may use this endpoint.
+      // E2E_MONITOR_EMAIL is the primary account (chat cleared on each signin).
+      // E2E_ALLOWED_EMAILS is a comma-separated list of additional QA accounts.
+      const allowedExtras = (process.env.E2E_ALLOWED_EMAILS ?? '')
+        .split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+      const isMonitor = email === monitorEmail
+      const isAllowed = isMonitor || allowedExtras.includes(email.toLowerCase())
+      if (!isAllowed) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
-      await db.delete(messages).where(eq(messages.userId, user.id))
+      // Clear chat history only for the monitor account.
+      if (isMonitor) {
+        await db.delete(messages).where(eq(messages.userId, user.id))
+      }
 
       break // success — exit retry loop
     } catch (err) {

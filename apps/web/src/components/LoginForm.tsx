@@ -308,7 +308,11 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
           {/* Create account link */}
           <p className="text-center text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
             Don&apos;t have an account?{' '}
-            <a href="/signup" className="underline underline-offset-2 transition-colors hover:text-white/60" style={{ color: 'rgba(167,139,250,0.7)' }}>
+            <a
+              href={safeCallback !== '/dashboard' ? `/signup?callbackUrl=${encodeURIComponent(safeCallback)}` : '/signup'}
+              className="underline underline-offset-2 transition-colors hover:text-white/60"
+              style={{ color: 'rgba(167,139,250,0.7)' }}
+            >
               Create one
             </a>
           </p>
