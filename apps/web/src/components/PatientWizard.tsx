@@ -4,15 +4,32 @@ import { useState, useRef } from 'react'
 import { WizardProgressBar } from './WizardProgressBar'
 import { searchHospitals } from '@/lib/hospitals'
 
-const TOTAL_STEPS = 4
+const TOTAL_STEPS = 5
 const PRIORITIES = ['side_effects', 'medications', 'appointments', 'lab_results', 'insurance', 'emotional_support']
 const PRIORITY_LABELS: Record<string, string> = {
   side_effects: 'Side effect tracking', medications: 'Medications', appointments: 'Appointments',
   lab_results: 'Lab results', insurance: 'Insurance', emotional_support: 'Emotional support',
 }
+const SEX_OPTIONS: { value: string; label: string }[] = [
+  { value: 'female', label: 'Female' },
+  { value: 'male', label: 'Male' },
+  { value: 'intersex', label: 'Intersex' },
+  { value: 'prefer_not', label: 'Prefer not to say' },
+]
+const ECOG_OPTIONS: { value: number; label: string }[] = [
+  { value: 0, label: '0 — Fully active' },
+  { value: 1, label: '1 — Restricted strenuous activity' },
+  { value: 2, label: '2 — Ambulatory, up >50% of day' },
+  { value: 3, label: '3 — Limited self-care' },
+  { value: 4, label: '4 — Confined to bed' },
+]
 
 function getCsrfToken(): string {
   return document.cookie.match(/(^| )cc-csrf-token=([^;]+)/)?.[2] ?? ''
+}
+
+function isValidISODate(s: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(new Date(s + 'T00:00:00').getTime())
 }
 
 async function patchProfile(careProfileId: string, data: Record<string, unknown>): Promise<boolean> {
@@ -28,10 +45,23 @@ async function patchProfile(careProfileId: string, data: Record<string, unknown>
   }
 }
 
-type InnerStep = 'healthkit' | 'confirm' | 'manual' | 'priorities' | 'notifications'
+async function bulkCreateMedications(careProfileId: string, names: string[]): Promise<void> {
+  if (names.length === 0) return
+  try {
+    await fetch('/api/records/medications', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-csrf-token': getCsrfToken() },
+      body: JSON.stringify({ profileId: careProfileId, medications: names.map((name) => ({ name })) }),
+    })
+  } catch {
+    // Best-effort — keep onboarding flowing.
+  }
+}
+
+type InnerStep = 'healthkit' | 'confirm' | 'manual' | 'basicInfo' | 'priorities' | 'notifications'
 
 const innerToProgressStep: Record<InnerStep, number> = {
-  healthkit: 1, confirm: 2, manual: 2, priorities: 3, notifications: 4,
+  healthkit: 1, confirm: 2, manual: 2, basicInfo: 3, priorities: 4, notifications: 5,
 }
 
 export function PatientWizard({
@@ -53,6 +83,13 @@ export function PatientWizard({
   const [manualDiagnosis, setManualDiagnosis] = useState('')
   const [manualMeds, setManualMeds] = useState(['', '', ''])
   const [manualAppt, setManualAppt] = useState('')
+  const [diagnosisDate, setDiagnosisDate] = useState('')
+  const [priorTreatments, setPriorTreatments] = useState('')
+  const [biomarkers, setBiomarkers] = useState('')
+  const [ecogStatus, setEcogStatus] = useState<number | null>(null)
+  const [dob, setDob] = useState('')
+  const [sexAtBirth, setSexAtBirth] = useState('')
+  const [zip, setZip] = useState('')
 
   const currentStep = innerToProgressStep[inner]
   const filteredHospitals = searchHospitals(hospitalQuery)
@@ -61,7 +98,8 @@ export function PatientWizard({
     if (targetStep >= currentStep) return
     if (targetStep === 1) setInner('healthkit')
     else if (targetStep === 2) setInner(confirmedData ? 'confirm' : 'manual')
-    else if (targetStep === 3) setInner('priorities')
+    else if (targetStep === 3) setInner('basicInfo')
+    else if (targetStep === 4) setInner('priorities')
   }
 
   const bar = <WizardProgressBar currentStep={currentStep} totalSteps={TOTAL_STEPS} onStepClick={handleStepClick} />
@@ -224,7 +262,7 @@ export function PatientWizard({
         setSaving(false)
         if (!ok) { setSaveError("Couldn't save — please check your connection and try again."); return }
         stepKey.current += 1
-        setInner('priorities')
+        setInner('basicInfo')
       }} />
     </div>
   )
@@ -260,27 +298,143 @@ export function PatientWizard({
           <input id="pw-appt" type="date" value={manualAppt} onChange={e => setManualAppt(e.target.value)}
             className="block w-full bg-transparent text-sm focus:outline-none" style={{ color: 'rgba(255,255,255,0.9)' }} />
         </div>
+        <div className="rounded-xl px-4 pt-5 pb-3" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+          <label htmlFor="pw-dx-date" className="text-[10px] font-medium block mb-1" style={{ color: 'rgba(167,139,250,0.8)' }}>Diagnosis date <span className="text-white/20 ml-1">(optional)</span></label>
+          <input id="pw-dx-date" type="date" value={diagnosisDate} onChange={e => setDiagnosisDate(e.target.value)}
+            className="block w-full bg-transparent text-sm focus:outline-none" style={{ color: 'rgba(255,255,255,0.9)' }} />
+        </div>
+        <div className="rounded-xl px-4 pt-5 pb-3" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+          <label htmlFor="pw-biomarkers" className="text-[10px] font-medium block mb-1" style={{ color: 'rgba(167,139,250,0.8)' }}>Biomarkers <span className="text-white/20 ml-1">(optional)</span></label>
+          <input id="pw-biomarkers" value={biomarkers} onChange={e => setBiomarkers(e.target.value)}
+            placeholder="e.g. HER2+, ER+, EGFR, PD-L1"
+            className="block w-full bg-transparent text-sm focus:outline-none" style={{ color: 'rgba(255,255,255,0.9)' }} />
+        </div>
+        <div>
+          <p className="text-[10px] font-medium mb-2" style={{ color: 'rgba(167,139,250,0.8)' }}>Performance status (ECOG) <span className="text-white/20 ml-1">(optional)</span></p>
+          <div className="flex flex-col gap-2">
+            {ECOG_OPTIONS.map(opt => {
+              const selected = ecogStatus === opt.value
+              return (
+                <button key={opt.value} type="button"
+                  onClick={() => setEcogStatus(selected ? null : opt.value)}
+                  className="rounded-xl px-4 py-2.5 text-left text-xs transition-all"
+                  style={{
+                    background: selected ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.04)',
+                    border: selected ? '2px solid #7c3aed' : '1px solid rgba(255,255,255,0.1)',
+                    color: selected ? '#c4b5fd' : '#f1f5f9',
+                  }}>
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <div className="rounded-xl px-4 pt-5 pb-3" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+          <label htmlFor="pw-prior" className="text-[10px] font-medium block mb-1" style={{ color: 'rgba(167,139,250,0.8)' }}>Prior treatments <span className="text-white/20 ml-1">(optional)</span></label>
+          <input id="pw-prior" value={priorTreatments} onChange={e => setPriorTreatments(e.target.value)}
+            placeholder="e.g. Lumpectomy 2024, Tamoxifen 6mo"
+            className="block w-full bg-transparent text-sm focus:outline-none" style={{ color: 'rgba(255,255,255,0.9)' }} />
+        </div>
       </div>
       {SaveError}
       <SaveButton onClick={async () => {
         setSaving(true)
         setSaveError('')
-        const filledMeds = manualMeds.filter(m => m.trim())
-        const ok = await patchProfile(careProfileId, {
+        if (diagnosisDate && !isValidISODate(diagnosisDate)) {
+          setSaving(false)
+          setSaveError('Diagnosis date must be in YYYY-MM-DD format.')
+          return
+        }
+        const filledMeds = manualMeds.map(m => m.trim()).filter(Boolean)
+        const profilePatch: Record<string, unknown> = {
           cancerType: manualDiagnosis || null,
-          // Store free-text medications in the conditions text field (best effort
-          // until the onboarding wizard is wired to the medications table).
-          ...(filledMeds.length > 0 && { conditions: filledMeds.join(', ') }),
+          ...(diagnosisDate && { diagnosisDate }),
+          ...(biomarkers.trim() && { biomarkers: { raw: biomarkers.trim() } }),
+          ...(ecogStatus !== null && { ecogStatus }),
+          ...(priorTreatments.trim() && { priorTreatments: priorTreatments.trim() }),
           fieldOverrides: {
             ...(manualDiagnosis && { cancerType: true }),
-            ...(filledMeds.length > 0 && { conditions: true }),
           },
-        })
+        }
+        const ok = await patchProfile(careProfileId, profilePatch)
+        if (ok) {
+          await bulkCreateMedications(careProfileId, filledMeds)
+        }
+        setSaving(false)
+        if (!ok) { setSaveError("Couldn't save — please check your connection and try again."); return }
+        stepKey.current += 1
+        setInner('basicInfo')
+      }} />
+    </div>
+  )
+
+  if (inner === 'basicInfo') return (
+    <div className="flex flex-col gap-4 p-6 max-w-md mx-auto" key={stepKey.current} style={stepAnim}>
+      <style>{`@keyframes wizardStepIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+      {bar}
+      <div>
+        <h2 className="text-lg font-bold text-white mt-2">A few basics</h2>
+        <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>Used for trial eligibility and finding nearby sites. Everything optional — you can skip.</p>
+      </div>
+      <div className="flex flex-col gap-3">
+        <div className="rounded-xl px-4 pt-5 pb-3" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+          <label htmlFor="pw-dob" className="text-[10px] font-medium block mb-1" style={{ color: 'rgba(167,139,250,0.8)' }}>Date of birth</label>
+          <input id="pw-dob" type="date" value={dob} onChange={e => setDob(e.target.value)}
+            className="block w-full bg-transparent text-sm focus:outline-none" style={{ color: 'rgba(255,255,255,0.9)' }} />
+        </div>
+        <div>
+          <p className="text-[10px] font-medium mb-2" style={{ color: 'rgba(167,139,250,0.8)' }}>Sex assigned at birth</p>
+          <div className="flex flex-col gap-2">
+            {SEX_OPTIONS.map(opt => {
+              const selected = sexAtBirth === opt.value
+              return (
+                <button key={opt.value} type="button"
+                  onClick={() => setSexAtBirth(selected ? '' : opt.value)}
+                  className="rounded-xl px-4 py-2.5 text-left text-sm transition-all"
+                  style={{
+                    background: selected ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.04)',
+                    border: selected ? '2px solid #7c3aed' : '1px solid rgba(255,255,255,0.1)',
+                    color: selected ? '#c4b5fd' : '#f1f5f9',
+                  }}>
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <div className="rounded-xl px-4 pt-5 pb-3" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+          <label htmlFor="pw-zip" className="text-[10px] font-medium block mb-1" style={{ color: 'rgba(167,139,250,0.8)' }}>Postal code</label>
+          <input id="pw-zip" value={zip} onChange={e => setZip(e.target.value)} inputMode="numeric"
+            placeholder="e.g. 10065"
+            className="block w-full bg-transparent text-sm focus:outline-none" style={{ color: 'rgba(255,255,255,0.9)' }} />
+        </div>
+      </div>
+      {SaveError}
+      <SaveButton onClick={async () => {
+        setSaving(true)
+        setSaveError('')
+        if (dob && !isValidISODate(dob)) {
+          setSaving(false)
+          setSaveError('Date of birth must be in YYYY-MM-DD format.')
+          return
+        }
+        const patch: Record<string, unknown> = {}
+        if (dob) patch.dateOfBirth = dob
+        if (sexAtBirth) patch.sexAtBirth = sexAtBirth
+        if (zip.trim()) patch.zipCode = zip.trim()
+        let ok = true
+        if (Object.keys(patch).length > 0) {
+          ok = await patchProfile(careProfileId, patch)
+        }
         setSaving(false)
         if (!ok) { setSaveError("Couldn't save — please check your connection and try again."); return }
         stepKey.current += 1
         setInner('priorities')
       }} />
+      <button type="button" onClick={() => { stepKey.current += 1; setInner('priorities') }}
+        className="text-xs text-center transition-colors hover:text-white/50" style={{ color: 'rgba(255,255,255,0.3)' }}>
+        Skip — I&apos;ll fill this in later
+      </button>
     </div>
   )
 
@@ -319,6 +473,7 @@ export function PatientWizard({
         const ok = await patchProfile(careProfileId, { onboardingPriorities: priorities })
         setSaving(false)
         if (!ok) { setSaveError("Couldn't save — please check your connection and try again."); return }
+        try { localStorage.setItem('onboarding_priorities', JSON.stringify(priorities)) } catch { /* storage disabled */ }
         stepKey.current += 1
         setInner('notifications')
       }} />
