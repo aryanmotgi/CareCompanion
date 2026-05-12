@@ -132,7 +132,18 @@ export async function syncHealthKitData(): Promise<{ synced: number }> {
   })
 
   if (records.length === 0) return { synced: 0 }
-  return apiClient.healthkit.sync(records)
+
+  // Don't let a backend failure (auth, network, migration not yet run) propagate
+  // up and bail the onboarding flow. Treat it as zero-synced — the gate logic in
+  // /onboarding-records can then surface a friendly "no records found yet"
+  // alert instead of a generic "could not connect" error. A real fix happens
+  // later when the user retries from inside the app.
+  try {
+    return await apiClient.healthkit.sync(records)
+  } catch (err) {
+    console.warn('[HealthKit] sync POST failed:', err)
+    return { synced: 0 }
+  }
 }
 
 /**

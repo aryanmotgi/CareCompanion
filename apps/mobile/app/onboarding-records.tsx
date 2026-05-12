@@ -78,10 +78,28 @@ export default function OnboardingRecordsScreen() {
       markOnboarded()
       router.replace('/(tabs)')
     } catch (err) {
-      console.warn('[onboarding-records] HealthKit connect failed:', err)
+      const msg = err instanceof Error ? err.message : String(err)
+      console.warn('[onboarding-records] HealthKit connect failed:', msg, err)
+      // In dev, surface the underlying error and give a skip path so the
+      // tester isn't stuck on this screen. In production, keep a friendly
+      // copy and offer Retry only — gating remains strict.
       Alert.alert(
         'Could not connect Apple Health',
-        'Please try again. If the problem persists, restart the app.'
+        __DEV__
+          ? `Error: ${msg}\n\nSimulator usually can't reach real provider portals. Use Skip to bypass for testing.`
+          : 'Please try again. If the problem persists, restart the app.',
+        __DEV__
+          ? [
+              { text: 'Retry', style: 'cancel' },
+              {
+                text: 'Skip (dev only)',
+                onPress: () => {
+                  markOnboarded()
+                  router.replace('/(tabs)')
+                },
+              },
+            ]
+          : [{ text: 'OK' }]
       )
     } finally {
       setRequesting(false)
