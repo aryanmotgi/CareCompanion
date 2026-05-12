@@ -28,6 +28,7 @@ import { auth } from '@/lib/auth'
 import { validateCsrf } from '@/lib/csrf'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { joinCareGroup, normalizeCode, type Relationship } from '@/lib/care-group'
+import { isCaregiverCodeFlowEnabled } from '@/lib/feature-flags'
 
 const RELATIONSHIPS: Relationship[] = ['spouse', 'parent', 'child', 'sibling', 'friend', 'other']
 
@@ -38,6 +39,10 @@ const RATE_LIMIT = { maxRequests: 5, windowMs: 60_000 }
 const INVALID_CODE_MSG = "That code didn't work. Ask the patient for a new one."
 
 export async function POST(req: Request) {
+  if (!isCaregiverCodeFlowEnabled()) {
+    return NextResponse.json({ error: 'Feature disabled' }, { status: 503 })
+  }
+
   const { valid, error: csrfError } = await validateCsrf(req)
   if (!valid) return csrfError!
 

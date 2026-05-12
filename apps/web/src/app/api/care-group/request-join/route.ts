@@ -22,10 +22,15 @@ import { and, eq, desc } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { validateCsrf } from '@/lib/csrf'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { isCaregiverCodeFlowEnabled } from '@/lib/feature-flags'
 
 const RATE_LIMIT = { maxRequests: 3, windowMs: 60 * 60_000 }
 
 export async function POST(req: Request) {
+  if (!isCaregiverCodeFlowEnabled()) {
+    return NextResponse.json({ error: 'Feature disabled' }, { status: 503 })
+  }
+
   const { valid, error: csrfError } = await validateCsrf(req)
   if (!valid) return csrfError!
 

@@ -19,11 +19,21 @@ import { and, eq, gt, isNull } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { validateCsrf } from '@/lib/csrf'
 import { generateCode, isGroupPatient } from '@/lib/care-group'
+import { isCaregiverCodeFlowEnabled } from '@/lib/feature-flags'
+
+function flagGate(): NextResponse | null {
+  return isCaregiverCodeFlowEnabled()
+    ? null
+    : NextResponse.json({ error: 'Feature disabled' }, { status: 503 })
+}
 
 const CODE_EXPIRY_DAYS = 14
 const DEFAULT_MAX_USES = 5
 
 export async function POST(req: Request) {
+  const flagBlock = flagGate()
+  if (flagBlock) return flagBlock
+
   const { valid, error: csrfError } = await validateCsrf(req)
   if (!valid) return csrfError!
 
@@ -103,6 +113,9 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
+  const flagBlock = flagGate()
+  if (flagBlock) return flagBlock
+
   try {
     const session = await auth()
     if (!session?.user?.id) {
