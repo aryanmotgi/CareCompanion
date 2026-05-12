@@ -856,7 +856,7 @@ export default function WelcomeScreen() {
   function handleGetStarted() {
     markSeen()
     void markWelcomeSeen()
-    router.push('/care-type' as any)
+    router.push('/signup' as any)
   }
   function handleSignIn() {
     markSeen()
