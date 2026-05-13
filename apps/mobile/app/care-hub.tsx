@@ -17,6 +17,7 @@ import { useTheme } from '../src/theme'
 import { GlassCard } from '../src/components/GlassCard'
 import { ShimmerSkeleton } from '../src/components/ShimmerSkeleton'
 import { AmbientOrbs } from '../src/components/AmbientOrbs'
+import { ErrorCard } from '../src/components/ErrorCard'
 import { useProfile } from '../src/context/ProfileContext'
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
@@ -263,6 +264,112 @@ function SectionCard({
   )
 }
 
+function CareHubExplainer({ theme }: { theme: ReturnType<typeof useTheme> }) {
+  const FEATURES: Array<{ icon: keyof typeof Ionicons.glyphMap; title: string; body: string; color: string }> = [
+    {
+      icon: 'radio-outline',
+      title: 'Symptom Radar',
+      body: 'Visualize how mood, pain, fatigue and energy trend across your last 7 days of check-ins.',
+      color: '#A78BFA',
+    },
+    {
+      icon: 'medical-outline',
+      title: 'Medication snapshot',
+      body: 'See what was taken, what was skipped, and which refills are coming up.',
+      color: '#6366F1',
+    },
+    {
+      icon: 'bulb-outline',
+      title: 'AI insights',
+      body: 'Patterns Claude spots in your check-ins, labs, and treatment timeline.',
+      color: '#10B981',
+    },
+    {
+      icon: 'calendar-outline',
+      title: 'Upcoming visits',
+      body: 'Next appointments at a glance, with doctor, specialty, and prep notes.',
+      color: '#6EE7B7',
+    },
+  ]
+  return (
+    <View style={{ gap: 14, paddingTop: 8 }}>
+      <View
+        style={{
+          alignSelf: 'flex-start',
+          paddingHorizontal: 10,
+          paddingVertical: 5,
+          borderRadius: 999,
+          backgroundColor: 'rgba(167,139,250,0.15)',
+          borderWidth: 1,
+          borderColor: 'rgba(167,139,250,0.3)',
+        }}
+      >
+        <Text style={{ color: '#A78BFA', fontSize: 10, fontWeight: '800', letterSpacing: 0.8 }}>
+          ✨ WHAT IS CARE HUB?
+        </Text>
+      </View>
+      <Text style={{ color: theme.text, fontSize: 22, fontWeight: '800', letterSpacing: -0.4 }}>
+        Your loved one's health at a glance
+      </Text>
+      <Text style={{ color: theme.textMuted, fontSize: 14, lineHeight: 20 }}>
+        Care Hub pulls together daily check-ins, medications, labs, and appointments into one live overview — so nothing falls through the cracks.
+      </Text>
+
+      <View style={{ gap: 10, marginTop: 6 }}>
+        {FEATURES.map((f, idx) => (
+          <View
+            key={idx}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: 12,
+              padding: 14,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: theme.border,
+              backgroundColor: 'rgba(255,255,255,0.03)',
+            }}
+          >
+            <View
+              style={{
+                width: 36, height: 36, borderRadius: 10,
+                backgroundColor: f.color + '22',
+                alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <Ionicons name={f.icon} size={18} color={f.color} />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={{ color: theme.text, fontSize: 14, fontWeight: '700', marginBottom: 2 }}>
+                {f.title}
+              </Text>
+              <Text style={{ color: theme.textMuted, fontSize: 12, lineHeight: 17 }}>
+                {f.body}
+              </Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      <View
+        style={{
+          marginTop: 10,
+          padding: 14,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: theme.border,
+          borderStyle: 'dashed',
+          alignItems: 'center',
+        }}
+      >
+        <Text style={{ color: theme.textMuted, fontSize: 12, textAlign: 'center', lineHeight: 17 }}>
+          Once you log your first check-in or sync health data, this page fills in automatically.
+        </Text>
+      </View>
+    </View>
+  )
+}
+
 function SkeletonScreen() {
   return (
     <View style={{ gap: 12 }}>
@@ -353,13 +460,15 @@ export default function CareHubScreen() {
         {loading ? (
           <SkeletonScreen />
         ) : error ? (
-          <View style={styles.errorContainer}>
-            <Text style={{ color: '#F87171', fontSize: 13, textAlign: 'center' }}>{error}</Text>
-            <Pressable onPress={() => { setLoading(true); fetchData() }} style={styles.retryBtn}>
-              <Text style={{ color: theme.accent, fontSize: 13 }}>Retry</Text>
-            </Pressable>
-          </View>
-        ) : !data ? null : (
+          <ErrorCard
+            title="Couldn't load Care Hub"
+            message={error}
+            retrying={loading}
+            onRetry={() => { setLoading(true); fetchData() }}
+          />
+        ) : !data ? (
+          <CareHubExplainer theme={theme} />
+        ) : (
           <View style={{ gap: 10 }}>
             {/* Patient status banner */}
             {(() => {

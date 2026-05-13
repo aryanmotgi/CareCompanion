@@ -14,27 +14,8 @@ type Alert = {
   severity: Severity
   title: string
   detail: string
-  source: 'interaction' | 'lab' | 'ai-beta'
+  source: 'interaction' | 'lab'
 }
-
-// Placeholder AI-derived alerts. Wire to a real /api/insights endpoint when one
-// exists; until then we surface these so the widget always has signal.
-const AI_PLACEHOLDERS: Alert[] = [
-  {
-    id: 'ai-fatigue',
-    severity: 'warning',
-    title: 'Fatigue trend rising',
-    detail: 'Mentioned in 3 of your last 5 chat sessions',
-    source: 'ai-beta',
-  },
-  {
-    id: 'ai-sleep',
-    severity: 'warning',
-    title: 'Sleep impact noted',
-    detail: 'Possibly correlated with evening Tamoxifen dosing',
-    source: 'ai-beta',
-  },
-]
 
 // Reference range strings from HealthKit (e.g. "4.0–11.0") may use en-dash or
 // ASCII hyphen depending on provider. Accept either.
@@ -129,9 +110,6 @@ export function DailyAlertsCard({ careProfileId }: Props) {
           // Lab fetch failed — skip the lab section.
         }
       }
-
-      // 3) Placeholder AI insights (always present until a real endpoint exists).
-      collected.push(...AI_PLACEHOLDERS)
 
       if (!cancelled) setAlerts(collected)
     }
@@ -240,27 +218,6 @@ function AlertRow({
           >
             {alert.title}
           </Text>
-          {alert.source === 'ai-beta' && (
-            <View
-              style={{
-                paddingHorizontal: 6,
-                paddingVertical: 2,
-                borderRadius: 4,
-                backgroundColor: 'rgba(167,139,250,0.2)',
-              }}
-            >
-              <Text
-                style={{
-                  color: '#A78BFA',
-                  fontSize: 9,
-                  fontWeight: '800',
-                  letterSpacing: 0.5,
-                }}
-              >
-                BETA
-              </Text>
-            </View>
-          )}
         </View>
         <Text style={{ color: mutedColor, fontSize: 12, lineHeight: 16 }} numberOfLines={2}>
           {alert.detail}

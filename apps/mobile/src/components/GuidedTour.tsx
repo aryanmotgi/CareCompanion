@@ -20,9 +20,11 @@ import { useTheme } from '../theme'
 
 const TOUR_KEY = 'tour_completed'
 const TOOLTIP_WIDTH = 240
-// Home=0, Chat=1, Care=2, Trials=3, Community=4
-const TAB_COUNT = 5
+// Visible tabs: Home=0, Chat=1, Care=2, Trials=3 (Community/Scan/Settings hidden via href:null)
+const TAB_COUNT = 4
 const TAB_BAR_CONTENT_HEIGHT = 68  // paddingTop(8)+icon(36)+dot(7)+label(13)+paddingBottom(4)
+const CARD_BG_DARK = '#1A1B2E'
+const CARD_BG_LIGHT = '#FFFFFF'
 
 const STEPS = [
   {
@@ -141,9 +143,11 @@ export function GuidedTour() {
   const cutoutWidth = tabWidth
   const dimColor = 'rgba(0,0,0,0.72)'
 
+  const cardBg = theme.isDark ? CARD_BG_DARK : CARD_BG_LIGHT
+
   return (
     <Animated.View
-      style={[StyleSheet.absoluteFill, overlayStyle]}
+      style={[StyleSheet.absoluteFill, { zIndex: 999 }, overlayStyle]}
       pointerEvents="box-none"
     >
       {/* Top dim — everything above the tab bar. Catches taps so nothing behind it is interactive. */}
@@ -172,21 +176,17 @@ export function GuidedTour() {
         <View style={{ flex: 1, height: '100%', backgroundColor: dimColor }} pointerEvents="auto" />
       </View>
 
-      {/* Highlight ring around the target tab icon. Tab bar layout:
-          paddingTop(8) + iconWrapper(36) → icon vertical center sits 26px from
-          the top of the tab bar (i.e. tabBarContentHeight - 26 from its bottom).
-          We size the ring to just hug the 36px icon wrapper. */}
+      {/* Soft pill highlight behind target tab — subtle accent tint, no hard ring. */}
       <View
         style={{
           position: 'absolute',
-          left: cutoutLeft + cutoutWidth / 2 - 22,
-          bottom: insets.bottom + (TAB_BAR_CONTENT_HEIGHT - 26) - 22,
-          width: 44, height: 44, borderRadius: 22,
-          borderWidth: 2,
-          borderColor: theme.accent,
+          left: cutoutLeft + cutoutWidth / 2 - 28,
+          bottom: insets.bottom + (TAB_BAR_CONTENT_HEIGHT - 26) - 18,
+          width: 56, height: 36, borderRadius: 18,
+          backgroundColor: theme.accent + '22',
           shadowColor: theme.accent,
-          shadowOpacity: 0.8,
-          shadowRadius: 12,
+          shadowOpacity: 0.5,
+          shadowRadius: 14,
           shadowOffset: { width: 0, height: 0 },
         }}
         pointerEvents="none"
@@ -200,7 +200,7 @@ export function GuidedTour() {
             bottom: tooltipBottom,
             left: tooltipLeft,
             width: TOOLTIP_WIDTH,
-            backgroundColor: theme.bgElevated,
+            backgroundColor: cardBg,
             borderColor: theme.border,
           },
           cardStyle,
@@ -244,7 +244,7 @@ export function GuidedTour() {
             styles.arrow,
             {
               left: arrowLeft,
-              borderTopColor: theme.bgElevated,
+              borderTopColor: cardBg,
             },
           ]}
         />

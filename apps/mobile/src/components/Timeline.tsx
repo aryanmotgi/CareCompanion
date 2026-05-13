@@ -238,6 +238,161 @@ function TimelineNode({ item, isLast, index, onTodayLayout }: {
   )
 }
 
+// In-memory preview cards shown when timeline has zero real events.
+// Gives new users a glimpse of what their timeline will look like.
+// Never persisted, gone when the screen unmounts.
+type PreviewCard = {
+  type: 'medication' | 'appointment' | 'lab'
+  label: string
+  title: string
+  subtitle: string
+  time: string
+  color: string
+  bg: string
+  icon: string
+}
+
+const PREVIEW_CARDS: PreviewCard[] = [
+  {
+    type: 'medication',
+    label: 'MEDICATION',
+    title: 'Tamoxifen 20mg',
+    subtitle: '1 tablet, with breakfast',
+    time: '8:00 AM',
+    color: '#6366F1',
+    bg: 'rgba(99,102,241,0.08)',
+    icon: '💊',
+  },
+  {
+    type: 'appointment',
+    label: 'APPOINTMENT',
+    title: 'Oncology follow-up',
+    subtitle: 'Dr. Patel · Memorial Sloan Kettering',
+    time: '2:30 PM',
+    color: '#6EE7B7',
+    bg: 'rgba(110,231,183,0.08)',
+    icon: '🩺',
+  },
+  {
+    type: 'lab',
+    label: 'LAB RESULT',
+    title: 'CBC panel',
+    subtitle: 'All values within normal range',
+    time: 'May 8',
+    color: '#67E8F9',
+    bg: 'rgba(103,232,249,0.08)',
+    icon: '🧪',
+  },
+]
+
+function EmptyTimelinePreview({ theme }: { theme: ReturnType<typeof useTheme> }) {
+  const [dismissed, setDismissed] = useState(false)
+
+  if (dismissed) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyIcon}>🗓️</Text>
+        <Text style={[styles.emptyTitle, { color: theme.text }]}>No events yet</Text>
+        <Text style={[styles.emptyBody, { color: theme.textMuted }]}>
+          Medications, appointments, and lab results will appear here once added.
+        </Text>
+      </View>
+    )
+  }
+
+  return (
+    <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32 }}>
+      <View
+        style={{
+          alignSelf: 'flex-start',
+          paddingHorizontal: 10,
+          paddingVertical: 5,
+          borderRadius: 999,
+          backgroundColor: 'rgba(167,139,250,0.15)',
+          borderWidth: 1,
+          borderColor: 'rgba(167,139,250,0.3)',
+          marginBottom: 10,
+        }}
+      >
+        <Text style={{ color: '#A78BFA', fontSize: 10, fontWeight: '800', letterSpacing: 0.8 }}>
+          ✨ PREVIEW
+        </Text>
+      </View>
+      <Text style={{ color: theme.text, fontSize: 20, fontWeight: '800', marginBottom: 4 }}>
+        Here's how your timeline will look
+      </Text>
+      <Text style={{ color: theme.textMuted, fontSize: 13, lineHeight: 18, marginBottom: 18 }}>
+        Once you add medications, appointments, or sync lab results, they'll show up here grouped by day.
+      </Text>
+
+      {/* Faux day header */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.accent }} />
+        <Text style={{ color: theme.text, fontSize: 13, fontWeight: '700', letterSpacing: 0.4 }}>
+          TODAY
+        </Text>
+        <View style={{ flex: 1, height: 1, backgroundColor: theme.border }} />
+      </View>
+
+      {PREVIEW_CARDS.map((c, idx) => (
+        <View
+          key={idx}
+          style={{
+            position: 'relative',
+            marginBottom: 10,
+            padding: 14,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: theme.border,
+            backgroundColor: c.bg,
+            opacity: 0.85,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <Text style={{ fontSize: 18 }}>{c.icon}</Text>
+            <Text style={{ color: c.color, fontSize: 10, fontWeight: '800', letterSpacing: 0.6, flex: 1 }}>
+              {c.label}
+            </Text>
+            <Text style={{ color: theme.textMuted, fontSize: 11, fontWeight: '600' }}>{c.time}</Text>
+          </View>
+          <Text style={{ color: theme.text, fontSize: 15, fontWeight: '700', marginBottom: 2 }}>
+            {c.title}
+          </Text>
+          <Text style={{ color: theme.textMuted, fontSize: 12 }}>{c.subtitle}</Text>
+        </View>
+      ))}
+
+      <View
+        style={{
+          marginTop: 18,
+          padding: 14,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: theme.border,
+          borderStyle: 'dashed',
+          alignItems: 'center',
+        }}
+      >
+        <Text style={{ color: theme.textMuted, fontSize: 12, textAlign: 'center' }}>
+          Sample preview — these events aren't real. Add a medication or sync Apple Health to see your own.
+        </Text>
+        <Pressable
+          onPress={() => setDismissed(true)}
+          style={({ pressed }) => ({
+            marginTop: 10,
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+            opacity: pressed ? 0.6 : 1,
+          })}
+          hitSlop={8}
+        >
+          <Text style={{ color: theme.accent, fontSize: 13, fontWeight: '700' }}>Got it, hide preview</Text>
+        </Pressable>
+      </View>
+    </View>
+  )
+}
+
 export function Timeline({ onEmpty, scrollRef, filter = 'all' }: TimelineProps) {
   const theme = useTheme()
   const { profile, apiClient } = useProfile()
@@ -344,15 +499,7 @@ export function Timeline({ onEmpty, scrollRef, filter = 'all' }: TimelineProps) 
   }
 
   if (items.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>🗓️</Text>
-        <Text style={[styles.emptyTitle, { color: theme.text }]}>No events yet</Text>
-        <Text style={[styles.emptyBody, { color: theme.textMuted }]}>
-          Medications, appointments, and lab results will appear here once added.
-        </Text>
-      </View>
-    )
+    return <EmptyTimelinePreview theme={theme} />
   }
 
   const phaseLabel = cycleInfo?.startDate ? getCycleDay(cycleInfo.startDate, cycleInfo.days) : null

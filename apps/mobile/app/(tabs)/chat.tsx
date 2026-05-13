@@ -10,7 +10,9 @@ import {
   Platform,
   Pressable,
   Alert,
+  Share,
 } from 'react-native'
+import * as Haptics from 'expo-haptics'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -78,15 +80,15 @@ function formatMessageTime(iso: string | undefined): string {
 
 function MessageBubble({ message, onRetry }: { message: Message; onRetry?: (text: string) => void }) {
   const theme = useTheme()
-  const scale = useSharedValue(0.7)
-  const ty = useSharedValue(8)
+  const scale = useSharedValue(0.85)
+  const ty = useSharedValue(24)
   const opacity = useSharedValue(0)
   const isUser = message.role === 'user'
 
   useEffect(() => {
-    scale.value = withSpring(1, { damping: 12, stiffness: 180 })
-    ty.value = withSpring(0, { damping: 12, stiffness: 180 })
-    opacity.value = withSpring(1, { damping: 12, stiffness: 180 })
+    scale.value = withSpring(1, { damping: 14, stiffness: 200 })
+    ty.value = withSpring(0, { damping: 14, stiffness: 200 })
+    opacity.value = withTiming(1, { duration: 280 })
   }, [scale, ty, opacity])
 
   const style = useAnimatedStyle(() => ({
@@ -94,14 +96,23 @@ function MessageBubble({ message, onRetry }: { message: Message; onRetry?: (text
     opacity: opacity.value,
   }))
 
+  const handleLongPress = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {})
+    try {
+      await Share.share({ message: message.content })
+    } catch {/* user cancelled */}
+  }, [message.content])
+
   const timestamp = formatMessageTime(message.createdAt)
 
   if (isUser) {
     return (
       <Animated.View style={[styles.bubbleRow, styles.userRow, style]}>
-        <LinearGradient colors={['#6366F1', '#818CF8']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={[styles.bubble, styles.userBubble]}>
-          <Text style={styles.userText}>{message.content}</Text>
-        </LinearGradient>
+        <Pressable onLongPress={handleLongPress} delayLongPress={350}>
+          <LinearGradient colors={['#6366F1', '#818CF8']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }} style={[styles.bubble, styles.userBubble]}>
+            <Text style={styles.userText}>{message.content}</Text>
+          </LinearGradient>
+        </Pressable>
         {timestamp ? <Text style={[styles.timestamp, styles.timestampRight, { color: theme.textMuted }]}>{timestamp}</Text> : null}
       </Animated.View>
     )
@@ -127,9 +138,11 @@ function MessageBubble({ message, onRetry }: { message: Message; onRetry?: (text
 
   return (
     <Animated.View style={[styles.bubbleRow, style]}>
-      <View style={[styles.bubble, styles.aiBubble, { backgroundColor: theme.bgCard, borderColor: theme.bgCardBorder }]}>
-        <Text style={[styles.aiText, { color: theme.text }]}>{message.content}</Text>
-      </View>
+      <Pressable onLongPress={handleLongPress} delayLongPress={350}>
+        <View style={[styles.bubble, styles.aiBubble, { backgroundColor: theme.bgCard, borderColor: theme.bgCardBorder }]}>
+          <Text style={[styles.aiText, { color: theme.text }]}>{message.content}</Text>
+        </View>
+      </Pressable>
       {timestamp ? <Text style={[styles.timestamp, { color: theme.textMuted }]}>{timestamp}</Text> : null}
     </Animated.View>
   )
@@ -324,6 +337,7 @@ export default function ChatScreen() {
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const listRef = useRef<FlatList>(null)
+  const [showScrollFab, setShowScrollFab] = useState(false)
   const csrfTokenRef = useRef<string | null>(null)
   const activeIdRef = useRef<string | null>(null)
 
@@ -682,9 +696,23 @@ export default function ChatScreen() {
             }
             ListFooterComponent={sending ? <TypingDots /> : null}
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+            onScroll={(e) => {
+              const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent
+              const distFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height)
+              setShowScrollFab(distFromBottom > 240)
+            }}
+            scrollEventThrottle={120}
           />
         )}
-
+        {showScrollFab && messages.length > 0 && (
+          <Pressable
+            onPress={() => { listRef.current?.scrollToEnd({ animated: true }); setShowScrollFab(false) }}
+            style={[styles.scrollFab, { bottom: insets.bottom + TAB_BAR_HEIGHT + 90, backgroundColor: theme.bgElevated, borderColor: theme.border }]}
+            hitSlop={8}
+          >
+            <Ionicons name="arrow-down" size={18} color={theme.accent} />
+          </Pressable>
+        )}
         <View style={[styles.inputBar, {
           paddingBottom: insets.bottom + TAB_BAR_HEIGHT + 8,
           borderTopColor: theme.border,
@@ -788,6 +816,22 @@ const styles = StyleSheet.create({
   timestamp: { fontSize: 11, marginTop: 3, alignSelf: 'flex-start' },
   timestampRight: { alignSelf: 'flex-end' },
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingTop: 10, paddingHorizontal: 16, borderTopWidth: 1, overflow: 'hidden' },
+  scrollFab: {
+    position: 'absolute',
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 100,
+  },
   input: { flex: 1, borderWidth: 1, borderRadius: 12, padding: 12, fontSize: 15, maxHeight: 100 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   sendIcon: { color: '#fff', fontSize: 18, fontWeight: '700' },

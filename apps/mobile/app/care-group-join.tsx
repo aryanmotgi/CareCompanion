@@ -20,6 +20,19 @@ import {
   ScrollView,
   AppState,
 } from 'react-native'
+import * as Haptics from 'expo-haptics'
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withSpring,
+  interpolate,
+  Easing,
+  cancelAnimation,
+} from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -27,6 +40,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { apiClient } from '../src/services/api'
 import { useProfile } from '../src/context/ProfileContext'
 import { useCaregiverJoinedContext } from './_layout'
+import { AuroraBackground, FloatingGlyphs, useDeviceTilt } from '../src/components/auth/AuthAtoms'
 
 const ACCENT = '#818CF8'
 const SAFE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ'
@@ -78,6 +92,7 @@ export default function CareGroupJoinScreen() {
     setSubmitting(true)
     setError(null)
     try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {})
       const result = await apiClient.careGroup.joinByCode(code, 'other', csrfToken)
       // Push to /care-relationship for photo-verify + relationship picker.
       router.replace({
@@ -88,6 +103,7 @@ export default function CareGroupJoinScreen() {
         },
       } as any)
     } catch (err) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {})
       const msg = err instanceof Error ? err.message : String(err)
       setWrongAttempts((n) => n + 1)
       setError(msg.includes('didn') ? "That code didn't work. Double-check with the patient." : msg)
@@ -111,16 +127,59 @@ export default function CareGroupJoinScreen() {
     }
   }, [email, csrfToken, submitting])
 
+  // Entry animations
+  const iconScale = useSharedValue(0.6)
+  const iconPulse = useSharedValue(0)
+  const titleOp = useSharedValue(0)
+  const titleY = useSharedValue(16)
+  const formOp = useSharedValue(0)
+  const formY = useSharedValue(20)
+  const { tx, ty } = useDeviceTilt()
+
+  useEffect(() => {
+    iconScale.value = withSpring(1, { damping: 10, stiffness: 140 })
+    iconPulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+      ),
+      -1,
+      false,
+    )
+    titleOp.value = withDelay(200, withTiming(1, { duration: 500 }))
+    titleY.value = withDelay(200, withTiming(0, { duration: 500 }))
+    formOp.value = withDelay(400, withTiming(1, { duration: 500 }))
+    formY.value = withDelay(400, withTiming(0, { duration: 500 }))
+    return () => { cancelAnimation(iconScale); cancelAnimation(iconPulse); cancelAnimation(titleOp); cancelAnimation(titleY); cancelAnimation(formOp); cancelAnimation(formY) }
+  }, [iconScale, iconPulse, titleOp, titleY, formOp, formY])
+
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: iconScale.value },
+      { translateX: tx.value * 8 },
+      { translateY: ty.value * 8 },
+    ],
+  }))
+  const iconRingStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(iconPulse.value, [0, 1], [0.6, 0]),
+    transform: [{ scale: interpolate(iconPulse.value, [0, 1], [1, 1.4]) }],
+  }))
+  const titleStyle = useAnimatedStyle(() => ({
+    opacity: titleOp.value,
+    transform: [{ translateY: titleY.value }],
+  }))
+  const formStyle = useAnimatedStyle(() => ({
+    opacity: formOp.value,
+    transform: [{ translateY: formY.value }],
+  }))
+
   return (
     <View style={styles.root}>
-      <LinearGradient
-        colors={['#05060F', '#0F1130', '#05060F']}
-        locations={[0, 0.55, 1]}
-        style={StyleSheet.absoluteFillObject}
-      />
+      <AuroraBackground />
+      <FloatingGlyphs />
 
       <Pressable
-        onPress={() => router.back()}
+        onPress={() => { if (router.canGoBack()) router.back(); else router.replace('/care-type' as any) }}
         hitSlop={16}
         style={[styles.backBtn, { top: insets.top + 8 }]}
       >
@@ -135,7 +194,8 @@ export default function CareGroupJoinScreen() {
           contentContainerStyle={[styles.content, { paddingTop: insets.top + 80, paddingBottom: insets.bottom + 24 }]}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.iconBubble}>
+          <Animated.View style={[styles.iconBubble, iconStyle]}>
+            <Animated.View style={[styles.iconRing, iconRingStyle]} />
             <LinearGradient
               colors={['#A78BFA', '#818CF8', '#22D3EE']}
               start={{ x: 0, y: 0 }}
@@ -143,15 +203,18 @@ export default function CareGroupJoinScreen() {
               style={StyleSheet.absoluteFillObject}
             />
             <Ionicons name="people" size={36} color="white" />
-          </View>
+          </Animated.View>
 
-          <Text style={styles.title}>Join your patient's care circle</Text>
-          <Text style={styles.subtitle}>
-            {mode === 'code'
-              ? "Enter the 5-character code the patient shared with you."
-              : "Enter the patient's email. They'll approve your request from their app."}
-          </Text>
+          <Animated.View style={titleStyle}>
+            <Text style={styles.title}>Join your patient's care circle</Text>
+            <Text style={styles.subtitle}>
+              {mode === 'code'
+                ? "Enter the 5-character code the patient shared with you."
+                : "Enter the patient's email. They'll approve your request from their app."}
+            </Text>
+          </Animated.View>
 
+          <Animated.View style={[{ width: '100%' }, formStyle]}>
           {mode === 'code' ? (
             <>
               <TextInput
@@ -247,6 +310,7 @@ export default function CareGroupJoinScreen() {
               </Pressable>
             </>
           )}
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -264,9 +328,20 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, paddingHorizontal: 24, alignItems: 'center' },
   iconBubble: {
     width: 88, height: 88, borderRadius: 24,
-    overflow: 'hidden',
+    overflow: 'visible',
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 28,
+    shadowColor: '#A78BFA',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  iconRing: {
+    position: 'absolute',
+    width: 88, height: 88, borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: '#A78BFA',
   },
   title: {
     color: 'white', fontSize: 26, fontWeight: '800',

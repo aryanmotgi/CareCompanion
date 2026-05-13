@@ -15,7 +15,28 @@ import { useShakeDetector } from '../src/hooks/useShakeDetector'
 import { BugReportSheet } from '../src/components/BugReportSheet'
 import { ProfileProvider, useProfile } from '../src/context/ProfileContext'
 import { refreshTokenIfNeeded } from '../src/services/token-refresh'
+import {
+  registerNotificationCategories,
+  onNotificationResponse,
+} from '../src/services/notifications'
+import {
+  defineSyncTask,
+  registerBackgroundSync,
+} from '../src/services/background-sync'
+import { syncHealthKitData } from '../src/services/healthkit'
 import { WELCOME_SEEN_KEY } from './welcome'
+
+// Module-load: declare the JS handler the OS will invoke when iOS wakes us up.
+// Must run before any RootLayout render — TaskManager requires the task to be
+// registered at JS bootstrap time, not lazily in a useEffect.
+defineSyncTask(async () => {
+  try {
+    const { synced } = await syncHealthKitData()
+    return synced > 0 ? 'new-data' : 'no-data'
+  } catch {
+    return 'failed'
+  }
+})
 
 // Welcome-seen state lives in a context so updates from welcome.tsx are visible
 // to AuthGate in the same render — avoids a redirect-back-to-welcome race when
@@ -63,7 +84,7 @@ export const useRecordsContext = () => useContext(RecordsContext)
 // being cared for, or a caregiver joining someone else's care circle? Drives
 // onboarding routing.
 const USER_TYPE_KEY = 'cc-user-type'
-type UserType = 'patient' | 'caregiver'
+type UserType = 'patient' | 'caregiver' | 'self'
 type UserTypeState = 'loading' | UserType | 'unset'
 const UserTypeContext = createContext<{
   state: UserTypeState
@@ -248,19 +269,23 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   // Both prevent reaching (tabs) until their respective onboarding completes.
   const isCaregiver = userTypeState === 'caregiver'
   const isPatient = userTypeState === 'patient'
+  const isSelf = userTypeState === 'self'
   // Signed-in user who hasn't picked patient-or-caregiver yet (post-signup or
   // returning user on a fresh device) needs to go through /care-type before
   // any onboarding can happen.
   const onCareType = route === 'care-type'
   const needsCareTypePick =
-    tokenState === 'present' && userTypeState === 'unset' && !onCareType
-  const needsRecordsOnboarding = isPatient && recordsState === 'pending' && onTabs
+    tokenState === 'present' &&
+    userTypeState === 'unset' &&
+    !onCareType &&
+    welcomeState === 'seen'
+  const needsRecordsOnboarding = (isPatient || isSelf) && recordsState === 'pending' && onTabs
   const needsCaregiverOnboarding = isCaregiver && caregiverJoinedState === 'pending' && onTabs
   const needsTabs =
     tokenState === 'present' &&
     isPublicRoute &&
     (
-      (isPatient && recordsState !== 'pending') ||
+      ((isPatient || isSelf) && recordsState !== 'pending') ||
       (isCaregiver && caregiverJoinedState === 'joined')
     )
 
@@ -287,7 +312,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     if (allStatesReady) hasCommittedSettled.current = true
   }, [allStatesReady])
   const onboardingComplete =
-    (isPatient && recordsState === 'onboarded') ||
+    ((isPatient || isSelf) && recordsState === 'onboarded') ||
     (isCaregiver && caregiverJoinedState === 'joined')
   const needsFunnelRestart =
     allStatesReady &&
@@ -336,19 +361,32 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   )
 }
 
+export const SETUP_SKIPPED_KEY = 'cc-setup-skipped'
+
 function OnboardingGate({ children }: { children: React.ReactNode }) {
   const { profile, loading } = useProfile()
   const segments = useSegments()
   const router = useRouter()
   const { state: userTypeState } = useUserTypeContext()
+  const [setupSkipped, setSetupSkipped] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    AsyncStorage.getItem(SETUP_SKIPPED_KEY)
+      .then((v) => setSetupSkipped(v === '1'))
+      .catch(() => setSetupSkipped(false))
+  }, [segments])
 
   useEffect(() => {
     if (loading) return
     if (!profile) return
+    if (setupSkipped === null) return
     // Caregivers have their own onboarding lane (care-group-join + care-relationship).
-    // Don't bounce them into the patient /setup flow.
+    // Self-care users don't have cancer-specific questionnaire data.
+    // Patients who explicitly skipped setup persist that choice locally.
     if (userTypeState === 'loading') return
     if (userTypeState === 'caregiver') return
+    if (userTypeState === 'self') return
+    if (setupSkipped) return
     const seg = segments[0] as string | undefined
     const onSetup =
       seg === 'setup' ||
@@ -359,7 +397,7 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
     if (!profile.onboardingCompleted && !onSetup) {
       router.replace('/setup')
     }
-  }, [profile, loading, segments, router, userTypeState])
+  }, [profile, loading, segments, router, userTypeState, setupSkipped])
 
   return <>{children}</>
 }
@@ -382,6 +420,24 @@ export default function RootLayout() {
     void refreshTokenIfNeeded()
   }, [])
 
+  // Register notification action categories + listen for user taps on action
+  // buttons (Mark taken / Snooze / Skip). Listener stays alive for app lifetime.
+  useEffect(() => {
+    void registerNotificationCategories()
+    const unsub = onNotificationResponse((resp) => {
+      // Stub handlers — wire to real API calls (mark dose taken, reschedule
+      // snoozed reminder, etc.) when the medication actions endpoint lands.
+      console.log('[notif-action]', resp.actionId, resp.data)
+    })
+    return unsub
+  }, [])
+
+  // Best-effort background HealthKit sync. iOS may invoke the task as often as
+  // every ~15 min or as rarely as once a day depending on app usage signal.
+  useEffect(() => {
+    void registerBackgroundSync(60 * 60)
+  }, [])
+
   const handleShake = useCallback(() => {
     setBugReportVisible(true)
   }, [])
@@ -402,7 +458,12 @@ export default function RootLayout() {
                 <AuthGate>
                   <ProfileProvider>
                     <OnboardingGate>
-                      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }} />
+                      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }}>
+                        {/* Logged-in tabs root: block iOS swipe-back to /welcome.
+                            Exit only via explicit Sign out. */}
+                        <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
+                        <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
+                      </Stack>
                     </OnboardingGate>
                   </ProfileProvider>
                 </AuthGate>

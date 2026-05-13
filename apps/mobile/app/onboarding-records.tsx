@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   View,
   Text,
@@ -12,10 +12,16 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSpring,
+  withRepeat,
+  withDelay,
+  withSequence,
   Easing,
+  cancelAnimation,
+  interpolate,
 } from 'react-native-reanimated'
+import * as Haptics from 'expo-haptics'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { LinearGradient } from 'expo-linear-gradient'
-import { BlurView } from 'expo-blur'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -25,6 +31,7 @@ import {
   syncHealthKitData,
 } from '../src/services/healthkit'
 import { useRecordsContext } from './_layout'
+import { AuroraBackground, FloatingGlyphs } from '../src/components/auth/AuthAtoms'
 
 const ACCENT = '#818CF8'
 
@@ -34,23 +41,63 @@ export default function OnboardingRecordsScreen() {
   const { markOnboarded } = useRecordsContext()
   const [requesting, setRequesting] = useState(false)
 
+  // Entry animations
+  const iconScale = useSharedValue(0)
+  const titleOpacity = useSharedValue(0)
+  const subOpacity = useSharedValue(0)
+  const bulletsOpacity = useSharedValue(0)
+  const ctaOpacity = useSharedValue(0)
+  const pulse = useSharedValue(0)
+
+  useEffect(() => {
+    iconScale.value = withDelay(80, withSpring(1, { damping: 11, stiffness: 110 }))
+    titleOpacity.value = withDelay(240, withTiming(1, { duration: 500 }))
+    subOpacity.value = withDelay(360, withTiming(1, { duration: 500 }))
+    bulletsOpacity.value = withDelay(480, withTiming(1, { duration: 500 }))
+    ctaOpacity.value = withDelay(620, withTiming(1, { duration: 500 }))
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1800, easing: Easing.out(Easing.quad) }),
+        withTiming(0, { duration: 0 }),
+      ),
+      -1,
+      false,
+    )
+    return () => { cancelAnimation(pulse) }
+  }, [iconScale, titleOpacity, subOpacity, bulletsOpacity, ctaOpacity, pulse])
+
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: iconScale.value }],
+  }))
+  const pulseStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(pulse.value, [0, 0.2, 1], [0, 0.55, 0]),
+    transform: [{ scale: interpolate(pulse.value, [0, 1], [1, 1.9]) }],
+  }))
+  const titleStyle = useAnimatedStyle(() => ({
+    opacity: titleOpacity.value,
+    transform: [{ translateY: interpolate(titleOpacity.value, [0, 1], [10, 0]) }],
+  }))
+  const subStyle = useAnimatedStyle(() => ({
+    opacity: subOpacity.value,
+    transform: [{ translateY: interpolate(subOpacity.value, [0, 1], [10, 0]) }],
+  }))
+  const bulletsStyle = useAnimatedStyle(() => ({
+    opacity: bulletsOpacity.value,
+    transform: [{ translateY: interpolate(bulletsOpacity.value, [0, 1], [10, 0]) }],
+  }))
+  const ctaStyle = useAnimatedStyle(() => ({
+    opacity: ctaOpacity.value,
+    transform: [{ translateY: interpolate(ctaOpacity.value, [0, 1], [12, 0]) }],
+  }))
+
   async function handleConnect() {
     if (requesting) return
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {})
     setRequesting(true)
     try {
-      // Apple's requestAuthorization returns success=true whenever iOS shows
-      // the picker, regardless of what the user actually chose — Apple
-      // deliberately hides clinical-record auth decisions for privacy. So
-      // `granted` only tells us the dialog wasn't blocked by an error; it
-      // does NOT tell us whether the user picked a provider.
       const granted = await requestHealthKitPermissions()
       if (!granted) return
 
-      // Proxy for "did the user actually connect a provider": try to sync
-      // clinical records. If any flow back, they picked a provider. Zero =
-      // they cancelled the picker (or haven't completed provider sign-in
-      // yet) and we keep them on this screen. No back door to /(tabs)
-      // without real records.
       const { synced } = await syncHealthKitData()
       if (synced === 0) {
         Alert.alert(
@@ -80,9 +127,6 @@ export default function OnboardingRecordsScreen() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       console.warn('[onboarding-records] HealthKit connect failed:', msg, err)
-      // In dev, surface the underlying error and give a skip path so the
-      // tester isn't stuck on this screen. In production, keep a friendly
-      // copy and offer Retry only — gating remains strict.
       Alert.alert(
         'Could not connect Apple Health',
         __DEV__
@@ -106,48 +150,66 @@ export default function OnboardingRecordsScreen() {
     }
   }
 
+  function handleSkip() {
+    Alert.alert(
+      'Skip for now?',
+      'You can connect Apple Health any time from Settings. Some features (medication reminders, lab alerts) will be limited until then.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Skip',
+          style: 'destructive',
+          onPress: async () => {
+            Haptics.selectionAsync().catch(() => {})
+            await AsyncStorage.setItem('cc-setup-skipped', '1').catch(() => {})
+            markOnboarded()
+            router.replace('/(tabs)')
+          },
+        },
+      ],
+    )
+  }
+
   return (
     <View style={styles.root}>
-      <LinearGradient
-        colors={['#05060F', '#0F1130', '#05060F']}
-        locations={[0, 0.55, 1]}
-        style={StyleSheet.absoluteFillObject}
-      />
-      <View style={[styles.orb, { top: -120, left: -100, backgroundColor: ACCENT, opacity: 0.18 }]} />
-      <View style={[styles.orb, { bottom: -100, right: -80, backgroundColor: '#22D3EE', opacity: 0.1 }]} />
+      <AuroraBackground />
+      <FloatingGlyphs />
 
       <Pressable
-        onPress={() => router.replace('/signup')}
+        onPress={() => { if (router.canGoBack()) router.back(); else router.replace('/care-type' as any) }}
         hitSlop={16}
         style={[styles.backBtn, { top: insets.top + 8 }]}
       >
         <Ionicons name="chevron-back" size={28} color="white" />
       </Pressable>
 
-      <View style={[styles.content, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 16 }]}>
-        <Animated.View entering={undefined} style={styles.iconBubble}>
-          <LinearGradient
-            colors={['#A78BFA', '#818CF8', '#22D3EE']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFillObject}
-          />
-          <Ionicons name="heart" size={40} color="white" />
-        </Animated.View>
+      <View style={[styles.content, { paddingTop: insets.top + 48, paddingBottom: insets.bottom + 16 }]}>
+        <View style={styles.iconWrap}>
+          <Animated.View style={[styles.pulseRing, pulseStyle]} />
+          <Animated.View style={[styles.iconBubble, iconStyle]}>
+            <LinearGradient
+              colors={['#A78BFA', '#818CF8', '#22D3EE']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <Ionicons name="heart" size={40} color="white" />
+          </Animated.View>
+        </View>
 
-        <Text style={styles.title}>Connect your health records</Text>
-        <Text style={styles.subtitle}>
+        <Animated.Text style={[styles.title, titleStyle]}>Connect your health records</Animated.Text>
+        <Animated.Text style={[styles.subtitle, subStyle]}>
           CareCompanion pulls medications, lab results, conditions, and care-team
           info directly from Apple Health so you don't have to enter them by hand.
-        </Text>
+        </Animated.Text>
 
-        <View style={styles.bulletList}>
+        <Animated.View style={[styles.bulletList, bulletsStyle]}>
           <Bullet text="End-to-end encrypted on device" />
           <Bullet text="Never shared without your consent" />
           <Bullet text="Granular per-category permissions" />
-        </View>
+        </Animated.View>
 
-        <View style={styles.actions}>
+        <Animated.View style={[styles.actions, ctaStyle]}>
           <Pressable
             onPress={handleConnect}
             disabled={requesting}
@@ -171,7 +233,15 @@ export default function OnboardingRecordsScreen() {
               </>
             )}
           </Pressable>
-        </View>
+
+          <Pressable
+            onPress={handleSkip}
+            disabled={requesting}
+            style={({ pressed }) => [styles.skipBtn, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={styles.skipText}>Skip for now</Text>
+          </Pressable>
+        </Animated.View>
       </View>
     </View>
   )
@@ -190,10 +260,6 @@ function Bullet({ text }: { text: string }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#05060F' },
-  orb: {
-    position: 'absolute',
-    width: 360, height: 360, borderRadius: 180,
-  },
   backBtn: {
     position: 'absolute',
     left: 12,
@@ -206,11 +272,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  iconWrap: {
+    width: 96, height: 96,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 28,
+  },
+  pulseRing: {
+    position: 'absolute',
+    width: 96, height: 96, borderRadius: 28,
+    borderWidth: 2,
+    borderColor: ACCENT,
+  },
   iconBubble: {
     width: 96, height: 96, borderRadius: 28,
     overflow: 'hidden',
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: 28,
     shadowColor: ACCENT,
     shadowOpacity: 0.6,
     shadowRadius: 20,
@@ -231,7 +307,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 28,
   },
-  bulletList: { gap: 10, marginBottom: 40, alignSelf: 'stretch' },
+  bulletList: { gap: 10, marginBottom: 32, alignSelf: 'stretch' },
   bulletRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   bulletDot: {
     width: 24, height: 24, borderRadius: 12,
@@ -240,7 +316,7 @@ const styles = StyleSheet.create({
   },
   bulletText: { color: 'white', fontSize: 14, flex: 1 },
 
-  actions: { width: '100%', gap: 14, alignSelf: 'stretch' },
+  actions: { width: '100%', gap: 10, alignSelf: 'stretch' },
   cta: {
     overflow: 'hidden',
     flexDirection: 'row',
@@ -251,4 +327,11 @@ const styles = StyleSheet.create({
     minHeight: 54,
   },
   ctaText: { color: 'white', fontSize: 16, fontWeight: '700' },
+  skipBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  skipText: { color: '#FFFFFFAA', fontSize: 14, fontWeight: '600' },
 })

@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
 
@@ -57,8 +58,24 @@ export async function signInWithCareGroup(
   })
 }
 
-async function signOut(): Promise<void> {
-  await SecureStore.deleteItemAsync('cc-session-token')
-  await SecureStore.deleteItemAsync('cc-profile')
-  await SecureStore.deleteItemAsync('cc-csrf-token')
+export async function signOut(): Promise<void> {
+  // Clear secure tokens
+  await Promise.all([
+    SecureStore.deleteItemAsync('cc-session-token'),
+    SecureStore.deleteItemAsync('cc-profile'),
+    SecureStore.deleteItemAsync('cc-csrf-token'),
+  ])
+
+  // Clear local onboarding/preference flags so next user starts fresh.
+  // Keeping 'cc-welcome-seen' would skip the welcome scenes on re-login;
+  // wiping it sends them back to the marketing flow on next launch.
+  await Promise.all([
+    AsyncStorage.removeItem('cc-welcome-seen'),
+    AsyncStorage.removeItem('cc-user-type'),
+    AsyncStorage.removeItem('cc-caregiver-joined'),
+    AsyncStorage.removeItem('cc-records-onboarded'),
+    AsyncStorage.removeItem('cc-setup-skipped'),
+    AsyncStorage.removeItem('cc-healthkit-connected'),
+    AsyncStorage.removeItem('tour_completed'),
+  ])
 }
