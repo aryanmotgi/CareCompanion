@@ -13,6 +13,7 @@
     "android": "expo run:android"
   },
   "dependencies": {
+    "@babel/runtime": "^7.25.0",
     "@carecompanion/api": "workspace:*",
     "@carecompanion/types": "workspace:*",
     "@expo/metro-runtime": "~4.0.1",
