@@ -9,6 +9,7 @@
     "ios:device": "expo run:ios --device",
     "prebuild": "expo prebuild --clean",
     "typecheck": "tsc --noEmit",
+    "bundle-check": "expo export --platform ios --output-dir /tmp/cc-bundle-check --clear",
     "android": "expo run:android"
   },
   "dependencies": {
