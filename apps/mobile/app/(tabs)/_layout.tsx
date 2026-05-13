@@ -1,9 +1,12 @@
 // apps/mobile/app/(tabs)/_layout.tsx
 import React from 'react'
-import { View, Text, Pressable, StyleSheet } from 'react-native'
+import { AppState, View, Text, Pressable, StyleSheet } from 'react-native'
 import { Tabs, Redirect } from 'expo-router'
 import { useFocusEffect } from 'expo-router'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useRecordsContext, useWelcomeContext } from '../_layout'
+
+const NEW_LABS_KEY = 'cc-new-labs-count'
 
 import Animated, {
   useSharedValue,
@@ -25,6 +28,7 @@ const TABS = [
   { name: 'index', label: 'Home', icon: 'home-outline', iconActive: 'home' },
   { name: 'chat', label: 'Chat', icon: 'chatbubble-outline', iconActive: 'chatbubble' },
   { name: 'care', label: 'Care', icon: 'heart-outline', iconActive: 'heart' },
+  { name: 'labs', label: 'Labs', icon: 'pulse-outline', iconActive: 'pulse' },
   { name: 'trials', label: 'Trials', icon: 'flask-outline', iconActive: 'flask' },
 ]
 
@@ -98,10 +102,55 @@ function GlowDot({ active }: { active: boolean }) {
   )
 }
 
+function useNewLabsCount() {
+  const [count, setCount] = React.useState(0)
+
+  const refresh = React.useCallback(() => {
+    AsyncStorage.getItem(NEW_LABS_KEY)
+      .then((v) => {
+        const n = v ? parseInt(v, 10) : 0
+        setCount(Number.isFinite(n) && n > 0 ? n : 0)
+      })
+      .catch(() => setCount(0))
+  }, [])
+
+  React.useEffect(() => {
+    refresh()
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') refresh()
+    })
+    const interval = setInterval(refresh, 5000)
+    return () => {
+      sub.remove()
+      clearInterval(interval)
+    }
+  }, [refresh])
+
+  return { count, refresh }
+}
+
+function TabBadge({ count, color }: { count: number; color: string }) {
+  if (count <= 0) return null
+  return (
+    <View
+      style={[
+        styles.badge,
+        { backgroundColor: color },
+      ]}
+      pointerEvents="none"
+      accessible
+      accessibilityLabel={`${count} new`}
+    >
+      <Text style={styles.badgeText}>{count > 99 ? '99+' : String(count)}</Text>
+    </View>
+  )
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function CustomTabBar({ state, navigation }: any) {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
+  const { count: newLabsCount, refresh: refreshLabsBadge } = useNewLabsCount()
 
   return (
     <View
@@ -130,12 +179,18 @@ function CustomTabBar({ state, navigation }: any) {
           if (!tab) return null // Skip hidden tabs (like settings)
           const active = state.index === index
 
+          const badgeCount = tab.name === 'labs' ? newLabsCount : 0
+
           return (
             <Pressable
               key={route.key}
               style={styles.tabItem}
               onPress={() => {
                 void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                if (tab.name === 'labs') {
+                  AsyncStorage.removeItem(NEW_LABS_KEY).catch(() => {})
+                  refreshLabsBadge()
+                }
                 const event = navigation.emit({
                   type: 'tabPress',
                   target: route.key,
@@ -146,7 +201,10 @@ function CustomTabBar({ state, navigation }: any) {
                 }
               }}
             >
-              <TabIcon icon={tab.icon} iconActive={tab.iconActive} active={active} />
+              <View>
+                <TabIcon icon={tab.icon} iconActive={tab.iconActive} active={active} />
+                <TabBadge count={badgeCount} color={theme.rose} />
+              </View>
               <GlowDot active={active} />
               <Text
                 style={[
@@ -210,6 +268,7 @@ export default function TabLayout() {
         <Tabs.Screen name="index" />
         <Tabs.Screen name="chat" />
         <Tabs.Screen name="care" />
+        <Tabs.Screen name="labs" />
         <Tabs.Screen name="trials" />
         <Tabs.Screen name="community" options={{ href: null }} />
         <Tabs.Screen name="scan" options={{ href: null }} />
@@ -247,4 +306,21 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   label: { fontSize: 10 },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -6,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800',
+    lineHeight: 12,
+  },
 })

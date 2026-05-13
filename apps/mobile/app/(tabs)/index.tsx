@@ -1,6 +1,7 @@
 // apps/mobile/app/(tabs)/index.tsx
 import React, { useEffect, useState } from 'react'
 import {
+  AppState,
   View,
   Text,
   ScrollView,
@@ -41,9 +42,32 @@ import { TodaysMedicationsCard } from '../../src/components/TodaysMedicationsCar
 import { HomeTabPills, type HomeTab } from '../../src/components/home/HomeTabPills'
 import { MyCarePanel } from '../../src/components/home/MyCarePanel'
 import { HealthDataPanel } from '../../src/components/home/HealthDataPanel'
+import { CheckInModal } from '../../src/components/home/CheckInModal'
 import { TabFadeWrapper } from './_layout'
 import { useProfile } from '../../src/context/ProfileContext'
 import { apiClient } from '../../src/services/api'
+
+const NEW_LABS_KEY = 'cc-new-labs-count'
+const LAST_CHECKIN_KEY = 'cc-last-checkin-date'
+
+type NudgeType = 'appointment' | 'abnormal_lab' | 'refill' | 'checkin'
+type Nudge = {
+  type: NudgeType
+  title: string
+  body: string
+  cta: string
+  prefill?: string
+  action?: 'open_checkin'
+}
+
+function todayKey(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function nudgeKey(type: NudgeType): string {
+  return `cc-nudge-dismissed-${type}-${todayKey()}`
+}
 
 interface Profile {
   patientName?: string
@@ -131,7 +155,13 @@ export default function HomeScreen() {
   }, [refetch])
   const [meds, setMeds] = useState<any[]>([])
   const [appointments, setAppointments] = useState<any[]>([])
+  const [labs, setLabs] = useState<any[]>([])
   const [dataLoading, setDataLoading] = useState(true)
+  const [recordsVersion, setRecordsVersion] = useState(0)
+  const [newLabsCount, setNewLabsCount] = useState(0)
+  const [labBannerDismissed, setLabBannerDismissed] = useState(false)
+  const [checkInOpen, setCheckInOpen] = useState(false)
+  const [activeNudge, setActiveNudge] = useState<Nudge | null>(null)
 
   useEffect(() => {
     if (!profile?.careProfileId) {
@@ -142,18 +172,35 @@ export default function HomeScreen() {
     Promise.all([
       apiClient.medications.list(profile.careProfileId),
       apiClient.appointments.list(profile.careProfileId),
-    ]).then(([medsRaw, apptsRaw]) => {
+      apiClient.labResults.list(profile.careProfileId).catch(() => [] as any),
+    ]).then(([medsRaw, apptsRaw, labsRaw]) => {
       const medsData = Array.isArray(medsRaw) ? medsRaw : ((medsRaw as any)?.data ?? [])
       const apptsData = Array.isArray(apptsRaw) ? apptsRaw : ((apptsRaw as any)?.data ?? [])
+      const labsData = Array.isArray(labsRaw) ? labsRaw : ((labsRaw as any)?.labs ?? (labsRaw as any)?.data ?? [])
       setMeds(medsData)
       setAppointments(apptsData)
+      setLabs(labsData)
     }).catch(() => {
       // API may not be deployed yet or user not authenticated — fail silently
       // Data stays empty, empty states will render
     }).finally(() => {
       setDataLoading(false)
     })
-  }, [profile?.careProfileId])
+  }, [profile?.careProfileId, recordsVersion])
+
+  const handleRecordsSynced = React.useCallback(() => {
+    setRecordsVersion((v) => v + 1)
+  }, [])
+
+  // Read persisted lab badge count for banner.
+  useEffect(() => {
+    AsyncStorage.getItem(NEW_LABS_KEY)
+      .then((v) => {
+        const n = v ? parseInt(v, 10) : 0
+        setNewLabsCount(Number.isFinite(n) && n > 0 ? n : 0)
+      })
+      .catch(() => {})
+  }, [recordsVersion])
 
   // Count of real items due today: meds scheduled today + appointments today.
   const todayCount = React.useMemo(() => {
@@ -277,11 +324,164 @@ export default function HomeScreen() {
     transform: [{ translateY: card3Y.value }],
   }))
 
+  // Sync HealthKit on mount and diff labs to surface "new results" banner + tab
+  // badge. We snapshot lab IDs before the sync, run the sync, refetch labs, and
+  // count IDs we hadn't seen before.
   useEffect(() => {
-    isHealthKitConnected().then((connected) => {
-      if (connected) syncHealthKitData().catch(console.error)
+    let cancelled = false
+    isHealthKitConnected().then(async (connected) => {
+      if (!connected || !profile?.careProfileId) return
+      const cpid = profile.careProfileId
+      let beforeIds = new Set<string>()
+      try {
+        const raw = await apiClient.labResults.list(cpid)
+        const arr = Array.isArray(raw) ? raw : ((raw as any)?.labs ?? (raw as any)?.data ?? [])
+        beforeIds = new Set(arr.map((l: any) => String(l.healthkitFhirId ?? l.healthkit_fhir_id ?? l.id)))
+      } catch {/* swallow */}
+
+      try {
+        await syncHealthKitData()
+      } catch (err) {
+        console.error(err)
+        return
+      }
+
+      try {
+        const rawAfter = await apiClient.labResults.list(cpid)
+        const afterArr = Array.isArray(rawAfter) ? rawAfter : ((rawAfter as any)?.labs ?? (rawAfter as any)?.data ?? [])
+        const newCount = afterArr.filter((l: any) => {
+          const id = String(l.healthkitFhirId ?? l.healthkit_fhir_id ?? l.id)
+          return !beforeIds.has(id)
+        }).length
+        if (cancelled) return
+        if (newCount > 0) {
+          await AsyncStorage.setItem(NEW_LABS_KEY, String(newCount)).catch(() => {})
+          setNewLabsCount(newCount)
+          setLabBannerDismissed(false)
+        }
+        setRecordsVersion((v) => v + 1)
+      } catch {/* swallow */}
     })
+    return () => { cancelled = true }
+  }, [profile?.careProfileId])
+
+  // ── Proactive nudge evaluation ─────────────────────────────────────────────
+  // Re-runs whenever home data changes or app foregrounds. Picks the
+  // highest-priority nudge that hasn't been dismissed today.
+  const evaluateNudges = React.useCallback(async () => {
+    const nowMs = Date.now()
+    const dayMs = 24 * 60 * 60 * 1000
+
+    type Candidate = { type: NudgeType; build: () => Nudge }
+    const candidates: Candidate[] = []
+
+    // 1. Appointment within 24h
+    const upcomingAppt = appointments
+      .filter((a: any) => a?.dateTime)
+      .map((a: any) => ({ ...a, ts: new Date(a.dateTime).getTime() }))
+      .filter((a: any) => a.ts >= nowMs && a.ts <= nowMs + dayMs)
+      .sort((a: any, b: any) => a.ts - b.ts)[0]
+    if (upcomingAppt) {
+      candidates.push({
+        type: 'appointment',
+        build: () => ({
+          type: 'appointment',
+          title: 'Appointment tomorrow',
+          body: `${upcomingAppt.purpose || upcomingAppt.specialty || 'Your visit'} with ${upcomingAppt.doctorName ?? 'your provider'}. Want me to prep questions?`,
+          cta: 'Prep with AI',
+          prefill: `Help me prepare for my appointment ${upcomingAppt.doctorName ? 'with ' + upcomingAppt.doctorName : ''}. The visit is for ${upcomingAppt.purpose || upcomingAppt.specialty || 'follow-up'}.`,
+        }),
+      })
+    }
+
+    // 2. Abnormal lab
+    const abnormalLab = labs.find((l: any) => (l?.isAbnormal ?? l?.is_abnormal))
+    if (abnormalLab) {
+      candidates.push({
+        type: 'abnormal_lab',
+        build: () => ({
+          type: 'abnormal_lab',
+          title: 'Abnormal lab result',
+          body: `${abnormalLab.testName ?? abnormalLab.test_name ?? 'A lab'} came back outside the normal range. Want me to explain it?`,
+          cta: 'Explain it',
+          prefill: `Explain my recent ${abnormalLab.testName ?? abnormalLab.test_name} result of ${abnormalLab.value ?? ''}${abnormalLab.unit ? ' ' + abnormalLab.unit : ''} in plain language. Reference range: ${abnormalLab.referenceRange ?? abnormalLab.reference_range ?? 'unknown'}.`,
+        }),
+      })
+    }
+
+    // 3. Refill within 3 days
+    const refillingMed = meds.find((m: any) => {
+      const r = m?.refillDate ?? m?.refill_date
+      if (!r) return false
+      const ts = new Date(r.length === 10 ? r + 'T00:00:00' : r).getTime()
+      return Number.isFinite(ts) && ts - nowMs <= 3 * dayMs && ts - nowMs >= -dayMs
+    })
+    if (refillingMed) {
+      candidates.push({
+        type: 'refill',
+        build: () => ({
+          type: 'refill',
+          title: 'Refill coming up',
+          body: `${refillingMed.name} needs refilling soon. Want help requesting it?`,
+          cta: 'Help me refill',
+          prefill: `Help me request a refill for ${refillingMed.name}${refillingMed.dose ? ' (' + refillingMed.dose + ')' : ''}. What should I say to the pharmacy or my doctor?`,
+        }),
+      })
+    }
+
+    // 4. No check-in today
+    const lastCheckin = await AsyncStorage.getItem(LAST_CHECKIN_KEY).catch(() => null)
+    if (lastCheckin !== todayKey()) {
+      candidates.push({
+        type: 'checkin',
+        build: () => ({
+          type: 'checkin',
+          title: 'Daily check-in',
+          body: 'How are you feeling today? A quick check-in keeps the AI in tune with your trends.',
+          cta: 'Check in',
+          action: 'open_checkin',
+        }),
+      })
+    }
+
+    // Pick the first that hasn't been dismissed today.
+    for (const c of candidates) {
+      const dismissed = await AsyncStorage.getItem(nudgeKey(c.type)).catch(() => null)
+      if (dismissed !== '1') {
+        setActiveNudge(c.build())
+        return
+      }
+    }
+    setActiveNudge(null)
+  }, [appointments, labs, meds])
+
+  useEffect(() => {
+    if (dataLoading) return
+    void evaluateNudges()
+  }, [evaluateNudges, dataLoading])
+
+  // Re-evaluate on app foreground.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') void evaluateNudges()
+    })
+    return () => sub.remove()
+  }, [evaluateNudges])
+
+  const dismissNudge = React.useCallback((nudge: Nudge) => {
+    AsyncStorage.setItem(nudgeKey(nudge.type), '1').catch(() => {})
+    setActiveNudge(null)
   }, [])
+
+  const handleNudgeAction = React.useCallback((nudge: Nudge) => {
+    if (nudge.action === 'open_checkin') {
+      setCheckInOpen(true)
+      return
+    }
+    if (nudge.prefill) {
+      router.push({ pathname: '/(tabs)/chat', params: { prefill: nudge.prefill } } as any)
+    }
+  }, [router])
 
   return (
     <TabFadeWrapper>
@@ -336,6 +536,82 @@ export default function HomeScreen() {
             </View>
           </View>
 
+          {/* New labs banner */}
+          {newLabsCount > 0 && !labBannerDismissed && (
+            <View style={styles.newLabsBanner}>
+              <View style={styles.newLabsIconWrap}>
+                <Ionicons name="pulse" size={20} color="#A78BFA" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.newLabsTitle, { color: theme.text }]}>
+                  {newLabsCount} new lab result{newLabsCount === 1 ? '' : 's'} from Apple Health
+                </Text>
+                <Text style={[styles.newLabsSub, { color: theme.textMuted }]}>
+                  Review what synced from your provider.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  AsyncStorage.removeItem(NEW_LABS_KEY).catch(() => {})
+                  setNewLabsCount(0)
+                  router.push('/(tabs)/labs' as any)
+                }}
+                style={({ pressed }) => ({
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  backgroundColor: theme.accent,
+                  opacity: pressed ? 0.8 : 1,
+                })}
+                accessibilityRole="button"
+                accessibilityLabel="Review new lab results"
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Review</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setLabBannerDismissed(true)}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss new labs banner"
+              >
+                <Ionicons name="close" size={18} color={theme.textMuted} />
+              </Pressable>
+            </View>
+          )}
+
+          {/* Proactive AI nudge */}
+          {activeNudge && (
+            <Pressable
+              onPress={() => handleNudgeAction(activeNudge)}
+              style={({ pressed }) => [styles.nudgeCard, { opacity: pressed ? 0.85 : 1 }]}
+              accessibilityRole="button"
+              accessibilityLabel={`${activeNudge.title}. ${activeNudge.body}`}
+            >
+              <View style={styles.nudgeIconWrap}>
+                <Ionicons name="sparkles" size={18} color="#A78BFA" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.nudgeTitle, { color: theme.text }]}>
+                  {activeNudge.title}
+                </Text>
+                <Text style={[styles.nudgeBody, { color: theme.textMuted }]} numberOfLines={3}>
+                  {activeNudge.body}
+                </Text>
+                <Text style={[styles.nudgeCta, { color: theme.accent }]}>
+                  {activeNudge.cta} →
+                </Text>
+              </View>
+              <Pressable
+                onPress={(e) => { e.stopPropagation?.(); dismissNudge(activeNudge) }}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss suggestion"
+              >
+                <Ionicons name="close" size={18} color={theme.textMuted} />
+              </Pressable>
+            </Pressable>
+          )}
+
           {/* Today / My Care / Health Data segmented control */}
           <HomeTabPills active={activeTab} onChange={setActiveTab} todayCount={todayCount} />
 
@@ -347,7 +623,7 @@ export default function HomeScreen() {
           <Animated.View style={cardParallaxStyle}>
             <Animated.View style={card1Style}>
               <DailyAlertsCard careProfileId={profile?.careProfileId} />
-              <TodaysMedicationsCard meds={!loaded || dataLoading ? null : meds} />
+              <TodaysMedicationsCard meds={!loaded || dataLoading ? null : meds} onSynced={handleRecordsSynced} />
             </Animated.View>
 
             {/* Appointment card */}
@@ -368,16 +644,40 @@ export default function HomeScreen() {
                   .find((a) => new Date(a.dateTime).getTime() >= Date.now()) || appointments[0]
                 return (
                   <AnimatedBorderCard
-                    onPress={() =>
-                      router.push((nextAppt ? '/appointments' : '/appointments/new') as any)
-                    }
+                    onPress={() => {
+                      if (nextAppt) {
+                        router.push('/appointments' as any)
+                      } else {
+                        router.push({
+                          pathname: '/(tabs)/chat',
+                          params: { prefill: 'Help me prepare for my next oncology appointment — what questions should I bring?' },
+                        } as any)
+                      }
+                    }}
                   >
                     <View style={{ padding: 16 }}>
                       <Text style={[styles.cardLabel, { color: theme.textMuted }]}>NEXT APPOINTMENT</Text>
                       {!nextAppt ? (
-                        <Text style={[styles.apptName, { color: theme.textMuted }]}>
-                          No upcoming appointments — tap to add.
-                        </Text>
+                        <View style={{ marginTop: 8 }}>
+                          <Text style={[styles.apptName, { color: theme.text, marginBottom: 4 }]}>
+                            Nothing scheduled yet
+                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                            <Ionicons name="sparkles-outline" size={14} color="#A78BFA" />
+                            <Text style={{ color: '#A78BFA', fontSize: 13, fontWeight: '600' }}>
+                              Ask AI: prep questions for your next visit
+                            </Text>
+                          </View>
+                          <Pressable
+                            onPress={(e) => { e.stopPropagation?.(); router.push('/appointments/new' as any) }}
+                            hitSlop={8}
+                            style={{ marginTop: 8, alignSelf: 'flex-start' }}
+                          >
+                            <Text style={{ color: theme.textMuted, fontSize: 12, fontWeight: '600' }}>
+                              Or add manually
+                            </Text>
+                          </Pressable>
+                        </View>
                       ) : (
                         <>
                           <Text style={[styles.apptName, { color: theme.text }]}>
@@ -467,6 +767,15 @@ export default function HomeScreen() {
           onClose={() => setDrawerOpen(false)}
           userName={displayName}
           userRole="Patient"
+        />
+
+        <CheckInModal
+          visible={checkInOpen}
+          onClose={() => setCheckInOpen(false)}
+          onSubmit={() => {
+            AsyncStorage.setItem(LAST_CHECKIN_KEY, todayKey()).catch(() => {})
+            setActiveNudge((n) => (n?.type === 'checkin' ? null : n))
+          }}
         />
       </View>
     </TabFadeWrapper>
@@ -666,4 +975,47 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
   },
+  newLabsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.45)',
+    backgroundColor: 'rgba(167,139,250,0.10)',
+    marginBottom: 12,
+  },
+  newLabsIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(167,139,250,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newLabsTitle: { fontSize: 14, fontWeight: '700' },
+  newLabsSub: { fontSize: 12, marginTop: 2 },
+  nudgeCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(99,102,241,0.4)',
+    backgroundColor: 'rgba(99,102,241,0.08)',
+    marginBottom: 12,
+  },
+  nudgeIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(167,139,250,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nudgeTitle: { fontSize: 14, fontWeight: '700' },
+  nudgeBody: { fontSize: 13, lineHeight: 18, marginTop: 2 },
+  nudgeCta: { fontSize: 13, fontWeight: '700', marginTop: 8 },
 })
