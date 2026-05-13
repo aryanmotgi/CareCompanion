@@ -27,11 +27,23 @@ import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as SecureStore from 'expo-secure-store'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useTheme } from '../../src/theme'
 import { hapticAIMessage } from '../../src/utils/haptics'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { TabFadeWrapper } from './_layout'
 import { useProfile } from '../../src/context/ProfileContext'
+
+const CHAT_INTRO_KEY = 'cc-chat-intro-seen'
+
+const INTRO_PROMPTS: string[] = [
+  'What should I ask my oncologist tomorrow?',
+  "Check my mom's medications for interactions",
+  'Help me understand this lab result',
+  'How do I manage chemo side effects this week?',
+  'Walk me through what to expect at the next infusion',
+]
 
 type Message = {
   id: string
@@ -325,7 +337,9 @@ export default function ChatScreen() {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
   const reduceMotion = useReducedMotion()
-  const { apiClient } = useProfile()
+  const { apiClient, profile } = useProfile()
+  const router = useRouter()
+  const params = useLocalSearchParams<{ prefill?: string }>()
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -340,6 +354,56 @@ export default function ChatScreen() {
   const [showScrollFab, setShowScrollFab] = useState(false)
   const csrfTokenRef = useRef<string | null>(null)
   const activeIdRef = useRef<string | null>(null)
+
+  // First-time coach mark
+  const [showIntro, setShowIntro] = useState(false)
+  useEffect(() => {
+    AsyncStorage.getItem(CHAT_INTRO_KEY)
+      .then((v) => { if (v !== '1') setShowIntro(true) })
+      .catch(() => {})
+  }, [])
+  const dismissIntro = useCallback(() => {
+    setShowIntro(false)
+    AsyncStorage.setItem(CHAT_INTRO_KEY, '1').catch(() => {})
+  }, [])
+
+  // Context-aware suggestion chips — built from profile data already in memory.
+  const [contextMeds, setContextMeds] = useState<Array<{ name: string }>>([])
+  const [contextAppts, setContextAppts] = useState<Array<{ dateTime: string }>>([])
+  useEffect(() => {
+    if (!profile?.careProfileId) return
+    let cancelled = false
+    Promise.all([
+      apiClient.medications.list(profile.careProfileId).catch(() => [] as unknown),
+      apiClient.appointments.list(profile.careProfileId).catch(() => [] as unknown),
+    ]).then(([medsRaw, apptsRaw]) => {
+      if (cancelled) return
+      const medsArr = Array.isArray(medsRaw) ? medsRaw : ((medsRaw as any)?.data ?? [])
+      const apptsArr = Array.isArray(apptsRaw) ? apptsRaw : ((apptsRaw as any)?.data ?? [])
+      setContextMeds(medsArr)
+      setContextAppts(apptsArr)
+    })
+    return () => { cancelled = true }
+  }, [profile?.careProfileId, apiClient])
+
+  const quickChips = React.useMemo(() => {
+    const chips: string[] = []
+    const nowMs = Date.now()
+    const dayMs = 24 * 60 * 60 * 1000
+    const nextAppt = contextAppts
+      .filter((a) => a?.dateTime)
+      .map((a) => ({ ...a, ts: new Date(a.dateTime).getTime() }))
+      .filter((a) => a.ts >= nowMs && a.ts <= nowMs + 2 * dayMs)
+      .sort((a, b) => a.ts - b.ts)[0]
+    if (nextAppt) chips.push('Prep for tomorrow\'s appointment')
+    if (contextMeds.length >= 2) chips.push('Check my medications for interactions')
+    if (profile?.cancerType) chips.push(`What should I know about ${profile.cancerType} this week?`)
+    if (profile?.treatmentPhase) chips.push(`Side effects to watch in ${profile.treatmentPhase}`)
+    if (chips.length < 3) chips.push('Explain my recent lab results')
+    if (chips.length < 3) chips.push('Questions to ask my oncologist')
+    if (chips.length < 3) chips.push('How do I manage fatigue today?')
+    return chips.slice(0, 3)
+  }, [contextAppts, contextMeds, profile?.cancerType, profile?.treatmentPhase])
 
   const headerOpacity = useSharedValue(reduceMotion ? 1 : 0)
   const headerY = useSharedValue(reduceMotion ? 0 : 12)
@@ -401,6 +465,22 @@ export default function ChatScreen() {
     setActiveConversationId('new')
     activeIdRef.current = null
   }
+
+  // Honor a /(tabs)/chat?prefill=... route param coming from an empty-state CTA.
+  // Open a new chat, seed the input, then clear the param so back-navigation
+  // doesn't reapply it.
+  const consumedPrefillRef = useRef<string | null>(null)
+  useEffect(() => {
+    const text = typeof params.prefill === 'string' ? params.prefill : null
+    if (!text) return
+    if (consumedPrefillRef.current === text) return
+    consumedPrefillRef.current = text
+    setActiveConversationId('new')
+    activeIdRef.current = null
+    setMessages([])
+    setInput(text)
+    router.setParams({ prefill: '' } as any)
+  }, [params.prefill, router])
 
   function backToList() {
     setActiveConversationId(null)
@@ -573,6 +653,59 @@ export default function ChatScreen() {
             </View>
           </Animated.View>
 
+          {showIntro && (
+            <View style={[styles.introCard, { borderColor: theme.bgCardBorder, backgroundColor: 'rgba(99,102,241,0.06)' }]}>
+              <View style={styles.introHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.introTitle, { color: theme.text }]}>Try asking…</Text>
+                  <Text style={[styles.introSub, { color: theme.textMuted }]}>
+                    Tap a suggestion to start your first conversation.
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={dismissIntro}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel="Dismiss suggestions"
+                >
+                  <Ionicons name="close" size={20} color={theme.textMuted} />
+                </Pressable>
+              </View>
+              <FlatList
+                horizontal
+                data={INTRO_PROMPTS}
+                keyExtractor={(item) => item}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+                renderItem={({ item }) => (
+                  <Pressable
+                    onPress={() => {
+                      dismissIntro()
+                      setActiveConversationId('new')
+                      activeIdRef.current = null
+                      setMessages([])
+                      setTimeout(() => sendWithText(item), 0)
+                    }}
+                    style={({ pressed }) => [
+                      styles.introChip,
+                      {
+                        borderColor: 'rgba(99,102,241,0.4)',
+                        backgroundColor: pressed ? 'rgba(99,102,241,0.22)' : 'rgba(99,102,241,0.12)',
+                      },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={item}
+                  >
+                    <Ionicons name="sparkles-outline" size={14} color={theme.accent} />
+                    <Text style={[styles.introChipText, { color: theme.text }]} numberOfLines={2}>
+                      {item}
+                    </Text>
+                  </Pressable>
+                )}
+              />
+            </View>
+          )}
+
           {convosLoading ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
               <TypingDots centered />
@@ -713,6 +846,42 @@ export default function ChatScreen() {
             <Ionicons name="arrow-down" size={18} color={theme.accent} />
           </Pressable>
         )}
+        {quickChips.length > 0 && messages.length === 0 && !sending && (
+          <View style={[styles.quickChipBar, {
+            borderTopColor: theme.border,
+            backgroundColor: theme.isDark ? 'rgba(12,14,26,0.9)' : 'rgba(255,255,255,0.9)',
+          }]}>
+            <FlatList
+              horizontal
+              data={quickChips}
+              keyExtractor={(item) => item}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
+              renderItem={({ item }) => (
+                <Pressable
+                  onPress={() => {
+                    setInput(item)
+                    setTimeout(() => sendWithText(item), 0)
+                  }}
+                  style={({ pressed }) => [
+                    styles.quickChip,
+                    {
+                      borderColor: 'rgba(99,102,241,0.4)',
+                      backgroundColor: pressed ? 'rgba(99,102,241,0.22)' : 'rgba(99,102,241,0.10)',
+                    },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={item}
+                >
+                  <Ionicons name="sparkles-outline" size={12} color={theme.accent} />
+                  <Text style={[styles.quickChipText, { color: theme.text }]} numberOfLines={1}>
+                    {item}
+                  </Text>
+                </Pressable>
+              )}
+            />
+          </View>
+        )}
         <View style={[styles.inputBar, {
           paddingBottom: insets.bottom + TAB_BAR_HEIGHT + 8,
           borderTopColor: theme.border,
@@ -840,4 +1009,41 @@ const styles = StyleSheet.create({
   suggestionCardInner: { borderWidth: 1, borderRadius: 14, padding: 14, minHeight: 110 },
   suggestionTitle: { fontSize: 13, fontWeight: '600', lineHeight: 18, marginBottom: 4 },
   suggestionSubtitle: { fontSize: 11, lineHeight: 16 },
+  introCard: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 10,
+  },
+  introHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  introTitle: { fontSize: 15, fontWeight: '700' },
+  introSub: { fontSize: 12, marginTop: 2, lineHeight: 16 },
+  introChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    maxWidth: 240,
+  },
+  introChipText: { fontSize: 13, fontWeight: '600', flexShrink: 1 },
+  quickChipBar: {
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  quickChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    maxWidth: 240,
+  },
+  quickChipText: { fontSize: 12, fontWeight: '600', flexShrink: 1 },
 })

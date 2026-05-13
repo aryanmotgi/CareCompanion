@@ -369,6 +369,17 @@ export default function AppointmentsScreen() {
           theme={theme}
           empty={upcoming.length === 0}
           emptyText="No upcoming appointments."
+          emptyCta={{
+            label: 'Ask AI: prep questions for your next visit',
+            icon: 'sparkles-outline',
+            onPress: () =>
+              router.push({
+                pathname: '/(tabs)/chat',
+                params: { prefill: 'Help me prepare for my next oncology appointment — what questions should I bring?' },
+              } as any),
+            secondaryLabel: 'Or add manually',
+            onSecondaryPress: () => setAddOpen(true),
+          }}
         >
           {upcoming.map((a) => (
             <AppointmentCard key={a.id} appt={a} onDelete={() => handleDelete(a)} theme={theme} />
@@ -523,12 +534,20 @@ function Section({
   theme,
   empty,
   emptyText,
+  emptyCta,
 }: {
   label: string
   children: React.ReactNode
   theme: ReturnType<typeof useTheme>
   empty: boolean
   emptyText: string
+  emptyCta?: {
+    label: string
+    icon: keyof typeof Ionicons.glyphMap
+    onPress: () => void
+    secondaryLabel?: string
+    onSecondaryPress?: () => void
+  }
 }) {
   return (
     <View>
@@ -545,9 +564,58 @@ function Section({
         {label}
       </Text>
       {empty ? (
-        <Text style={{ color: theme.textMuted, fontSize: 13, paddingVertical: 8 }}>
-          {emptyText}
-        </Text>
+        emptyCta ? (
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: theme.border,
+              borderRadius: 14,
+              padding: 14,
+              backgroundColor: 'rgba(167,139,250,0.06)',
+              gap: 10,
+            }}
+          >
+            <Text style={{ color: theme.textMuted, fontSize: 13 }}>{emptyText}</Text>
+            <Pressable
+              onPress={emptyCta.onPress}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                borderRadius: 12,
+                backgroundColor: 'rgba(167,139,250,0.18)',
+                borderWidth: 1,
+                borderColor: 'rgba(167,139,250,0.4)',
+                opacity: pressed ? 0.7 : 1,
+              })}
+              accessibilityRole="button"
+              accessibilityLabel={emptyCta.label}
+            >
+              <Ionicons name={emptyCta.icon} size={18} color="#A78BFA" />
+              <Text style={{ color: '#A78BFA', fontSize: 14, fontWeight: '700' }}>
+                {emptyCta.label}
+              </Text>
+            </Pressable>
+            {emptyCta.secondaryLabel && emptyCta.onSecondaryPress && (
+              <Pressable
+                onPress={emptyCta.onSecondaryPress}
+                hitSlop={8}
+                style={{ alignSelf: 'center' }}
+              >
+                <Text style={{ color: theme.textMuted, fontSize: 12, fontWeight: '600' }}>
+                  {emptyCta.secondaryLabel}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        ) : (
+          <Text style={{ color: theme.textMuted, fontSize: 13, paddingVertical: 8 }}>
+            {emptyText}
+          </Text>
+        )
       ) : (
         <View style={{ gap: 10 }}>{children}</View>
       )}
