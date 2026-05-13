@@ -13,6 +13,7 @@ import { useTheme } from '../src/theme'
 import { TestModeBanner } from '../src/components/TestModeBanner'
 import { useShakeDetector } from '../src/hooks/useShakeDetector'
 import { BugReportSheet } from '../src/components/BugReportSheet'
+import { DisclaimerModal } from '../components/DisclaimerModal'
 import { ProfileProvider, useProfile } from '../src/context/ProfileContext'
 import { refreshTokenIfNeeded } from '../src/services/token-refresh'
 import {
@@ -476,6 +477,7 @@ export default function RootLayout() {
         currentScreen={currentScreen}
         onClose={() => setBugReportVisible(false)}
       />
+      <DisclaimerModal />
     </SafeAreaProvider>
   )
 }
