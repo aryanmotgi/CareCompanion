@@ -61,7 +61,7 @@ const CARDS: CardSpec[] = [
 export default function CareTypeScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { setUserType } = useUserTypeContext()
+  const { setUserType, reset } = useUserTypeContext()
 
   const orb1 = useSharedValue(0)
   const orb2 = useSharedValue(0)
@@ -109,6 +109,13 @@ export default function CareTypeScreen() {
     router.push(card.route as any)
   }
 
+  function handleBack() {
+    Haptics.selectionAsync().catch(() => {})
+    reset()
+    if (router.canGoBack()) router.back()
+    else router.replace('/signup')
+  }
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
@@ -120,6 +127,17 @@ export default function CareTypeScreen() {
       <Animated.View style={[styles.orb, { top: -120, left: -100, backgroundColor: '#818CF8', opacity: 0.18 }, orb1Style]} />
       <Animated.View style={[styles.orb, { bottom: -80, right: -120, backgroundColor: '#C084FC', opacity: 0.12 }, orb2Style]} />
       <NoiseVeil />
+
+      <Pressable
+        onPress={handleBack}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel="Go back to sign up"
+        style={[styles.backBtn, { top: insets.top + 12 }]}
+      >
+        <Ionicons name="chevron-back" size={20} color="white" />
+        <Text style={styles.backLabel}>Back</Text>
+      </Pressable>
 
       <View style={[styles.content, { paddingTop: insets.top + 80, paddingBottom: insets.bottom + 24 }]}>
         <Animated.View style={titleStyle}>
@@ -310,4 +328,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  backBtn: {
+    position: 'absolute',
+    left: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF12',
+    borderWidth: 1,
+    borderColor: '#FFFFFF22',
+    zIndex: 10,
+  },
+  backLabel: { color: 'white', fontSize: 14, fontWeight: '600' },
 })
