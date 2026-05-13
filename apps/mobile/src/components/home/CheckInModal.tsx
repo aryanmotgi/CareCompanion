@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   Modal,
   View,
@@ -12,6 +12,7 @@ import {
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '../../theme'
+import { useProfile } from '../../context/ProfileContext'
 
 interface Props {
   visible: boolean
@@ -30,13 +31,67 @@ export type CheckInPayload = {
 const MOOD_EMOJI = ['😢', '😐', '🙂', '😊', '😄']
 const PAIN_MAX = 10
 
+function parseEnergy(v: string | null | undefined): CheckInPayload['energy'] {
+  if (!v) return null
+  const s = v.toLowerCase()
+  if (s.startsWith('low')) return 'low'
+  if (s.startsWith('high')) return 'high'
+  if (s.startsWith('med') || s.startsWith('mid')) return 'med'
+  return null
+}
+
+function parseSleep(v: string | null | undefined): CheckInPayload['sleep'] {
+  if (!v) return null
+  const s = v.toLowerCase()
+  if (s.startsWith('bad') || s.startsWith('poor')) return 'bad'
+  if (s.startsWith('good') || s.startsWith('great')) return 'good'
+  if (s.startsWith('ok') || s.startsWith('okay') || s.startsWith('fair')) return 'ok'
+  return null
+}
+
+function parseMood(v: string | null | undefined): number {
+  if (!v) return 2
+  const n = Number(v)
+  if (Number.isFinite(n) && n >= 0 && n <= 4) return Math.round(n)
+  const s = v.toLowerCase()
+  if (s.includes('great') || s.includes('happy')) return 4
+  if (s.includes('good')) return 3
+  if (s.includes('ok') || s.includes('fine')) return 2
+  if (s.includes('low') || s.includes('down')) return 1
+  if (s.includes('bad') || s.includes('sad')) return 0
+  return 2
+}
+
 export function CheckInModal({ visible, onClose, onSubmit }: Props) {
   const theme = useTheme()
+  const { apiClient } = useProfile()
   const [mood, setMood] = useState<number>(2)
   const [pain, setPain] = useState<number>(0)
   const [energy, setEnergy] = useState<CheckInPayload['energy']>(null)
   const [sleep, setSleep] = useState<CheckInPayload['sleep']>(null)
   const [notes, setNotes] = useState('')
+  const [prefilled, setPrefilled] = useState(false)
+
+  useEffect(() => {
+    if (!visible) return
+    let cancelled = false
+    apiClient.journal
+      .list(7)
+      .then((res) => {
+        if (cancelled) return
+        const entries = res?.data?.entries ?? []
+        const last = entries[0]
+        if (!last) return
+        setMood(parseMood(last.mood))
+        setPain(typeof last.painLevel === 'number' ? last.painLevel : 0)
+        setEnergy(parseEnergy(last.energy))
+        setSleep(parseSleep(last.sleepHours))
+        setNotes('')
+        setPrefilled(true)
+      })
+      .catch(() => {/* no prior entry — leave defaults */})
+    return () => { cancelled = true }
+  }, [visible, apiClient])
 
   function handleSubmit() {
     onSubmit?.({ mood, pain, energy, sleep, notes })
@@ -46,6 +101,7 @@ export function CheckInModal({ visible, onClose, onSubmit }: Props) {
     setEnergy(null)
     setSleep(null)
     setNotes('')
+    setPrefilled(false)
     onClose()
   }
 
@@ -90,7 +146,9 @@ export function CheckInModal({ visible, onClose, onSubmit }: Props) {
                   How are you feeling?
                 </Text>
                 <Text style={{ color: theme.textMuted, fontSize: 13, marginTop: 4 }}>
-                  Quick daily check-in · under 60 seconds
+                  {prefilled
+                    ? 'Pre-filled from your last check-in · only change what\'s different'
+                    : 'Quick daily check-in · under 60 seconds'}
                 </Text>
               </View>
               <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Close">
