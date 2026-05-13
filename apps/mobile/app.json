@@ -17,11 +17,11 @@
       "deploymentTarget": "16.0",
       "supportsTablet": false,
       "infoPlist": {
-        "NSHealthShareUsageDescription": "CareCompanion reads your health records to help manage cancer care — including medications, lab results, and appointments from your care team.",
-        "NSHealthUpdateUsageDescription": "CareCompanion saves care data to help you track your treatment progress.",
-        "NSHealthClinicalHealthRecordsShareUsageDescription": "CareCompanion reads your clinical records — medications, lab results, conditions, and appointments — from your care team so it can help you understand and manage your treatment.",
-        "NSCameraUsageDescription": "CareCompanion uses the camera to scan medical documents and prescriptions.",
-        "NSPhotoLibraryUsageDescription": "CareCompanion accesses your photos to upload medical documents.",
+        "NSHealthShareUsageDescription": "CareCompanion reads your Apple Health data to support your cancer care: date of birth and sex at birth (to personalize lab reference ranges), and — when you opt in — daily steps, heart rate, and sleep so caregivers can see how you are doing.",
+        "NSHealthClinicalHealthRecordsShareUsageDescription": "CareCompanion reads clinical records from your care team — medications, lab results, conditions, procedures, allergies, vital signs, and immunizations — so it can help you understand and manage your cancer treatment in one place.",
+        "NSCameraUsageDescription": "CareCompanion uses the camera to scan prescription bottles and medical documents so we can add medications, lab results, and appointments to your care record.",
+        "NSPhotoLibraryUsageDescription": "CareCompanion accesses your photo library so you can upload prescription labels and medical documents to your care record.",
+        "NSMotionUsageDescription": "CareCompanion uses device motion to add subtle parallax effects on the home screen. No motion data is stored or sent off device.",
         "ITSAppUsesNonExemptEncryption": false,
         "NSSupportsLiveActivities": true,
         "NSSupportsLiveActivitiesFrequentUpdates": true,
@@ -29,7 +29,6 @@
       },
       "entitlements": {
         "com.apple.developer.healthkit": true,
-        "com.apple.developer.healthkit.background-delivery": true,
         "com.apple.developer.applesignin": ["Default"]
       },
       "usesAppleSignIn": true
@@ -41,14 +40,14 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "CareCompanion uses the camera to scan medical documents."
+          "cameraPermission": "CareCompanion uses the camera to scan prescription bottles and medical documents so we can add medications, lab results, and appointments to your care record."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "CareCompanion accesses your photos to upload medical documents.",
-          "cameraPermission": "CareCompanion uses the camera to scan medical documents."
+          "photosPermission": "CareCompanion accesses your photo library so you can upload prescription labels and medical documents to your care record.",
+          "cameraPermission": "CareCompanion uses the camera to scan prescription bottles and medical documents so we can add medications, lab results, and appointments to your care record."
         }
       ],
       "expo-live-activity",
@@ -66,8 +65,7 @@
     "runtimeVersion": "1.0.0",
     "android": {
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.CAMERA"
       ],
       "package": "com.carecompanion.app"
     },
