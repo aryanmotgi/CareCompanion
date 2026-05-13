@@ -1,9 +1,17 @@
 import React, { useState } from 'react'
 import { View, Text, Pressable, ScrollView } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
 import { useTheme } from '../../theme'
 import { GlassCard } from '../GlassCard'
 import { CheckInModal } from './CheckInModal'
+
+const LAST_CHECKIN_KEY = 'cc-last-checkin-date'
+
+function todayKey(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 type Filter = 'all' | 'medications' | 'appointments' | 'labs' | 'checkins' | 'insights'
 
@@ -62,6 +70,7 @@ export function MyCarePanel() {
         visible={checkInOpen}
         onClose={() => setCheckInOpen(false)}
         onSubmit={() => {
+          AsyncStorage.setItem(LAST_CHECKIN_KEY, todayKey()).catch(() => {})
           /* TODO: POST to /api/journal or wherever the check-in lands. */
         }}
       />

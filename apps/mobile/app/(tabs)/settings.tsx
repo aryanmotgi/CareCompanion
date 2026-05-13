@@ -1,6 +1,6 @@
 // apps/mobile/app/(tabs)/settings.tsx
-import React, { useState } from 'react'
-import { View, Text, Pressable, StyleSheet, Alert, Linking, ScrollView } from 'react-native'
+import React, { useEffect, useMemo, useState } from 'react'
+import { ActivityIndicator, View, Text, Pressable, StyleSheet, Alert, Linking, ScrollView } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
@@ -17,6 +17,239 @@ import { TabFadeWrapper } from './_layout'
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
 const BUILD_NUMBER = Constants.expoConfig?.ios?.buildNumber ?? Constants.expoConfig?.android?.versionCode?.toString() ?? '1'
+
+type MemoryItem = { id: string; category: string; content: string; updatedAt?: string | null }
+type MemoryState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'ready'; items: MemoryItem[]; updatedAt: string | null }
+  | { status: 'error'; message: string }
+  | { status: 'unavailable' }
+
+const CATEGORY_META: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap; color: string }> = {
+  medications: { label: 'Medications', icon: 'medkit-outline', color: '#818CF8' },
+  conditions:  { label: 'Conditions', icon: 'medical-outline', color: '#F472B6' },
+  allergies:   { label: 'Allergies', icon: 'warning-outline', color: '#FCD34D' },
+  insurance:   { label: 'Insurance', icon: 'card-outline', color: '#FBBF24' },
+  preferences: { label: 'Preferences', icon: 'options-outline', color: '#A78BFA' },
+  providers:   { label: 'Providers', icon: 'people-outline', color: '#60A5FA' },
+}
+const CATEGORY_ORDER = ['medications', 'conditions', 'allergies', 'insurance', 'preferences', 'providers']
+
+function useMemories(careProfileId: string | null | undefined, apiClient: ReturnType<typeof useProfile>['apiClient']): MemoryState {
+  const [state, setState] = useState<MemoryState>({ status: 'idle' })
+  useEffect(() => {
+    if (!careProfileId) return
+    let cancelled = false
+    setState({ status: 'loading' })
+    apiClient.memories
+      .list(careProfileId)
+      .then((res) => {
+        if (cancelled) return
+        const raw = (res?.data ?? res?.memories ?? []) as MemoryItem[]
+        if (!Array.isArray(raw)) {
+          setState({ status: 'unavailable' })
+          return
+        }
+        setState({ status: 'ready', items: raw, updatedAt: res?.updatedAt ?? null })
+      })
+      .catch((err: Error) => {
+        if (cancelled) return
+        const msg = err?.message ?? ''
+        // 404 or 501 means the endpoint isn't wired up server-side yet — treat as
+        // graceful "no memory entries" rather than a hard error so settings still renders.
+        if (msg.includes('404') || msg.includes('501')) {
+          setState({ status: 'unavailable' })
+          return
+        }
+        setState({ status: 'error', message: msg || 'Could not load memory' })
+      })
+    return () => { cancelled = true }
+  }, [careProfileId, apiClient])
+  return state
+}
+
+function formatRelative(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const diff = Date.now() - d.getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins} min ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function AiMemorySection({ careProfileId }: { careProfileId: string | null | undefined }) {
+  const theme = useTheme()
+  const router = useRouter()
+  const { apiClient } = useProfile()
+  const state = useMemories(careProfileId, apiClient)
+
+  const grouped = useMemo(() => {
+    if (state.status !== 'ready') return [] as { key: string; items: MemoryItem[] }[]
+    const buckets = new Map<string, MemoryItem[]>()
+    for (const item of state.items) {
+      const key = (item.category || 'preferences').toLowerCase()
+      if (!buckets.has(key)) buckets.set(key, [])
+      buckets.get(key)!.push(item)
+    }
+    return CATEGORY_ORDER
+      .filter((k) => buckets.has(k))
+      .concat([...buckets.keys()].filter((k) => !CATEGORY_ORDER.includes(k)))
+      .map((key) => ({ key, items: buckets.get(key) ?? [] }))
+  }, [state])
+
+  const lastUpdated = state.status === 'ready'
+    ? (state.updatedAt ?? state.items.reduce<string | null>((acc, it) => {
+        if (!it.updatedAt) return acc
+        if (!acc) return it.updatedAt
+        return new Date(it.updatedAt).getTime() > new Date(acc).getTime() ? it.updatedAt : acc
+      }, null))
+    : null
+
+  return (
+    <View>
+      <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>YOUR AI MEMORY</Text>
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: theme.border,
+          borderRadius: 16,
+          padding: 14,
+          backgroundColor: 'rgba(167,139,250,0.06)',
+          gap: 12,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: 'rgba(167,139,250,0.2)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="sparkles-outline" size={18} color="#A78BFA" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: theme.text, fontSize: 15, fontWeight: '700' }}>
+              What Claude knows about you
+            </Text>
+            <Text style={{ color: theme.textMuted, fontSize: 12, marginTop: 2, lineHeight: 16 }}>
+              The AI uses these facts to personalize answers. Update or delete anytime.
+            </Text>
+          </View>
+        </View>
+
+        {state.status === 'loading' && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 }}>
+            <ActivityIndicator color={theme.accent} />
+            <Text style={{ color: theme.textMuted, fontSize: 13 }}>Loading memory…</Text>
+          </View>
+        )}
+
+        {state.status === 'error' && (
+          <Text style={{ color: theme.rose, fontSize: 12 }}>{state.message}</Text>
+        )}
+
+        {state.status === 'unavailable' && (
+          <Text style={{ color: theme.textMuted, fontSize: 13, lineHeight: 18 }}>
+            No memory entries yet. As you chat and confirm details, the AI will save what it
+            learns here so you don't have to repeat yourself.
+          </Text>
+        )}
+
+        {state.status === 'ready' && grouped.length === 0 && (
+          <Text style={{ color: theme.textMuted, fontSize: 13, lineHeight: 18 }}>
+            No memory entries yet — chat with the AI and confirm key facts to fill this in.
+          </Text>
+        )}
+
+        {state.status === 'ready' && grouped.length > 0 && (
+          <View style={{ gap: 12 }}>
+            {grouped.map(({ key, items }) => {
+              const meta = CATEGORY_META[key] ?? { label: key.charAt(0).toUpperCase() + key.slice(1), icon: 'document-text-outline', color: '#A78BFA' }
+              return (
+                <View key={key} style={{ gap: 6 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name={meta.icon} size={14} color={meta.color} />
+                    <Text
+                      style={{
+                        color: meta.color,
+                        fontSize: 11,
+                        letterSpacing: 0.8,
+                        textTransform: 'uppercase',
+                        fontWeight: '700',
+                      }}
+                    >
+                      {meta.label}
+                    </Text>
+                  </View>
+                  {items.map((it) => (
+                    <View
+                      key={it.id}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: theme.border,
+                        backgroundColor: 'rgba(255,255,255,0.04)',
+                      }}
+                    >
+                      <Text style={{ color: theme.text, fontSize: 13, lineHeight: 19 }}>
+                        {it.content}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )
+            })}
+          </View>
+        )}
+
+        {lastUpdated && (
+          <Text style={{ color: theme.textMuted, fontSize: 11 }}>
+            Last updated {formatRelative(lastUpdated)}
+          </Text>
+        )}
+
+        <Pressable
+          onPress={() =>
+            router.push({
+              pathname: '/(tabs)/chat',
+              params: { prefill: 'What do you currently remember about me? Walk me through what you know.' },
+            } as any)
+          }
+          style={({ pressed }) => ({
+            alignSelf: 'flex-start',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: 'rgba(167,139,250,0.4)',
+            backgroundColor: pressed ? 'rgba(167,139,250,0.22)' : 'rgba(167,139,250,0.10)',
+          })}
+        >
+          <Ionicons name="chatbubble-ellipses-outline" size={14} color="#A78BFA" />
+          <Text style={{ color: '#A78BFA', fontSize: 12, fontWeight: '700' }}>
+            Ask Claude to review
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  )
+}
 
 export default function SettingsScreen() {
   const theme = useTheme()
@@ -121,6 +354,11 @@ export default function SettingsScreen() {
               <Text style={styles.saveRoleBtnText}>Edit Care Group</Text>
             </Pressable>
           </View>
+        </Animated.View>
+
+        {/* Your AI Memory */}
+        <Animated.View style={stagger[3]}>
+          <AiMemorySection careProfileId={profile?.careProfileId} />
         </Animated.View>
 
         {/* Edit Profile & Preferences */}

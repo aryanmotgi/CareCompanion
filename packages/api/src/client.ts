@@ -397,6 +397,25 @@ export function createApiClient(config: ApiClientConfig) {
           headers: { 'x-csrf-token': csrfToken },
         }) as Promise<{ ok: boolean; data?: unknown }>,
     },
+    memories: {
+      list: (careProfileId: string) =>
+        apiFetch(config, `/api/memories?care_profile_id=${encodeURIComponent(careProfileId)}`, { method: 'GET' }) as Promise<{
+          ok?: boolean
+          updatedAt?: string | null
+          data?: Array<{
+            id: string
+            category: string
+            content: string
+            updatedAt?: string | null
+          }>
+          memories?: Array<{
+            id: string
+            category: string
+            content: string
+            updatedAt?: string | null
+          }>
+        }>,
+    },
     me: () =>
       apiFetch(config, '/api/me', { method: 'GET' }) as Promise<{
         userId: string
