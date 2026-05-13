@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Dimensions,
   StatusBar,
+  Linking,
 } from 'react-native'
 import Animated, {
   useSharedValue,
@@ -60,28 +61,28 @@ const SCENES: Scene[] = [
   {
     id: 'meds',
     title: 'Never miss a dose.',
-    subtitle: 'Smart reminders for every medication.',
+    subtitle: 'Smart reminders that adapt to your schedule — no more forgotten meds.',
     grad: ['#1A0A2E', '#3B1064', '#1A0A2E'],
     accent: '#C084FC',
   },
   {
     id: 'chat',
-    title: 'Ask anything, anytime.',
-    subtitle: 'An AI companion that knows your care.',
+    title: 'An AI that knows your case.',
+    subtitle: 'Trained on your records. Answers in seconds. No medical jargon.',
     grad: ['#0A0E2E', '#1E1B6B', '#0A0E2E'],
     accent: '#818CF8',
   },
   {
     id: 'trials',
-    title: 'Find your next trial.',
-    subtitle: 'Real-time scanner for matching clinical trials.',
+    title: 'Trials, matched for you.',
+    subtitle: 'We scan thousands of clinical trials so you don\'t have to.',
     grad: ['#021A1F', '#064E5C', '#021A1F'],
     accent: '#22D3EE',
   },
   {
     id: 'timeline',
-    title: 'Your care, on a timeline.',
-    subtitle: 'Diagnosis to remission — every moment in one view.',
+    title: 'Every milestone, in one view.',
+    subtitle: 'From diagnosis to remission. Your whole journey, finally organized.',
     grad: ['#2A0E0A', '#5C1F0A', '#2A0E0A'],
     accent: '#FB923C',
   },
@@ -889,6 +890,25 @@ export default function WelcomeScreen() {
           pointerEvents="none"
         />
         <CopyBlock scene={current} />
+
+        {/* Trust badges */}
+        <View style={styles.trustRow}>
+          <View style={styles.trustItem}>
+            <Ionicons name="ribbon" size={11} color={current.accent} />
+            <Text style={styles.trustText}>Built for cancer care</Text>
+          </View>
+          <View style={styles.trustDot} />
+          <View style={styles.trustItem}>
+            <Ionicons name="lock-closed" size={11} color={current.accent} />
+            <Text style={styles.trustText}>End-to-end encrypted</Text>
+          </View>
+          <View style={styles.trustDot} />
+          <View style={styles.trustItem}>
+            <Ionicons name="heart" size={11} color={current.accent} />
+            <Text style={styles.trustText}>Free forever</Text>
+          </View>
+        </View>
+
         <View style={styles.actions}>
           <Pressable
             onPress={handleGetStarted}
@@ -897,15 +917,26 @@ export default function WelcomeScreen() {
               { backgroundColor: current.accent, opacity: pressed ? 0.85 : 1 },
             ]}
           >
-            <Text style={styles.ctaText}>Get Started</Text>
+            <Text style={styles.ctaText}>Take control of your care</Text>
             <Ionicons name="arrow-forward" size={18} color="#0A0A0A" style={{ marginLeft: 8 }} />
           </Pressable>
+          <Text style={styles.ctaSub}>No card required · 2-minute setup</Text>
           <Pressable onPress={handleSignIn} hitSlop={12} style={styles.signInWrap}>
             <Text style={styles.signIn}>
-              Already have an account?{' '}
-              <Text style={[styles.signInLink, { color: current.accent }]}>Sign in</Text>
+              Already with us?{' '}
+              <Text style={[styles.signInLink, { color: current.accent }]}>Sign in →</Text>
             </Text>
           </Pressable>
+
+          <View style={styles.legalRow}>
+            <Pressable onPress={() => Linking.openURL('https://carecompanionai.org/terms')} hitSlop={8}>
+              <Text style={styles.legalLink}>Terms</Text>
+            </Pressable>
+            <Text style={styles.legalDot}>·</Text>
+            <Pressable onPress={() => Linking.openURL('https://carecompanionai.org/privacy')} hitSlop={8}>
+              <Text style={styles.legalLink}>Privacy</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </View>
@@ -1174,6 +1205,36 @@ const styles = StyleSheet.create({
   title: { color: 'white', fontSize: 28, fontWeight: '800', letterSpacing: -0.7 },
   subtitle: { color: '#FFFFFFB0', fontSize: 14, lineHeight: 20 },
 
+  trustRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 14,
+  },
+  trustItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  trustText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  trustDot: {
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  ctaSub: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: -2,
+  },
   actions: { gap: 12 },
   cta: {
     flexDirection: 'row',
@@ -1184,6 +1245,23 @@ const styles = StyleSheet.create({
   },
   ctaText: { color: '#0A0A0A', fontSize: 16, fontWeight: '700' },
   signInWrap: { alignItems: 'center', paddingVertical: 6 },
+  legalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  legalLink: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 11,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
+  },
+  legalDot: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 11,
+  },
   signIn: { color: '#FFFFFFB0', fontSize: 14 },
   signInLink: { fontWeight: '700' },
 })

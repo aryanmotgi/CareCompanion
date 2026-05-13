@@ -1,6 +1,5 @@
-// apps/mobile/src/components/Drawer.tsx
 import React from 'react'
-import { View, Text, Pressable, StyleSheet, Dimensions } from 'react-native'
+import { View, Text, Pressable, StyleSheet, Dimensions, Alert, ScrollView, Platform } from 'react-native'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -8,13 +7,17 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
-import { useTheme } from '../theme'
-import * as SecureStore from "expo-secure-store"
-import { Platform } from "react-native"
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
+import * as Haptics from 'expo-haptics'
+import Constants from 'expo-constants'
 import { LinearGradient } from 'expo-linear-gradient'
+import { useTheme } from '../theme'
+import { useProfile } from '../context/ProfileContext'
+import { signOut as authSignOut } from '../services/auth'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
-const DRAWER_WIDTH = SCREEN_WIDTH * 0.75
+const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 340)
 
 interface DrawerProps {
   visible: boolean
@@ -23,16 +26,25 @@ interface DrawerProps {
   userRole?: string
 }
 
-export function Drawer({ visible, onClose, userName, userRole = 'Patient' }: DrawerProps) {
+const ROLE_LABEL: Record<string, string> = {
+  patient: 'Patient',
+  caregiver: 'Caregiver',
+  self: 'Self-care',
+}
+
+export function Drawer({ visible, onClose, userName, userRole }: DrawerProps) {
   const theme = useTheme()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const { profile } = useProfile()
   const translateX = useSharedValue(-DRAWER_WIDTH)
   const backdropOpacity = useSharedValue(0)
   const timers = React.useRef<ReturnType<typeof setTimeout>[]>([])
+  const [signingOut, setSigningOut] = React.useState(false)
 
   React.useEffect(() => {
     if (visible) {
-      translateX.value = withSpring(0, { damping: 18, stiffness: 160 })
+      translateX.value = withSpring(0, { damping: 20, stiffness: 170 })
       backdropOpacity.value = withTiming(1, { duration: 250 })
     } else {
       translateX.value = withTiming(-DRAWER_WIDTH, { duration: 220 })
@@ -52,17 +64,46 @@ export function Drawer({ visible, onClose, userName, userRole = 'Patient' }: Dra
   }))
 
   function navigate(path: string) {
+    Haptics.selectionAsync().catch(() => {})
     onClose()
     timers.current.push(setTimeout(() => router.push(path as Parameters<typeof router.push>[0]), 250))
   }
 
-  async function signOut() {
+  function confirmSignOut() {
+    Alert.alert(
+      'Sign out?',
+      "You'll need to log in again to access your care data.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign out',
+          style: 'destructive',
+          onPress: () => void doSignOut(),
+        },
+      ],
+    )
+  }
+
+  async function doSignOut() {
+    if (signingOut) return
+    setSigningOut(true)
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {})
+    try {
+      await authSignOut()
+    } catch {
+      // ignore — local cleanup happens regardless
+    }
     onClose()
-    if (Platform.OS !== "web") await SecureStore.deleteItemAsync("cc-session-token")
-    timers.current.push(setTimeout(() => router.replace('/login'), 250))
+    timers.current.push(setTimeout(() => router.replace('/welcome' as any), 220))
   }
 
   if (!visible && backdropOpacity.value === 0) return null
+
+  const role = (userRole ?? profile?.role ?? 'patient').toLowerCase()
+  const roleLabel = ROLE_LABEL[role] ?? 'Member'
+  const email = profile?.email ?? ''
+  const initial = userName.charAt(0).toUpperCase() || 'U'
+  const version = Constants.expoConfig?.version ?? '1.0.0'
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}>
@@ -75,64 +116,156 @@ export function Drawer({ visible, onClose, userName, userRole = 'Patient' }: Dra
           styles.drawer,
           {
             width: DRAWER_WIDTH,
-            backgroundColor: theme.isDark ? '#13111F' : '#FFFFFF',
+            paddingTop: insets.top + 16,
+            // Tab bar ~68pt sits above drawer in (tabs) tree — extra padding so
+            // sign-out + version footer aren't hidden behind it.
+            paddingBottom: insets.bottom + 100,
+            backgroundColor: theme.isDark ? '#0E0F1E' : '#FFFFFF',
             borderRightColor: theme.isDark
-              ? 'rgba(167,139,250,0.15)'
+              ? 'rgba(167,139,250,0.18)'
               : 'rgba(99,102,241,0.15)',
           },
           drawerStyle,
         ]}
       >
-        <View style={[styles.userSection, { borderBottomColor: theme.border }]}>
-          <LinearGradient colors={['#6366F1', '#A78BFA']} style={styles.avatar}>
-            <Text style={styles.avatarText}>{userName.charAt(0).toUpperCase()}</Text>
-          </LinearGradient>
-          <View>
-            <Text style={[styles.userName, { color: theme.text }]}>{userName}</Text>
-            <Text style={[styles.userRole, { color: theme.textMuted }]}>{userRole}</Text>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+          {/* Header card */}
+          <View style={[styles.userCard, { borderColor: theme.border }]}>
+            <LinearGradient
+              colors={['#A78BFA', '#6366F1']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.avatar}
+            >
+              <Text style={styles.avatarText}>{initial}</Text>
+            </LinearGradient>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1}>
+                {userName || 'Member'}
+              </Text>
+              {email ? (
+                <Text style={[styles.userEmail, { color: theme.textMuted }]} numberOfLines={1}>
+                  {email}
+                </Text>
+              ) : null}
+              <View style={[styles.roleBadge, { backgroundColor: theme.accent + '22' }]}>
+                <Text style={[styles.roleBadgeText, { color: theme.accent }]}>{roleLabel}</Text>
+              </View>
+            </View>
           </View>
-        </View>
 
-        <Pressable
-          style={[styles.item, { backgroundColor: 'rgba(252,165,165,0.1)' }]}
-          onPress={() => navigate('/emergency')}
-        >
-          <Text style={styles.itemIcon}>🚨</Text>
-          <Text style={[styles.itemLabel, { color: theme.rose }]}>Emergency Card</Text>
-        </Pressable>
+          {/* Quick actions */}
+          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>QUICK ACTIONS</Text>
 
-        <Pressable
-          style={[styles.item, { backgroundColor: 'rgba(129,140,248,0.08)' }]}
-          onPress={() => navigate('/health-summary')}
-        >
-          <Text style={styles.itemIcon}>📋</Text>
-          <Text style={[styles.itemLabel, { color: theme.accentHover }]}>Health Summary</Text>
-        </Pressable>
+          <DrawerItem
+            icon="alert-circle"
+            iconColor={theme.rose}
+            iconBg="rgba(252,165,165,0.12)"
+            label="Emergency Card"
+            onPress={() => navigate('/emergency')}
+            theme={theme}
+          />
+          <DrawerItem
+            icon="document-text-outline"
+            iconColor={theme.accentHover}
+            iconBg="rgba(129,140,248,0.12)"
+            label="Health Summary"
+            onPress={() => navigate('/health-summary')}
+            theme={theme}
+          />
+          <DrawerItem
+            icon="card-outline"
+            iconColor={theme.green}
+            iconBg="rgba(52,211,153,0.12)"
+            label="Insurance & Claims"
+            onPress={() => navigate('/insurance')}
+            theme={theme}
+          />
 
-        <Pressable
-          style={[styles.item, { backgroundColor: 'rgba(52,211,153,0.08)' }]}
-          onPress={() => navigate('/insurance')}
-        >
-          <Text style={styles.itemIcon}>💳</Text>
-          <Text style={[styles.itemLabel, { color: theme.green }]}>Insurance & Claims</Text>
-        </Pressable>
+          <Text style={[styles.sectionLabel, { color: theme.textMuted, marginTop: 18 }]}>ACCOUNT</Text>
 
-        <Pressable
-          style={[styles.item, { backgroundColor: 'rgba(99,102,241,0.08)' }]}
-          onPress={() => navigate('/(tabs)/settings')}
-        >
-          <Text style={styles.itemIcon}>⚙️</Text>
-          <Text style={[styles.itemLabel, { color: theme.text }]}>Settings</Text>
-        </Pressable>
+          <DrawerItem
+            icon="people-outline"
+            iconColor={theme.lavender}
+            iconBg="rgba(167,139,250,0.12)"
+            label="Care Group"
+            onPress={() => navigate('/(tabs)/settings')}
+            theme={theme}
+          />
+          <DrawerItem
+            icon="settings-outline"
+            iconColor={theme.accent}
+            iconBg="rgba(99,102,241,0.12)"
+            label="Settings"
+            onPress={() => navigate('/(tabs)/settings')}
+            theme={theme}
+          />
+          <DrawerItem
+            icon="help-circle-outline"
+            iconColor={theme.cyan}
+            iconBg="rgba(103,232,249,0.12)"
+            label="Help & Feedback"
+            onPress={() => navigate('/(tabs)/settings')}
+            theme={theme}
+          />
 
-        <View style={{ flex: 1 }} />
+          <View style={{ flex: 1 }} />
 
-        <Pressable style={styles.item} onPress={() => void signOut()}>
-          <Text style={styles.itemIcon}>🚪</Text>
-          <Text style={[styles.itemLabel, { color: theme.textMuted }]}>Sign Out</Text>
-        </Pressable>
+          {/* Sign out */}
+          <Pressable
+            onPress={confirmSignOut}
+            disabled={signingOut}
+            style={({ pressed }) => [
+              styles.signOutBtn,
+              {
+                borderColor: 'rgba(248,113,113,0.3)',
+                backgroundColor: 'rgba(248,113,113,0.08)',
+                opacity: pressed || signingOut ? 0.6 : 1,
+              },
+            ]}
+          >
+            <Ionicons name="log-out-outline" size={18} color="#F87171" />
+            <Text style={styles.signOutText}>{signingOut ? 'Signing out…' : 'Sign out'}</Text>
+          </Pressable>
+
+          <Text style={[styles.version, { color: theme.textMuted }]}>
+            CareCompanion v{version}
+          </Text>
+        </ScrollView>
       </Animated.View>
     </View>
+  )
+}
+
+function DrawerItem({
+  icon,
+  iconColor,
+  iconBg,
+  label,
+  onPress,
+  theme,
+}: {
+  icon: keyof typeof Ionicons.glyphMap
+  iconColor: string
+  iconBg: string
+  label: string
+  onPress: () => void
+  theme: ReturnType<typeof useTheme>
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.item,
+        { opacity: pressed ? 0.6 : 1 },
+      ]}
+    >
+      <View style={[styles.itemIcon, { backgroundColor: iconBg }]}>
+        <Ionicons name={icon} size={18} color={iconColor} />
+      </View>
+      <Text style={[styles.itemLabel, { color: theme.text }]}>{label}</Text>
+      <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
+    </Pressable>
   )
 }
 
@@ -144,36 +277,69 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     borderRightWidth: 1,
-    paddingTop: 64,
-    paddingHorizontal: 16,
-    paddingBottom: 32,
+    paddingHorizontal: 14,
   },
-  userSection: {
+  userCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingBottom: 16,
-    marginBottom: 12,
-    borderBottomWidth: 1,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    backgroundColor: 'rgba(167,139,250,0.06)',
+    marginBottom: 16,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 52, height: 52, borderRadius: 26,
+    alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  userName: { fontSize: 14, fontWeight: '600' },
-  userRole: { fontSize: 12 },
+  avatarText: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  userName: { fontSize: 16, fontWeight: '700', marginBottom: 2 },
+  userEmail: { fontSize: 12, marginBottom: 6 },
+  roleBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  roleBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.6 },
+
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginBottom: 8,
+    paddingHorizontal: 6,
+  },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    padding: 10,
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
     borderRadius: 10,
-    marginBottom: 6,
+    marginBottom: 2,
   },
-  itemIcon: { fontSize: 16 },
-  itemLabel: { fontSize: 14, fontWeight: '600' },
+  itemIcon: {
+    width: 34, height: 34, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  itemLabel: { flex: 1, fontSize: 14, fontWeight: '600' },
+
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 12,
+  },
+  signOutText: { color: '#F87171', fontSize: 14, fontWeight: '700' },
+  version: {
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 12,
+  },
 })

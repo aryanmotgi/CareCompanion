@@ -8,6 +8,7 @@ import {
   Pressable,
   Linking,
   ViewStyle,
+  RefreshControl,
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import Animated, {
@@ -121,7 +122,13 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<HomeTab>('today')
 
   // --- Real data from API ---
-  const { profile, loading: profileLoading } = useProfile()
+  const { profile, loading: profileLoading, refetch } = useProfile()
+  const [refreshing, setRefreshing] = useState(false)
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true)
+    try { await refetch() } catch {/* swallow */}
+    setRefreshing(false)
+  }, [refetch])
   const [meds, setMeds] = useState<any[]>([])
   const [appointments, setAppointments] = useState<any[]>([])
   const [dataLoading, setDataLoading] = useState(true)
@@ -147,6 +154,21 @@ export default function HomeScreen() {
       setDataLoading(false)
     })
   }, [profile?.careProfileId])
+
+  // Count of real items due today: meds scheduled today + appointments today.
+  const todayCount = React.useMemo(() => {
+    const today = new Date()
+    const y = today.getFullYear()
+    const m = today.getMonth()
+    const d = today.getDate()
+    const apptsToday = appointments.filter((a: any) => {
+      const dt = a?.dateTime || a?.date || a?.scheduledFor
+      if (!dt) return false
+      const ad = new Date(dt)
+      return ad.getFullYear() === y && ad.getMonth() === m && ad.getDate() === d
+    }).length
+    return meds.length + apptsToday
+  }, [meds, appointments])
 
   const [localDisplayName, setLocalDisplayName] = useState<string | null>(null)
   useEffect(() => {
@@ -282,6 +304,14 @@ export default function HomeScreen() {
             { paddingTop: insets.top + 16, paddingBottom: 120 },
           ]}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.accent}
+              colors={[theme.accent]}
+            />
+          }
         >
           {/* Greeting */}
           <View style={styles.header}>
@@ -307,7 +337,7 @@ export default function HomeScreen() {
           </View>
 
           {/* Today / My Care / Health Data segmented control */}
-          <HomeTabPills active={activeTab} onChange={setActiveTab} todayCount={5} />
+          <HomeTabPills active={activeTab} onChange={setActiveTab} todayCount={todayCount} />
 
           {activeTab === 'myCare' && <MyCarePanel />}
           {activeTab === 'healthData' && <HealthDataPanel />}
@@ -337,11 +367,17 @@ export default function HomeScreen() {
                   .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
                   .find((a) => new Date(a.dateTime).getTime() >= Date.now()) || appointments[0]
                 return (
-                  <AnimatedBorderCard onPress={() => router.push('/appointments' as any)}>
+                  <AnimatedBorderCard
+                    onPress={() =>
+                      router.push((nextAppt ? '/appointments' : '/appointments/new') as any)
+                    }
+                  >
                     <View style={{ padding: 16 }}>
                       <Text style={[styles.cardLabel, { color: theme.textMuted }]}>NEXT APPOINTMENT</Text>
                       {!nextAppt ? (
-                        <Text style={[styles.apptName, { color: theme.textMuted }]}>No upcoming appointments</Text>
+                        <Text style={[styles.apptName, { color: theme.textMuted }]}>
+                          No upcoming appointments — tap to add.
+                        </Text>
                       ) : (
                         <>
                           <Text style={[styles.apptName, { color: theme.text }]}>

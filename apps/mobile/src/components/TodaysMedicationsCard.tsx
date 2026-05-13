@@ -34,7 +34,12 @@ export function TodaysMedicationsCard({ meds }: Props) {
   }
 
   return (
-    <GlassCard style={{ marginBottom: 12 }} onPress={() => router.push('/(tabs)/care')}>
+    <GlassCard
+      style={{ marginBottom: 12 }}
+      onPress={() =>
+        router.push((meds.length === 0 ? '/medications/new' : '/(tabs)/care') as any)
+      }
+    >
       <View style={{ padding: 16 }}>
         <View
           style={{

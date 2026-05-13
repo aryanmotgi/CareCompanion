@@ -18,6 +18,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native'
+import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -25,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { apiClient } from '../src/services/api'
 import { useProfile } from '../src/context/ProfileContext'
 import { useCaregiverJoinedContext } from './_layout'
+import { AuroraBackground, FloatingGlyphs } from '../src/components/auth/AuthAtoms'
 
 const ACCENT = '#818CF8'
 
@@ -80,11 +82,8 @@ export default function CareRelationshipScreen() {
   if (!confirmed) {
     return (
       <View style={styles.root}>
-        <LinearGradient
-          colors={['#05060F', '#0F1130', '#05060F']}
-          locations={[0, 0.55, 1]}
-          style={StyleSheet.absoluteFillObject}
-        />
+        <AuroraBackground />
+        <FloatingGlyphs />
         <View style={[styles.content, { paddingTop: insets.top + 80, paddingBottom: insets.bottom + 24 }]}>
           <View style={styles.iconBubble}>
             <LinearGradient
@@ -102,7 +101,7 @@ export default function CareRelationshipScreen() {
           </Text>
 
           <Pressable
-            onPress={() => setConfirmed(true)}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}); setConfirmed(true) }}
             style={({ pressed }) => [styles.cta, { opacity: pressed ? 0.85 : 1 }]}
           >
             <LinearGradient
@@ -114,7 +113,7 @@ export default function CareRelationshipScreen() {
             <Text style={styles.ctaText}>Yes, that's the right person</Text>
           </Pressable>
 
-          <Pressable onPress={() => router.back()} style={styles.altLink}>
+          <Pressable onPress={() => { if (router.canGoBack()) router.back(); else router.replace('/care-group-join' as any) }} style={styles.altLink}>
             <Text style={styles.altLinkText}>That's not who I'm caring for</Text>
           </Pressable>
         </View>
@@ -125,11 +124,8 @@ export default function CareRelationshipScreen() {
   // Step 2: relationship picker
   return (
     <View style={styles.root}>
-      <LinearGradient
-        colors={['#05060F', '#0F1130', '#05060F']}
-        locations={[0, 0.55, 1]}
-        style={StyleSheet.absoluteFillObject}
-      />
+      <AuroraBackground />
+      <FloatingGlyphs />
 
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 24 }]}
@@ -143,7 +139,7 @@ export default function CareRelationshipScreen() {
           {RELATIONSHIPS.map((r) => (
             <Pressable
               key={r.id}
-              onPress={() => setSelected(r.id)}
+              onPress={() => { Haptics.selectionAsync().catch(() => {}); setSelected(r.id) }}
               style={({ pressed }) => [
                 styles.option,
                 selected === r.id && styles.optionSelected,
@@ -164,7 +160,7 @@ export default function CareRelationshipScreen() {
         {error && <Text style={styles.error}>{error}</Text>}
 
         <Pressable
-          onPress={handleContinue}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}); handleContinue() }}
           disabled={!selected || submitting}
           style={({ pressed }) => [
             styles.cta,

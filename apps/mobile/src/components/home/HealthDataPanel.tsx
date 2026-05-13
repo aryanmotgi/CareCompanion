@@ -1,6 +1,9 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { View, Text, Pressable, ScrollView } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
 import { useTheme } from '../../theme'
+import { isHealthKitConnected } from '../../services/healthkit'
 
 type Status = 'low' | 'high' | 'normal'
 
@@ -105,7 +108,68 @@ function shortDate(iso: string): string {
 
 export function HealthDataPanel() {
   const theme = useTheme()
+  const router = useRouter()
   const [selectedKey, setSelectedKey] = useState<string>('hemoglobin')
+  const [connected, setConnected] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    isHealthKitConnected()
+      .then((c) => { if (!cancelled) setConnected(c) })
+      .catch(() => { if (!cancelled) setConnected(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  // No real lab data yet → empty state. Don't show demo content to real users.
+  if (connected === false) {
+    return (
+      <View
+        style={{
+          padding: 24,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: theme.border,
+          backgroundColor: 'rgba(255,255,255,0.03)',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
+        <View
+          style={{
+            width: 56, height: 56, borderRadius: 28,
+            backgroundColor: 'rgba(99,102,241,0.15)',
+            alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="pulse" size={28} color={theme.accent} />
+        </View>
+        <Text style={{ color: theme.text, fontSize: 17, fontWeight: '700', textAlign: 'center' }}>
+          No lab results yet
+        </Text>
+        <Text style={{ color: theme.textMuted, fontSize: 13, lineHeight: 18, textAlign: 'center' }}>
+          Connect Apple Health to pull your hemoglobin, platelets, WBC and other lab values from your provider.
+        </Text>
+        <Pressable
+          onPress={() => router.push('/onboarding-records' as any)}
+          style={({ pressed }) => ({
+            marginTop: 4,
+            paddingHorizontal: 20,
+            paddingVertical: 12,
+            borderRadius: 12,
+            backgroundColor: theme.accent,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Text style={{ color: 'white', fontSize: 14, fontWeight: '700' }}>Connect Apple Health</Text>
+        </Pressable>
+      </View>
+    )
+  }
+
+  if (connected === null) {
+    // Loading shimmer placeholder
+    return <View style={{ height: 200, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.03)' }} />
+  }
 
   const topCards = DEMO_LABS.slice(0, 3)
   const selected = DEMO_LABS.find((l) => l.key === selectedKey) ?? DEMO_LABS[0]!

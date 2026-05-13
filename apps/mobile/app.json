@@ -21,7 +21,11 @@
         "NSHealthUpdateUsageDescription": "CareCompanion saves care data to help you track your treatment progress.",
         "NSHealthClinicalHealthRecordsShareUsageDescription": "CareCompanion reads your clinical records — medications, lab results, conditions, and appointments — from your care team so it can help you understand and manage your treatment.",
         "NSCameraUsageDescription": "CareCompanion uses the camera to scan medical documents and prescriptions.",
-        "ITSAppUsesNonExemptEncryption": false
+        "NSPhotoLibraryUsageDescription": "CareCompanion accesses your photos to upload medical documents.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSSupportsLiveActivities": true,
+        "NSSupportsLiveActivitiesFrequentUpdates": true,
+        "UIBackgroundModes": ["fetch", "remote-notification"]
       },
       "entitlements": {
         "com.apple.developer.healthkit": true,
@@ -45,6 +49,14 @@
         {
           "photosPermission": "CareCompanion accesses your photos to upload medical documents.",
           "cameraPermission": "CareCompanion uses the camera to scan medical documents."
+        }
+      ],
+      "expo-live-activity",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#A78BFA"
         }
       ]
     ],

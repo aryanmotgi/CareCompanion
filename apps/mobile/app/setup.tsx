@@ -14,6 +14,7 @@ import {
 } from 'react-native'
 import * as SecureStore from 'expo-secure-store'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import * as Haptics from 'expo-haptics'
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
 import Animated, {
@@ -227,6 +228,67 @@ function valueForApi(stepKey: string, raw: string): unknown {
     return { raw }
   }
   return raw
+}
+
+function CgChip({
+  icon,
+  label,
+  color,
+}: {
+  icon: keyof typeof import('@expo/vector-icons').Ionicons.glyphMap
+  label: string
+  color: string
+}) {
+  return (
+    <View style={[styles.cgChip, { borderColor: color + '55', backgroundColor: color + '14' }]}>
+      <Ionicons name={icon} size={13} color={color} />
+      <Text style={[styles.cgChipText, { color }]}>{label}</Text>
+    </View>
+  )
+}
+
+function CgOptionPressable({
+  accent,
+  icon,
+  title,
+  sub,
+  onPress,
+}: {
+  accent: string
+  icon: keyof typeof import('@expo/vector-icons').Ionicons.glyphMap
+  title: string
+  sub: string
+  onPress: () => void
+}) {
+  const scale = useSharedValue(1)
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }))
+  return (
+    <Animated.View style={animStyle}>
+      <Pressable
+        onPressIn={() => { scale.value = withSpring(0.97, { damping: 14, stiffness: 220 }) }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 12, stiffness: 200 }) }}
+        onPress={onPress}
+        style={[styles.cgOptionCard, { borderColor: accent + '66' }]}
+      >
+        <LinearGradient
+          colors={[accent + '1A', 'transparent']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={[styles.cgOptionIcon, { backgroundColor: accent + '22', borderWidth: 1, borderColor: accent + '88' }]}>
+          <Ionicons name={icon} size={22} color={accent} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.cgOptionTitle}>{title}</Text>
+          <Text style={styles.cgOptionSub}>{sub}</Text>
+        </View>
+        <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: accent + '22', alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="chevron-forward" size={14} color={accent} />
+        </View>
+      </Pressable>
+    </Animated.View>
+  )
 }
 
 export default function SetupScreen() {
@@ -451,7 +513,7 @@ export default function SetupScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} hitSlop={16} style={styles.closeButton}>
+          <Pressable onPress={async () => { await AsyncStorage.setItem('cc-setup-skipped', '1').catch(() => {}); router.replace('/(tabs)' as any) }} hitSlop={16} style={styles.closeButton}>
             <BlurView intensity={20} tint="dark" style={styles.closeBlur}>
               <Ionicons name="close" size={18} color="rgba(255,255,255,0.7)" />
             </BlurView>
@@ -470,8 +532,14 @@ export default function SetupScreen() {
             showsVerticalScrollIndicator={false}
           >
             {/* Icon */}
-            <Animated.View entering={FadeIn.duration(400).delay(100)} style={styles.emojiWrap}>
-              <Text style={styles.emoji}>👥</Text>
+            <Animated.View entering={FadeIn.duration(400).delay(100)} style={styles.cgHeroWrap}>
+              <View style={styles.cgAvatarA}>
+                <Ionicons name="person" size={22} color="#A78BFA" />
+              </View>
+              <View style={styles.cgAvatarB}>
+                <Ionicons name="person" size={22} color="#67E8F9" />
+              </View>
+              <View style={styles.cgConnector} />
             </Animated.View>
 
             <Animated.View entering={FadeIn.duration(400).delay(200)}>
@@ -489,33 +557,35 @@ export default function SetupScreen() {
 
             <Animated.View entering={FadeIn.duration(400).delay(300)} style={styles.inputArea}>
               {cgStep === 'pick' ? (
-                <View style={{ gap: 10 }}>
-                  <Pressable
-                    onPress={() => setCgStep('create')}
-                    style={styles.cgOptionCard}
-                  >
-                    <View style={styles.cgOptionIcon}>
-                      <Ionicons name="add-circle-outline" size={22} color="#A78BFA" />
+                <View style={{ gap: 12 }}>
+                  <CgOptionPressable
+                    accent="#A78BFA"
+                    icon="add-circle-outline"
+                    title="Create a new group"
+                    sub="Pick a name and password to share"
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}); setCgStep('create') }}
+                  />
+                  <CgOptionPressable
+                    accent="#67E8F9"
+                    icon="link-outline"
+                    title="Join an existing group"
+                    sub="Enter the name and password you were given"
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}); setCgStep('join') }}
+                  />
+
+                  {/* What you'll share */}
+                  <Animated.View entering={FadeIn.duration(500).delay(500)} style={styles.cgShareBlock}>
+                    <Text style={styles.cgShareLabel}>WHAT YOU'LL SHARE</Text>
+                    <View style={styles.cgChipsRow}>
+                      <CgChip icon="medical-outline" label="Medications" color="#A78BFA" />
+                      <CgChip icon="calendar-outline" label="Appointments" color="#67E8F9" />
+                      <CgChip icon="pulse-outline" label="Lab results" color="#FCA5A5" />
+                      <CgChip icon="chatbubbles-outline" label="Updates" color="#6EE7B7" />
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cgOptionTitle}>Create a new group</Text>
-                      <Text style={styles.cgOptionSub}>Pick a name and password to share</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => setCgStep('join')}
-                    style={styles.cgOptionCard}
-                  >
-                    <View style={styles.cgOptionIcon}>
-                      <Ionicons name="link-outline" size={22} color="#67E8F9" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cgOptionTitle}>Join an existing group</Text>
-                      <Text style={styles.cgOptionSub}>Enter the name and password you were given</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
-                  </Pressable>
+                    <Text style={styles.cgPrivacyNote}>
+                      <Ionicons name="lock-closed" size={11} color="rgba(167,139,250,0.7)" />  Encrypted end-to-end. Only members you invite can see your data.
+                    </Text>
+                  </Animated.View>
                 </View>
               ) : (
                 <View style={{ gap: 10 }}>
@@ -926,9 +996,98 @@ const styles = StyleSheet.create({
     gap: 14,
     backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
     borderRadius: 16,
     padding: 16,
+    overflow: 'hidden',
+  },
+  cgHeroWrap: {
+    alignSelf: 'center',
+    width: 110,
+    height: 72,
+    marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cgAvatarA: {
+    position: 'absolute',
+    left: 8,
+    top: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(167,139,250,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#A78BFA',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+  },
+  cgAvatarB: {
+    position: 'absolute',
+    right: 8,
+    top: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(103,232,249,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(103,232,249,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#67E8F9',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+  },
+  cgConnector: {
+    position: 'absolute',
+    top: 35,
+    left: 50,
+    width: 10,
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+    borderRadius: 1,
+  },
+  cgShareBlock: {
+    marginTop: 24,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+    gap: 12,
+  },
+  cgShareLabel: {
+    color: 'rgba(167,139,250,0.7)',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.4,
+    marginLeft: 2,
+  },
+  cgChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  cgChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  cgChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  cgPrivacyNote: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 4,
   },
   cgOptionIcon: {
     width: 40,

@@ -8,6 +8,7 @@ import * as SecureStore from 'expo-secure-store'
 import Constants from 'expo-constants'
 import { useTheme, useThemeOverride, setThemeOverride, ThemeOverride } from '../../src/theme'
 import { useProfile } from '../../src/context/ProfileContext'
+import { signOut as authSignOut } from '../../src/services/auth'
 import { GlassCard } from '../../src/components/GlassCard'
 import { LinearGradient } from 'expo-linear-gradient'
 import Animated from 'react-native-reanimated'
@@ -30,16 +31,14 @@ export default function SettingsScreen() {
   }
 
   async function signOut() {
-    Alert.alert('Sign Out', 'Are you sure?', [
+    Alert.alert('Sign out?', "You'll need to log in again to access your care data.", [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Sign Out',
+        text: 'Sign out',
         style: 'destructive',
         onPress: async () => {
-          await SecureStore.deleteItemAsync('cc-session-token')
-          await SecureStore.deleteItemAsync('cc-profile')
-          await SecureStore.deleteItemAsync('cc-csrf-token')
-          router.replace('/login')
+          await authSignOut().catch(() => {})
+          router.replace('/welcome' as any)
         },
       },
     ])
@@ -64,9 +63,8 @@ export default function SettingsScreen() {
                 headers: { Authorization: `Bearer ${token}` },
               })
               if (!res.ok) throw new Error('Delete failed')
-              await SecureStore.deleteItemAsync('cc-session-token')
-              await SecureStore.deleteItemAsync('cc-profile')
-              router.replace('/login')
+              await authSignOut().catch(() => {})
+              router.replace('/welcome' as any)
             } catch {
               Alert.alert('Error', 'Failed to delete account. Please try again or contact support.')
             }
