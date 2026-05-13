@@ -35,6 +35,7 @@ import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useProfile } from '../src/context/ProfileContext'
 import { fetchHealthKitBaseline } from '../src/services/healthkit'
+import { useUserTypeContext } from './_layout'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -295,6 +296,8 @@ export default function SetupScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { profile, apiClient, csrfToken, refetch } = useProfile()
+  const { state: userTypeState } = useUserTypeContext()
+  const isSelf = userTypeState === 'self'
   const [setupPhase, setSetupPhase] = useState<'care-group' | 'wizard'>('care-group')
   const [cgStep, setCgStep] = useState<'pick' | 'create' | 'join'>('pick')
   const [cgName, setCgName] = useState('')
@@ -548,7 +551,9 @@ export default function SetupScreen() {
               </Text>
               <Text style={styles.subtitle}>
                 {cgStep === 'pick'
-                  ? 'Share health updates and coordinate care with family and caregivers.'
+                  ? (isSelf
+                      ? 'Invite family or friends to support you — share health updates and coordinate care together.'
+                      : 'Share health updates and coordinate care with family and caregivers.')
                   : cgStep === 'create'
                   ? 'Choose a name and password to share with your group.'
                   : 'Enter the name and password your group admin shared with you.'}
