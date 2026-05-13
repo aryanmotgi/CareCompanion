@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect } from 'react'
 import {
   View,
   Text,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
   Alert,
 } from 'react-native'
 import Animated, {
@@ -25,11 +24,6 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import {
-  requestHealthKitPermissions,
-  markHealthKitConnected,
-  syncHealthKitData,
-} from '../src/services/healthkit'
 import { useRecordsContext } from './_layout'
 import { AuroraBackground, FloatingGlyphs } from '../src/components/auth/AuthAtoms'
 
@@ -39,7 +33,6 @@ export default function OnboardingRecordsScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { markOnboarded } = useRecordsContext()
-  const [requesting, setRequesting] = useState(false)
 
   // Entry animations
   const iconScale = useSharedValue(0)
@@ -90,64 +83,9 @@ export default function OnboardingRecordsScreen() {
     transform: [{ translateY: interpolate(ctaOpacity.value, [0, 1], [12, 0]) }],
   }))
 
-  async function handleConnect() {
-    if (requesting) return
+  function handleConnect() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {})
-    setRequesting(true)
-    try {
-      const granted = await requestHealthKitPermissions()
-      if (!granted) return
-
-      const { synced } = await syncHealthKitData()
-      if (synced === 0) {
-        Alert.alert(
-          'No health records found',
-          __DEV__
-            ? 'Simulator can\'t reach real provider portals. Use Skip (dev only) to bypass this screen for testing.'
-            : 'Tap Connect Apple Health and select your healthcare provider. If you just added one, give it a moment to sync, then try again.',
-          __DEV__
-            ? [
-                { text: 'Try Again', style: 'cancel' },
-                {
-                  text: 'Skip (dev only)',
-                  onPress: () => {
-                    markOnboarded()
-                    router.replace('/(tabs)')
-                  },
-                },
-              ]
-            : [{ text: 'OK' }]
-        )
-        return
-      }
-
-      await markHealthKitConnected().catch(() => {})
-      markOnboarded()
-      router.replace('/(tabs)')
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      console.warn('[onboarding-records] HealthKit connect failed:', msg, err)
-      Alert.alert(
-        'Could not connect Apple Health',
-        __DEV__
-          ? `Error: ${msg}\n\nSimulator usually can't reach real provider portals. Use Skip to bypass for testing.`
-          : 'Please try again. If the problem persists, restart the app.',
-        __DEV__
-          ? [
-              { text: 'Retry', style: 'cancel' },
-              {
-                text: 'Skip (dev only)',
-                onPress: () => {
-                  markOnboarded()
-                  router.replace('/(tabs)')
-                },
-              },
-            ]
-          : [{ text: 'OK' }]
-      )
-    } finally {
-      setRequesting(false)
-    }
+    router.push('/health-consent')
   }
 
   function handleSkip() {
@@ -212,10 +150,9 @@ export default function OnboardingRecordsScreen() {
         <Animated.View style={[styles.actions, ctaStyle]}>
           <Pressable
             onPress={handleConnect}
-            disabled={requesting}
             style={({ pressed }) => [
               styles.cta,
-              { opacity: pressed || requesting ? 0.85 : 1 },
+              { opacity: pressed ? 0.85 : 1 },
             ]}
           >
             <LinearGradient
@@ -224,19 +161,12 @@ export default function OnboardingRecordsScreen() {
               end={{ x: 1, y: 0 }}
               style={StyleSheet.absoluteFillObject}
             />
-            {requesting ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <>
-                <Ionicons name="medkit" size={18} color="white" style={{ marginRight: 8 }} />
-                <Text style={styles.ctaText}>Connect Apple Health</Text>
-              </>
-            )}
+            <Ionicons name="medkit" size={18} color="white" style={{ marginRight: 8 }} />
+            <Text style={styles.ctaText}>Connect Apple Health</Text>
           </Pressable>
 
           <Pressable
             onPress={handleSkip}
-            disabled={requesting}
             style={({ pressed }) => [styles.skipBtn, { opacity: pressed ? 0.7 : 1 }]}
           >
             <Text style={styles.skipText}>Skip for now</Text>

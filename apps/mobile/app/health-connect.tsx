@@ -34,6 +34,7 @@ import {
   replaceHealthKitData,
 } from '../src/services/healthkit'
 import { useProfile } from '../src/context/ProfileContext'
+import { useRecordsContext } from './_layout'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const CARD_WIDTH = SCREEN_WIDTH - 56
@@ -240,6 +241,7 @@ const MOCKUP_MAP = {
 export default function HealthConnectScreen() {
   const router = useRouter()
   const { refetch } = useProfile()
+  const { markOnboarded } = useRecordsContext()
   const insets = useSafeAreaInsets()
   const flatListRef = useRef<FlatList>(null)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -282,7 +284,10 @@ export default function HealthConnectScreen() {
 
       setPermissionGranted(true)
       successScale.value = withSpring(1, { damping: 10, stiffness: 150 })
-      setTimeout(() => { router.back() }, 2000)
+      setTimeout(() => {
+        markOnboarded()
+        router.replace('/(tabs)')
+      }, 2000)
     } catch (err) {
       console.warn('[HealthKit] connect failed:', err)
       setRequesting(false)
