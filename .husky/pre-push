@@ -4,6 +4,19 @@ npm run typecheck
 echo "🔍 Pre-push: running lint..."
 npm run lint
 
+echo "🔍 Pre-push: running tests..."
+npm run test:run
+
+echo "🔍 Pre-push: running deadcode (knip)..."
+npm run deadcode
+
+echo "🔍 Pre-push: compiling mobile JS bundle (catches runtime import bugs typecheck misses)..."
+( cd apps/mobile && npm run bundle-check ) || {
+  echo ""
+  echo "❌ Mobile bundle failed to compile. Fix import / module errors before pushing."
+  exit 1
+}
+
 # ── Schema drift check ────────────────────────────────────────────────────────
 # If schema.ts changed in this push, remind the dev to migrate Aurora.
 # Aurora is VPC-only — drizzle-kit push can't reach it from CI.

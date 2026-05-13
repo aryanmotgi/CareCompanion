@@ -37,6 +37,14 @@ jobs:
       - name: Build
         run: bun run build
 
+      - name: Deadcode (knip)
+        working-directory: .
+        run: bun run deadcode
+
+      - name: Mobile bundle-check (Hermes JS compile)
+        working-directory: apps/mobile
+        run: bun run bundle-check
+
       - name: Install Playwright browsers
         working-directory: apps/web
         run: npx playwright install --with-deps chromium
