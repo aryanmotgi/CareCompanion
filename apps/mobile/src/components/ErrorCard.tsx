@@ -82,33 +82,3 @@ export function ErrorCard({
   )
 }
 
-interface OfflineBannerProps {
-  visible: boolean
-  onDismiss?: () => void
-}
-
-export function OfflineBanner({ visible, onDismiss }: OfflineBannerProps) {
-  if (!visible) return null
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        backgroundColor: 'rgba(248,113,113,0.95)',
-      }}
-    >
-      <Ionicons name="cloud-offline-outline" size={16} color="white" />
-      <Text style={{ color: 'white', fontSize: 13, fontWeight: '700', flex: 1 }}>
-        You're offline — showing last saved data
-      </Text>
-      {onDismiss ? (
-        <Pressable onPress={onDismiss} hitSlop={10}>
-          <Ionicons name="close" size={16} color="white" />
-        </Pressable>
-      ) : null}
-    </View>
-  )
-}

@@ -251,16 +251,6 @@ export function useDeviceTilt() {
   return { tx, ty }
 }
 
-export function tiltStyle(tx: Animated.SharedValue<number>, ty: Animated.SharedValue<number>, factor = 8) {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  return useAnimatedStyle(() => ({
-    transform: [
-      { translateX: tx.value * factor },
-      { translateY: ty.value * factor },
-    ],
-  }))
-}
-
 // ──────────────────────────────────────────────────────────────
 // 5. PASSWORD STRENGTH METER (bar + descriptor + tip)
 // ──────────────────────────────────────────────────────────────
@@ -392,7 +382,7 @@ const sucStyles = StyleSheet.create({
 // 8. FLOATING-LABEL INPUT
 // ──────────────────────────────────────────────────────────────
 
-export type FloatingInputProps = {
+type FloatingInputProps = {
   label: string
   value: string
   onChangeText: (t: string) => void

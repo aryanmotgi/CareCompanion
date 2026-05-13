@@ -11,9 +11,7 @@
  *   npx expo install react-native-document-scanner-plugin
  * Then rebuild via `npx expo run:ios --device <udid>`.
  */
-import { Platform } from 'react-native'
-
-export interface ScanResult {
+interface ScanResult {
   imageUris: string[]
   // Best-effort OCR text from the first page. null when OCR unavailable.
   extractedText: string | null
@@ -138,8 +136,3 @@ function titleCase(s: string): string {
     .join(' ')
 }
 
-// Stub: Platform.OS check used by callers to hide the scan button on Android
-// when the iOS-specific multi-page VisionKit flow is preferred.
-export function isPreferredPlatform(): boolean {
-  return Platform.OS === 'ios'
-}

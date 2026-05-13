@@ -63,8 +63,8 @@ type NotificationsModule = {
   setNotificationChannelAsync?: (channelId: string, config: unknown) => Promise<unknown>
 } | null
 
-export const DOSE_CATEGORY_ID = 'dose-reminder'
-export const APPT_CATEGORY_ID = 'appointment-reminder'
+const DOSE_CATEGORY_ID = 'dose-reminder'
+const APPT_CATEGORY_ID = 'appointment-reminder'
 
 export async function registerNotificationCategories(): Promise<void> {
   const Notifications = getModule()
@@ -104,9 +104,9 @@ export async function registerNotificationCategories(): Promise<void> {
   }
 }
 
-export type NotificationActionId = 'TAKEN' | 'SNOOZE' | 'SKIP' | 'CONFIRM' | 'RESCHEDULE'
+type NotificationActionId = 'TAKEN' | 'SNOOZE' | 'SKIP' | 'CONFIRM' | 'RESCHEDULE'
 
-export interface NotificationResponse {
+interface NotificationResponse {
   actionId: NotificationActionId | string
   notificationId: string | null
   data: Record<string, unknown>
@@ -141,10 +141,6 @@ function getModule(): NotificationsModule {
     cached = null
   }
   return cached
-}
-
-export function isSupported(): boolean {
-  return getModule() !== null
 }
 
 export async function requestPermissions(options?: {
@@ -185,76 +181,3 @@ export async function getPermissionStatus(): Promise<'granted' | 'denied' | 'und
   }
 }
 
-interface MedReminderInput {
-  title: string
-  body: string
-  triggerAt: Date
-  medicationId?: string
-  critical?: boolean
-}
-
-export async function scheduleMedReminder(input: MedReminderInput): Promise<string | null> {
-  const Notifications = getModule()
-  if (!Notifications) return null
-  try {
-    const id = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: input.title,
-        body: input.body,
-        sound: input.critical ? 'critical' : 'default',
-        categoryIdentifier: DOSE_CATEGORY_ID,
-        data: {
-          type: 'dose-reminder',
-          medicationId: input.medicationId ?? null,
-        },
-        // Critical alerts bypass DnD/Silent — needs Apple entitlement.
-        // The flag is ignored when entitlement is missing.
-        ...(input.critical ? { interruptionLevel: 'critical' } : {}),
-      },
-      trigger: input.triggerAt,
-    })
-    return id
-  } catch {
-    return null
-  }
-}
-
-interface ApptReminderInput {
-  title: string
-  body: string
-  triggerAt: Date
-  appointmentId?: string
-}
-
-export async function scheduleAppointmentReminder(input: ApptReminderInput): Promise<string | null> {
-  const Notifications = getModule()
-  if (!Notifications) return null
-  try {
-    const id = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: input.title,
-        body: input.body,
-        sound: 'default',
-        categoryIdentifier: APPT_CATEGORY_ID,
-        data: {
-          type: 'appointment-reminder',
-          appointmentId: input.appointmentId ?? null,
-        },
-      },
-      trigger: input.triggerAt,
-    })
-    return id
-  } catch {
-    return null
-  }
-}
-
-export async function cancelAll(): Promise<void> {
-  const Notifications = getModule()
-  if (!Notifications) return
-  try {
-    await Notifications.cancelAllScheduledNotificationsAsync()
-  } catch {
-    // ignore
-  }
-}

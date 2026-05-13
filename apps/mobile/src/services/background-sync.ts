@@ -10,7 +10,7 @@
  * guaranteed timer.
  */
 
-export const BACKGROUND_SYNC_TASK = 'cc-background-sync'
+const BACKGROUND_SYNC_TASK = 'cc-background-sync'
 
 type BgFetchModule = {
   registerTaskAsync: (taskName: string, opts: unknown) => Promise<void>
@@ -48,10 +48,6 @@ function getTm(): TaskManagerModule {
     tmCached = null
   }
   return tmCached
-}
-
-export function isSupported(): boolean {
-  return getBg() !== null && getTm() !== null
 }
 
 /**
@@ -101,12 +97,3 @@ export async function registerBackgroundSync(minIntervalSeconds = 60 * 60): Prom
   }
 }
 
-export async function unregisterBackgroundSync(): Promise<void> {
-  const Bg = getBg()
-  if (!Bg) return
-  try {
-    await Bg.unregisterTaskAsync(BACKGROUND_SYNC_TASK)
-  } catch {
-    // ignore
-  }
-}

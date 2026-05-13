@@ -27,10 +27,10 @@ const MAX_MEMBERS = 10
 const CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ'
 const CODE_LENGTH = 5
 
-export type UserType = 'patient' | 'caregiver'
+type UserType = 'patient' | 'caregiver'
 export type Relationship = 'spouse' | 'parent' | 'child' | 'sibling' | 'friend' | 'other'
 
-export interface CaregiverPerms {
+interface CaregiverPerms {
   can_read_meds: boolean
   can_read_appts: boolean
   can_read_labs: boolean
@@ -54,7 +54,7 @@ export const DEFAULT_PATIENT_PERMS: CaregiverPerms = {
   can_edit_appts: true,
 }
 
-export type JoinResult =
+type JoinResult =
   | { ok: true; careGroupId: string }
   | { ok: false; reason: 'already-member' | 'group-full' }
 
@@ -144,19 +144,6 @@ export function normalizeCode(input: string): string | null {
     if (!CODE_ALPHABET.includes(c)) return null
   }
   return cleaned
-}
-
-/**
- * Verify the calling user is a member of the group (any role).
- */
-export async function isGroupMember(userId: string, careGroupId: string): Promise<boolean> {
-  const m = await db.query.careGroupMembers.findFirst({
-    where: and(
-      eq(careGroupMembers.careGroupId, careGroupId),
-      eq(careGroupMembers.userId, userId),
-    ),
-  })
-  return Boolean(m)
 }
 
 /**

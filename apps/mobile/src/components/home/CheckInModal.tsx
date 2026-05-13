@@ -20,7 +20,7 @@ interface Props {
   onSubmit?: (payload: CheckInPayload) => void
 }
 
-export type CheckInPayload = {
+type CheckInPayload = {
   mood: number // 0..4 (0 = worst)
   pain: number // 0..10
   energy: 'low' | 'med' | 'high' | null

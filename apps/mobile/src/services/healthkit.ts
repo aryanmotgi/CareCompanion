@@ -44,7 +44,7 @@ interface NativeHealthKitBridge {
   }>
 }
 
-export type BaselineCharacteristics = {
+type BaselineCharacteristics = {
   dateOfBirth: string | null
   sexAtBirth: 'female' | 'male' | 'intersex' | null
 }
@@ -272,25 +272,6 @@ export async function replaceHealthKitData(): Promise<{
   })
 
   return apiClient.healthkit.replace(records, { keepCareProfile: true })
-}
-
-/**
- * Returns true if the user already has any meds/labs/appts in CC.
- * Used to decide whether to show the merge/replace prompt vs. straight sync.
- * Fails closed (returns false) — never blocks the connect flow on a preflight check.
- */
-export async function hasExistingMedicalData(careProfileId: string): Promise<boolean> {
-  try {
-    const [meds, labs, appts] = await Promise.all([
-      apiClient.medications.list(careProfileId).catch(() => [] as unknown[]),
-      apiClient.labResults.list(careProfileId).catch(() => ({ labs: [] as unknown[] })),
-      apiClient.appointments.list(careProfileId).catch(() => [] as unknown[]),
-    ])
-    const labArr = Array.isArray(labs) ? labs : (labs as { labs: unknown[] }).labs
-    return (meds as unknown[]).length > 0 || labArr.length > 0 || (appts as unknown[]).length > 0
-  } catch {
-    return false
-  }
 }
 
 // ---------------------------------------------------------------------------
