@@ -60,6 +60,83 @@ export default function CareGroupJoinScreen() {
   const [error, setError] = useState<string | null>(null)
   const [emailSent, setEmailSent] = useState(false)
   const [wrongAttempts, setWrongAttempts] = useState(0)
+  const [waitedTooLong, setWaitedTooLong] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resendNotice, setResendNotice] = useState<string | null>(null)
+
+  // 10-min timeout on email-wait state. After expiry we surface escape
+  // hatches (resend, switch to code, cancel) so the caregiver isn't stuck
+  // when the patient takes hours/days to approve.
+  useEffect(() => {
+    if (!emailSent) {
+      setWaitedTooLong(false)
+      return
+    }
+    const timer = setTimeout(() => setWaitedTooLong(true), 10 * 60 * 1000)
+    return () => clearTimeout(timer)
+  }, [emailSent])
+
+  // Animated polling dots — visible signal that the app is checking.
+  const dot1 = useSharedValue(0.3)
+  const dot2 = useSharedValue(0.3)
+  const dot3 = useSharedValue(0.3)
+  useEffect(() => {
+    if (!emailSent) return
+    const loop = (v: typeof dot1, delay: number) => {
+      v.value = withDelay(
+        delay,
+        withRepeat(
+          withSequence(
+            withTiming(1, { duration: 500, easing: Easing.inOut(Easing.sin) }),
+            withTiming(0.3, { duration: 500, easing: Easing.inOut(Easing.sin) }),
+          ),
+          -1,
+          false,
+        ),
+      )
+    }
+    loop(dot1, 0)
+    loop(dot2, 180)
+    loop(dot3, 360)
+    return () => { cancelAnimation(dot1); cancelAnimation(dot2); cancelAnimation(dot3) }
+  }, [emailSent, dot1, dot2, dot3])
+  const dot1Style = useAnimatedStyle(() => ({ opacity: dot1.value }))
+  const dot2Style = useAnimatedStyle(() => ({ opacity: dot2.value }))
+  const dot3Style = useAnimatedStyle(() => ({ opacity: dot3.value }))
+
+  const handleResendEmail = useCallback(async () => {
+    if (!csrfToken || resending || !email.trim()) return
+    setResending(true)
+    setResendNotice(null)
+    setError(null)
+    try {
+      await apiClient.careGroup.requestJoinByEmail(email.trim(), csrfToken)
+      setWaitedTooLong(false)
+      setResendNotice('Request resent. We notified the patient again.')
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setError(msg)
+    } finally {
+      setResending(false)
+    }
+  }, [email, csrfToken, resending])
+
+  const handleCancelPending = useCallback(() => {
+    setEmailSent(false)
+    setWaitedTooLong(false)
+    setResendNotice(null)
+    setError(null)
+    setEmail('')
+  }, [])
+
+  const handleSwitchToCode = useCallback(() => {
+    setMode('code')
+    setEmailSent(false)
+    setWaitedTooLong(false)
+    setResendNotice(null)
+    setError(null)
+  }, [])
 
   // Critical-gap fix part 1: refresh-on-foreground. If the patient approves
   // a pending join request while the app is backgrounded, we want to see
@@ -267,10 +344,51 @@ export default function CareGroupJoinScreen() {
               <Text style={styles.successTitle}>Request sent</Text>
               <Text style={styles.successBody}>
                 If that email matches a CareCompanion patient, they'll see your request and can approve it from their Settings.
-                Pull down to refresh or come back later — we'll show you their care circle the moment they approve.
+                We'll show you their care circle the moment they approve.
               </Text>
-              <Pressable onPress={() => { setMode('code'); setEmailSent(false) }} style={styles.altLink}>
-                <Text style={styles.altLinkText}>Got a code now? <Text style={styles.altLinkBold}>Enter code instead</Text></Text>
+
+              <View style={styles.pollingRow}>
+                <Animated.View style={[styles.pollingDot, dot1Style]} />
+                <Animated.View style={[styles.pollingDot, dot2Style]} />
+                <Animated.View style={[styles.pollingDot, dot3Style]} />
+                <Text style={styles.pollingText}>Checking for approval…</Text>
+              </View>
+
+              {resendNotice && <Text style={styles.resendNotice}>{resendNotice}</Text>}
+              {error && <Text style={styles.error}>{error}</Text>}
+
+              {waitedTooLong && (
+                <View style={styles.waitCard}>
+                  <Text style={styles.waitTitle}>Still waiting?</Text>
+                  <Text style={styles.waitBody}>
+                    The patient hasn't approved yet. You can resend the request or join with a code instead.
+                  </Text>
+                  <Pressable
+                    onPress={handleResendEmail}
+                    disabled={resending}
+                    style={({ pressed }) => [
+                      styles.cta,
+                      { opacity: pressed || resending ? 0.6 : 1, marginTop: 12 },
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={['#A78BFA', '#818CF8']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                    {resending ? <ActivityIndicator color="white" /> : <Text style={styles.ctaText}>Resend request</Text>}
+                  </Pressable>
+                  <Pressable onPress={handleSwitchToCode} style={styles.altLink}>
+                    <Text style={styles.altLinkText}>
+                      <Text style={styles.altLinkBold}>Join with a code instead</Text>
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+
+              <Pressable onPress={handleCancelPending} style={styles.cancelLink}>
+                <Text style={styles.cancelLinkText}>Cancel and go back</Text>
               </Pressable>
             </View>
           ) : (
@@ -396,7 +514,28 @@ const styles = StyleSheet.create({
   altLink: { marginTop: 18, paddingVertical: 10 },
   altLinkText: { color: '#FFFFFFAA', fontSize: 14, textAlign: 'center' },
   altLinkBold: { color: ACCENT, fontWeight: '700' },
-  successCard: { alignItems: 'center', gap: 14 },
+  successCard: { alignItems: 'center', gap: 14, width: '100%' },
   successTitle: { color: 'white', fontSize: 22, fontWeight: '800' },
   successBody: { color: '#FFFFFFB0', fontSize: 14, lineHeight: 22, textAlign: 'center', paddingHorizontal: 8 },
+  pollingRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginTop: 4, marginBottom: 4,
+  },
+  pollingDot: {
+    width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT,
+  },
+  pollingText: { color: '#FFFFFF99', fontSize: 13, marginLeft: 6 },
+  resendNotice: { color: '#34D399', fontSize: 13, textAlign: 'center' },
+  waitCard: {
+    width: '100%',
+    backgroundColor: ACCENT + '15',
+    borderRadius: 14,
+    padding: 16,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  waitTitle: { color: 'white', fontSize: 16, fontWeight: '700', marginBottom: 6 },
+  waitBody: { color: '#FFFFFFC0', fontSize: 13, lineHeight: 19, textAlign: 'center' },
+  cancelLink: { marginTop: 12, paddingVertical: 10 },
+  cancelLinkText: { color: '#FFFFFF80', fontSize: 14, textAlign: 'center', textDecorationLine: 'underline' },
 })
