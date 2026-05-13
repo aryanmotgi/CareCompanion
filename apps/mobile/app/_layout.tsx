@@ -381,11 +381,10 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
     if (!profile) return
     if (setupSkipped === null) return
     // Caregivers have their own onboarding lane (care-group-join + care-relationship).
-    // Self-care users don't have cancer-specific questionnaire data.
-    // Patients who explicitly skipped setup persist that choice locally.
+    // Patients and self-care users both need the cancer profile wizard.
+    // Users who explicitly skipped setup persist that choice locally.
     if (userTypeState === 'loading') return
     if (userTypeState === 'caregiver') return
-    if (userTypeState === 'self') return
     if (setupSkipped) return
     const seg = segments[0] as string | undefined
     const onSetup =
