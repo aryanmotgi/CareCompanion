@@ -70,6 +70,8 @@ export const careProfiles = pgTable('care_profiles', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   caregivingExperience: text('caregiving_experience'), // 'first_time' | 'some_experience' | 'experienced'
   primaryConcern: text('primary_concern'),             // 'medications' | 'lab_results' | 'coordinating_care' | 'emotional_support'
+  moodCheckIn: text('mood_check_in'),                  // 'okay' | 'anxious' | 'overwhelmed' | 'proactive' — self-care wizard step 1
+  supportStyle: text('support_style'),                 // 'informed' | 'check_in' | 'appointments' | 'available' — self-care wizard step 4
   city:    text('city'),
   state:   text('state'),
   zipCode: text('zip_code'),
