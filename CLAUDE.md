@@ -68,6 +68,11 @@ Match request to skill and invoke it FIRST. Never answer directly.
 ### Security
 9. **AWS credentials**: SSO / IAM role only. Never hardcode, never commit. Run `git-secrets --scan` (or gitleaks) before push if touching anything credential-adjacent. Rotate immediately if leaked.
 
+### Tool efficiency
+13. **Never use `echo`, `cat`, `head`, `tail`, `sed`, `awk` in Bash.** Use Read (with `limit`/`offset`), Write, or Edit tools instead. Bash is for shell-only operations with no dedicated tool equivalent.
+14. **Subagent prompts must be self-contained.** Include exact file paths, line numbers, and expected output format. No vague instructions that cause agents to loop back with questions.
+15. **Spawn Explore agent** for any codebase search spanning 3+ files or requiring pattern matching across directories.
+
 ### Stack conventions
 10. **Next.js App Router, Server Components by default.** Add `'use client'` only when interactivity (state, effects, browser APIs) is required.
 11. **Next 16**: use `proxy.ts` instead of `middleware.ts`. Do not introduce `@vercel/postgres` or `@vercel/kv` (sunset).

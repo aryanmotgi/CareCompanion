@@ -20,11 +20,18 @@ import { useTheme } from '../theme'
 
 const TOUR_KEY = 'tour_completed'
 const TOOLTIP_WIDTH = 240
-// Home=0, Chat=1, Care=2, Trials=3, Community=4
-const TAB_COUNT = 5
+// Visible tabs: Home=0, Chat=1, Care=2, Trials=3 (Community/Scan/Settings hidden via href:null)
+const TAB_COUNT = 4
 const TAB_BAR_CONTENT_HEIGHT = 68  // paddingTop(8)+icon(36)+dot(7)+label(13)+paddingBottom(4)
+const CARD_BG_DARK = '#1A1B2E'
+const CARD_BG_LIGHT = '#FFFFFF'
 
 const STEPS = [
+  {
+    tabIndex: 0,
+    label: 'Home',
+    text: 'Your dashboard — care progress, schedule, and quick actions at a glance.',
+  },
   {
     tabIndex: 1,
     label: 'Chat',
@@ -128,13 +135,62 @@ export function GuidedTour() {
 
   const isLast = step === STEPS.length - 1
 
+  // Restructured overlay: dim everything except a transparent rectangle over
+  // the target tab icon, so the highlighted tab stands out instead of being
+  // dimmed along with the rest of the screen.
+  const tabBarTotalHeight = TAB_BAR_CONTENT_HEIGHT + insets.bottom
+  const cutoutLeft = current.tabIndex * tabWidth
+  const cutoutWidth = tabWidth
+  const dimColor = 'rgba(0,0,0,0.72)'
+
+  const cardBg = theme.isDark ? CARD_BG_DARK : CARD_BG_LIGHT
+
   return (
     <Animated.View
-      style={[StyleSheet.absoluteFill, styles.overlay, overlayStyle]}
+      style={[StyleSheet.absoluteFill, { zIndex: 999 }, overlayStyle]}
       pointerEvents="box-none"
     >
-      {/* Tap anywhere on backdrop to advance */}
-      <Pressable style={StyleSheet.absoluteFill} onPress={handleNext} />
+      {/* Top dim — everything above the tab bar. Catches taps so nothing behind it is interactive. */}
+      <View
+        style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: tabBarTotalHeight,
+          backgroundColor: dimColor,
+        }}
+        pointerEvents="auto"
+      />
+
+      {/* Tab bar row: dim everywhere except the target tab's column. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: 0, right: 0, bottom: 0,
+          height: tabBarTotalHeight,
+          flexDirection: 'row',
+        }}
+        pointerEvents="box-none"
+      >
+        <View style={{ width: cutoutLeft, height: '100%', backgroundColor: dimColor }} pointerEvents="auto" />
+        {/* Cutout — clear, but still blocks taps so user uses Next button. */}
+        <View style={{ width: cutoutWidth, height: '100%' }} pointerEvents="auto" />
+        <View style={{ flex: 1, height: '100%', backgroundColor: dimColor }} pointerEvents="auto" />
+      </View>
+
+      {/* Soft pill highlight behind target tab — subtle accent tint, no hard ring. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: cutoutLeft + cutoutWidth / 2 - 28,
+          bottom: insets.bottom + (TAB_BAR_CONTENT_HEIGHT - 26) - 18,
+          width: 56, height: 36, borderRadius: 18,
+          backgroundColor: theme.accent + '22',
+          shadowColor: theme.accent,
+          shadowOpacity: 0.5,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 0 },
+        }}
+        pointerEvents="none"
+      />
 
       {/* Tooltip card */}
       <Animated.View
@@ -144,7 +200,7 @@ export function GuidedTour() {
             bottom: tooltipBottom,
             left: tooltipLeft,
             width: TOOLTIP_WIDTH,
-            backgroundColor: theme.bgElevated,
+            backgroundColor: cardBg,
             borderColor: theme.border,
           },
           cardStyle,
@@ -188,7 +244,7 @@ export function GuidedTour() {
             styles.arrow,
             {
               left: arrowLeft,
-              borderTopColor: theme.bgElevated,
+              borderTopColor: cardBg,
             },
           ]}
         />

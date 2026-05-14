@@ -12,12 +12,14 @@
  *   https://developer.apple.com/documentation/healthkit/hkclinicalrecord
  */
 import { NativeModules, Platform } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { apiClient } from './api'
+
+const CONNECTED_KEY = 'cc-healthkit-connected'
 import type {
   HealthKitRecord,
   HealthKitMedicationRecord,
   HealthKitLabRecord,
-  HealthKitAppointmentRecord,
 } from '@carecompanion/types'
 
 // ---------------------------------------------------------------------------
@@ -35,10 +37,131 @@ interface RawClinicalRecord {
 interface NativeHealthKitBridge {
   requestAuthorization(): Promise<boolean>
   fetchClinicalRecords(): Promise<RawClinicalRecord[]>
+  requestBaselineAuthorization(): Promise<boolean>
+  getBaselineCharacteristics(): Promise<{
+    dateOfBirth: string | null  // YYYY-MM-DD
+    sexAtBirth: 'female' | 'male' | 'intersex' | null
+  }>
+}
+
+type BaselineCharacteristics = {
+  dateOfBirth: string | null
+  sexAtBirth: 'female' | 'male' | 'intersex' | null
+}
+
+/**
+ * Ask HealthKit for read permission on baseline characteristics (DOB + sex)
+ * and return the values. These come from `HKCharacteristicType.dateOfBirth` /
+ * `.biologicalSex` and do NOT require the restricted `health-records`
+ * entitlement, so they work on a sim with ad-hoc signing.
+ */
+export async function fetchHealthKitBaseline(): Promise<BaselineCharacteristics> {
+  const empty: BaselineCharacteristics = { dateOfBirth: null, sexAtBirth: null }
+  if (!Bridge) return empty
+  try {
+    await Bridge.requestBaselineAuthorization()
+  } catch {
+    return empty
+  }
+  try {
+    return await Bridge.getBaselineCharacteristics()
+  } catch {
+    return empty
+  }
 }
 
 const Bridge: NativeHealthKitBridge | null =
   Platform.OS === 'ios' ? (NativeModules.HealthKitBridge ?? null) : null
+
+// ---------------------------------------------------------------------------
+// __DEV__ mock data
+// ---------------------------------------------------------------------------
+//
+// The iOS Simulator can't connect to real healthcare provider OAuth portals,
+// so HKClinicalRecord queries always return []. This mock substitutes 5
+// FHIR-shaped records on simulator builds (gated by __DEV__) so we can walk
+// the post-onboarding screens with realistic shapes. Production builds are
+// unaffected — the mock array is never read when __DEV__ is false.
+
+const DEV_MOCK_RECORDS: RawClinicalRecord[] = [
+  {
+    id: 'mock-med-1',
+    type: 'HKClinicalTypeIdentifierMedicationRecord',
+    displayName: 'Tamoxifen',
+    startDate: '2026-04-15T09:00:00Z',
+    fhirData: JSON.stringify({
+      resourceType: 'MedicationRequest',
+      status: 'active',
+      medicationCodeableConcept: {
+        coding: [{ display: 'Tamoxifen 20 mg oral tablet', code: '198240', system: 'http://www.nlm.nih.gov/research/umls/rxnorm' }],
+      },
+      dosageInstruction: [{
+        text: '20 mg once daily',
+        timing: { repeat: { frequency: 1, period: 1, periodUnit: 'd' } },
+      }],
+      requester: { display: 'Dr. Sarah Chen, MD — Memorial Oncology' },
+    }),
+  },
+  {
+    id: 'mock-med-2',
+    type: 'HKClinicalTypeIdentifierMedicationRecord',
+    displayName: 'Trastuzumab',
+    startDate: '2026-03-01T10:30:00Z',
+    fhirData: JSON.stringify({
+      resourceType: 'MedicationRequest',
+      status: 'active',
+      medicationCodeableConcept: {
+        coding: [{ display: 'Trastuzumab 420 mg IV infusion', code: '224905', system: 'http://www.nlm.nih.gov/research/umls/rxnorm' }],
+      },
+      dosageInstruction: [{
+        text: '420 mg IV every 3 weeks',
+        timing: { repeat: { frequency: 1, period: 3, periodUnit: 'wk' } },
+      }],
+      requester: { display: 'Dr. Sarah Chen, MD — Memorial Oncology' },
+    }),
+  },
+  {
+    id: 'mock-lab-1',
+    type: 'HKClinicalTypeIdentifierLabResultRecord',
+    displayName: 'Hemoglobin',
+    startDate: '2026-05-08T08:15:00Z',
+    fhirData: JSON.stringify({
+      resourceType: 'Observation',
+      status: 'final',
+      code: { coding: [{ display: 'Hemoglobin', code: '718-7', system: 'http://loinc.org' }] },
+      valueQuantity: { value: 11.2, unit: 'g/dL', system: 'http://unitsofmeasure.org', code: 'g/dL' },
+      referenceRange: [{ low: { value: 12.0 }, high: { value: 15.5 }, text: '12.0 – 15.5 g/dL' }],
+      interpretation: [{ coding: [{ code: 'L', display: 'Low' }] }],
+    }),
+  },
+  {
+    id: 'mock-lab-2',
+    type: 'HKClinicalTypeIdentifierLabResultRecord',
+    displayName: 'Absolute Neutrophil Count',
+    startDate: '2026-05-08T08:15:00Z',
+    fhirData: JSON.stringify({
+      resourceType: 'Observation',
+      status: 'final',
+      code: { coding: [{ display: 'Neutrophils [#/volume] in Blood', code: '751-8', system: 'http://loinc.org' }] },
+      valueQuantity: { value: 1.8, unit: '10*3/uL', system: 'http://unitsofmeasure.org' },
+      referenceRange: [{ low: { value: 1.5 }, high: { value: 8.0 }, text: '1.5 – 8.0 ×10³/μL' }],
+    }),
+  },
+  {
+    id: 'mock-lab-3',
+    type: 'HKClinicalTypeIdentifierLabResultRecord',
+    displayName: 'Platelets',
+    startDate: '2026-05-08T08:15:00Z',
+    fhirData: JSON.stringify({
+      resourceType: 'Observation',
+      status: 'final',
+      code: { coding: [{ display: 'Platelets [#/volume] in Blood', code: '777-3', system: 'http://loinc.org' }] },
+      valueQuantity: { value: 145, unit: '10*3/uL', system: 'http://unitsofmeasure.org' },
+      referenceRange: [{ low: { value: 150 }, high: { value: 400 }, text: '150 – 400 ×10³/μL' }],
+      interpretation: [{ coding: [{ code: 'L', display: 'Low' }] }],
+    }),
+  },
+]
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -52,6 +175,27 @@ export async function requestHealthKitPermissions(): Promise<boolean> {
   if (!Bridge) return false
   try {
     return await Bridge.requestAuthorization()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Persist that the user has gone through the connect flow. Used to gate
+ * passive sync calls — Apple does not let apps query auth status for clinical
+ * records, so we track it ourselves.
+ */
+export async function markHealthKitConnected(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(CONNECTED_KEY, '1')
+  } catch {
+    // AsyncStorage unavailable (e.g. in tests) — fail open, sync just won't run.
+  }
+}
+
+export async function isHealthKitConnected(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(CONNECTED_KEY)) === '1'
   } catch {
     return false
   }
@@ -72,13 +216,62 @@ export async function syncHealthKitData(): Promise<{ synced: number }> {
     return { synced: 0 }
   }
 
+  // __DEV__ MOCK: the simulator can never surface real HKClinicalRecord data
+  // (no path to provider OAuth portals). Substitute hardcoded FHIR-shaped
+  // records so we can walk the post-onboarding screens (home, timeline, AI)
+  // with realistic shapes. Production builds are unaffected.
+  if (__DEV__ && raw.length === 0) {
+    raw = DEV_MOCK_RECORDS
+    console.log('[HealthKit] __DEV__: substituting', raw.length, 'mock clinical records (simulator has no real provider portal)')
+  }
+
   const records: HealthKitRecord[] = raw.flatMap((r) => {
     const parsed = normalise(r)
     return parsed ? [parsed] : []
   })
 
   if (records.length === 0) return { synced: 0 }
-  return apiClient.healthkit.sync(records)
+
+  // Don't let a backend failure (auth, network, migration not yet run) propagate
+  // up and bail the onboarding flow. Treat it as zero-synced — the gate logic in
+  // /onboarding-records can then surface a friendly "no records found yet"
+  // alert instead of a generic "could not connect" error. A real fix happens
+  // later when the user retries from inside the app.
+  try {
+    return await apiClient.healthkit.sync(records)
+  } catch (err) {
+    console.warn('[HealthKit] sync POST failed:', err)
+    return { synced: 0 }
+  }
+}
+
+/**
+ * Read clinical records from HealthKit, normalise, and POST to the backend
+ * replace endpoint. Care profile fields (patient name, cancer type, etc.) are
+ * preserved; only the medical-data tables are wiped and re-populated.
+ */
+export async function replaceHealthKitData(): Promise<{
+  synced: number
+  errors: number
+  deleted: { medications: number; appointments: number; labResults: number }
+}> {
+  const empty = { synced: 0, errors: 0, deleted: { medications: 0, appointments: 0, labResults: 0 } }
+  if (!Bridge) return empty
+
+  let raw: RawClinicalRecord[]
+  try {
+    raw = await Bridge.fetchClinicalRecords()
+  } catch (err) {
+    console.warn('[HealthKit] fetchClinicalRecords failed:', err)
+    return empty
+  }
+
+  const records: HealthKitRecord[] = raw.flatMap((r) => {
+    const parsed = normalise(r)
+    return parsed ? [parsed] : []
+  })
+
+  return apiClient.healthkit.replace(records, { keepCareProfile: true })
 }
 
 // ---------------------------------------------------------------------------
@@ -93,12 +286,9 @@ function normalise(r: RawClinicalRecord): HealthKitRecord | null {
       return normaliseMedication(r, fhir)
     case 'HKClinicalTypeIdentifierLabResultRecord':
       return normaliseLabResult(r, fhir)
-    case 'HKClinicalTypeIdentifierConditionRecord':
-    case 'HKClinicalTypeIdentifierProcedureRecord':
-      // Map conditions/procedures to appointments (closest existing type).
-      return normaliseAsAppointment(r, fhir)
     default:
-      // AllergyRecord, VitalSignRecord, ImmunizationRecord — no mapped type yet.
+      // Condition, Procedure, Allergy, VitalSign, Immunization records — no
+      // CC type maps cleanly to them yet, skip rather than coerce.
       return null
   }
 }
@@ -145,20 +335,6 @@ function normaliseLabResult(
   }
 }
 
-function normaliseAsAppointment(
-  r: RawClinicalRecord,
-  fhir: Record<string, unknown> | null,
-): HealthKitAppointmentRecord {
-  return {
-    type: 'appointment',
-    healthkitFhirId: r.id,
-    doctorName: extractPractitionerName(fhir) ?? 'Unknown provider',
-    specialty: null,
-    dateTime: r.startDate,
-    location: extractLocation(fhir),
-  }
-}
-
 // ---------------------------------------------------------------------------
 // FHIR utilities
 // ---------------------------------------------------------------------------
@@ -191,14 +367,6 @@ function extractPractitionerName(fhir: Record<string, unknown> | null): string |
     firstPath<Record<string, unknown>>(fhir, 'requester') ??
     firstPath<Record<string, unknown>[]>(fhir, 'performer')?.[0]
   return (ref?.display as string) ?? null
-}
-
-function extractLocation(fhir: Record<string, unknown> | null): string | null {
-  return (
-    firstPath<string>(fhir, 'location', 'display') ??
-    firstPath<string>(fhir, 'serviceProvider', 'display') ??
-    null
-  )
 }
 
 function stringifyTiming(timing: Record<string, unknown> | null): string | null {

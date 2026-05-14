@@ -4,11 +4,22 @@ import Apple from 'next-auth/providers/apple'
 import Google from 'next-auth/providers/google'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
-import { users, careGroups, careGroupMembers } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { users } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { rateLimit } from '@/lib/rate-limit'
+import { verifyCareGroupCredentials } from '@/lib/care-group-auth'
 
 const loginLimiter = rateLimit({ interval: 15 * 60 * 1000, maxRequests: 50 })
+const careGroupLoginLimiter = rateLimit({ interval: 60 * 60 * 1000, maxRequests: 5 })
+
+function extractIp(request: Request | undefined): string {
+  if (!request) return '127.0.0.1'
+  return (
+    request.headers.get('x-real-ip')?.trim() ||
+    request.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() ||
+    '127.0.0.1'
+  )
+}
 
 export const { handlers, auth } = NextAuth({
   providers: [
@@ -50,40 +61,25 @@ export const { handlers, auth } = NextAuth({
         groupName: { label: 'Group Name', type: 'text' },
         groupPassword: { label: 'Group Password', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.groupName || !credentials?.groupPassword) return null
 
         const name = (credentials.groupName as string).trim()
         const password = credentials.groupPassword as string
 
-        // Find care groups matching the name, then verify password
-        const groups = await db.query.careGroups.findMany({
-          where: eq(careGroups.name, name),
-          orderBy: (g, { asc }) => [asc(g.createdAt)],
-        })
+        // Rate-limit keyed on IP + group name (mirrors mobile-care-group-login).
+        const ip = extractIp(request as Request | undefined)
+        const { success } = await careGroupLoginLimiter.check(`care-group-login:${ip}:${name.toLowerCase()}`)
+        if (!success) return null
 
-        let matchedGroup: typeof groups[0] | null = null
-        for (const group of groups) {
-          const valid = await bcrypt.compare(password, group.passwordHash)
-          if (valid) { matchedGroup = group; break }
+        const result = await verifyCareGroupCredentials(name, password)
+        if (!result.ok) return null
+
+        return {
+          id: result.user.id,
+          email: result.user.email,
+          name: result.user.displayName ?? result.user.email,
         }
-
-        if (!matchedGroup) return null
-
-        const ownerMember = await db.query.careGroupMembers.findFirst({
-          where: and(
-            eq(careGroupMembers.careGroupId, matchedGroup.id),
-            eq(careGroupMembers.role, 'owner'),
-          ),
-        })
-        if (!ownerMember) return null
-
-        const ownerUser = await db.query.users.findFirst({
-          where: eq(users.id, ownerMember.userId),
-        })
-        if (!ownerUser) return null
-
-        return { id: ownerUser.id, email: ownerUser.email, name: ownerUser.displayName ?? ownerUser.email }
       },
     }),
   ],

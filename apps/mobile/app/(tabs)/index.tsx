@@ -1,6 +1,7 @@
 // apps/mobile/app/(tabs)/index.tsx
 import React, { useEffect, useState } from 'react'
 import {
+  AppState,
   View,
   Text,
   ScrollView,
@@ -8,6 +9,7 @@ import {
   Pressable,
   Linking,
   ViewStyle,
+  RefreshControl,
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import Animated, {
@@ -32,15 +34,41 @@ import { GlassCard } from '../../src/components/GlassCard'
 import { AmbientOrbs } from '../../src/components/AmbientOrbs'
 import { AnimatedCounter } from '../../src/components/AnimatedCounter'
 import { Drawer } from '../../src/components/Drawer'
-import { syncHealthKitData } from '../../src/services/healthkit'
-import { WellnessCard } from '../../src/components/WellnessCard'
-import { requestWellnessPermissions } from '../../src/services/healthkit-vitals'
+import { RoleBadge } from '../../src/components/RoleBadge'
+import { syncHealthKitData, isHealthKitConnected } from '../../src/services/healthkit'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { ShimmerSkeleton } from '../../src/components/ShimmerSkeleton'
+import { DailyAlertsCard } from '../../src/components/DailyAlertsCard'
+import { TodaysMedicationsCard } from '../../src/components/TodaysMedicationsCard'
+import { HomeTabPills, type HomeTab } from '../../src/components/home/HomeTabPills'
+import { MyCarePanel } from '../../src/components/home/MyCarePanel'
+import { HealthDataPanel } from '../../src/components/home/HealthDataPanel'
+import { CheckInModal } from '../../src/components/home/CheckInModal'
 import { TabFadeWrapper } from './_layout'
 import { useProfile } from '../../src/context/ProfileContext'
-import { useOnboardingState } from '../../src/hooks/useOnboardingState'
 import { apiClient } from '../../src/services/api'
+
+const NEW_LABS_KEY = 'cc-new-labs-count'
+const LAST_CHECKIN_KEY = 'cc-last-checkin-date'
+
+type NudgeType = 'appointment' | 'abnormal_lab' | 'refill' | 'checkin'
+type Nudge = {
+  type: NudgeType
+  title: string
+  body: string
+  cta: string
+  prefill?: string
+  action?: 'open_checkin'
+}
+
+function todayKey(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function nudgeKey(type: NudgeType): string {
+  return `cc-nudge-dismissed-${type}-${todayKey()}`
+}
 
 interface Profile {
   patientName?: string
@@ -79,38 +107,34 @@ function getGreeting() {
   return 'Good evening'
 }
 
-function AnimatedBorderCard({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+function AnimatedBorderCard({ children, style, onPress }: { children: React.ReactNode; style?: ViewStyle; onPress?: () => void }) {
   const theme = useTheme()
-  const reduceMotion = useReducedMotion()
-  const rotation = useSharedValue(0)
+  const pressed = useSharedValue(0)
 
-  useEffect(() => {
-    if (reduceMotion) return
-    rotation.value = withRepeat(
-      withTiming(360, { duration: 8000, easing: Easing.linear }),
-      -1,
-      false,
-    )
-  }, [rotation, reduceMotion])
-
-  const rotateStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }, { scale: 1.5 }],
+  const glowStyle = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(pressed.value, [0, 1], ['rgba(139,92,246,0.22)', 'rgba(139,92,246,0.8)']),
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: pressed.value * 14,
+    shadowOpacity: pressed.value * 0.65,
   }))
 
+  function onPressIn() {
+    pressed.value = withTiming(1, { duration: 120 })
+  }
+
+  function onPressOut() {
+    pressed.value = withTiming(0, { duration: 280 })
+  }
+
   return (
-    <View style={[styles.borderCardOuter, style]}>
-      <Animated.View style={[StyleSheet.absoluteFill, styles.borderCardGradientWrap, rotateStyle]}>
-        <LinearGradient
-          colors={[theme.accent, theme.lavender, theme.cyan, theme.accent]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
+    <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
+      <Animated.View style={[styles.borderCardOuter, glowStyle, style]}>
+        <View style={[styles.borderCardInner, { backgroundColor: theme.isDark ? '#0C0E1A' : '#FAFAFA' }]}>
+          {children}
+        </View>
       </Animated.View>
-      <View style={[styles.borderCardInner, { backgroundColor: theme.isDark ? '#0C0E1A' : '#FAFAFA' }]}>
-        {children}
-      </View>
-    </View>
+    </Pressable>
   )
 }
 
@@ -120,12 +144,27 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<HomeTab>('today')
 
   // --- Real data from API ---
-  const { profile, loading: profileLoading } = useProfile()
+  const { profile, loading: profileLoading, refetch } = useProfile()
+  const [refreshing, setRefreshing] = useState(false)
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true)
+    try { await refetch() } catch {/* swallow */}
+    setRefreshing(false)
+  }, [refetch])
   const [meds, setMeds] = useState<any[]>([])
   const [appointments, setAppointments] = useState<any[]>([])
+  const [labs, setLabs] = useState<any[]>([])
   const [dataLoading, setDataLoading] = useState(true)
+  const [recordsVersion, setRecordsVersion] = useState(0)
+  const [newLabsCount, setNewLabsCount] = useState(0)
+  const [labBannerDismissed, setLabBannerDismissed] = useState(false)
+  const [checkInOpen, setCheckInOpen] = useState(false)
+  const [activeNudge, setActiveNudge] = useState<Nudge | null>(null)
+  const [hkConnected, setHkConnected] = useState<boolean | null>(null)
+  const [inviteBannerVisible, setInviteBannerVisible] = useState(false)
 
   useEffect(() => {
     if (!profile?.careProfileId) {
@@ -136,31 +175,63 @@ export default function HomeScreen() {
     Promise.all([
       apiClient.medications.list(profile.careProfileId),
       apiClient.appointments.list(profile.careProfileId),
-    ]).then(([medsRaw, apptsRaw]) => {
+      apiClient.labResults.list(profile.careProfileId).catch(() => [] as any),
+    ]).then(([medsRaw, apptsRaw, labsRaw]) => {
       const medsData = Array.isArray(medsRaw) ? medsRaw : ((medsRaw as any)?.data ?? [])
       const apptsData = Array.isArray(apptsRaw) ? apptsRaw : ((apptsRaw as any)?.data ?? [])
+      const labsData = Array.isArray(labsRaw) ? labsRaw : ((labsRaw as any)?.labs ?? (labsRaw as any)?.data ?? [])
       setMeds(medsData)
       setAppointments(apptsData)
+      setLabs(labsData)
     }).catch(() => {
       // API may not be deployed yet or user not authenticated — fail silently
       // Data stays empty, empty states will render
     }).finally(() => {
       setDataLoading(false)
     })
-  }, [profile?.careProfileId])
+  }, [profile?.careProfileId, recordsVersion])
 
-  const displayName = profile?.patientName?.trim() || profile?.displayName?.trim() || 'there'
-  const medCount = meds.length
-
-  // --- Wellness vitals (HealthKit steps/heart rate/sleep) ---
-  const [wellnessAvailable, setWellnessAvailable] = useState(false)
-
-  useEffect(() => {
-    // Request wellness permissions; show card only if granted
-    requestWellnessPermissions().then((granted) => {
-      setWellnessAvailable(granted)
-    })
+  const handleRecordsSynced = React.useCallback(() => {
+    setRecordsVersion((v) => v + 1)
   }, [])
+
+  // Read persisted lab badge count for banner.
+  useEffect(() => {
+    AsyncStorage.getItem(NEW_LABS_KEY)
+      .then((v) => {
+        const n = v ? parseInt(v, 10) : 0
+        setNewLabsCount(Number.isFinite(n) && n > 0 ? n : 0)
+      })
+      .catch(() => {})
+  }, [recordsVersion])
+
+  // Count of real items due today: meds scheduled today + appointments today.
+  const todayCount = React.useMemo(() => {
+    const today = new Date()
+    const y = today.getFullYear()
+    const m = today.getMonth()
+    const d = today.getDate()
+    const apptsToday = appointments.filter((a: any) => {
+      const dt = a?.dateTime || a?.date || a?.scheduledFor
+      if (!dt) return false
+      const ad = new Date(dt)
+      return ad.getFullYear() === y && ad.getMonth() === m && ad.getDate() === d
+    }).length
+    return meds.length + apptsToday
+  }, [meds, appointments])
+
+  const [localDisplayName, setLocalDisplayName] = useState<string | null>(null)
+  useEffect(() => {
+    AsyncStorage.getItem('cc-display-name')
+      .then((v) => { if (v) setLocalDisplayName(v) })
+      .catch(() => {})
+  }, [])
+  const displayName =
+    profile?.patientName?.trim() ||
+    profile?.displayName?.trim() ||
+    localDisplayName?.trim() ||
+    'there'
+  const medCount = meds.length
 
   // --- Profile completion tracker ---
   const { percent: profilePercent, remaining: profileRemaining } = computeCompletion(profile as Profile | null)
@@ -256,9 +327,203 @@ export default function HomeScreen() {
     transform: [{ translateY: card3Y.value }],
   }))
 
+  // Track whether the user has connected Apple Health. Drives the persistent
+  // "Connect Apple Health" banner — surfaced until cc-healthkit-connected is
+  // set in AsyncStorage by /health-connect or syncHealthKitData().
   useEffect(() => {
-    syncHealthKitData().catch(console.error)
+    let cancelled = false
+    const read = async () => {
+      const v = await AsyncStorage.getItem('cc-healthkit-connected').catch(() => null)
+      if (!cancelled) setHkConnected(v === '1')
+    }
+    void read()
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void read()
+    })
+    return () => { cancelled = true; sub.remove() }
+  }, [recordsVersion, refreshing])
+
+  // Surface an invite-your-family banner for users who own a care group but
+  // haven't tapped through the share step yet (mostly returning users whose
+  // onboarding completed before /share-invite shipped). Hidden once they
+  // either dismiss explicitly OR finish the share flow (which sets
+  // cc-invite-shown=1 itself).
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const shown = await AsyncStorage.getItem('cc-invite-shown').catch(() => null)
+      if (cancelled) return
+      if (shown === '1') { setInviteBannerVisible(false); return }
+      try {
+        const { groups } = await apiClient.careGroup.mine()
+        if (cancelled) return
+        const owned = groups.find((g) => g.isOwner)
+        setInviteBannerVisible(!!owned)
+      } catch {
+        if (!cancelled) setInviteBannerVisible(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [recordsVersion])
+
+  // Sync HealthKit on mount and diff labs to surface "new results" banner + tab
+  // badge. We snapshot lab IDs before the sync, run the sync, refetch labs, and
+  // count IDs we hadn't seen before.
+  useEffect(() => {
+    let cancelled = false
+    isHealthKitConnected().then(async (connected) => {
+      if (!connected || !profile?.careProfileId) return
+      const cpid = profile.careProfileId
+      let beforeIds = new Set<string>()
+      try {
+        const raw = await apiClient.labResults.list(cpid)
+        const arr = Array.isArray(raw) ? raw : ((raw as any)?.labs ?? (raw as any)?.data ?? [])
+        beforeIds = new Set(arr.map((l: any) => String(l.healthkitFhirId ?? l.healthkit_fhir_id ?? l.id)))
+      } catch {/* swallow */}
+
+      try {
+        await syncHealthKitData()
+      } catch (err) {
+        console.error(err)
+        return
+      }
+
+      try {
+        const rawAfter = await apiClient.labResults.list(cpid)
+        const afterArr = Array.isArray(rawAfter) ? rawAfter : ((rawAfter as any)?.labs ?? (rawAfter as any)?.data ?? [])
+        const newCount = afterArr.filter((l: any) => {
+          const id = String(l.healthkitFhirId ?? l.healthkit_fhir_id ?? l.id)
+          return !beforeIds.has(id)
+        }).length
+        if (cancelled) return
+        if (newCount > 0) {
+          await AsyncStorage.setItem(NEW_LABS_KEY, String(newCount)).catch(() => {})
+          setNewLabsCount(newCount)
+          setLabBannerDismissed(false)
+        }
+        setRecordsVersion((v) => v + 1)
+      } catch {/* swallow */}
+    })
+    return () => { cancelled = true }
+  }, [profile?.careProfileId])
+
+  // ── Proactive nudge evaluation ─────────────────────────────────────────────
+  // Re-runs whenever home data changes or app foregrounds. Picks the
+  // highest-priority nudge that hasn't been dismissed today.
+  const evaluateNudges = React.useCallback(async () => {
+    const nowMs = Date.now()
+    const dayMs = 24 * 60 * 60 * 1000
+
+    type Candidate = { type: NudgeType; build: () => Nudge }
+    const candidates: Candidate[] = []
+
+    // 1. Appointment within 24h
+    const upcomingAppt = appointments
+      .filter((a: any) => a?.dateTime)
+      .map((a: any) => ({ ...a, ts: new Date(a.dateTime).getTime() }))
+      .filter((a: any) => a.ts >= nowMs && a.ts <= nowMs + dayMs)
+      .sort((a: any, b: any) => a.ts - b.ts)[0]
+    if (upcomingAppt) {
+      candidates.push({
+        type: 'appointment',
+        build: () => ({
+          type: 'appointment',
+          title: 'Appointment tomorrow',
+          body: `${upcomingAppt.purpose || upcomingAppt.specialty || 'Your visit'} with ${upcomingAppt.doctorName ?? 'your provider'}. Want me to prep questions?`,
+          cta: 'Prep with AI',
+          prefill: `Help me prepare for my appointment ${upcomingAppt.doctorName ? 'with ' + upcomingAppt.doctorName : ''}. The visit is for ${upcomingAppt.purpose || upcomingAppt.specialty || 'follow-up'}.`,
+        }),
+      })
+    }
+
+    // 2. Abnormal lab
+    const abnormalLab = labs.find((l: any) => (l?.isAbnormal ?? l?.is_abnormal))
+    if (abnormalLab) {
+      candidates.push({
+        type: 'abnormal_lab',
+        build: () => ({
+          type: 'abnormal_lab',
+          title: 'Abnormal lab result',
+          body: `${abnormalLab.testName ?? abnormalLab.test_name ?? 'A lab'} came back outside the normal range. Want me to explain it?`,
+          cta: 'Explain it',
+          prefill: `Explain my recent ${abnormalLab.testName ?? abnormalLab.test_name} result of ${abnormalLab.value ?? ''}${abnormalLab.unit ? ' ' + abnormalLab.unit : ''} in plain language. Reference range: ${abnormalLab.referenceRange ?? abnormalLab.reference_range ?? 'unknown'}.`,
+        }),
+      })
+    }
+
+    // 3. Refill within 3 days
+    const refillingMed = meds.find((m: any) => {
+      const r = m?.refillDate ?? m?.refill_date
+      if (!r) return false
+      const ts = new Date(r.length === 10 ? r + 'T00:00:00' : r).getTime()
+      return Number.isFinite(ts) && ts - nowMs <= 3 * dayMs && ts - nowMs >= -dayMs
+    })
+    if (refillingMed) {
+      candidates.push({
+        type: 'refill',
+        build: () => ({
+          type: 'refill',
+          title: 'Refill coming up',
+          body: `${refillingMed.name} needs refilling soon. Want help requesting it?`,
+          cta: 'Help me refill',
+          prefill: `Help me request a refill for ${refillingMed.name}${refillingMed.dose ? ' (' + refillingMed.dose + ')' : ''}. What should I say to the pharmacy or my doctor?`,
+        }),
+      })
+    }
+
+    // 4. No check-in today
+    const lastCheckin = await AsyncStorage.getItem(LAST_CHECKIN_KEY).catch(() => null)
+    if (lastCheckin !== todayKey()) {
+      candidates.push({
+        type: 'checkin',
+        build: () => ({
+          type: 'checkin',
+          title: 'Daily check-in',
+          body: 'How are you feeling today? A quick check-in keeps the AI in tune with your trends.',
+          cta: 'Check in',
+          action: 'open_checkin',
+        }),
+      })
+    }
+
+    // Pick the first that hasn't been dismissed today.
+    for (const c of candidates) {
+      const dismissed = await AsyncStorage.getItem(nudgeKey(c.type)).catch(() => null)
+      if (dismissed !== '1') {
+        setActiveNudge(c.build())
+        return
+      }
+    }
+    setActiveNudge(null)
+  }, [appointments, labs, meds])
+
+  useEffect(() => {
+    if (dataLoading) return
+    void evaluateNudges()
+  }, [evaluateNudges, dataLoading])
+
+  // Re-evaluate on app foreground.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') void evaluateNudges()
+    })
+    return () => sub.remove()
+  }, [evaluateNudges])
+
+  const dismissNudge = React.useCallback((nudge: Nudge) => {
+    AsyncStorage.setItem(nudgeKey(nudge.type), '1').catch(() => {})
+    setActiveNudge(null)
   }, [])
+
+  const handleNudgeAction = React.useCallback((nudge: Nudge) => {
+    if (nudge.action === 'open_checkin') {
+      setCheckInOpen(true)
+      return
+    }
+    if (nudge.prefill) {
+      router.push({ pathname: '/(tabs)/chat', params: { prefill: nudge.prefill } } as any)
+    }
+  }, [router])
 
   return (
     <TabFadeWrapper>
@@ -281,6 +546,14 @@ export default function HomeScreen() {
             { paddingTop: insets.top + 16, paddingBottom: 120 },
           ]}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.accent}
+              colors={[theme.accent]}
+            />
+          }
         >
           {/* Greeting */}
           <View style={styles.header}>
@@ -289,6 +562,7 @@ export default function HomeScreen() {
                 {getGreeting().toUpperCase()}
               </Text>
               <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
+              <RoleBadge style={{ marginTop: 4 }} />
             </View>
             <View style={styles.headerRight}>
               <Pressable onPress={() => router.push('/search')} hitSlop={8} style={styles.bellButton}>
@@ -305,95 +579,161 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Cards at 0.6x parallax */}
+          {/* New labs banner */}
+          {newLabsCount > 0 && !labBannerDismissed && (
+            <View style={styles.newLabsBanner}>
+              <View style={styles.newLabsIconWrap}>
+                <Ionicons name="pulse" size={20} color="#A78BFA" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.newLabsTitle, { color: theme.text }]}>
+                  {newLabsCount} new lab result{newLabsCount === 1 ? '' : 's'} from Apple Health
+                </Text>
+                <Text style={[styles.newLabsSub, { color: theme.textMuted }]}>
+                  Review what synced from your provider.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  AsyncStorage.removeItem(NEW_LABS_KEY).catch(() => {})
+                  setNewLabsCount(0)
+                  router.push('/(tabs)/labs' as any)
+                }}
+                style={({ pressed }) => ({
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  backgroundColor: theme.accent,
+                  opacity: pressed ? 0.8 : 1,
+                })}
+                accessibilityRole="button"
+                accessibilityLabel="Review new lab results"
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Review</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setLabBannerDismissed(true)}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss new labs banner"
+              >
+                <Ionicons name="close" size={18} color={theme.textMuted} />
+              </Pressable>
+            </View>
+          )}
+
+          {/* Invite-your-care-circle banner — surfaced for owners who haven't
+              completed the share step yet. */}
+          {inviteBannerVisible && (
+            <View style={styles.inviteHomeBanner}>
+              <View style={styles.inviteHomeIconWrap}>
+                <Ionicons name="people" size={20} color="#C084FC" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.inviteHomeTitle, { color: theme.text }]}>
+                  Invite your care circle
+                </Text>
+                <Text style={[styles.inviteHomeSub, { color: theme.textMuted }]}>
+                  Share your code so family can join.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => router.push('/share-invite' as never)}
+                style={({ pressed }) => [styles.inviteHomeBtn, { opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={styles.inviteHomeBtnText}>Share</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  AsyncStorage.setItem('cc-invite-shown', '1').catch(() => {})
+                  setInviteBannerVisible(false)
+                }}
+                hitSlop={10}
+                style={{ paddingHorizontal: 4 }}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss"
+              >
+                <Ionicons name="close" size={16} color={theme.textMuted} />
+              </Pressable>
+            </View>
+          )}
+
+          {/* HealthKit connect banner (persistent until connected) */}
+          {hkConnected === false && (
+            <View style={styles.hkBanner}>
+              <View style={styles.hkBannerIconWrap}>
+                <Ionicons name="heart" size={20} color="#A78BFA" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.hkBannerTitle, { color: theme.text }]}>
+                  Connect Apple Health to sync your records
+                </Text>
+                <Text style={[styles.hkBannerSub, { color: theme.textMuted }]}>
+                  Meds, labs, and vitals — auto-imported.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => router.push('/health-consent' as never)}
+                style={({ pressed }) => [styles.hkConnectBtn, { opacity: pressed ? 0.7 : 1 }]}
+                accessibilityRole="button"
+                accessibilityLabel="Connect Apple Health"
+              >
+                <Text style={styles.hkConnectText}>Connect</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* Proactive AI nudge */}
+          {activeNudge && (
+            <Pressable
+              onPress={() => handleNudgeAction(activeNudge)}
+              style={({ pressed }) => [styles.nudgeCard, { opacity: pressed ? 0.85 : 1 }]}
+              accessibilityRole="button"
+              accessibilityLabel={`${activeNudge.title}. ${activeNudge.body}`}
+            >
+              <View style={styles.nudgeIconWrap}>
+                <Ionicons name="sparkles" size={18} color="#A78BFA" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.nudgeTitle, { color: theme.text }]}>
+                  {activeNudge.title}
+                </Text>
+                <Text style={[styles.nudgeBody, { color: theme.textMuted }]} numberOfLines={3}>
+                  {activeNudge.body}
+                </Text>
+                <Text style={[styles.nudgeCta, { color: theme.accent }]}>
+                  {activeNudge.cta} →
+                </Text>
+              </View>
+              <Pressable
+                onPress={(e) => { e.stopPropagation?.(); dismissNudge(activeNudge) }}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss suggestion"
+              >
+                <Ionicons name="close" size={18} color={theme.textMuted} />
+              </Pressable>
+            </Pressable>
+          )}
+
+          {/* Today / My Care / Health Data segmented control */}
+          <HomeTabPills active={activeTab} onChange={setActiveTab} todayCount={todayCount} />
+
+          {activeTab === 'myCare' && <MyCarePanel />}
+          {activeTab === 'healthData' && <HealthDataPanel />}
+
+          {/* Today panel — existing home content at 0.6x parallax */}
+          {activeTab === 'today' && (
           <Animated.View style={cardParallaxStyle}>
-            {/* Medications card — only show when user has meds */}
-            {!loaded || dataLoading ? (
-              <Animated.View style={card1Style}>
-                <GlassCard style={styles.card}>
-                  <ShimmerSkeleton width="60%" height={12} style={{ marginBottom: 12 }} />
-                  <ShimmerSkeleton width="100%" height={16} style={{ marginBottom: 8 }} />
-                  <ShimmerSkeleton width="100%" height={16} style={{ marginBottom: 8 }} />
-                  <ShimmerSkeleton width="80%" height={16} />
-                </GlassCard>
-              </Animated.View>
-            ) : meds.length > 0 ? (
-              <Animated.View style={card1Style}>
-                <GlassCard style={styles.card} onPress={() => router.push('/(tabs)/care')}>
-                  <View style={styles.cardHeader}>
-                    <Text style={[styles.cardLabel, { color: theme.textMuted }]}>
-                      TODAY'S MEDICATIONS
-                    </Text>
-                    <View style={[styles.badge, { backgroundColor: 'rgba(99,102,241,0.2)' }]}>
-                      <AnimatedCounter
-                        value={medCount}
-                        style={{ ...styles.badgeText, color: theme.accent }}
-                        suffix={medCount === 1 ? ' med' : ' meds'}
-                      />
-                    </View>
-                  </View>
-                  {meds.map((med) => (
-                    <View key={med.id} style={styles.medRow}>
-                      <View style={[styles.dot, { backgroundColor: theme.amber }]} />
-                      <Text style={[styles.medName, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">
-                        {med.name}{med.dose ? ` · ${med.dose}` : ''}
-                      </Text>
-                      <Text style={[styles.medTime, { color: theme.textMuted }]} numberOfLines={1}>
-                        {med.frequency || ''}
-                      </Text>
-                    </View>
-                  ))}
-                </GlassCard>
-              </Animated.View>
-            ) : (
-              /* Welcome section when no data */
-              <Animated.View style={card1Style}>
-                <View style={{ marginBottom: 16 }}>
-                  <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', fontWeight: '600', marginBottom: 12 }}>
-                    GET STARTED
-                  </Text>
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <Pressable
-                      onPress={() => router.push('/(tabs)/chat')}
-                      style={{ flex: 1, backgroundColor: 'rgba(99,102,241,0.12)', borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(99,102,241,0.15)' }}
-                    >
-                      <Ionicons name="chatbubble-outline" size={22} color="#A78BFA" style={{ marginBottom: 6 }} />
-                      <Text style={{ color: theme.text, fontSize: 12, fontWeight: '600' }}>Talk to AI</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => router.push('/(tabs)/scan')}
-                      style={{ flex: 1, backgroundColor: 'rgba(103,232,249,0.08)', borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(103,232,249,0.12)' }}
-                    >
-                      <Ionicons name="scan-outline" size={22} color="#67E8F9" style={{ marginBottom: 6 }} />
-                      <Text style={{ color: theme.text, fontSize: 12, fontWeight: '600' }}>Scan Doc</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => router.push('/setup' as any)}
-                      style={{ flex: 1, backgroundColor: 'rgba(110,231,183,0.08)', borderRadius: 14, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(110,231,183,0.12)' }}
-                    >
-                      <Ionicons name="heart-outline" size={22} color="#6EE7B7" style={{ marginBottom: 6 }} />
-                      <Text style={{ color: theme.text, fontSize: 12, fontWeight: '600' }}>Connect</Text>
-                    </Pressable>
-                  </View>
-                </View>
-                <GlassCard style={{ padding: 14 }}>
-                  <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 }}>DID YOU KNOW</Text>
-                  <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, lineHeight: 19 }}>
-                    Keeping a digital record of your medications and lab results helps your care team make better decisions. Start by connecting your health records or talking to your AI companion.
-                  </Text>
-                </GlassCard>
-              </Animated.View>
-            )}
-
-            {/* Wellness vitals card */}
-            {wellnessAvailable && <WellnessCard />}
-
-            {/* Profile completion card removed — nudge pill handles onboarding */}
+            <Animated.View style={card1Style}>
+              <DailyAlertsCard careProfileId={profile?.careProfileId} />
+              <TodaysMedicationsCard meds={!loaded || dataLoading ? null : meds} onSynced={handleRecordsSynced} />
+            </Animated.View>
 
             {/* Appointment card */}
             <Animated.View style={card2Style}>
               {dataLoading ? (
-                <AnimatedBorderCard>
+                <AnimatedBorderCard onPress={() => router.push('/appointments' as any)}>
                   <View style={{ padding: 16 }}>
                     <ShimmerSkeleton width="50%" height={12} style={{ marginBottom: 12 }} />
                     <ShimmerSkeleton width="80%" height={16} style={{ marginBottom: 8 }} />
@@ -407,11 +747,41 @@ export default function HomeScreen() {
                   .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
                   .find((a) => new Date(a.dateTime).getTime() >= Date.now()) || appointments[0]
                 return (
-                  <AnimatedBorderCard>
+                  <AnimatedBorderCard
+                    onPress={() => {
+                      if (nextAppt) {
+                        router.push('/appointments' as any)
+                      } else {
+                        router.push({
+                          pathname: '/(tabs)/chat',
+                          params: { prefill: 'Help me prepare for my next oncology appointment — what questions should I bring?' },
+                        } as any)
+                      }
+                    }}
+                  >
                     <View style={{ padding: 16 }}>
                       <Text style={[styles.cardLabel, { color: theme.textMuted }]}>NEXT APPOINTMENT</Text>
                       {!nextAppt ? (
-                        <Text style={[styles.apptName, { color: theme.textMuted }]}>No upcoming appointments</Text>
+                        <View style={{ marginTop: 8 }}>
+                          <Text style={[styles.apptName, { color: theme.text, marginBottom: 4 }]}>
+                            Nothing scheduled yet
+                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                            <Ionicons name="sparkles-outline" size={14} color="#A78BFA" />
+                            <Text style={{ color: '#A78BFA', fontSize: 13, fontWeight: '600' }}>
+                              Ask AI: prep questions for your next visit
+                            </Text>
+                          </View>
+                          <Pressable
+                            onPress={(e) => { e.stopPropagation?.(); router.push('/appointments/new' as any) }}
+                            hitSlop={8}
+                            style={{ marginTop: 8, alignSelf: 'flex-start' }}
+                          >
+                            <Text style={{ color: theme.textMuted, fontSize: 12, fontWeight: '600' }}>
+                              Or add manually
+                            </Text>
+                          </Pressable>
+                        </View>
                       ) : (
                         <>
                           <Text style={[styles.apptName, { color: theme.text }]}>
@@ -438,24 +808,6 @@ export default function HomeScreen() {
               })()}
             </Animated.View>
 
-            {/* Care Hub Radar shortcut */}
-            <Animated.View style={card3Style}>
-              <GlassCard style={styles.card} onPress={() => router.push('/care-hub' as any)}>
-                <View style={styles.timelineRow}>
-                  <View style={[styles.timelineIcon, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
-                    <Ionicons name="pulse-outline" size={20} color="#6EE7B7" />
-                  </View>
-                  <View style={styles.timelineText}>
-                    <Text style={[styles.ctaTitle, { color: theme.text, fontSize: 14 }]}>Care Hub Radar</Text>
-                    <Text style={[styles.ctaSub, { color: theme.textMuted, fontSize: 12 }]}>
-                      Symptom trends, insights & activity
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
-                </View>
-              </GlassCard>
-            </Animated.View>
-
             {/* Timeline shortcut */}
             <Animated.View style={card3Style}>
               <GlassCard style={styles.card} onPress={() => router.push('/timeline' as any)}>
@@ -474,109 +826,62 @@ export default function HomeScreen() {
               </GlassCard>
             </Animated.View>
 
+            {/* Care Hub Radar shortcut */}
+            <Animated.View style={card3Style}>
+              <GlassCard style={styles.card} onPress={() => router.push('/care-hub' as any)}>
+                <View style={styles.timelineRow}>
+                  <View style={[styles.timelineIcon, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
+                    <Ionicons name="pulse-outline" size={20} color="#6EE7B7" />
+                  </View>
+                  <View style={styles.timelineText}>
+                    <Text style={[styles.ctaTitle, { color: theme.text, fontSize: 14 }]}>Care Hub Radar</Text>
+                    <Text style={[styles.ctaSub, { color: theme.textMuted, fontSize: 12 }]}>
+                      Symptom trends, insights & activity
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
+                </View>
+              </GlassCard>
+            </Animated.View>
+
             {/* AI CTA card */}
             <View style={theme.shadowGlowViolet}>
               <Animated.View style={card3Style}>
-                <Pressable onPress={() => router.push('/(tabs)/chat')}>
-                  <AnimatedBorderCard>
-                    <View style={{ padding: 16 }}>
-                      <View style={styles.ctaRow}>
-                        <Text style={styles.ctaIcon}>✨</Text>
-                        <View style={styles.ctaText}>
-                          <Text style={[styles.ctaTitle, { color: theme.text }]}>Ask your AI companion</Text>
-                          <Text style={[styles.ctaSub, { color: theme.textMuted }]}>
-                            Side effects, dosing questions, what to expect…
-                          </Text>
-                        </View>
+                <AnimatedBorderCard onPress={() => router.push('/(tabs)/chat')}>
+                  <View style={{ padding: 16 }}>
+                    <View style={styles.ctaRow}>
+                      <Text style={styles.ctaIcon}>✨</Text>
+                      <View style={styles.ctaText}>
+                        <Text style={[styles.ctaTitle, { color: theme.text }]}>Ask your AI companion</Text>
+                        <Text style={[styles.ctaSub, { color: theme.textMuted }]}>
+                          Side effects, dosing questions, what to expect…
+                        </Text>
                       </View>
                     </View>
-                  </AnimatedBorderCard>
-                </Pressable>
+                  </View>
+                </AnimatedBorderCard>
               </Animated.View>
             </View>
           </Animated.View>
+          )}
         </ScrollView>
-
-        {/* Floating onboarding nudge */}
-        <OnboardingNudge />
 
         <Drawer
           visible={drawerOpen}
           onClose={() => setDrawerOpen(false)}
           userName={displayName}
-          userRole="Patient"
+        />
+
+        <CheckInModal
+          visible={checkInOpen}
+          onClose={() => setCheckInOpen(false)}
+          onSubmit={() => {
+            AsyncStorage.setItem(LAST_CHECKIN_KEY, todayKey()).catch(() => {})
+            setActiveNudge((n) => (n?.type === 'checkin' ? null : n))
+          }}
         />
       </View>
     </TabFadeWrapper>
-  )
-}
-
-/** Floating 3D pill that nudges user to complete onboarding */
-function OnboardingNudge() {
-  const theme = useTheme()
-  const onboarding = useOnboardingState()
-  const router = useRouter()
-  const [expanded, setExpanded] = useState(false)
-  const [dismissed, setDismissed] = useState(false)
-  const pulseAnim = useSharedValue(0)
-  const expandAnim = useSharedValue(0)
-
-  useEffect(() => {
-    // Gentle pulse glow
-    pulseAnim.value = withRepeat(
-      withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-      -1,
-      true,
-    )
-  }, [pulseAnim])
-
-  useEffect(() => {
-    expandAnim.value = withSpring(expanded ? 1 : 0, { damping: 15, stiffness: 150 })
-  }, [expanded, expandAnim])
-
-  const pillStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: 1 + pulseAnim.value * 0.03 },
-      { perspective: 800 },
-      { rotateX: `${pulseAnim.value * 2}deg` },
-    ],
-    shadowOpacity: 0.3 + pulseAnim.value * 0.2,
-  }))
-
-  const expandedStyle = useAnimatedStyle(() => ({
-    opacity: expandAnim.value,
-    maxHeight: expandAnim.value * 300,
-    transform: [{ translateY: (1 - expandAnim.value) * 20 }],
-  }))
-
-  if (onboarding.isComplete || dismissed) return null
-
-  const nextStep = onboarding.steps.find(s => !s.done) ?? onboarding.steps[0]!
-
-  return (
-    <Animated.View style={[styles.nudgeContainer, pillStyle]}>
-      <Pressable onPress={() => router.push('/setup' as any)}>
-        <LinearGradient
-          colors={['rgba(99,102,241,0.9)', 'rgba(167,139,250,0.9)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.nudgePill}
-        >
-          <View style={styles.nudgeRing}>
-            <Text style={styles.nudgeRingText}>
-              {onboarding.completedCount}/{onboarding.totalCount}
-            </Text>
-          </View>
-          <View style={styles.nudgeTextWrap}>
-            <Text style={styles.nudgeTitle} numberOfLines={1}>{nextStep.title}</Text>
-            <Text style={styles.nudgeSub} numberOfLines={1}>
-              {nextStep.description}
-            </Text>
-          </View>
-          <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.7)" />
-        </LinearGradient>
-      </Pressable>
-    </Animated.View>
   )
 }
 
@@ -713,9 +1018,8 @@ const styles = StyleSheet.create({
   timelineRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   timelineIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   timelineText: { flex: 1 },
-  borderCardOuter: { borderRadius: 15, overflow: 'hidden', marginBottom: 12 },
-  borderCardGradientWrap: { alignItems: 'center', justifyContent: 'center' },
-  borderCardInner: { margin: 1.5, borderRadius: 14, overflow: 'hidden' },
+  borderCardOuter: { borderRadius: 15, marginBottom: 12, borderWidth: 1 },
+  borderCardInner: { borderRadius: 14, overflow: 'hidden' },
   profileCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -774,97 +1078,103 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
   },
-  nudgeContainer: {
-    position: 'absolute',
-    bottom: 110,
-    left: 20,
-    right: 20,
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 24,
-    shadowOpacity: 0.4,
-    elevation: 12,
-    zIndex: 100,
-  },
-  nudgePill: {
+  newLabsBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-    gap: 10,
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(167,139,250,0.45)',
+    backgroundColor: 'rgba(167,139,250,0.10)',
+    marginBottom: 12,
   },
-  nudgeRing: {
+  newLabsIconWrap: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    borderWidth: 2.5,
-    borderColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'rgba(167,139,250,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
   },
-  nudgeRingText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  nudgeTextWrap: {
-    flex: 1,
-  },
-  nudgeTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  nudgeSub: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 11,
-    marginTop: 1,
-  },
-  nudgeExpanded: {
-    overflow: 'hidden',
-  },
-  nudgePanel: {
-    backgroundColor: 'rgba(12,14,26,0.97)',
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.25)',
-    backdropFilter: 'blur(20px)',
-  },
-  nudgeStepTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  nudgeStepDesc: {
-    fontSize: 12,
-    lineHeight: 16,
-    marginBottom: 12,
-  },
-  nudgeAction: {
+  newLabsTitle: { fontSize: 14, fontWeight: '700' },
+  newLabsSub: { fontSize: 12, marginTop: 2 },
+  hkBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#6366F1',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    marginBottom: 8,
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.45)',
+    backgroundColor: 'rgba(167,139,250,0.08)',
+    marginBottom: 12,
   },
-  nudgeActionText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  nudgeDismiss: {
+  hkBannerIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(167,139,250,0.22)',
     alignItems: 'center',
-    paddingVertical: 4,
+    justifyContent: 'center',
   },
+  hkBannerTitle: { fontSize: 14, fontWeight: '700' },
+  hkBannerSub: { fontSize: 12, marginTop: 2 },
+  hkConnectBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#A78BFA',
+  },
+  hkConnectText: { color: 'white', fontSize: 13, fontWeight: '700' },
+  inviteHomeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(192,132,252,0.45)',
+    backgroundColor: 'rgba(192,132,252,0.08)',
+    marginBottom: 12,
+  },
+  inviteHomeIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(192,132,252,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inviteHomeTitle: { fontSize: 14, fontWeight: '700' },
+  inviteHomeSub: { fontSize: 12, marginTop: 2 },
+  inviteHomeBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: '#C084FC',
+  },
+  inviteHomeBtnText: { color: 'white', fontSize: 12, fontWeight: '700' },
+  nudgeCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(99,102,241,0.4)',
+    backgroundColor: 'rgba(99,102,241,0.08)',
+    marginBottom: 12,
+  },
+  nudgeIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(167,139,250,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nudgeTitle: { fontSize: 14, fontWeight: '700' },
+  nudgeBody: { fontSize: 13, lineHeight: 18, marginTop: 2 },
+  nudgeCta: { fontSize: 13, fontWeight: '700', marginTop: 8 },
 })

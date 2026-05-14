@@ -129,7 +129,7 @@ function PasswordInput({
   )
 }
 
-export function SignupForm({ joinGroup, joinToken }: { joinGroup?: string; joinToken?: string } = {}) {
+export function SignupForm({ joinGroup, joinToken, callbackUrl }: { joinGroup?: string; joinToken?: string; callbackUrl?: string } = {}) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -202,6 +202,8 @@ export function SignupForm({ joinGroup, joinToken }: { joinGroup?: string; joinT
         // If user arrived via a care group invite link, complete the join before onboarding
         if (joinGroup && joinToken) {
           window.location.href = `/join?group=${joinGroup}&token=${joinToken}`
+        } else if (callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')) {
+          window.location.href = callbackUrl
         } else {
           window.location.href = '/set-role'
         }
@@ -235,7 +237,7 @@ export function SignupForm({ joinGroup, joinToken }: { joinGroup?: string; joinT
           {/* Social sign-in — shown before email fields for discoverability */}
           <button
             type="button"
-            onClick={() => signIn('apple', { callbackUrl: '/set-role' })}
+            onClick={() => signIn('apple', { callbackUrl: (callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')) ? callbackUrl : '/set-role' })}
             className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.98] hover:opacity-90"
             style={{ background: '#FFFFFF', color: '#000000' }}
           >
@@ -247,7 +249,7 @@ export function SignupForm({ joinGroup, joinToken }: { joinGroup?: string; joinT
 
           <button
             type="button"
-            onClick={() => signIn('google', { callbackUrl: '/set-role' })}
+            onClick={() => signIn('google', { callbackUrl: (callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')) ? callbackUrl : '/set-role' })}
             className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.98] hover:opacity-90"
             style={{ background: '#FFFFFF', color: '#1F1F1F' }}
           >

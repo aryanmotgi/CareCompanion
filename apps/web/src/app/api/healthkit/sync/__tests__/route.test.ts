@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
+import { NextResponse } from 'next/server'
 
-vi.mock('@/lib/auth', () => ({ auth: vi.fn() }))
+vi.mock('@/lib/api-helpers', () => ({ getAuthenticatedUser: vi.fn() }))
 vi.mock('@/lib/db', () => ({
   db: {
     insert: vi.fn(() => ({
@@ -15,8 +16,11 @@ vi.mock('@/lib/audit', () => ({ logAudit: vi.fn() }))
 
 describe('POST /api/healthkit/sync', () => {
   it('returns 401 when not authenticated', async () => {
-    const { auth } = await import('@/lib/auth')
-    vi.mocked(auth).mockResolvedValueOnce(null as never)
+    const { getAuthenticatedUser } = await import('@/lib/api-helpers')
+    vi.mocked(getAuthenticatedUser).mockResolvedValueOnce({
+      user: null,
+      error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+    } as never)
     const { POST } = await import('../route')
     const res = await POST(new Request('http://localhost/api/healthkit/sync', {
       method: 'POST',
@@ -26,8 +30,8 @@ describe('POST /api/healthkit/sync', () => {
   })
 
   it('returns 200 with synced count', async () => {
-    const { auth } = await import('@/lib/auth')
-    vi.mocked(auth).mockResolvedValueOnce({ user: { id: 'user-uuid', email: 'a@b.com' } } as never)
+    const { getAuthenticatedUser } = await import('@/lib/api-helpers')
+    vi.mocked(getAuthenticatedUser).mockResolvedValueOnce({ user: { id: 'user-uuid', email: 'a@b.com' }, error: null } as never)
     const { db } = await import('@/lib/db')
     vi.mocked(db.query.careProfiles.findFirst).mockResolvedValueOnce({ id: 'profile-uuid' } as never)
 

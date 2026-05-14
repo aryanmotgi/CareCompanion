@@ -3,10 +3,14 @@ import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
@@ -438,9 +442,10 @@ function BreathingDot({ status }: { status: MedStatus }) {
 
 // ─── TodayMedsSection ─────────────────────────────────────────────────────────
 
-function MedStatusRow({ med, onTake, disabled }: {
+function MedStatusRow({ med, onTake, onDelete, disabled }: {
   med: Med
   onTake: (logId: string, medId: string) => void
+  onDelete?: (med: Med) => void
   disabled?: boolean
 }) {
   const theme = useTheme()
@@ -492,17 +497,28 @@ function MedStatusRow({ med, onTake, disabled }: {
           {taken && <Text style={styles.checkMark}>✓</Text>}
         </Animated.View>
       </Pressable>
+      {onDelete && (
+        <Pressable
+          onPress={() => onDelete(med)}
+          hitSlop={10}
+          accessibilityLabel={`Delete ${med.name}`}
+          style={{ marginLeft: 6, padding: 4 }}
+        >
+          <Ionicons name="trash-outline" size={18} color={theme.textMuted} />
+        </Pressable>
+      )}
     </Animated.View>
   )
 }
 
-function TodayMedsSection({ meds, onTake, takingId }: {
+function TodayMedsSection({ meds, onTake, takingId, onAdd, onDelete }: {
   meds: Med[]
   onTake: (logId: string, medId: string) => void
   takingId: string | null
+  onAdd?: () => void
+  onDelete?: (med: Med) => void
 }) {
   const theme = useTheme()
-  if (meds.length === 0) return null
 
   const dueNow = meds.filter(m => !m.isAsNeeded && (m.status === 'upcoming' || m.status === 'overdue'))
   const takenToday = meds.filter(m => !m.isAsNeeded && m.status === 'taken')
@@ -514,7 +530,7 @@ function TodayMedsSection({ meds, onTake, takingId }: {
       <View style={{ marginBottom: 14 }}>
         <Text style={[styles.medGroupLabel, { color }]}>{label}</Text>
         {items.map(m => (
-          <MedStatusRow key={m.id} med={m} onTake={onTake} disabled={takingId === m.id} />
+          <MedStatusRow key={m.id} med={m} onTake={onTake} onDelete={onDelete} disabled={takingId === m.id} />
         ))}
       </View>
     )
@@ -522,10 +538,31 @@ function TodayMedsSection({ meds, onTake, takingId }: {
 
   return (
     <GlassCard style={styles.sectionCard}>
-      <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>TODAY'S MEDICATIONS</Text>
-      <Group label="DUE NOW" items={dueNow} color={theme.rose} />
-      <Group label="TAKEN TODAY" items={takenToday} color={theme.green} />
-      <Group label="AS NEEDED" items={asNeeded} color={theme.textMuted} />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <Text style={[styles.sectionLabel, { color: theme.textMuted, marginBottom: 0 }]}>TODAY'S MEDICATIONS</Text>
+        {onAdd && (
+          <Pressable
+            onPress={onAdd}
+            hitSlop={10}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            accessibilityLabel="Add medication"
+          >
+            <Ionicons name="add-circle" size={20} color={theme.accent} />
+            <Text style={{ color: theme.accent, fontSize: 13, fontWeight: '600' }}>Add</Text>
+          </Pressable>
+        )}
+      </View>
+      {meds.length === 0 ? (
+        <Text style={{ color: theme.textMuted, fontSize: 14, lineHeight: 19 }}>
+          No medications yet — tap Add to start.
+        </Text>
+      ) : (
+        <>
+          <Group label="DUE NOW" items={dueNow} color={theme.rose} />
+          <Group label="TAKEN TODAY" items={takenToday} color={theme.green} />
+          <Group label="AS NEEDED" items={asNeeded} color={theme.textMuted} />
+        </>
+      )}
     </GlassCard>
   )
 }
@@ -751,6 +788,15 @@ export default function CareScreen() {
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
   const [takingId, setTakingId] = useState<string | null>(null)
+  const [addModalVisible, setAddModalVisible] = useState(false)
+  const [addForm, setAddForm] = useState({ name: '', dose: '', frequency: '', prescribingDoctor: '' })
+  const [addSubmitting, setAddSubmitting] = useState(false)
+  const [inviteModalVisible, setInviteModalVisible] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('viewer')
+  const [inviteSubmitting, setInviteSubmitting] = useState(false)
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null)
 
   const patientLabel = profile?.patientName ?? 'your loved one'
   const patientFirstName = patientLabel.split(' ')[0]
@@ -855,6 +901,75 @@ export default function CareScreen() {
     )
   }
 
+  async function handleAddMed() {
+    const name = addForm.name.trim()
+    if (!name) {
+      Alert.alert('Name required', 'Enter a medication name.')
+      return
+    }
+    if (!profile?.careProfileId) {
+      Alert.alert('Care profile not loaded', 'Try again in a moment.')
+      return
+    }
+    if (!csrfToken) {
+      Alert.alert('Session not ready', 'Restart the app and try again.')
+      return
+    }
+    setAddSubmitting(true)
+    try {
+      // Backend expects snake_case keys (see apps/web/src/app/api/records/medications/route.ts).
+      const created = await apiClient.medications.create(
+        {
+          name,
+          dose: addForm.dose.trim() || null,
+          frequency: addForm.frequency.trim() || null,
+          prescribing_doctor: addForm.prescribingDoctor.trim() || null,
+          care_profile_id: profile.careProfileId,
+        } as any,
+        csrfToken,
+      )
+      // Server may return raw object or { ok, data } depending on the wrapper.
+      const data = (created as any)?.data ?? created
+      const newMed: Med = {
+        id: data?.id ?? `local-${Date.now()}`,
+        name: data?.name ?? name,
+        dose: data?.dose || addForm.dose || '',
+        time: data?.frequency || addForm.frequency || '',
+        status: 'upcoming',
+        isAsNeeded: !!((data?.frequency ?? addForm.frequency).toLowerCase?.().includes('as needed')),
+      }
+      setMeds(prev => [newMed, ...prev])
+      setAddForm({ name: '', dose: '', frequency: '', prescribingDoctor: '' })
+      setAddModalVisible(false)
+    } catch (err: any) {
+      Alert.alert('Could not add medication', err?.message || 'Try again.')
+    } finally {
+      setAddSubmitting(false)
+    }
+  }
+
+  function handleDeleteMed(med: Med) {
+    Alert.alert(
+      `Delete ${med.name}?`,
+      'This removes the medication from your care profile.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await apiClient.medications.delete(med.id, csrfToken || '')
+              setMeds(prev => prev.filter(m => m.id !== med.id))
+            } catch (err: any) {
+              Alert.alert('Could not delete', err?.message || 'Try again.')
+            }
+          },
+        },
+      ],
+    )
+  }
+
   return (
     <TabFadeWrapper>
       <View style={[styles.root, { backgroundColor: theme.bg }]}>
@@ -918,6 +1033,8 @@ export default function CareScreen() {
                   meds={meds}
                   onTake={markAsTaken}
                   takingId={takingId}
+                  onAdd={() => setAddModalVisible(true)}
+                  onDelete={handleDeleteMed}
                 />
 
                 <UpcomingSection
@@ -934,9 +1051,13 @@ export default function CareScreen() {
                   checkinStreak={checkinStreak}
                 />
 
-                {!hasGroup && (
-                  <InviteFamilyBanner onPress={() => router.push('/care-hub')} />
-                )}
+                <InviteFamilyBanner onPress={() => {
+                  setInviteError(null)
+                  setInviteSuccess(null)
+                  setInviteEmail('')
+                  setInviteRole('viewer')
+                  setInviteModalVisible(true)
+                }} />
 
                 <CareGroupSection apiClient={apiClient} csrfToken={csrfToken ?? ''} />
               </Animated.View>
@@ -944,7 +1065,231 @@ export default function CareScreen() {
           )}
         </Animated.View>
       </View>
+
+      <Modal
+        visible={addModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setAddModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1, backgroundColor: theme.bg }}
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }}>
+            <Pressable
+              onPress={() => setAddModalVisible(false)}
+              hitSlop={12}
+              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, paddingVertical: 6, paddingHorizontal: 4 })}
+            >
+              <Text style={{ color: theme.textMuted, fontSize: 16 }}>Cancel</Text>
+            </Pressable>
+            <Text style={{ color: theme.text, fontSize: 16, fontWeight: '700' }}>Add medication</Text>
+            <View style={{ width: 56 }} />
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
+            <FormField
+              label="Name"
+              value={addForm.name}
+              onChangeText={(t: string) => setAddForm(f => ({ ...f, name: t }))}
+              placeholder="e.g. Tamoxifen"
+              autoFocus
+              theme={theme}
+            />
+            <FormField
+              label="Dose"
+              value={addForm.dose}
+              onChangeText={(t: string) => setAddForm(f => ({ ...f, dose: t }))}
+              placeholder="e.g. 20 mg"
+              theme={theme}
+            />
+            <FormField
+              label="Frequency"
+              value={addForm.frequency}
+              onChangeText={(t: string) => setAddForm(f => ({ ...f, frequency: t }))}
+              placeholder="e.g. Once daily"
+              theme={theme}
+            />
+            <FormField
+              label="Prescribing doctor"
+              value={addForm.prescribingDoctor}
+              onChangeText={(t: string) => setAddForm(f => ({ ...f, prescribingDoctor: t }))}
+              placeholder="Optional"
+              theme={theme}
+            />
+          </ScrollView>
+          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: insets.bottom + 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border }}>
+            <Pressable
+              onPress={handleAddMed}
+              style={({ pressed }) => ({
+                backgroundColor: theme.accent,
+                borderRadius: 14,
+                paddingVertical: 16,
+                alignItems: 'center',
+                opacity: pressed ? 0.85 : 1,
+              })}
+              accessibilityRole="button"
+              accessibilityState={{ busy: addSubmitting }}
+            >
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+                {addSubmitting ? 'Saving…' : 'Save medication'}
+              </Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Invite to care team */}
+      <Modal
+        visible={inviteModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setInviteModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1, backgroundColor: theme.bg }}
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }}>
+            <Pressable
+              onPress={() => setInviteModalVisible(false)}
+              hitSlop={12}
+              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, paddingVertical: 6, paddingHorizontal: 4 })}
+            >
+              <Text style={{ color: theme.textMuted, fontSize: 16 }}>Cancel</Text>
+            </Pressable>
+            <Text style={{ color: theme.text, fontSize: 16, fontWeight: '700' }}>Invite to care team</Text>
+            <View style={{ width: 56 }} />
+          </View>
+
+          <View style={{ padding: 20, gap: 14 }}>
+            <Text style={{ color: theme.textMuted, fontSize: 13, lineHeight: 18 }}>
+              We'll email them an invite. They'll be able to see check-ins, meds, and labs.
+            </Text>
+
+            <FormField
+              label="Email"
+              value={inviteEmail}
+              onChangeText={(t) => { setInviteEmail(t); setInviteError(null); setInviteSuccess(null) }}
+              placeholder="family@example.com"
+              autoFocus
+              theme={theme}
+            />
+
+            <Text style={{ color: theme.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 0.5, marginTop: 4 }}>ROLE</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {(['viewer', 'editor'] as const).map((r) => {
+                const active = inviteRole === r
+                return (
+                  <Pressable
+                    key={r}
+                    onPress={() => setInviteRole(r)}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: active ? '#A78BFA' : theme.border,
+                      backgroundColor: active ? 'rgba(167,139,250,0.12)' : 'transparent',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ color: active ? '#A78BFA' : theme.text, fontWeight: '700', fontSize: 14 }}>
+                      {r === 'viewer' ? 'Viewer' : 'Editor'}
+                    </Text>
+                    <Text style={{ color: theme.textMuted, fontSize: 11, marginTop: 3 }}>
+                      {r === 'viewer' ? 'Read-only' : 'Can add/edit'}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+
+            {inviteError && (
+              <Text style={{ color: '#F87171', fontSize: 13 }}>{inviteError}</Text>
+            )}
+            {inviteSuccess && (
+              <Text style={{ color: '#34D399', fontSize: 13 }}>{inviteSuccess}</Text>
+            )}
+
+            <Pressable
+              disabled={inviteSubmitting || !inviteEmail.trim() || !csrfToken}
+              onPress={async () => {
+                if (!csrfToken) {
+                  setInviteError('Still loading your account. Try again in a moment.')
+                  return
+                }
+                setInviteSubmitting(true)
+                setInviteError(null)
+                setInviteSuccess(null)
+                try {
+                  await apiClient.careTeam.invite(inviteEmail.trim(), inviteRole, csrfToken)
+                  setInviteSuccess(`Invitation sent to ${inviteEmail.trim()}.`)
+                  setInviteEmail('')
+                } catch (err) {
+                  setInviteError(err instanceof Error ? err.message : 'Could not send invite')
+                } finally {
+                  setInviteSubmitting(false)
+                }
+              }}
+              style={({ pressed }) => ({
+                marginTop: 12,
+                paddingVertical: 14,
+                borderRadius: 14,
+                backgroundColor: '#A78BFA',
+                alignItems: 'center',
+                opacity: pressed || inviteSubmitting || !inviteEmail.trim() || !csrfToken ? 0.6 : 1,
+              })}
+            >
+              <Text style={{ color: 'white', fontSize: 15, fontWeight: '700' }}>
+                {inviteSubmitting ? 'Sending…' : 'Send invite'}
+              </Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </TabFadeWrapper>
+  )
+}
+
+function FormField({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  autoFocus,
+  theme,
+}: {
+  label: string
+  value: string
+  onChangeText: (t: string) => void
+  placeholder?: string
+  autoFocus?: boolean
+  theme: ReturnType<typeof useTheme>
+}) {
+  return (
+    <View>
+      <Text style={{ color: theme.textMuted, fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase', fontWeight: '600', marginBottom: 6 }}>
+        {label}
+      </Text>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={theme.textMuted}
+        autoFocus={autoFocus}
+        style={{
+          color: theme.text,
+          fontSize: 16,
+          paddingVertical: 10,
+          paddingHorizontal: 12,
+          borderRadius: 10,
+          borderWidth: 1,
+          borderColor: theme.border,
+          backgroundColor: 'rgba(255,255,255,0.04)',
+        }}
+      />
+    </View>
   )
 }
 

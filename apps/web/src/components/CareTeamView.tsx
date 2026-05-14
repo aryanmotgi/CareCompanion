@@ -88,6 +88,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [acceptingInvite, setAcceptingInvite] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
 
   const canManage = myRole === 'owner' || myRole === 'editor';
 
@@ -162,6 +163,26 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
     setSending(false);
   }
 
+  async function revokeInvite(inviteId: string) {
+    setRevokingId(inviteId);
+    try {
+      const res = await fetch(`/api/care-team/invite/${inviteId}`, {
+        method: 'DELETE',
+        headers: { 'x-csrf-token': csrfToken },
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Invite revoked', 'success');
+        loadTeam();
+      } else {
+        showToast(data.error || 'Failed to revoke invite', 'error');
+      }
+    } catch {
+      showToast('Something went wrong', 'error');
+    }
+    setRevokingId(null);
+  }
+
   async function removeMember(memberId: string) {
     try {
       const res = await fetch('/api/care-team/remove', {
@@ -184,7 +205,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
   if (acceptingInvite) {
     return (
       <div className="px-5 py-8 text-center">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
         <p className="text-sm text-[var(--text-secondary)]">Accepting invitation...</p>
       </div>
     );
@@ -193,7 +214,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
   if (loading) {
     return (
       <div className="px-5 py-8 text-center">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
       </div>
     );
   }
@@ -248,12 +269,23 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white truncate">{inv.invitedEmail}</p>
                   <p className="text-xs text-[var(--text-muted)]">
-                    Invited {inv.createdAt ? timeAgo(inv.createdAt.toISOString()) : ''} · Expires {inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : '—'}
+                    Invited {inv.createdAt ? timeAgo(new Date(inv.createdAt).toISOString()) : ''} · Expires {inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : '—'}
                   </p>
                 </div>
                 <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${ROLE_COLORS[inv.role]}`}>
                   {ROLE_LABELS[inv.role]}
                 </span>
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={() => revokeInvite(inv.id)}
+                    disabled={revokingId === inv.id}
+                    className="text-[11px] font-medium text-[#A78BFA] hover:text-[#EDE9FE] transition-colors disabled:opacity-40 ml-1"
+                    aria-label={`Revoke invite for ${inv.invitedEmail}`}
+                  >
+                    {revokingId === inv.id ? 'Revoking…' : 'Revoke'}
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -271,19 +303,28 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
             Viewers can see medications, appointments, and your health summary — but cannot make changes or view chat history.
           </p>
           <form onSubmit={sendInvite} className="space-y-3">
-            <input
-              type="email"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="Email address"
-              className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--bg-elevated)] py-3 px-4 text-white placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-600 transition-colors"
-              required
-            />
+            <div className="relative rounded-xl" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+              <input
+                id="invite-email"
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder=" "
+                className="w-full rounded-xl pt-5 pb-2 px-4 text-sm text-white/90 placeholder:text-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500/60 transition-all peer bg-transparent"
+                required
+              />
+              <label
+                htmlFor="invite-email"
+                className="absolute left-4 transition-all duration-150 pointer-events-none peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm peer-placeholder-shown:text-white/30 peer-focus:top-1.5 peer-focus:text-[10px] peer-focus:text-[#A78BFA] top-1.5 text-[10px] text-[#A78BFA]"
+              >
+                Email address
+              </label>
+            </div>
             <div className="flex gap-3">
               <select
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value as 'editor' | 'viewer')}
-                className="flex-1 rounded-xl border-2 border-[var(--border)] bg-[var(--bg-elevated)] py-3 px-4 text-white focus:outline-none focus:border-blue-600 transition-colors"
+                className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60 transition-colors"
               >
                 <option value="viewer">View Only — can see everything</option>
                 <option value="editor">Editor — can add and update data</option>
@@ -291,7 +332,7 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
               <button
                 type="submit"
                 disabled={sending || !inviteEmail.trim()}
-                className="rounded-xl bg-blue-600 px-5 py-3 text-white font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="rounded-xl bg-[#6366F1] px-5 py-3 text-[#EDE9FE] font-medium hover:bg-[#818CF8] disabled:opacity-50 transition-colors duration-200 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-indigo-500/60"
               >
                 {sending ? 'Sending...' : 'Invite'}
               </button>
@@ -312,13 +353,13 @@ export function CareTeamView({ acceptInviteId }: { acceptInviteId?: string | nul
           <div className="space-y-1">
             {activity.map((a) => (
               <div key={a.id} className="flex items-center gap-2 py-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[#6366F1] flex-shrink-0" />
                 <p className="text-sm text-[var(--text-secondary)]">
                   <span className="text-white font-medium">{a.userName || 'Someone'}</span>{' '}
                   {a.action}
                 </p>
                 <span className="text-[10px] text-[var(--text-muted)] ml-auto flex-shrink-0">
-                  {a.createdAt ? timeAgo(a.createdAt.toISOString()) : ''}
+                  {a.createdAt ? timeAgo(new Date(a.createdAt).toISOString()) : ''}
                 </span>
               </div>
             ))}

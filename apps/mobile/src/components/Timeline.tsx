@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react'
-import { View, Text, StyleSheet, ActivityIndicator, Pressable, Share } from 'react-native'
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable, Share, Dimensions, type LayoutChangeEvent } from 'react-native'
 import Animated, { useSharedValue, useAnimatedStyle, withDelay, withSpring, withRepeat, withTiming } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from '../theme'
@@ -9,6 +9,8 @@ import type { TimelineItemData } from './TimelineCard'
 interface TimelineProps {
   onEmpty?: () => void
   onTakeMedication?: (item: TimelineItemData) => void
+  scrollRef?: React.RefObject<ScrollView | null>
+  filter?: string
 }
 
 interface RawItem {
@@ -33,6 +35,16 @@ const TYPE_CONFIG: Record<string, { color: string; label: string; glow: string }
   cycle:      { color: '#A78BFA', label: 'Cycle',         glow: 'rgba(167,139,250,0.5)' },
   insight:    { color: '#10B981', label: 'AI Insight',    glow: 'rgba(16,185,129,0.4)' },
 }
+
+const FILTERS: ReadonlyArray<{ id: string; label: string; color: string }> = [
+  { id: 'all',         label: 'All',          color: '#A78BFA' },
+  { id: 'appointment', label: 'Appointments', color: '#6EE7B7' },
+  { id: 'medication',  label: 'Medications',  color: '#6366F1' },
+  { id: 'lab',         label: 'Labs',         color: '#67E8F9' },
+  { id: 'symptom',     label: 'Symptoms',     color: '#FBB724' },
+  { id: 'checkin',     label: 'Check-ins',    color: '#818CF8' },
+  { id: 'insight',     label: 'Insights',     color: '#10B981' },
+]
 
 function formatDate(ts: string): string {
   const d = new Date(ts)
@@ -83,7 +95,12 @@ function PulsingDot() {
   )
 }
 
-function TimelineNode({ item, isLast, index }: { item: RawItem; isLast: boolean; index: number }) {
+function TimelineNode({ item, isLast, index, onTodayLayout }: {
+  item: RawItem
+  isLast: boolean
+  index: number
+  onTodayLayout?: (e: LayoutChangeEvent) => void
+}) {
   const theme = useTheme()
   const [expanded, setExpanded] = useState(false)
   const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.medication
@@ -107,7 +124,10 @@ function TimelineNode({ item, isLast, index }: { item: RawItem; isLast: boolean;
   const isSymptom = item.type === 'symptom'
 
   return (
-    <View style={styles.nodeRow}>
+    <View
+      style={styles.nodeRow}
+      onLayout={today ? onTodayLayout : undefined}
+    >
       {/* Left: dot + line segment */}
       <View style={styles.nodeLeft}>
         {today ? (
@@ -118,9 +138,9 @@ function TimelineNode({ item, isLast, index }: { item: RawItem; isLast: boolean;
         ) : (
           <View style={[
             styles.dot,
-            { backgroundColor: cfg.color },
-            item.isMilestone && { width: 14, height: 14, borderRadius: 7 },
-            { shadowColor: cfg.glow, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 6, elevation: 4 },
+            { backgroundColor: cfg.color, opacity: 0.7 },
+            item.isMilestone && { width: 14, height: 14, borderRadius: 7, opacity: 0.9 },
+            { shadowColor: cfg.glow, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 6, elevation: 4 },
           ]} />
         )}
         {!isLast && (
@@ -149,7 +169,7 @@ function TimelineNode({ item, isLast, index }: { item: RawItem; isLast: boolean;
         {/* Title */}
         <Text style={[
           styles.nodeTitle,
-          { color: future ? 'rgba(255,255,255,0.5)' : theme.text },
+          { color: 'rgba(255,255,255,0.55)' },
           today && { color: '#fff', fontWeight: '800' },
           item.isMilestone && { color: '#A78BFA', fontWeight: '800' },
         ]}>
@@ -218,7 +238,162 @@ function TimelineNode({ item, isLast, index }: { item: RawItem; isLast: boolean;
   )
 }
 
-export function Timeline({ onEmpty }: TimelineProps) {
+// In-memory preview cards shown when timeline has zero real events.
+// Gives new users a glimpse of what their timeline will look like.
+// Never persisted, gone when the screen unmounts.
+type PreviewCard = {
+  type: 'medication' | 'appointment' | 'lab'
+  label: string
+  title: string
+  subtitle: string
+  time: string
+  color: string
+  bg: string
+  icon: string
+}
+
+const PREVIEW_CARDS: PreviewCard[] = [
+  {
+    type: 'medication',
+    label: 'MEDICATION',
+    title: 'Tamoxifen 20mg',
+    subtitle: '1 tablet, with breakfast',
+    time: '8:00 AM',
+    color: '#6366F1',
+    bg: 'rgba(99,102,241,0.08)',
+    icon: '💊',
+  },
+  {
+    type: 'appointment',
+    label: 'APPOINTMENT',
+    title: 'Oncology follow-up',
+    subtitle: 'Dr. Patel · Memorial Sloan Kettering',
+    time: '2:30 PM',
+    color: '#6EE7B7',
+    bg: 'rgba(110,231,183,0.08)',
+    icon: '🩺',
+  },
+  {
+    type: 'lab',
+    label: 'LAB RESULT',
+    title: 'CBC panel',
+    subtitle: 'All values within normal range',
+    time: 'May 8',
+    color: '#67E8F9',
+    bg: 'rgba(103,232,249,0.08)',
+    icon: '🧪',
+  },
+]
+
+function EmptyTimelinePreview({ theme }: { theme: ReturnType<typeof useTheme> }) {
+  const [dismissed, setDismissed] = useState(false)
+
+  if (dismissed) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyIcon}>🗓️</Text>
+        <Text style={[styles.emptyTitle, { color: theme.text }]}>No events yet</Text>
+        <Text style={[styles.emptyBody, { color: theme.textMuted }]}>
+          Medications, appointments, and lab results will appear here once added.
+        </Text>
+      </View>
+    )
+  }
+
+  return (
+    <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32 }}>
+      <View
+        style={{
+          alignSelf: 'flex-start',
+          paddingHorizontal: 10,
+          paddingVertical: 5,
+          borderRadius: 999,
+          backgroundColor: 'rgba(167,139,250,0.15)',
+          borderWidth: 1,
+          borderColor: 'rgba(167,139,250,0.3)',
+          marginBottom: 10,
+        }}
+      >
+        <Text style={{ color: '#A78BFA', fontSize: 10, fontWeight: '800', letterSpacing: 0.8 }}>
+          ✨ PREVIEW
+        </Text>
+      </View>
+      <Text style={{ color: theme.text, fontSize: 20, fontWeight: '800', marginBottom: 4 }}>
+        Here's how your timeline will look
+      </Text>
+      <Text style={{ color: theme.textMuted, fontSize: 13, lineHeight: 18, marginBottom: 18 }}>
+        Once you add medications, appointments, or sync lab results, they'll show up here grouped by day.
+      </Text>
+
+      {/* Faux day header */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.accent }} />
+        <Text style={{ color: theme.text, fontSize: 13, fontWeight: '700', letterSpacing: 0.4 }}>
+          TODAY
+        </Text>
+        <View style={{ flex: 1, height: 1, backgroundColor: theme.border }} />
+      </View>
+
+      {PREVIEW_CARDS.map((c, idx) => (
+        <View
+          key={idx}
+          style={{
+            position: 'relative',
+            marginBottom: 10,
+            padding: 14,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: theme.border,
+            backgroundColor: c.bg,
+            opacity: 0.85,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <Text style={{ fontSize: 18 }}>{c.icon}</Text>
+            <Text style={{ color: c.color, fontSize: 10, fontWeight: '800', letterSpacing: 0.6, flex: 1 }}>
+              {c.label}
+            </Text>
+            <Text style={{ color: theme.textMuted, fontSize: 11, fontWeight: '600' }}>{c.time}</Text>
+          </View>
+          <Text style={{ color: theme.text, fontSize: 15, fontWeight: '700', marginBottom: 2 }}>
+            {c.title}
+          </Text>
+          <Text style={{ color: theme.textMuted, fontSize: 12 }}>{c.subtitle}</Text>
+        </View>
+      ))}
+
+      <View
+        style={{
+          marginTop: 18,
+          padding: 14,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: theme.border,
+          borderStyle: 'dashed',
+          alignItems: 'center',
+        }}
+      >
+        <Text style={{ color: theme.textMuted, fontSize: 12, textAlign: 'center' }}>
+          Sample preview — these events aren't real. Add a medication or sync Apple Health to see your own.
+        </Text>
+        <Pressable
+          onPress={() => setDismissed(true)}
+          style={({ pressed }) => ({
+            marginTop: 10,
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+            opacity: pressed ? 0.6 : 1,
+          })}
+          hitSlop={8}
+        >
+          <Text style={{ color: theme.accent, fontSize: 13, fontWeight: '700' }}>Got it, hide preview</Text>
+        </Pressable>
+      </View>
+    </View>
+  )
+}
+
+export function Timeline({ onEmpty, scrollRef, filter = 'all' }: TimelineProps) {
   const theme = useTheme()
   const { profile, apiClient } = useProfile()
   const [items, setItems] = useState<RawItem[]>([])
@@ -226,6 +401,22 @@ export function Timeline({ onEmpty }: TimelineProps) {
   const [cycleInfo, setCycleInfo] = useState<{
     number: number; total: number; name: string; startDate: string; days: number
   } | null>(null)
+  const todayYRef = useRef<number | null>(null)
+  const hasScrolledRef = useRef(false)
+
+  // Re-center on the today node whenever the filter changes — the today node's
+  // y-position shifts because the items above/below it change.
+  useEffect(() => { hasScrolledRef.current = false }, [filter])
+
+  const handleTodayLayout = useCallback((e: LayoutChangeEvent) => {
+    todayYRef.current = e.nativeEvent.layout.y
+    if (hasScrolledRef.current || !scrollRef?.current) return
+    const screenH = Dimensions.get('window').height
+    const nodeH = e.nativeEvent.layout.height
+    const targetY = Math.max(0, todayYRef.current - screenH / 2 + nodeH / 2)
+    scrollRef.current.scrollTo({ y: targetY, animated: false })
+    hasScrolledRef.current = true
+  }, [scrollRef])
 
   const fetchTimeline = useCallback(async () => {
     if (!profile?.careProfileId) { setLoading(false); return }
@@ -252,13 +443,16 @@ export function Timeline({ onEmpty }: TimelineProps) {
         })
       }
 
-      // Sort: future first, then past descending
+      // Sort descending so future events sit above today, past events below.
       mapped.sort((a, b) => new Date(b.timestamp!).getTime() - new Date(a.timestamp!).getTime())
 
-      // Insert "today" marker if not already there
+      // Insert synthetic "Today" at the chronological boundary between future and past
+      // so it lands in the middle of the list rather than always at the top.
       const hasToday = mapped.some(i => isToday(i.timestamp!))
       if (!hasToday) {
-        mapped.splice(0, 0, {
+        let insertIdx = mapped.findIndex(i => !isFuture(i.timestamp!))
+        if (insertIdx === -1) insertIdx = mapped.length
+        mapped.splice(insertIdx, 0, {
           id: 'today-marker',
           type: 'checkin',
           timestamp: new Date().toISOString(),
@@ -266,6 +460,8 @@ export function Timeline({ onEmpty }: TimelineProps) {
           subtitle: null,
         })
       }
+
+      hasScrolledRef.current = false
 
       if (mapped.length === 0) onEmpty?.()
       setItems(mapped)
@@ -286,6 +482,13 @@ export function Timeline({ onEmpty }: TimelineProps) {
     await Share.share({ message: summary })
   }
 
+  // Apply the type filter. Today is always preserved as the anchor, so the
+  // user keeps their "you are here" reference regardless of the active chip.
+  const filteredItems = useMemo(() => {
+    if (filter === 'all') return items
+    return items.filter(i => i.type === filter || isToday(i.timestamp!))
+  }, [items, filter])
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -296,15 +499,7 @@ export function Timeline({ onEmpty }: TimelineProps) {
   }
 
   if (items.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>🗓️</Text>
-        <Text style={[styles.emptyTitle, { color: theme.text }]}>No events yet</Text>
-        <Text style={[styles.emptyBody, { color: theme.textMuted }]}>
-          Medications, appointments, and lab results will appear here once added.
-        </Text>
-      </View>
-    )
+    return <EmptyTimelinePreview theme={theme} />
   }
 
   const phaseLabel = cycleInfo?.startDate ? getCycleDay(cycleInfo.startDate, cycleInfo.days) : null
@@ -324,11 +519,58 @@ export function Timeline({ onEmpty }: TimelineProps) {
 
       {/* Timeline */}
       <View style={styles.container}>
-        {items.map((item, index) => (
-          <TimelineNode key={item.id} item={item} isLast={index === items.length - 1} index={index} />
+        {filteredItems.map((item, index) => (
+          <TimelineNode
+            key={item.id}
+            item={item}
+            isLast={index === filteredItems.length - 1}
+            index={index}
+            onTodayLayout={handleTodayLayout}
+          />
         ))}
       </View>
     </View>
+  )
+}
+
+// Filter pill row — rendered inside the Treatment Journey screen's header so
+// it sits above the scrolling timeline content.
+export function TimelineFilterBar({ filter, onChange }: {
+  filter: string
+  onChange: (id: string) => void
+}) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.filterRow}
+      style={styles.filterScroll}
+    >
+      {FILTERS.map(f => {
+        const active = filter === f.id
+        return (
+          <Pressable
+            key={f.id}
+            onPress={() => onChange(f.id)}
+            hitSlop={6}
+            style={[
+              styles.filterChip,
+              {
+                borderColor: active ? `${f.color}80` : 'rgba(255,255,255,0.12)',
+                backgroundColor: active ? `${f.color}1A` : 'transparent',
+              },
+            ]}
+          >
+            <Text style={[
+              styles.filterChipText,
+              { color: active ? f.color : 'rgba(255,255,255,0.5)' },
+            ]}>
+              {f.label}
+            </Text>
+          </Pressable>
+        )
+      })}
+    </ScrollView>
   )
 }
 
@@ -347,6 +589,16 @@ export function TimelineShareButton() {
 
 const styles = StyleSheet.create({
   container: { paddingLeft: 4 },
+
+  filterScroll: { flexGrow: 0 },
+  filterRow: { gap: 8, paddingVertical: 2, paddingHorizontal: 16 },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  filterChipText: { fontSize: 12, fontWeight: '600', letterSpacing: 0.3 },
 
   cycleHeader: { marginBottom: 20, paddingLeft: 4 },
   cycleLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 1.2, color: '#A78BFA', marginBottom: 2 },

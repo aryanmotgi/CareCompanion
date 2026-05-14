@@ -29,11 +29,28 @@ export function buildRoleContext(opts: {
   role: string | null
   primaryConcern: string | null
   caregivingExperience: string | null
+  /** Patient's display name, for caregivers — used to personalize copy. */
+  patientName?: string | null
+  /** Caregiver's relationship to the patient (migration 012). One of
+   *  'spouse' | 'parent' | 'child' | 'sibling' | 'friend' | 'other'. */
+  caregiverRelationship?: string | null
 }): string {
   const parts: string[] = []
 
   if (opts.role === 'caregiver') {
-    parts.push('The user is a caregiver helping a patient manage their cancer care.')
+    if (opts.patientName) {
+      const rel = opts.caregiverRelationship
+      // Lead with the relationship — turns "the patient" into a person.
+      if (rel === 'spouse')        parts.push(`The user is caring for their spouse/partner, ${opts.patientName}.`)
+      else if (rel === 'parent')   parts.push(`The user is caring for their parent, ${opts.patientName}.`)
+      else if (rel === 'child')    parts.push(`The user is caring for their child, ${opts.patientName}.`)
+      else if (rel === 'sibling')  parts.push(`The user is caring for their sibling, ${opts.patientName}.`)
+      else if (rel === 'friend')   parts.push(`The user is caring for their friend, ${opts.patientName}.`)
+      else                         parts.push(`The user is caring for ${opts.patientName}.`)
+      parts.push(`Refer to the patient as ${opts.patientName} in your responses, not "the patient" or "your loved one".`)
+    } else {
+      parts.push('The user is a caregiver helping a patient manage their cancer care.')
+    }
     if (opts.caregivingExperience === 'first_time') {
       parts.push('This is their first time caregiving — use plain language, offer extra context, be encouraging.')
     } else if (opts.caregivingExperience === 'experienced') {

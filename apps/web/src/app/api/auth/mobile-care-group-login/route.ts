@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { careGroups, careGroupMembers, users } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
-import bcrypt from 'bcryptjs'
 import { SignJWT } from 'jose'
 import { rateLimit } from '@/lib/rate-limit'
+import { verifyCareGroupCredentials } from '@/lib/care-group-auth'
 
 const careGroupLimiter = rateLimit({ interval: 60 * 60 * 1000, maxRequests: 5 })
 
@@ -28,41 +25,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 })
     }
 
-    // Find care groups matching the name
-    const groups = await db.query.careGroups.findMany({
-      where: eq(careGroups.name, groupName.trim()),
-      orderBy: (g, { asc }) => [asc(g.createdAt)],
-    })
-
-    let matchedGroup: typeof groups[0] | null = null
-    for (const g of groups) {
-      if (await bcrypt.compare(groupPassword, g.passwordHash)) {
-        matchedGroup = g
-        break
+    const result = await verifyCareGroupCredentials(groupName, groupPassword)
+    if (!result.ok) {
+      if (result.reason === 'no_owner' || result.reason === 'no_user') {
+        return NextResponse.json({ error: 'Care Group has no owner' }, { status: 500 })
       }
-    }
-
-    if (!matchedGroup) {
       return NextResponse.json({ error: 'Invalid Care Group name or password' }, { status: 401 })
     }
 
-    // Find the owner member
-    const ownerMember = await db.query.careGroupMembers.findFirst({
-      where: and(
-        eq(careGroupMembers.careGroupId, matchedGroup.id),
-        eq(careGroupMembers.role, 'owner'),
-      ),
-    })
-    if (!ownerMember) {
-      return NextResponse.json({ error: 'Care Group has no owner' }, { status: 500 })
-    }
-
-    const ownerUser = await db.query.users.findFirst({
-      where: eq(users.id, ownerMember.userId),
-    })
-    if (!ownerUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 500 })
-    }
+    const { user: ownerUser } = result
 
     const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!)
     const token = await new SignJWT({
@@ -70,6 +41,9 @@ export async function POST(req: Request) {
       id: ownerUser.id,
       email: ownerUser.email ?? '',
       name: ownerUser.displayName ?? ownerUser.email ?? '',
+      role: ownerUser.role ?? null,
+      displayName: ownerUser.displayName ?? null,
+      isDemo: ownerUser.isDemo ?? false,
     })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
