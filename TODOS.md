@@ -252,3 +252,81 @@ Deferred work from gstack plan reviews. One item per section. Priority: P1 (bloc
 **Effort:** S (human: ~30 min / CC: ~10 min)
 **Priority:** P0 — test suite unreliable
 **Depends on:** Nothing
+
+---
+
+## [P1] Mobile consumer migration for `packages/design-tokens`
+
+**What:** After the web onboarding port lands (2026-05-13 CEO plan), follow-up PR has `apps/mobile/src/theme.ts` re-export from `packages/design-tokens` instead of holding its own values.
+
+**Why:** This plan ships the tokens package + web consumer only. Until mobile consumes it, the "design drift impossible" claim in the platonic ideal is theoretical, not enforced.
+
+**Pros:** Cross-platform parity becomes structurally guaranteed. Changing a brand color updates both apps in one PR.
+
+**Cons:** Mobile bundle re-test required. EAS build needed before merging.
+
+**Context:** Day-1 drift is zero (package seeded from mobile's existing theme.ts values), so this is not urgent — but should land within ~1 week of web port to avoid divergence.
+
+**Effort:** S (human: ~2 hrs / CC: ~20 min)
+**Priority:** P1 — closes the cross-platform parity claim
+**Depends on:** 2026-05-13 web onboarding port PR landing first
+
+---
+
+## [P2] Animation primitives shared package (`packages/motion`)
+
+**What:** If both apps need to share motion primitives long-term, extract Framer Motion (web) + Reanimated (mobile) wrappers into a single API surface in `packages/motion`. Each platform implementation lives behind the same component contract.
+
+**Why:** Currently rejected in 2026-05-13 plan due to RN/Framer Motion API gap. Revisit after web port stabilizes and we have empirical evidence of where primitives diverge.
+
+**Pros:** Single mental model for animations across platforms.
+
+**Cons:** Real abstraction risk — the two libraries' APIs are quite different. May not be worth the contortion.
+
+**Context:** Decision made during 2026-05-13 CEO review (E2 = REJECTED in favor of inline web primitives). Reconsider after 2-3 months of running both apps.
+
+**Effort:** M (human: ~3 days / CC: ~2 hrs)
+**Priority:** P2 — quality-of-life, not blocking
+**Depends on:** 2026-05-13 web onboarding port + 1-2 months of usage data
+
+---
+
+## [P3] Cross-device onboarding handoff
+
+**What:** User starts onboarding on web, gets a SMS/email magic link to continue on mobile (or vice versa). State carries via signed token in URL.
+
+**Why:** Mobile signup is HealthKit-native; web FHIR connect is TBD. Caregiver may start on web while patient finishes HealthKit linking on phone.
+
+**Pros:** Removes platform-specific bottlenecks. Caregiver journey becomes "send patient a link" instead of "ask patient to download app."
+
+**Cons:** Requires signed-token plumbing, SMS sending (Twilio?), and dual-platform state sync. Non-trivial.
+
+**Context:** Surfaced as expansion opportunity during 2026-05-13 CEO review. Out of scope for visual port — separate design doc when prioritized.
+
+**Effort:** L (human: ~1-2 weeks / CC: ~6 hrs)
+**Priority:** P3 — when caregiver onboarding analytics show the cross-device pain point
+**Depends on:** SMS provider decision; signed-token infra
+
+---
+
+## [P3] Welcome carousel skip detection for returning users
+
+**What:** Cookie or localStorage check. If user has signed in before, skip welcome carousel on next /onboarding visit.
+
+**Why:** Returning users (e.g., re-onboarding after sign-out) don't need the same emotional intro.
+
+**Effort:** XS (human: ~15 min / CC: ~5 min)
+**Priority:** P3 — only valuable if welcome carousel analytics show drop-off from re-visitors
+**Depends on:** Carousel ships + analytics show signal
+
+---
+
+## [P3] Hospital picker recent-search localStorage
+
+**What:** PatientWizard hospital search caches recently-searched results in localStorage and surfaces them at top of results list.
+
+**Why:** Repeat visitors and users on slow connections benefit.
+
+**Effort:** XS (human: ~30 min / CC: ~5 min)
+**Priority:** P3 — micro-QoL
+**Depends on:** Usage data showing repeat search
