@@ -205,7 +205,7 @@ export function SignupForm({ joinGroup, joinToken, callbackUrl }: { joinGroup?: 
         } else if (callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')) {
           window.location.href = callbackUrl
         } else {
-          window.location.href = '/set-role'
+          window.location.href = '/onboarding'
         }
       } else {
         setError('Something went wrong. Please try again.')
@@ -237,7 +237,7 @@ export function SignupForm({ joinGroup, joinToken, callbackUrl }: { joinGroup?: 
           {/* Social sign-in — shown before email fields for discoverability */}
           <button
             type="button"
-            onClick={() => signIn('apple', { callbackUrl: (callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')) ? callbackUrl : '/set-role' })}
+            onClick={() => signIn('apple', { callbackUrl: (callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')) ? callbackUrl : '/onboarding' })}
             className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.98] hover:opacity-90"
             style={{ background: '#FFFFFF', color: '#000000' }}
           >
@@ -249,7 +249,7 @@ export function SignupForm({ joinGroup, joinToken, callbackUrl }: { joinGroup?: 
 
           <button
             type="button"
-            onClick={() => signIn('google', { callbackUrl: (callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')) ? callbackUrl : '/set-role' })}
+            onClick={() => signIn('google', { callbackUrl: (callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')) ? callbackUrl : '/onboarding' })}
             className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.98] hover:opacity-90"
             style={{ background: '#FFFFFF', color: '#1F1F1F' }}
           >

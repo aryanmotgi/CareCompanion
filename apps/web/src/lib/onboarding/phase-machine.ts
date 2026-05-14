@@ -44,7 +44,28 @@ type PhaseAction =
   | { type: 'DISMISS_SHARE_INVITE' }
   | { type: 'SET_CARE_GROUP'; careGroupId: string }
   | { type: 'SET_PROFILE'; careProfileId: string }
+  | { type: 'BACK' }
   | { type: 'HYDRATE'; state: PhaseState };
+
+function predecessorPhase(p: Phase): Phase | null {
+  switch (p.kind) {
+    case 'disclaimer': return null;
+    case 'welcome': return null;
+    case 'role': return { kind: 'welcome', sceneIdx: NUM_WELCOME_SCENES - 1 };
+    case 'consent': return { kind: 'role' };
+    case 'records': return { kind: 'consent' };
+    case 'health-connect': return { kind: 'records' };
+    case 'wizard': return p.step === 0 ? { kind: 'records' } : { kind: 'wizard', step: p.step - 1 };
+    case 'care-group-join': return { kind: 'role' };
+    case 'care-relationship': return { kind: 'care-group-join', mode: 'code' };
+    case 'share-invite': return null;
+    case 'complete': return null;
+  }
+}
+
+export function canGoBack(p: Phase): boolean {
+  return predecessorPhase(p) !== null;
+}
 
 const NUM_WELCOME_SCENES = 4;
 
@@ -149,6 +170,19 @@ export function reducer(state: PhaseState, action: PhaseAction): PhaseState {
 
     case 'SET_PROFILE':
       return { ...state, careProfileId: action.careProfileId };
+
+    case 'BACK': {
+      const prev = predecessorPhase(state.phase);
+      if (!prev) return state;
+      // Going back from consent/care-group-join clears role so user can re-pick.
+      const clearRole = state.phase.kind === 'consent' || state.phase.kind === 'care-group-join';
+      return {
+        ...state,
+        phase: prev,
+        phaseEnteredAt: now,
+        role: clearRole ? null : state.role,
+      };
+    }
 
     default:
       return state;

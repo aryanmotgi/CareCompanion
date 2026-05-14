@@ -77,7 +77,7 @@ export default auth((req) => {
     return NextResponse.redirect(url)
   }
 
-  // Redirect pre-feature users (no role) to /set-role — only on private pages.
+  // Redirect pre-feature users (no role) to /onboarding — only on private pages.
   // Skip for demo users (isDemo=true) — they don't need a role.
   // Skip for public paths — no reason to gate them.
   const isDemo = (req.auth?.user as { isDemo?: boolean } | undefined)?.isDemo === true
@@ -86,11 +86,11 @@ export default auth((req) => {
     !isDemo &&
     !(req.auth.user as { role?: string | null }).role &&
     !isPublic &&
-    !pathname.startsWith('/set-role') &&
+    !pathname.startsWith('/onboarding') &&
     !isPrefetch
   ) {
     const url = req.nextUrl.clone()
-    url.pathname = '/set-role'
+    url.pathname = '/onboarding'
     return NextResponse.redirect(url)
   }
 

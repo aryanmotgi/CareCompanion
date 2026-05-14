@@ -9,7 +9,7 @@ describe('SignupForm post-signup redirect logic', () => {
     const { joinGroup, joinToken, callbackUrl } = opts
     if (joinGroup && joinToken) return `/join?group=${joinGroup}&token=${joinToken}`
     if (callbackUrl && callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')) return callbackUrl
-    return '/set-role'
+    return '/onboarding'
   }
 
   it('prefers joinGroup+joinToken over callbackUrl', () => {
@@ -22,11 +22,11 @@ describe('SignupForm post-signup redirect logic', () => {
       .toBe('/care-team?accept=abc')
   })
 
-  it('falls back to /set-role when nothing present', () => {
-    expect(getRedirectTarget({})).toBe('/set-role')
+  it('falls back to /onboarding when nothing present', () => {
+    expect(getRedirectTarget({})).toBe('/onboarding')
   })
 
   it('rejects open-redirect callbackUrl (double slash)', () => {
-    expect(getRedirectTarget({ callbackUrl: '//evil.com' })).toBe('/set-role')
+    expect(getRedirectTarget({ callbackUrl: '//evil.com' })).toBe('/onboarding')
   })
 })
