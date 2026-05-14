@@ -26,6 +26,11 @@ import {
   registerBackgroundSync,
 } from '../src/services/background-sync'
 import { syncHealthKitData } from '../src/services/healthkit'
+import {
+  defineWellnessTask,
+  registerWellnessBackgroundSync,
+  drainWellnessRetryQueue,
+} from '../src/services/wellnessVitals'
 import { WELCOME_SEEN_KEY } from './welcome'
 
 // Module-load: declare the JS handler the OS will invoke when iOS wakes us up.
@@ -39,6 +44,10 @@ defineSyncTask(async () => {
     return 'failed'
   }
 })
+
+// Wellness vitals (steps/HR/sleep) — separate 6h task. Must also be defined at
+// JS bootstrap time so TaskManager can route OS wake-ups to the JS handler.
+defineWellnessTask()
 
 // API base for direct-fetch flows that run outside React context (notification
 // action handlers). The api client expects in-memory config; here we just need
@@ -563,6 +572,15 @@ export default function RootLayout() {
   // every ~15 min or as rarely as once a day depending on app usage signal.
   useEffect(() => {
     void registerBackgroundSync(60 * 60)
+  }, [])
+
+  // Wellness vitals — separate 6h cadence (steps/HR/sleep).
+  useEffect(() => {
+    void registerWellnessBackgroundSync()
+    // Drain any wellness payloads queued from prior failed posts on boot, since
+    // the 6h task may not fire for a while. Clinical drain runs inside
+    // syncHealthKitData itself.
+    void drainWellnessRetryQueue()
   }, [])
 
   const handleShake = useCallback(() => {
