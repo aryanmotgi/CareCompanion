@@ -8,4 +8,7 @@ RCT_EXTERN_METHOD(requestAuthorization:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(fetchDailyVitals:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(today:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 @end

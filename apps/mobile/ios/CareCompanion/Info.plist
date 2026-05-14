@@ -55,6 +55,10 @@
       <key>NSAllowsLocalNetworking</key>
       <false/>
     </dict>
+    <key>NSCalendarsUsageDescription</key>
+    <string>CareCompanion reads your calendar to detect upcoming medical appointments and add them to your care timeline.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>CareCompanion reads your calendar to detect upcoming medical appointments — like clinic visits, doctor follow-ups, and hospital procedures — and adds them to your care timeline.</string>
     <key>NSCameraUsageDescription</key>
     <string>CareCompanion uses the camera to scan prescription bottles and medical documents so we can add medications, lab results, and appointments to your care record.</string>
     <key>NSHealthShareUsageDescription</key>

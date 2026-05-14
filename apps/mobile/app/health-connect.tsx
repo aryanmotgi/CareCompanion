@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 import {
   View,
   Text,
@@ -32,7 +32,16 @@ import {
   requestHealthKitPermissions,
   markHealthKitConnected,
   replaceHealthKitData,
+  subscribeSyncState,
+  getLastSyncedAt,
+  formatLastSynced,
+  type SyncState,
 } from '../src/services/healthkit'
+import {
+  requestCalendarPermissions,
+  syncMedicalCalendarEvents,
+} from '../src/services/calendar'
+import { apiClient } from '../src/services/api'
 import { useProfile } from '../src/context/ProfileContext'
 import { useRecordsContext } from './_layout'
 
@@ -247,7 +256,33 @@ export default function HealthConnectScreen() {
   const [activeIndex, setActiveIndex] = useState(0)
   const [permissionGranted, setPermissionGranted] = useState(false)
   const [requesting, setRequesting] = useState(false)
+  const [syncState, setSyncState] = useState<SyncState>({ status: 'idle' })
+  const [lastSyncedAt, setLastSyncedAtState] = useState<number | null>(null)
+  const [, setNowMs] = useState(Date.now())
   const successScale = useSharedValue(0)
+
+  useEffect(() => {
+    const unsub = subscribeSyncState((s) => {
+      setSyncState(s)
+      if (s.status === 'success') setLastSyncedAtState(s.at)
+    })
+    getLastSyncedAt().then(setLastSyncedAtState)
+    // Re-render every minute so the relative timestamp stays fresh.
+    const interval = setInterval(() => setNowMs(Date.now()), 60_000)
+    return () => {
+      unsub()
+      clearInterval(interval)
+    }
+  }, [])
+
+  const lastSyncedLabel = formatLastSynced(lastSyncedAt)
+  const syncStatusLine: string | null = (() => {
+    if (syncState.status === 'syncing') return 'Syncing…'
+    if (syncState.status === 'retrying') return `Retrying (attempt ${syncState.attempt}/5)…`
+    if (syncState.status === 'error') return syncState.userActionable ? syncState.message : 'Sync failed — will retry'
+    if (lastSyncedAt) return `Last synced ${lastSyncedLabel}`
+    return null
+  })()
 
   const isLastStep = activeIndex === TUTORIAL_STEPS.length - 1
 
@@ -282,6 +317,10 @@ export default function HealthConnectScreen() {
       await replaceHealthKitData()
       await refetch()
 
+      // After clinical records, prompt for calendar access and pull medical
+      // appointments. Non-blocking — denial does not unwind the HK success.
+      void syncCalendar()
+
       setPermissionGranted(true)
       successScale.value = withSpring(1, { damping: 10, stiffness: 150 })
       setTimeout(() => {
@@ -291,6 +330,18 @@ export default function HealthConnectScreen() {
     } catch (err) {
       console.warn('[HealthKit] connect failed:', err)
       setRequesting(false)
+    }
+  }
+
+  async function syncCalendar() {
+    try {
+      const granted = await requestCalendarPermissions()
+      if (!granted) return
+      const { csrfToken } = await apiClient.csrfToken()
+      const result = await syncMedicalCalendarEvents(csrfToken)
+      console.log('[Calendar] sync result:', result)
+    } catch (err) {
+      console.warn('[Calendar] sync failed:', err)
     }
   }
 
@@ -393,6 +444,20 @@ export default function HealthConnectScreen() {
         <Text style={styles.subtitle}>
           Follow these steps to link your health records from Apple Health
         </Text>
+        {syncStatusLine ? (
+          <View style={styles.syncStatusChip}>
+            <View
+              style={[
+                styles.syncDot,
+                syncState.status === 'syncing' && { backgroundColor: '#FBBF24' },
+                syncState.status === 'retrying' && { backgroundColor: '#F59E0B' },
+                syncState.status === 'error' && { backgroundColor: '#F87171' },
+                syncState.status === 'success' && { backgroundColor: '#34D399' },
+              ]}
+            />
+            <Text style={styles.syncStatusText}>{syncStatusLine}</Text>
+          </View>
+        ) : null}
       </Animated.View>
 
       {/* Swipeable tutorial */}
@@ -762,6 +827,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: 16,
+  },
+  syncStatusChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  syncDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  syncStatusText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 11,
+    fontWeight: '500',
   },
   stepCard: {
     width: CARD_WIDTH,
