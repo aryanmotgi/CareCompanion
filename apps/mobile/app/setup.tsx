@@ -431,7 +431,7 @@ export default function SetupScreen() {
           const token = await SecureStore.getItemAsync('cc-session-token')
           const isSecure = API_BASE.startsWith('https://')
           const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
-          await fetch(`${API_BASE}/api/onboarding/complete`, {
+          const res = await fetch(`${API_BASE}/api/onboarding/complete`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -440,15 +440,32 @@ export default function SetupScreen() {
             },
             body: JSON.stringify({ careProfileId: profile.careProfileId }),
           })
+          if (!res.ok) {
+            // Server didn't flip onboardingCompleted=true — bailing here keeps
+            // the user inside /setup instead of bouncing them through
+            // OnboardingGate on every cold launch.
+            Alert.alert(
+              "Couldn't finish setup",
+              "We couldn't save your onboarding. Check your connection and try again.",
+            )
+            return
+          }
           await refetch()
         } catch (e) {
           console.error('[Setup] onboarding/complete failed:', e)
+          Alert.alert(
+            "Couldn't finish setup",
+            "We couldn't reach the server. Check your connection and try again.",
+          )
+          return
         }
       }
       // One-time web-app nudge after onboarding completion.
       const nudgeShown = await AsyncStorage.getItem('cc-web-nudge-shown')
+      const inviteShown = await AsyncStorage.getItem('cc-invite-shown')
+      const goAfterSetup = inviteShown ? '/(tabs)' : '/share-invite'
       if (nudgeShown) {
-        router.back()
+        router.replace(goAfterSetup as never)
       } else {
         setShowWebNudge(true)
       }
@@ -484,7 +501,8 @@ export default function SetupScreen() {
           <Pressable
             onPress={async () => {
               try { await AsyncStorage.setItem('cc-web-nudge-shown', '1') } catch { /* storage unavailable */ }
-              router.replace('/(tabs)' as any)
+              const inviteShown = await AsyncStorage.getItem('cc-invite-shown').catch(() => null)
+              router.replace((inviteShown ? '/(tabs)' : '/share-invite') as never)
             }}
             style={({ pressed }) => [styles.nextButton, pressed && { transform: [{ scale: 0.97 }] }]}
           >

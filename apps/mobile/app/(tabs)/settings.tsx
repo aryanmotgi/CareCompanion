@@ -9,10 +9,18 @@ import Constants from 'expo-constants'
 import { useTheme, useThemeOverride, setThemeOverride, ThemeOverride } from '../../src/theme'
 import { useProfile } from '../../src/context/ProfileContext'
 import { signOut as authSignOut } from '../../src/services/auth'
+import {
+  useTokenContext,
+  useWelcomeContext,
+  useRecordsContext,
+  useUserTypeContext,
+  useCaregiverJoinedContext,
+} from '../_layout'
 import { GlassCard } from '../../src/components/GlassCard'
 import { LinearGradient } from 'expo-linear-gradient'
 import Animated from 'react-native-reanimated'
 import { useStaggerEntrance } from '../../src/hooks/useStaggerEntrance'
+import { RoleBadge } from '../../src/components/RoleBadge'
 import { TabFadeWrapper } from './_layout'
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0'
@@ -257,7 +265,12 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const stagger = useStaggerEntrance(12)
-  const { profile } = useProfile()
+  const { profile, clear: clearProfile } = useProfile()
+  const { markSignedOut } = useTokenContext()
+  const { reset: resetWelcome } = useWelcomeContext()
+  const { reset: resetRecords } = useRecordsContext()
+  const { reset: resetUserType } = useUserTypeContext()
+  const { reset: resetCaregiverJoined } = useCaregiverJoinedContext()
 
   function changeTheme(value: ThemeOverride) {
     void setThemeOverride(value)
@@ -271,6 +284,12 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           await authSignOut().catch(() => {})
+          markSignedOut()
+          clearProfile()
+          resetWelcome()
+          resetRecords()
+          resetUserType()
+          resetCaregiverJoined()
           router.replace('/welcome' as any)
         },
       },
@@ -331,13 +350,14 @@ export default function SettingsScreen() {
               <LinearGradient colors={['#6366F1', '#A78BFA']} style={styles.avatar}>
                 <Text style={styles.avatarText}>{(profile?.displayName || 'U')[0].toUpperCase()}</Text>
               </LinearGradient>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={[styles.name, { color: theme.text }]}>{profile?.displayName || profile?.patientName || 'User'}</Text>
                 <Text style={[styles.role, { color: theme.textMuted }]}>
                   {profile?.role === 'caregiver'
                     ? `Caregiver${profile?.caregiverForName ? ` for ${profile.caregiverForName}` : ''}`
                     : 'Patient'}
                 </Text>
+                <RoleBadge style={{ marginTop: 6 }} />
               </View>
             </View>
           </View>

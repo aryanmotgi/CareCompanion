@@ -791,6 +791,12 @@ export default function CareScreen() {
   const [addModalVisible, setAddModalVisible] = useState(false)
   const [addForm, setAddForm] = useState({ name: '', dose: '', frequency: '', prescribingDoctor: '' })
   const [addSubmitting, setAddSubmitting] = useState(false)
+  const [inviteModalVisible, setInviteModalVisible] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('viewer')
+  const [inviteSubmitting, setInviteSubmitting] = useState(false)
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null)
 
   const patientLabel = profile?.patientName ?? 'your loved one'
   const patientFirstName = patientLabel.split(' ')[0]
@@ -1045,9 +1051,13 @@ export default function CareScreen() {
                   checkinStreak={checkinStreak}
                 />
 
-                {!hasGroup && (
-                  <InviteFamilyBanner onPress={() => router.push('/care-hub')} />
-                )}
+                <InviteFamilyBanner onPress={() => {
+                  setInviteError(null)
+                  setInviteSuccess(null)
+                  setInviteEmail('')
+                  setInviteRole('viewer')
+                  setInviteModalVisible(true)
+                }} />
 
                 <CareGroupSection apiClient={apiClient} csrfToken={csrfToken ?? ''} />
               </Animated.View>
@@ -1123,6 +1133,116 @@ export default function CareScreen() {
             >
               <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
                 {addSubmitting ? 'Saving…' : 'Save medication'}
+              </Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Invite to care team */}
+      <Modal
+        visible={inviteModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setInviteModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1, backgroundColor: theme.bg }}
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }}>
+            <Pressable
+              onPress={() => setInviteModalVisible(false)}
+              hitSlop={12}
+              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, paddingVertical: 6, paddingHorizontal: 4 })}
+            >
+              <Text style={{ color: theme.textMuted, fontSize: 16 }}>Cancel</Text>
+            </Pressable>
+            <Text style={{ color: theme.text, fontSize: 16, fontWeight: '700' }}>Invite to care team</Text>
+            <View style={{ width: 56 }} />
+          </View>
+
+          <View style={{ padding: 20, gap: 14 }}>
+            <Text style={{ color: theme.textMuted, fontSize: 13, lineHeight: 18 }}>
+              We'll email them an invite. They'll be able to see check-ins, meds, and labs.
+            </Text>
+
+            <FormField
+              label="Email"
+              value={inviteEmail}
+              onChangeText={(t) => { setInviteEmail(t); setInviteError(null); setInviteSuccess(null) }}
+              placeholder="family@example.com"
+              autoFocus
+              theme={theme}
+            />
+
+            <Text style={{ color: theme.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 0.5, marginTop: 4 }}>ROLE</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {(['viewer', 'editor'] as const).map((r) => {
+                const active = inviteRole === r
+                return (
+                  <Pressable
+                    key={r}
+                    onPress={() => setInviteRole(r)}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: active ? '#A78BFA' : theme.border,
+                      backgroundColor: active ? 'rgba(167,139,250,0.12)' : 'transparent',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ color: active ? '#A78BFA' : theme.text, fontWeight: '700', fontSize: 14 }}>
+                      {r === 'viewer' ? 'Viewer' : 'Editor'}
+                    </Text>
+                    <Text style={{ color: theme.textMuted, fontSize: 11, marginTop: 3 }}>
+                      {r === 'viewer' ? 'Read-only' : 'Can add/edit'}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+
+            {inviteError && (
+              <Text style={{ color: '#F87171', fontSize: 13 }}>{inviteError}</Text>
+            )}
+            {inviteSuccess && (
+              <Text style={{ color: '#34D399', fontSize: 13 }}>{inviteSuccess}</Text>
+            )}
+
+            <Pressable
+              disabled={inviteSubmitting || !inviteEmail.trim() || !csrfToken}
+              onPress={async () => {
+                if (!csrfToken) {
+                  setInviteError('Still loading your account. Try again in a moment.')
+                  return
+                }
+                setInviteSubmitting(true)
+                setInviteError(null)
+                setInviteSuccess(null)
+                try {
+                  await apiClient.careTeam.invite(inviteEmail.trim(), inviteRole, csrfToken)
+                  setInviteSuccess(`Invitation sent to ${inviteEmail.trim()}.`)
+                  setInviteEmail('')
+                } catch (err) {
+                  setInviteError(err instanceof Error ? err.message : 'Could not send invite')
+                } finally {
+                  setInviteSubmitting(false)
+                }
+              }}
+              style={({ pressed }) => ({
+                marginTop: 12,
+                paddingVertical: 14,
+                borderRadius: 14,
+                backgroundColor: '#A78BFA',
+                alignItems: 'center',
+                opacity: pressed || inviteSubmitting || !inviteEmail.trim() || !csrfToken ? 0.6 : 1,
+              })}
+            >
+              <Text style={{ color: 'white', fontSize: 15, fontWeight: '700' }}>
+                {inviteSubmitting ? 'Sending…' : 'Send invite'}
               </Text>
             </Pressable>
           </View>

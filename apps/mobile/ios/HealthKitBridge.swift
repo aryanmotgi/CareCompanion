@@ -123,8 +123,8 @@ class HealthKitBridge: NSObject {
             "startDate": ISO8601DateFormatter().string(from: record.startDate),
           ]
           if let fhirResource = record.fhirResource,
-             let json = try? JSONSerialization.jsonObject(with: fhirResource.data) {
-            dict["fhirData"] = try? String(data: fhirResource.data, encoding: .utf8)
+             (try? JSONSerialization.jsonObject(with: fhirResource.data)) != nil {
+            dict["fhirData"] = String(data: fhirResource.data, encoding: .utf8)
           } else {
             dict["fhirData"] = NSNull()
           }

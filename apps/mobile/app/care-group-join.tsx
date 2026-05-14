@@ -63,6 +63,7 @@ export default function CareGroupJoinScreen() {
   const [waitedTooLong, setWaitedTooLong] = useState(false)
   const [resending, setResending] = useState(false)
   const [resendNotice, setResendNotice] = useState<string | null>(null)
+  const [requestDenied, setRequestDenied] = useState(false)
 
   // 10-min timeout on email-wait state. After expiry we surface escape
   // hatches (resend, switch to code, cancel) so the caregiver isn't stuck
@@ -75,6 +76,36 @@ export default function CareGroupJoinScreen() {
     const timer = setTimeout(() => setWaitedTooLong(true), 10 * 60 * 1000)
     return () => clearTimeout(timer)
   }, [emailSent])
+
+  // Poll outgoing-request status every 5s while waiting. If the patient
+  // denies, surface that immediately instead of leaving the caregiver
+  // staring at the polling dots for 10 minutes. Approval transitions are
+  // handled by ProfileContext/AuthGate elsewhere (refetch on resume).
+  useEffect(() => {
+    if (!emailSent) {
+      setRequestDenied(false)
+      return
+    }
+    let cancelled = false
+    const tick = async () => {
+      try {
+        const { request } = await apiClient.careGroup.myOutgoingRequest()
+        if (cancelled) return
+        if (request?.status === 'denied' || request?.status === 'expired') {
+          setRequestDenied(true)
+        } else if (request?.status === 'approved') {
+          // ProfileContext will catch the membership change on the next
+          // refetch — kick one off so AuthGate moves us along promptly.
+          refetch().catch(() => {})
+        }
+      } catch {
+        // Network blip — ignore, the next tick will retry.
+      }
+    }
+    void tick()
+    const id = setInterval(() => { void tick() }, 5000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [emailSent, refetch])
 
   // Animated polling dots — visible signal that the app is checking.
   const dot1 = useSharedValue(0.3)
@@ -165,7 +196,12 @@ export default function CareGroupJoinScreen() {
   }, [])
 
   const handleSubmitCode = useCallback(async () => {
-    if (!csrfToken || submitting || code.length !== 5) return
+    if (submitting || code.length !== 5) return
+    if (!csrfToken) {
+      setError('Still loading your account. Try again in a moment.')
+      refetch().catch(() => {})
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
@@ -187,7 +223,7 @@ export default function CareGroupJoinScreen() {
     } finally {
       setSubmitting(false)
     }
-  }, [code, csrfToken, submitting, router])
+  }, [code, csrfToken, submitting, router, refetch])
 
   const handleSubmitEmail = useCallback(async () => {
     if (!csrfToken || submitting || !email.trim()) return
@@ -319,10 +355,10 @@ export default function CareGroupJoinScreen() {
 
               <Pressable
                 onPress={handleSubmitCode}
-                disabled={submitting || code.length !== 5}
+                disabled={submitting || code.length !== 5 || !csrfToken}
                 style={({ pressed }) => [
                   styles.cta,
-                  { opacity: pressed || submitting || code.length !== 5 ? 0.6 : 1 },
+                  { opacity: pressed || submitting || code.length !== 5 || !csrfToken ? 0.6 : 1 },
                 ]}
               >
                 <LinearGradient
@@ -338,6 +374,27 @@ export default function CareGroupJoinScreen() {
                 <Text style={styles.altLinkText}>Don't have a code? <Text style={styles.altLinkBold}>Use patient's email instead</Text></Text>
               </Pressable>
             </>
+          ) : emailSent && requestDenied ? (
+            <View style={styles.successCard}>
+              <Ionicons name="close-circle" size={48} color="#F87171" />
+              <Text style={styles.successTitle}>Request declined</Text>
+              <Text style={styles.successBody}>
+                The patient declined this join request. You can try a different email,
+                use a code instead, or message them directly to resolve it.
+              </Text>
+              <Pressable onPress={handleSwitchToCode} style={[styles.cta, { marginTop: 12 }]}>
+                <LinearGradient
+                  colors={['#A78BFA', '#818CF8']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <Text style={styles.ctaText}>Try with a code</Text>
+              </Pressable>
+              <Pressable onPress={handleCancelPending} style={styles.cancelLink}>
+                <Text style={styles.cancelLinkText}>Cancel and go back</Text>
+              </Pressable>
+            </View>
           ) : emailSent ? (
             <View style={styles.successCard}>
               <Ionicons name="checkmark-circle" size={48} color="#34D399" />
@@ -408,10 +465,10 @@ export default function CareGroupJoinScreen() {
 
               <Pressable
                 onPress={handleSubmitEmail}
-                disabled={submitting || !email.trim()}
+                disabled={submitting || !email.trim() || !csrfToken}
                 style={({ pressed }) => [
                   styles.cta,
-                  { opacity: pressed || submitting || !email.trim() ? 0.6 : 1 },
+                  { opacity: pressed || submitting || !email.trim() || !csrfToken ? 0.6 : 1 },
                 ]}
               >
                 <LinearGradient

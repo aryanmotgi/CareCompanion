@@ -9,7 +9,7 @@
  * router.replace). Photo URL is null today (user-profile photos not yet wired)
  * — we render initials in a gradient bubble as the fallback identity signal.
  */
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   View,
   Text,
@@ -54,6 +54,15 @@ export default function CareRelationshipScreen() {
   const [confirmed, setConfirmed] = useState(false)
 
   const patientName = (params.patientName as string) || 'your patient'
+
+  // Guard: this screen is meaningless without a careGroupId. If a caregiver
+  // lands here directly (cold launch, deep link, manual nav), send them back
+  // to /care-group-join to redeem a code first.
+  useEffect(() => {
+    if (!params.careGroupId) {
+      router.replace('/care-group-join' as never)
+    }
+  }, [params.careGroupId, router])
 
   const handleContinue = useCallback(async () => {
     if (!csrfToken || !selected || submitting) return

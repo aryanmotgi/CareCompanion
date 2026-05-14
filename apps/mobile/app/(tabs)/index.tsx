@@ -34,6 +34,7 @@ import { GlassCard } from '../../src/components/GlassCard'
 import { AmbientOrbs } from '../../src/components/AmbientOrbs'
 import { AnimatedCounter } from '../../src/components/AnimatedCounter'
 import { Drawer } from '../../src/components/Drawer'
+import { RoleBadge } from '../../src/components/RoleBadge'
 import { syncHealthKitData, isHealthKitConnected } from '../../src/services/healthkit'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { ShimmerSkeleton } from '../../src/components/ShimmerSkeleton'
@@ -162,6 +163,8 @@ export default function HomeScreen() {
   const [labBannerDismissed, setLabBannerDismissed] = useState(false)
   const [checkInOpen, setCheckInOpen] = useState(false)
   const [activeNudge, setActiveNudge] = useState<Nudge | null>(null)
+  const [hkConnected, setHkConnected] = useState<boolean | null>(null)
+  const [inviteBannerVisible, setInviteBannerVisible] = useState(false)
 
   useEffect(() => {
     if (!profile?.careProfileId) {
@@ -323,6 +326,45 @@ export default function HomeScreen() {
     opacity: card3Opacity.value,
     transform: [{ translateY: card3Y.value }],
   }))
+
+  // Track whether the user has connected Apple Health. Drives the persistent
+  // "Connect Apple Health" banner — surfaced until cc-healthkit-connected is
+  // set in AsyncStorage by /health-connect or syncHealthKitData().
+  useEffect(() => {
+    let cancelled = false
+    const read = async () => {
+      const v = await AsyncStorage.getItem('cc-healthkit-connected').catch(() => null)
+      if (!cancelled) setHkConnected(v === '1')
+    }
+    void read()
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void read()
+    })
+    return () => { cancelled = true; sub.remove() }
+  }, [recordsVersion, refreshing])
+
+  // Surface an invite-your-family banner for users who own a care group but
+  // haven't tapped through the share step yet (mostly returning users whose
+  // onboarding completed before /share-invite shipped). Hidden once they
+  // either dismiss explicitly OR finish the share flow (which sets
+  // cc-invite-shown=1 itself).
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const shown = await AsyncStorage.getItem('cc-invite-shown').catch(() => null)
+      if (cancelled) return
+      if (shown === '1') { setInviteBannerVisible(false); return }
+      try {
+        const { groups } = await apiClient.careGroup.mine()
+        if (cancelled) return
+        const owned = groups.find((g) => g.isOwner)
+        setInviteBannerVisible(!!owned)
+      } catch {
+        if (!cancelled) setInviteBannerVisible(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [recordsVersion])
 
   // Sync HealthKit on mount and diff labs to surface "new results" banner + tab
   // badge. We snapshot lab IDs before the sync, run the sync, refetch labs, and
@@ -520,6 +562,7 @@ export default function HomeScreen() {
                 {getGreeting().toUpperCase()}
               </Text>
               <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
+              <RoleBadge style={{ marginTop: 4 }} />
             </View>
             <View style={styles.headerRight}>
               <Pressable onPress={() => router.push('/search')} hitSlop={8} style={styles.bellButton}>
@@ -575,6 +618,67 @@ export default function HomeScreen() {
                 accessibilityLabel="Dismiss new labs banner"
               >
                 <Ionicons name="close" size={18} color={theme.textMuted} />
+              </Pressable>
+            </View>
+          )}
+
+          {/* Invite-your-care-circle banner — surfaced for owners who haven't
+              completed the share step yet. */}
+          {inviteBannerVisible && (
+            <View style={styles.inviteHomeBanner}>
+              <View style={styles.inviteHomeIconWrap}>
+                <Ionicons name="people" size={20} color="#C084FC" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.inviteHomeTitle, { color: theme.text }]}>
+                  Invite your care circle
+                </Text>
+                <Text style={[styles.inviteHomeSub, { color: theme.textMuted }]}>
+                  Share your code so family can join.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => router.push('/share-invite' as never)}
+                style={({ pressed }) => [styles.inviteHomeBtn, { opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={styles.inviteHomeBtnText}>Share</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  AsyncStorage.setItem('cc-invite-shown', '1').catch(() => {})
+                  setInviteBannerVisible(false)
+                }}
+                hitSlop={10}
+                style={{ paddingHorizontal: 4 }}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss"
+              >
+                <Ionicons name="close" size={16} color={theme.textMuted} />
+              </Pressable>
+            </View>
+          )}
+
+          {/* HealthKit connect banner (persistent until connected) */}
+          {hkConnected === false && (
+            <View style={styles.hkBanner}>
+              <View style={styles.hkBannerIconWrap}>
+                <Ionicons name="heart" size={20} color="#A78BFA" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.hkBannerTitle, { color: theme.text }]}>
+                  Connect Apple Health to sync your records
+                </Text>
+                <Text style={[styles.hkBannerSub, { color: theme.textMuted }]}>
+                  Meds, labs, and vitals — auto-imported.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => router.push('/health-consent' as never)}
+                style={({ pressed }) => [styles.hkConnectBtn, { opacity: pressed ? 0.7 : 1 }]}
+                accessibilityRole="button"
+                accessibilityLabel="Connect Apple Health"
+              >
+                <Text style={styles.hkConnectText}>Connect</Text>
               </Pressable>
             </View>
           )}
@@ -766,7 +870,6 @@ export default function HomeScreen() {
           visible={drawerOpen}
           onClose={() => setDrawerOpen(false)}
           userName={displayName}
-          userRole="Patient"
         />
 
         <CheckInModal
@@ -996,6 +1099,62 @@ const styles = StyleSheet.create({
   },
   newLabsTitle: { fontSize: 14, fontWeight: '700' },
   newLabsSub: { fontSize: 12, marginTop: 2 },
+  hkBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.45)',
+    backgroundColor: 'rgba(167,139,250,0.08)',
+    marginBottom: 12,
+  },
+  hkBannerIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(167,139,250,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hkBannerTitle: { fontSize: 14, fontWeight: '700' },
+  hkBannerSub: { fontSize: 12, marginTop: 2 },
+  hkConnectBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#A78BFA',
+  },
+  hkConnectText: { color: 'white', fontSize: 13, fontWeight: '700' },
+  inviteHomeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(192,132,252,0.45)',
+    backgroundColor: 'rgba(192,132,252,0.08)',
+    marginBottom: 12,
+  },
+  inviteHomeIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(192,132,252,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inviteHomeTitle: { fontSize: 14, fontWeight: '700' },
+  inviteHomeSub: { fontSize: 12, marginTop: 2 },
+  inviteHomeBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: '#C084FC',
+  },
+  inviteHomeBtnText: { color: 'white', fontSize: 12, fontWeight: '700' },
   nudgeCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',

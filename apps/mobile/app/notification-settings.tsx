@@ -16,6 +16,7 @@ import {
   savePrefs,
   getPermissionStatus,
   requestPermissions,
+  scheduleDailyCheckin,
   DEFAULT_PREFS,
   type NotificationPrefs,
 } from '../src/services/notifications'
@@ -59,6 +60,9 @@ export default function NotificationSettingsScreen() {
     if (result === 'denied') {
       // User previously denied — only iOS Settings can re-enable.
       void Linking.openSettings().catch(() => {})
+    } else if (result === 'granted') {
+      // Schedule the 8pm daily check-in now that we have permission. Idempotent.
+      void scheduleDailyCheckin()
     }
   }
 

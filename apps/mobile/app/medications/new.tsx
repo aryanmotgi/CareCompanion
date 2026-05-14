@@ -88,14 +88,16 @@ export default function NewMedicationScreen() {
     setSubmitting(true)
     setError(null)
     try {
+      // Backend expects snake_case keys
+      // (apps/web/src/app/api/records/medications/route.ts).
       await apiClient.medications.create(
         {
           name: name.trim(),
           dose: dose.trim() || undefined,
           frequency: frequency.trim() || undefined,
-          prescribingDoctor: prescribingDoctor.trim() || undefined,
+          prescribing_doctor: prescribingDoctor.trim() || undefined,
           notes: notes.trim() || undefined,
-          careProfileId: profile?.careProfileId ?? undefined,
+          care_profile_id: profile?.careProfileId ?? undefined,
         } as any,
         csrfToken,
       )
