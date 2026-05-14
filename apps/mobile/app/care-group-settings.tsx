@@ -60,19 +60,16 @@ export default function CareGroupSettingsScreen() {
   const [busy, setBusy] = useState<'generate' | 'rotate' | 'revoke' | null>(null)
   const [refreshing, setRefreshing] = useState(false)
 
-  // The patient's care group ID lives on their profile somewhere — without a
-  // direct field, find the group they own (created_by = them) as a stand-in.
-  // The proper place is profile.careGroupId; if not exposed yet, this is the
-  // honest TODO surface.
-  // FIXME(care-group): expose care_group_id on /api/records/profile so we
-  // don't need this owner-of-group fallback.
+  // Source of truth for the patient's care group(s): GET /api/care-group/mine.
+  // We prefer the group the user owns; if they're only a member, use the first
+  // membership. The screen reflects that group's code + pending requests.
   const loadAll = useCallback(async () => {
     if (!profile?.userId) return
     setLoading(true)
     try {
-      // TODO: replace with profile.careGroupId once exposed.
-      // For now, no-op until we have the ID — the screen renders an empty state.
-      const groupId = (profile as { careGroupId?: string }).careGroupId ?? null
+      const { groups } = await apiClient.careGroup.mine().catch(() => ({ groups: [] as Array<{ id: string; name: string; role: string; isOwner: boolean }> }))
+      const owned = groups.find((g) => g.isOwner) ?? groups[0] ?? null
+      const groupId = owned?.id ?? null
       setCareGroupId(groupId)
 
       if (groupId) {

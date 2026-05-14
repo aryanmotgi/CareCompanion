@@ -175,6 +175,12 @@ export function createApiClient(config: ApiClientConfig) {
           invites: Array<{ id: string; invitedEmail: string; role: string }>
           role: string | null
         }>,
+      invite: (email: string, role: 'editor' | 'viewer', csrfToken: string) =>
+        apiFetch(config, '/api/care-team/invite', {
+          method: 'POST',
+          body: JSON.stringify({ email, role }),
+          headers: { 'x-csrf-token': csrfToken },
+        }) as Promise<{ ok: true; data: { success: true; message: string } }>,
     },
     healthkit: {
       sync: (records: HealthKitRecord[]) =>
@@ -214,6 +220,10 @@ export function createApiClient(config: ApiClientConfig) {
           body: JSON.stringify({ careGroupId }),
           headers: { 'x-csrf-token': csrfToken },
         }) as Promise<{ token: string; url: string }>,
+      mine: () =>
+        apiFetch(config, '/api/care-group/mine', { method: 'GET' }) as Promise<{
+          groups: Array<{ id: string; name: string; role: string; isOwner: boolean }>
+        }>,
       status: (careGroupId: string) =>
         apiFetch(config, `/api/care-group/${careGroupId}/status`, { method: 'GET' }) as Promise<{
           joined: boolean
@@ -267,6 +277,16 @@ export function createApiClient(config: ApiClientConfig) {
             caregiverDisplayName: string | null
             caregiverEmail: string
           }>
+        }>,
+      myOutgoingRequest: () =>
+        apiFetch(config, '/api/care-group/request-join/mine', { method: 'GET' }) as Promise<{
+          request: {
+            id: string
+            status: 'pending' | 'approved' | 'denied' | 'expired'
+            createdAt: string
+            resolvedAt: string | null
+            patientUserId: string
+          } | null
         }>,
       approveRequest: (id: string, relationship: string, careGroupId: string, csrfToken: string) =>
         apiFetch(config, `/api/care-group/request-join/${id}/approve`, {
