@@ -19,6 +19,7 @@ import { refreshTokenIfNeeded } from '../src/services/token-refresh'
 import {
   registerNotificationCategories,
   onNotificationResponse,
+  scheduleDailyCheckin,
 } from '../src/services/notifications'
 import {
   defineSyncTask,
@@ -39,13 +40,105 @@ defineSyncTask(async () => {
   }
 })
 
+// API base for direct-fetch flows that run outside React context (notification
+// action handlers). The api client expects in-memory config; here we just need
+// a bare POST to /api/checkins so we read the env var directly.
+const CHECKIN_API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
+
+/**
+ * Translate a numeric mobile-side value into the categorical bucket that
+ * /api/checkins expects. Returns null when the value is unparseable.
+ */
+function bucketEnergy(n: number): 'low' | 'medium' | 'high' | null {
+  if (Number.isNaN(n)) return null
+  if (n <= 2) return 'low'
+  if (n === 3) return 'medium'
+  if (n >= 4) return 'high'
+  return null
+}
+function bucketSleep(n: number): 'bad' | 'ok' | 'good' | null {
+  if (Number.isNaN(n)) return null
+  if (n <= 2) return 'bad'
+  if (n === 3) return 'ok'
+  if (n >= 4) return 'good'
+  return null
+}
+
+/**
+ * Handle a CHECKIN_* inline-reply action from the daily check-in notification.
+ * Resolves careProfileId + auth/csrf tokens from SecureStore (these are kept
+ * fresh by ProfileContext on every fetch), parses the user's reply, and POSTs
+ * to /api/checkins. mood defaults to 3 (neutral) since the notification only
+ * captures pain/energy/sleep.
+ *
+ * Best-effort: failures are logged and swallowed — we won't retry from here.
+ */
+async function postCheckinFromNotification(
+  actionId: 'CHECKIN_PAIN' | 'CHECKIN_ENERGY' | 'CHECKIN_SLEEP',
+  rawText: string | null,
+): Promise<void> {
+  if (!rawText) return
+  const n = parseInt(rawText.trim(), 10)
+  if (Number.isNaN(n)) return
+
+  try {
+    const [token, csrfToken, profileRaw] = await Promise.all([
+      SecureStore.getItemAsync('cc-session-token'),
+      SecureStore.getItemAsync('cc-csrf-token'),
+      SecureStore.getItemAsync('cc-profile'),
+    ])
+    if (!token || !csrfToken || !profileRaw) return
+    const profile = JSON.parse(profileRaw) as { careProfileId?: string }
+    if (!profile.careProfileId) return
+
+    // Defaults for the fields not provided by the notification action.
+    // /api/checkins requires all four wellness fields, so we send neutral
+    // values for whichever ones the user didn't supply in this tap.
+    const body: Record<string, unknown> = {
+      careProfileId: profile.careProfileId,
+      mood: 3,
+      pain: 0,
+      energy: 'medium',
+      sleep: 'ok',
+    }
+    if (actionId === 'CHECKIN_PAIN') {
+      const v = Math.max(0, Math.min(10, n))
+      body.pain = v
+    } else if (actionId === 'CHECKIN_ENERGY') {
+      const e = bucketEnergy(Math.max(1, Math.min(5, n)))
+      if (!e) return
+      body.energy = e
+    } else if (actionId === 'CHECKIN_SLEEP') {
+      const s = bucketSleep(Math.max(1, Math.min(5, n)))
+      if (!s) return
+      body.sleep = s
+    }
+
+    const isSecure = CHECKIN_API_BASE.startsWith('https://')
+    const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
+    await fetch(`${CHECKIN_API_BASE}/api/checkins`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'Cookie': `${cookieName}=${token}`,
+        'x-csrf-token': csrfToken,
+      },
+      body: JSON.stringify(body),
+    })
+  } catch (err) {
+    console.warn('[checkin-notif] failed:', err)
+  }
+}
+
 // Welcome-seen state lives in a context so updates from welcome.tsx are visible
 // to AuthGate in the same render — avoids a redirect-back-to-welcome race when
 // the user taps Get Started.
 type WelcomeState = 'loading' | 'seen' | 'unseen'
-const WelcomeContext = createContext<{ state: WelcomeState; markSeen: () => void }>({
+const WelcomeContext = createContext<{ state: WelcomeState; markSeen: () => void; reset: () => void }>({
   state: 'loading',
   markSeen: () => {},
+  reset: () => {},
 })
 export const useWelcomeContext = () => useContext(WelcomeContext)
 
@@ -66,8 +159,13 @@ function WelcomeProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(WELCOME_SEEN_KEY, '1').catch(() => {})
   }, [])
 
+  const reset = useCallback(() => {
+    setState('unseen')
+    AsyncStorage.removeItem(WELCOME_SEEN_KEY).catch(() => {})
+  }, [])
+
   return (
-    <WelcomeContext.Provider value={{ state, markSeen }}>{children}</WelcomeContext.Provider>
+    <WelcomeContext.Provider value={{ state, markSeen, reset }}>{children}</WelcomeContext.Provider>
   )
 }
 
@@ -75,9 +173,10 @@ function WelcomeProvider({ children }: { children: React.ReactNode }) {
 // onboarding step. Gate keeps /(tabs) inaccessible until this is 'onboarded'.
 const RECORDS_KEY = 'cc-records-onboarded'
 type RecordsState = 'loading' | 'onboarded' | 'pending'
-const RecordsContext = createContext<{ state: RecordsState; markOnboarded: () => void }>({
+const RecordsContext = createContext<{ state: RecordsState; markOnboarded: () => void; reset: () => void }>({
   state: 'loading',
   markOnboarded: () => {},
+  reset: () => {},
 })
 export const useRecordsContext = () => useContext(RecordsContext)
 
@@ -189,8 +288,13 @@ function RecordsProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(RECORDS_KEY, '1').catch(() => {})
   }, [])
 
+  const reset = useCallback(() => {
+    setState('pending')
+    AsyncStorage.removeItem(RECORDS_KEY).catch(() => {})
+  }, [])
+
   return (
-    <RecordsContext.Provider value={{ state, markOnboarded }}>{children}</RecordsContext.Provider>
+    <RecordsContext.Provider value={{ state, markOnboarded, reset }}>{children}</RecordsContext.Provider>
   )
 }
 
@@ -246,8 +350,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     route === 'login' ||
     route === 'signup' ||
     route === 'welcome' ||
-    route === 'care-type' ||
-    route === 'care-role'
+    route === 'care-type'
   // Mandatory post-signup patient screen — user can't reach (tabs) until they
   // explicitly Connect or Skip on this screen.
   const onRecordsOnboarding = route === 'onboarding-records'
@@ -255,7 +358,12 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const onCaregiverOnboarding = route === 'care-group-join' || route === 'care-relationship'
   // Optional in-app screens that should also tolerate token-clears mid-flow.
   const isOnboardingRoute =
-    route === 'health-connect' || route === 'setup' || onRecordsOnboarding || onCaregiverOnboarding
+    route === 'health-connect' ||
+    route === 'health-consent' ||
+    route === 'setup' ||
+    route === 'share-invite' ||
+    onRecordsOnboarding ||
+    onCaregiverOnboarding
   const onTabs = route === '(tabs)' || route === undefined
 
   // Welcome takes priority over any token state. On iOS Simulator, SecureStore
@@ -392,8 +500,11 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
       seg === 'setup' ||
       seg === 'health-consent' ||
       seg === 'health-connect' ||
+      seg === 'onboarding-records' ||
+      seg === 'care-type' ||
       seg === 'care-group-join' ||
-      seg === 'care-relationship'
+      seg === 'care-relationship' ||
+      seg === 'share-invite'
     if (!profile.onboardingCompleted && !onSetup) {
       router.replace('/setup')
     }
@@ -421,12 +532,28 @@ export default function RootLayout() {
   }, [])
 
   // Register notification action categories + listen for user taps on action
-  // buttons (Mark taken / Snooze / Skip). Listener stays alive for app lifetime.
+  // buttons (Mark taken / Snooze / Skip / daily check-in inline replies).
+  // Listener stays alive for app lifetime.
   useEffect(() => {
-    void registerNotificationCategories()
-    const unsub = onNotificationResponse((resp) => {
-      // Stub handlers — wire to real API calls (mark dose taken, reschedule
-      // snoozed reminder, etc.) when the medication actions endpoint lands.
+    void (async () => {
+      await registerNotificationCategories()
+      // Schedule the 8pm check-in if the user has already granted permission.
+      // scheduleDailyCheckin no-ops when permission is missing — so first-run
+      // users won't get a prompt here.
+      await scheduleDailyCheckin()
+    })()
+    const unsub = onNotificationResponse(async (resp) => {
+      const actionId = resp.actionId
+      if (
+        actionId === 'CHECKIN_PAIN' ||
+        actionId === 'CHECKIN_ENERGY' ||
+        actionId === 'CHECKIN_SLEEP'
+      ) {
+        await postCheckinFromNotification(actionId, resp.userText)
+        return
+      }
+      // Other action handlers (dose / appointment) — left as TODO until
+      // the corresponding endpoints land.
       console.log('[notif-action]', resp.actionId, resp.data)
     })
     return unsub
@@ -463,6 +590,18 @@ export default function RootLayout() {
                             Exit only via explicit Sign out. */}
                         <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
                         <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
+                        {/* Onboarding lane — swipe-back would let the user
+                            escape AuthGate/OnboardingGate guards and end up
+                            on an inconsistent route. Disable the gesture so
+                            every back step is a deliberate button press. */}
+                        <Stack.Screen name="care-type" options={{ gestureEnabled: false }} />
+                        <Stack.Screen name="onboarding-records" options={{ gestureEnabled: false }} />
+                        <Stack.Screen name="health-consent" options={{ gestureEnabled: false }} />
+                        <Stack.Screen name="health-connect" options={{ gestureEnabled: false }} />
+                        <Stack.Screen name="care-group-join" options={{ gestureEnabled: false }} />
+                        <Stack.Screen name="care-relationship" options={{ gestureEnabled: false }} />
+                        <Stack.Screen name="setup" options={{ gestureEnabled: false }} />
+                        <Stack.Screen name="share-invite" options={{ gestureEnabled: false }} />
                       </Stack>
                     </OnboardingGate>
                   </ProfileProvider>

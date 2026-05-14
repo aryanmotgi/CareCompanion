@@ -65,6 +65,8 @@ type NotificationsModule = {
 
 const DOSE_CATEGORY_ID = 'dose-reminder'
 const APPT_CATEGORY_ID = 'appointment-reminder'
+const CHECKIN_CATEGORY_ID = 'daily-checkin'
+const CHECKIN_NOTIF_ID_KEY = 'cc-checkin-notification-id'
 
 export async function registerNotificationCategories(): Promise<void> {
   const Notifications = getModule()
@@ -99,10 +101,75 @@ export async function registerNotificationCategories(): Promise<void> {
         options: { opensAppToForeground: true },
       },
     ])
+    // Daily check-in — three inline-reply actions so the user can answer
+    // pain / energy / sleep directly from the notification without opening
+    // the app. iOS shows each action as a separate row in the long-press
+    // sheet; tapping one pops the keyboard with the placeholder prompt.
+    await Notifications.setNotificationCategoryAsync(CHECKIN_CATEGORY_ID, [
+      {
+        identifier: 'CHECKIN_PAIN',
+        buttonTitle: 'Pain (0-10)',
+        textInput: { submitButtonTitle: 'Send', placeholder: '0-10' },
+        options: { opensAppToForeground: false },
+      },
+      {
+        identifier: 'CHECKIN_ENERGY',
+        buttonTitle: 'Energy (1-5)',
+        textInput: { submitButtonTitle: 'Send', placeholder: '1-5' },
+        options: { opensAppToForeground: false },
+      },
+      {
+        identifier: 'CHECKIN_SLEEP',
+        buttonTitle: 'Sleep (1-5)',
+        textInput: { submitButtonTitle: 'Send', placeholder: '1-5' },
+        options: { opensAppToForeground: false },
+      },
+    ])
   } catch {
     // best-effort
   }
 }
+
+/**
+ * Schedule the daily check-in notification at 8pm local time, repeating.
+ * No-op when notification permission isn't already granted (we don't trigger
+ * a permission prompt here — that lives in the onboarding/settings flow).
+ * Returns the scheduled notification id, or null if not scheduled.
+ */
+export async function scheduleDailyCheckin(): Promise<string | null> {
+  const Notifications = getModule()
+  if (!Notifications) return null
+  try {
+    const perm = await Notifications.getPermissionsAsync()
+    if (!perm.granted) return null
+
+    // Replace any existing scheduled check-in so the trigger stays single.
+    const existing = await AsyncStorage.getItem(CHECKIN_NOTIF_ID_KEY).catch(() => null)
+    if (existing) {
+      await Notifications.cancelScheduledNotificationAsync(existing).catch(() => {})
+    }
+
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'How are you feeling today?',
+        body: 'Tap and hold to reply — pain, energy, sleep.',
+        categoryIdentifier: CHECKIN_CATEGORY_ID,
+        data: { kind: 'daily-checkin' },
+      },
+      trigger: {
+        type: 'calendar',
+        hour: 20,
+        minute: 0,
+        repeats: true,
+      } as any,
+    } as any)
+    await AsyncStorage.setItem(CHECKIN_NOTIF_ID_KEY, id).catch(() => {})
+    return id
+  } catch {
+    return null
+  }
+}
+
 
 type NotificationActionId = 'TAKEN' | 'SNOOZE' | 'SKIP' | 'CONFIRM' | 'RESCHEDULE'
 
@@ -110,6 +177,8 @@ interface NotificationResponse {
   actionId: NotificationActionId | string
   notificationId: string | null
   data: Record<string, unknown>
+  /** User-typed value when the action is an inline-reply action. */
+  userText: string | null
 }
 
 export function onNotificationResponse(
@@ -123,6 +192,7 @@ export function onNotificationResponse(
         actionId: raw?.actionIdentifier ?? '',
         notificationId: raw?.notification?.request?.identifier ?? null,
         data: raw?.notification?.request?.content?.data ?? {},
+        userText: typeof raw?.userText === 'string' ? raw.userText : null,
       })
     })
     return () => sub.remove()
