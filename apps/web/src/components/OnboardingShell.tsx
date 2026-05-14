@@ -1,16 +1,29 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
-import { OnboardingProfilePicker, PickerProfile } from './OnboardingProfilePicker';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { CareGroupScreen } from './CareGroupScreen';
+import { OnboardingProfilePicker, type PickerProfile } from './OnboardingProfilePicker';
+import { DisclaimerModal } from './onboarding/DisclaimerModal';
+import { WelcomeCarousel } from './onboarding/WelcomeCarousel';
+import { RolePicker } from './onboarding/RolePicker';
+import { HealthConsent } from './onboarding/HealthConsent';
+import { OnboardingRecords } from './onboarding/OnboardingRecords';
+import { HealthConnect } from './onboarding/HealthConnect';
+import { ShareInvite } from './onboarding/ShareInvite';
+import { CareGroupJoin } from './onboarding/CareGroupJoin';
+import { CareRelationship } from './onboarding/CareRelationship';
+import { JoinedToast } from './onboarding/JoinedToast';
+import { IosAppBanner } from './onboarding/IosAppBanner';
+import { initialState, reducer, type Role } from '@/lib/onboarding/phase-machine';
+import { clearDraft, loadDraft, saveDraft } from '@/lib/onboarding/auto-save';
+import { onboardingAnalytics } from '@/lib/analytics/onboarding-events';
 
 const OnboardingWizard = dynamic(
   () => import('@/components/OnboardingWizard').then((m) => m.OnboardingWizard),
   { ssr: false }
 );
 
-// Shape returned from page.tsx DB select (camelCase Drizzle keys)
 interface ShellProfile {
   id: string;
   patientName: string | null;
@@ -28,15 +41,12 @@ interface OnboardingShellProps {
   userName: string;
   userEmail: string;
   userAvatar: string;
-  userRole?: 'caregiver' | 'patient' | 'self' | null;
-  // Set when user arrived via QR invite join or is already a care group member.
-  // Causes the care-group phase to be skipped.
+  userRole?: Role | null;
   initialCareGroupId?: string;
-  // Error message from invite link validation (e.g. expired, used, full).
   inviteError?: string;
 }
 
-type Phase = 'care-group' | 'wizard' | 'complete';
+const POLL_INTERVAL_MS = 3_000;
 
 export function OnboardingShell({
   allProfiles,
@@ -46,62 +56,16 @@ export function OnboardingShell({
   initialCareGroupId,
   inviteError,
 }: OnboardingShellProps) {
-  // undefined = not yet chosen; null = create new; string = edit existing
-  const [selectedProfileId, setSelectedProfileId] = useState<
-    string | null | undefined
-  >(allProfiles.length === 1 ? allProfiles[0].id : undefined);
-
-  const [phase, setPhase] = useState<Phase>(() => {
-    // Already completed onboarding → skip to wizard (editing/adding profile)
-    if (allProfiles.some(p => p.onboardingCompleted === true)) return 'wizard';
-    // Arrived via QR join / already a group member → skip care-group setup
-    if (initialCareGroupId) return 'wizard';
-    return 'care-group';
-  });
-  const [careGroupId, setCareGroupId] = useState<string | undefined>(initialCareGroupId);
-  const [createdProfileId, setCreatedProfileId] = useState<string | null>(null);
-  const [profileCreateError, setProfileCreateError] = useState(false);
-
-  const completedProfiles = allProfiles.filter(
-    (p) => p.onboardingCompleted === true
-  );
+  // Existing-user fast paths
+  const completedProfiles = allProfiles.filter((p) => p.onboardingCompleted === true);
   const hasCompleted = completedProfiles.length > 0;
+  const incomplete = allProfiles.find((p) => !p.onboardingCompleted);
 
-  // If there are no completed profiles, skip picker and go straight to wizard
-  // using the first incomplete profile (if any) or null for brand-new.
-  const shouldShowPicker = hasCompleted && allProfiles.length > 1 && selectedProfileId === undefined;
-
-  // Determine which profile to load into the wizard
-  const activeProfile: ShellProfile | null = (() => {
-    if (selectedProfileId === null) return null; // new profile
-    if (selectedProfileId !== undefined) {
-      return allProfiles.find((p) => p.id === selectedProfileId) ?? null;
-    }
-    // No picker shown — use first incomplete profile or null
-    const firstIncomplete = allProfiles.find(
-      (p) => !p.onboardingCompleted
-    );
-    return firstIncomplete ?? null;
-  })();
-
-  const activeProfileId = activeProfile?.id ?? null;
-
-  // Derive userRole: prefer explicit prop, fall back to relationship on existing profile
-  const derivedRole = ((): 'caregiver' | 'patient' | 'self' | null => {
-    if (userRoleProp != null) return userRoleProp;
-    const rel = activeProfile?.relationship;
-    if (rel === 'self') return 'patient';
-    if (rel && rel !== 'self') return 'caregiver';
-    return null;
-  })();
-
-  // Normalize to CareGroupScreen-compatible type (no null)
-  const careGroupRole: 'caregiver' | 'patient' | 'self' =
-    derivedRole === 'caregiver' ? 'caregiver'
-    : derivedRole === 'self' ? 'self'
-    : 'patient';
-
-  // Picker profiles (only need a subset of fields)
+  // Profile picker: multi-profile returning users get to choose which one to edit/add
+  const [pickedProfileId, setPickedProfileId] = useState<string | null | undefined>(
+    allProfiles.length === 1 ? allProfiles[0].id : undefined,
+  );
+  const shouldShowPicker = hasCompleted && allProfiles.length > 1 && pickedProfileId === undefined;
   const pickerProfiles: PickerProfile[] = allProfiles.map((p) => ({
     id: p.id,
     patientName: p.patientName,
@@ -110,108 +74,301 @@ export function OnboardingShell({
     onboardingCompleted: p.onboardingCompleted,
   }));
 
-  if (profileCreateError) {
+  // Returning users who completed onboarding never see the new flow — drop them
+  // straight into wizard for editing or skip entirely if already in a group.
+  const skipToWizard = hasCompleted || Boolean(initialCareGroupId);
+
+  const activeProfile: ShellProfile | null = useMemo(() => {
+    if (incomplete) return incomplete;
+    return null;
+  }, [incomplete]);
+
+  const derivedRole = useMemo<Role | null>(() => {
+    if (userRoleProp != null) return userRoleProp;
+    const rel = activeProfile?.relationship;
+    if (rel === 'self') return 'self';
+    if (rel === 'caregiver') return 'caregiver';
+    if (rel === 'patient') return 'patient';
+    return null;
+  }, [userRoleProp, activeProfile?.relationship]);
+
+  const [state, dispatch] = useReducer(
+    reducer,
+    null,
+    () =>
+      initialState({
+        role: derivedRole,
+        careGroupId: initialCareGroupId ?? null,
+        careProfileId: activeProfile?.id ?? null,
+        startAt: skipToWizard ? 'role' : 'disclaimer',
+      })
+  );
+
+  // Hydrate from localStorage draft on mount
+  const hydrated = useRef(false);
+  useEffect(() => {
+    if (hydrated.current) return;
+    hydrated.current = true;
+    if (skipToWizard) return;
+    const draft = loadDraft();
+    if (draft) {
+      dispatch({ type: 'HYDRATE', state: draft });
+      onboardingAnalytics.resumed(draft.phase.kind);
+    }
+  }, [skipToWizard]);
+
+  // Persist draft on every state change (debounced)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (state.phase.kind === 'complete') {
+      clearDraft();
+      return;
+    }
+    if (state.phase.kind === 'disclaimer') return; // pre-acceptance: nothing to save
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => saveDraft(state), 400);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [state]);
+
+  // Fire phase-entered analytics whenever phase kind changes
+  const prevPhaseKind = useRef<string>(state.phase.kind);
+  useEffect(() => {
+    if (prevPhaseKind.current !== state.phase.kind) {
+      onboardingAnalytics.phaseEntered(state.phase.kind, state.role ?? undefined);
+      prevPhaseKind.current = state.phase.kind;
+    }
+  }, [state.phase.kind, state.role]);
+
+  // Live presence: poll status when on share-invite phase
+  const [joinedName, setJoinedName] = useState<string | null>(null);
+  const [toastVisible, setToastVisible] = useState(false);
+  useEffect(() => {
+    if (state.phase.kind !== 'share-invite') return;
+    if (!state.careGroupId) return;
+    let cancelled = false;
+    const interval = window.setInterval(async () => {
+      try {
+        const r = await fetch(`/api/care-group/${state.careGroupId}/status`, { credentials: 'include' });
+        if (!r.ok) return;
+        const data = await r.json() as { joined?: boolean; name?: string };
+        if (!cancelled && data.joined && !toastVisible) {
+          setJoinedName(data.name ?? null);
+          setToastVisible(true);
+          onboardingAnalytics.joinedToastShown(Boolean(data.name));
+        }
+      } catch {
+        // ignore poll error
+      }
+    }, POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [state.phase.kind, state.careGroupId, toastVisible]);
+
+  // Profile creation when user becomes patient/self post role pick (if none exists)
+  const createProfileIfNeeded = useCallback(async (): Promise<string | null> => {
+    if (state.careProfileId) return state.careProfileId;
+    try {
+      const r = await fetch('/api/care-profiles', { method: 'POST', credentials: 'include' });
+      const data = await r.json() as { id?: string };
+      if (data.id) {
+        dispatch({ type: 'SET_PROFILE', careProfileId: data.id });
+        return data.id;
+      }
+    } catch {
+      // ignore — wizard will surface error
+    }
+    return null;
+  }, [state.careProfileId]);
+
+  // Onboarding completion: clear draft, fire analytics, redirect
+  const onboardingStart = useRef<number>(Date.now());
+  useEffect(() => {
+    if (state.phase.kind !== 'complete') return;
+    const total = Date.now() - onboardingStart.current;
+    onboardingAnalytics.completed(state.role ?? 'unknown', total, state.skipped);
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem('onboarding_just_completed', 'true');
+      window.localStorage.removeItem('welcome_banner_dismissed');
+    } catch { /* private browsing */ }
+    clearDraft();
+    window.location.href = '/dashboard';
+  }, [state.phase.kind, state.role, state.skipped]);
+
+  // ===== Render by phase =====
+
+  // Multi-profile returning user picks which profile to work on
+  if (shouldShowPicker) {
     return (
-      <div className="flex flex-col gap-4 p-6 max-w-md mx-auto text-center">
-        <p className="text-sm text-red-400">We hit a snag setting up your profile. Please refresh and try again — your progress is safe.</p>
-        <button type="button" onClick={() => { setProfileCreateError(false); }} className="text-xs underline" style={{ color: 'rgba(255,255,255,0.4)' }}>Try again</button>
-      </div>
+      <OnboardingProfilePicker
+        profiles={pickerProfiles}
+        onSelect={setPickedProfileId}
+      />
+    );
+  }
+
+  // Returning-completed user: render legacy wizard directly
+  if (skipToWizard) {
+    const wizardProfileId = activeProfile?.id ?? null;
+    if (!wizardProfileId) {
+      return <LegacyCareGroupFallback userName={userName} userEmail={userEmail} userRole={derivedRole ?? 'patient'} />;
+    }
+    return (
+      <OnboardingWizard
+        careProfileId={wizardProfileId}
+        userRole={derivedRole}
+        careGroupId={state.careGroupId ?? undefined}
+        onComplete={() => { window.location.href = '/dashboard'; }}
+      />
     );
   }
 
   const errorBanner = inviteError ? (
     <div
       role="alert"
-      className="flex items-start gap-2 rounded-xl px-4 py-3 mb-4"
+      className="mx-auto mb-4 max-w-md rounded-xl px-4 py-3"
       style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}
     >
-      <svg className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-      </svg>
-      <p className="text-xs text-red-400/90">{inviteError}</p>
+      <p className="text-xs" style={{ color: 'var(--rose)' }}>{inviteError}</p>
     </div>
   ) : null;
 
-  if (shouldShowPicker) {
-    return (
-      <>
-        {errorBanner}
-        <OnboardingProfilePicker
-          profiles={pickerProfiles}
-          onSelect={setSelectedProfileId}
-        />
-      </>
-    );
-  }
-
-  // Phase: care-group
-  if (phase === 'care-group') {
-    return (
-      <>
-        {errorBanner}
-        <CareGroupScreen
-        userRole={careGroupRole}
-        userDisplayName={userName || userEmail.split('@')[0] || 'You'}
-        onComplete={async (cgId) => {
-          setCareGroupId(cgId);
-          // If this is a new user with no care profile, create one now
-          if (!activeProfileId) {
-            try {
-              const res = await fetch('/api/care-profiles', { method: 'POST' });
-              const data = await res.json() as { id?: string };
-              if (data.id) {
-                setCreatedProfileId(data.id);
-              } else {
-                setProfileCreateError(true);
-                return;
-              }
-            } catch {
-              setProfileCreateError(true);
-              return;
-            }
-          }
-          setPhase('wizard');
-        }}
-        />
-      </>
-    );
-  }
-
-  // Phase: wizard
-  const wizardProfileId = activeProfileId ?? createdProfileId;
-
-  if (phase === 'wizard' && wizardProfileId) {
-    return (
-      <OnboardingWizard
-        careProfileId={wizardProfileId}
-        userRole={derivedRole}
-        careGroupId={careGroupId}
-        onComplete={() => setPhase('complete')}
-      />
-    );
-  }
-
-  // Phase: complete — set welcome banner flag then redirect
-  if (phase === 'complete' || (phase === 'wizard' && !activeProfileId && !createdProfileId)) {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('onboarding_just_completed', 'true');
-        localStorage.removeItem('welcome_banner_dismissed');
-      } catch {
-        // ignore storage errors (private browsing, storage quota)
-      }
-      window.location.href = '/dashboard';
-    }
-    return null;
-  }
-
-  // Fallback: show a loading state rather than a blank screen
   return (
-    <div className="flex items-center justify-center py-20">
-      <svg className="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24" aria-label="Loading">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-      </svg>
+    <>
+      {errorBanner}
+      <IosAppBanner role={state.role} />
+
+      {state.phase.kind === 'disclaimer' && (
+        <DisclaimerModal onAccepted={() => dispatch({ type: 'DISMISS_DISCLAIMER' })} />
+      )}
+
+      {state.phase.kind === 'welcome' && (
+        <WelcomeCarousel
+          startSceneIdx={state.phase.sceneIdx}
+          onFinish={() => dispatch({ type: 'WELCOME_FINISH' })}
+        />
+      )}
+
+      {state.phase.kind === 'role' && (
+        <RolePicker
+          careProfileId={state.careProfileId}
+          onSelected={async (r) => {
+            // Ensure profile exists for patient/self path before continuing
+            if (r !== 'caregiver') {
+              await createProfileIfNeeded();
+            }
+            dispatch({ type: 'SELECT_ROLE', role: r });
+          }}
+        />
+      )}
+
+      {state.phase.kind === 'consent' && (
+        <HealthConsent onAccepted={() => dispatch({ type: 'ACCEPT_CONSENT' })} />
+      )}
+
+      {state.phase.kind === 'records' && (
+        <OnboardingRecords
+          onConnect={() => dispatch({ type: 'PICK_RECORDS_CONNECT' })}
+          onSkip={() => dispatch({ type: 'PICK_RECORDS_SKIP' })}
+        />
+      )}
+
+      {state.phase.kind === 'health-connect' && (
+        <HealthConnect onContinue={() => dispatch({ type: 'HEALTH_CONNECT_DONE' })} />
+      )}
+
+      {state.phase.kind === 'care-group-join' && (
+        <CareGroupJoin
+          onJoined={(patientName) => dispatch({ type: 'JOIN_BY_CODE_OK', patientName })}
+        />
+      )}
+
+      {state.phase.kind === 'care-relationship' && (
+        <CareRelationship
+          patientName={state.phase.patientName}
+          onConfirmed={() => dispatch({ type: 'CONFIRM_RELATIONSHIP' })}
+        />
+      )}
+
+      {state.phase.kind === 'wizard' && state.careProfileId && (
+        <OnboardingWizard
+          careProfileId={state.careProfileId}
+          userRole={state.role}
+          careGroupId={state.careGroupId ?? undefined}
+          onComplete={() => dispatch({ type: 'COMPLETE_WIZARD' })}
+        />
+      )}
+
+      {state.phase.kind === 'wizard' && !state.careProfileId && (
+        <ProfileCreatingLoader />
+      )}
+
+      {state.phase.kind === 'share-invite' && (
+        <>
+          {/* Patient/self path lands here after wizard. We need a careGroupId to display a code,
+              so if missing, transparently surface the existing CareGroupScreen which both creates
+              the group and registers the user. */}
+          {state.careGroupId ? (
+            <ShareInvite
+              careGroupId={state.careGroupId}
+              patientName={activeProfile?.patientName ?? userName}
+              onContinue={() => dispatch({ type: 'DISMISS_SHARE_INVITE' })}
+              onSkip={() => dispatch({ type: 'DISMISS_SHARE_INVITE' })}
+            />
+          ) : (
+            <CareGroupScreen
+              userRole={(state.role ?? 'patient') as 'patient' | 'caregiver' | 'self'}
+              userDisplayName={userName || userEmail.split('@')[0] || 'You'}
+              onComplete={(cgId) => {
+                if (cgId) dispatch({ type: 'SET_CARE_GROUP', careGroupId: cgId });
+              }}
+            />
+          )}
+          {toastVisible ? (
+            <JoinedToast joinerName={joinedName} onDismiss={() => setToastVisible(false)} />
+          ) : null}
+        </>
+      )}
+
+      {state.phase.kind === 'complete' && <CompleteLoader />}
+    </>
+  );
+}
+
+function ProfileCreatingLoader() {
+  return (
+    <div className="flex min-h-[60svh] items-center justify-center">
+      <span
+        className="h-6 w-6 animate-spin rounded-full border-2"
+        style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }}
+        aria-label="Setting up your profile"
+      />
     </div>
+  );
+}
+
+function CompleteLoader() {
+  return (
+    <div className="flex min-h-[100svh] items-center justify-center" style={{ background: 'var(--bg)' }}>
+      <span
+        className="h-6 w-6 animate-spin rounded-full border-2"
+        style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }}
+        aria-label="Finishing up"
+      />
+    </div>
+  );
+}
+
+function LegacyCareGroupFallback({ userName, userEmail, userRole }: { userName: string; userEmail: string; userRole: 'patient' | 'caregiver' | 'self' }) {
+  return (
+    <CareGroupScreen
+      userRole={userRole}
+      userDisplayName={userName || userEmail.split('@')[0] || 'You'}
+      onComplete={() => { window.location.href = '/dashboard'; }}
+    />
   );
 }

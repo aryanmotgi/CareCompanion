@@ -2,6 +2,41 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.5.0.0] - 2026-05-13
+
+Web onboarding port from mobile — cinematic welcome carousel, role picker, health consent, share-invite code, caregiver code-join, live presence, iOS app nudge. Full visual + motion parity with the iPhone flow.
+
+### Added
+- **Welcome carousel** on /onboarding — 4 scenes (medications, AI chat, clinical trials, timeline) with crossfade, drift orbs, noise grain, dot pagination, auto-advance with pause-on-hover, and Skip
+- **Disclaimer modal** — server-logged consent via `/api/consent/accept` plus localStorage flag; matches mobile gate
+- **Role picker screen** — three animated option cards (Patient / Caregiver / Self) that PATCH `relationship` on the care profile before advancing
+- **Health consent screen** — what we read / what we do / what we never do / HIPAA-aligned card; animated checkbox-gated Continue
+- **Onboarding records intro** — pulse-ring icon, benefits checklist, Connect or Skip
+- **Health-connect tutorial** — three Apple Health phone-frame mockups with horizontal pager and dot indicators
+- **Share-invite screen** — 5-char code card (formatted XX-XXX), regenerate, Web Share API with clipboard fallback
+- **Caregiver code-join path** — 5-character code mode plus email-fallback with 5-second polling and 10-minute timeout
+- **Care-relationship picker** — relationship pills (spouse, parent, child, sibling, friend, other) after caregiver join
+- **Live presence toast** — when Person 2 joins the care group, Person 1 sitting on the share-invite screen sees a glow burst with their name in real time
+- **iOS app nudge banner** — soft dismissible banner shown only when the role is Patient and the browser is iOS Safari, suggesting the native app for Apple Health connect
+- **`packages/design-tokens`** — new workspace package sourced from root DESIGN.md; exports color, radii, spacing, typography, motion (Apple ease + spring presets), and named glow palette; emits a generated `globals-tokens.css` for direct CSS-var consumption
+- **Motion primitives** at `apps/web/src/components/motion/` — NoiseVeil, DriftOrbs, FadeIn, PulseRing, PhoneFrame, ProgressRing, GradientButton, useReducedMotion (Framer Motion under the hood)
+- **Phase machine** at `apps/web/src/lib/onboarding/phase-machine.ts` — discriminated-union state with useReducer, ten phases, typed actions
+- **Versioned localStorage auto-save** at `apps/web/src/lib/onboarding/auto-save.ts` — envelope schema with 7-day TTL, falls through to sessionStorage and in-memory in private browsing
+- **Onboarding funnel events** at `apps/web/src/lib/analytics/onboarding-events.ts` — phase_entered, phase_completed, error, completed, joined_toast_shown, resumed; emits to PostHog and Vercel Analytics with no PII
+
+### Changed
+- **`OnboardingShell`** rewritten around the phase machine; legacy profile picker preserved for returning multi-profile users; full reducer-driven 10-phase flow for fresh accounts
+- **Glow palette** — added cyan, violet, emerald, rose, amber variants plus press-state glow boost in `globals.css`
+- **`/onboarding` route** — added `robots: noindex,nofollow` metadata; dropped the constraining `max-w-lg` page wrapper so new phases render full-bleed; added `?force=new` dev escape for previewing the new flow as a completed user
+
+### Removed
+- Inline `@keyframes wizardStepIn` in `PatientWizard.tsx` body styles; moved canonical keyframes into `globals.css` plus reduced-motion override
+
+### Notes
+- Caregivers skip consent, records, and health-connect intentionally — they observe the patient's data via care-group membership and don't connect their own health records
+- Wizard per-step component split (D4 in the plan) deferred to a follow-up PR
+- `packages/design-tokens` mobile-consumer migration tracked in TODOS.md as P1; until that follow-up lands, mobile `theme.ts` still holds its own values (seeded from the same source so day-1 drift is zero)
+
 ## [0.4.0.1] - 2026-05-08
 
 ### Fixed

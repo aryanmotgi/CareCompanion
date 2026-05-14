@@ -1,0 +1,85 @@
+/* Auto-generated from packages/design-tokens. Do not edit by hand. */
+
+:root {
+  --bg: #0C0E1A;
+  --bg-warm: #10112B;
+  --bg-card: rgba(167, 139, 250, 0.04);
+  --bg-elevated: rgba(167, 139, 250, 0.08);
+  --bg-glass: rgba(139, 92, 246, 0.05);
+  --accent: #6366F1;
+  --accent-light: rgba(99, 102, 241, 0.15);
+  --accent-glow: rgba(99, 102, 241, 0.25);
+  --accent-hover: #818CF8;
+  --lavender: #A78BFA;
+  --lavender-light: rgba(167, 139, 250, 0.15);
+  --lavender-glow: rgba(167, 139, 250, 0.2);
+  --cyan: #67E8F9;
+  --cyan-glow: rgba(103, 232, 249, 0.15);
+  --violet: #A78BFA;
+  --violet-glow: rgba(167, 139, 250, 0.2);
+  --emerald: #6EE7B7;
+  --emerald-glow: rgba(110, 231, 183, 0.15);
+  --amber: #FCD34D;
+  --rose: #FCA5A5;
+  --text: #EDE9FE;
+  --text-secondary: #A5B4CF;
+  --text-muted: #5B6785;
+  --border: rgba(167, 139, 250, 0.08);
+  --border-hover: rgba(167, 139, 250, 0.18);
+  --border-glow: rgba(99, 102, 241, 0.3);
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --glow-blue: 0 0 40px rgba(99, 102, 241, 0.40);
+  --glow-cyan: 0 0 40px rgba(103, 232, 249, 0.35);
+  --glow-violet: 0 0 40px rgba(167, 139, 250, 0.35);
+  --glow-emerald: 0 0 40px rgba(110, 231, 183, 0.30);
+  --glow-rose: 0 0 40px rgba(252, 165, 165, 0.35);
+  --glow-amber: 0 0 40px rgba(252, 211, 77, 0.30);
+  --glow-soft-blue: 0 0 24px rgba(99, 102, 241, 0.20);
+  --glow-soft-cyan: 0 0 24px rgba(103, 232, 249, 0.18);
+  --glow-soft-violet: 0 0 24px rgba(167, 139, 250, 0.18);
+  --glow-soft-emerald: 0 0 24px rgba(110, 231, 183, 0.15);
+  --glow-soft-rose: 0 0 24px rgba(252, 165, 165, 0.18);
+  --easing-apple-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --easing-out-cubic: cubic-bezier(0.33, 1, 0.68, 1);
+  --easing-out-quad: cubic-bezier(0.5, 1, 0.89, 1);
+  --easing-in-out-sin: cubic-bezier(0.37, 0, 0.63, 1);
+  --duration-fast: 120ms;
+  --duration-base: 280ms;
+  --duration-medium: 420ms;
+  --duration-slow: 500ms;
+  --duration-carousel: 700ms;
+  --duration-ambient: 1400ms;
+  --duration-orbDrift: 14000ms;
+}
+
+[data-theme="light"] {
+  --bg: #F8F9FC;
+  --bg-warm: #FFFFFF;
+  --bg-card: rgba(99, 102, 241, 0.04);
+  --bg-elevated: rgba(99, 102, 241, 0.06);
+  --bg-glass: rgba(99, 102, 241, 0.03);
+  --accent: #6366F1;
+  --accent-light: rgba(99, 102, 241, 0.1);
+  --accent-glow: rgba(99, 102, 241, 0.15);
+  --accent-hover: #4F46E5;
+  --lavender: #7C3AED;
+  --lavender-light: rgba(124, 58, 237, 0.1);
+  --lavender-glow: rgba(124, 58, 237, 0.12);
+  --cyan: #0891B2;
+  --cyan-glow: rgba(8, 145, 178, 0.1);
+  --violet: #7C3AED;
+  --violet-glow: rgba(124, 58, 237, 0.12);
+  --emerald: #059669;
+  --emerald-glow: rgba(5, 150, 105, 0.1);
+  --amber: #D97706;
+  --rose: #E11D48;
+  --text: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+  --border: rgba(99, 102, 241, 0.12);
+  --border-hover: rgba(99, 102, 241, 0.24);
+  --border-glow: rgba(99, 102, 241, 0.3);
+}
