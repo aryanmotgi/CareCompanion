@@ -5,6 +5,11 @@ import { users, careProfiles, careGroupMembers } from '@/lib/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { AmbientBackground } from '@/components/AmbientBackground';
 import { OnboardingShell } from '@/components/OnboardingShell';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 const INVITE_ERROR_MESSAGES: Record<string, string> = {
   'invite-not-found': 'That invite link isn\'t valid. Ask your care partner to share a new one.',
@@ -28,7 +33,8 @@ export default async function OnboardingPage({
 
   // Social sign-up passes ?role=caregiver|patient|self in callbackUrl.
   // Save it to DB here if the user has no role yet (avoids a separate API call).
-  const { role: roleParam, careGroupId: joinedCareGroupId, error: errorParam } = await searchParams;
+  const { role: roleParam, careGroupId: joinedCareGroupId, error: errorParam, force } = await searchParams as { role?: string; careGroupId?: string; joined?: string; error?: string; force?: string };
+  const forceNew = process.env.NODE_ENV !== 'production' && force === 'new';
   if (!dbUser.role && roleParam && ['caregiver', 'patient', 'self'].includes(roleParam)) {
     await db.update(users).set({ role: roleParam }).where(eq(users.id, dbUser.id));
     dbUser.role = roleParam;
@@ -72,17 +78,15 @@ export default async function OnboardingPage({
   return (
     <div className="min-h-screen min-h-dvh bg-[var(--bg)] text-[var(--text)]">
       <AmbientBackground />
-      <div className="max-w-lg mx-auto px-4 py-8 sm:py-16">
-        <OnboardingShell
-          allProfiles={allProfiles}
-          userName={userName}
-          userEmail={userEmail}
-          userAvatar={userAvatar}
-          userRole={dbUser.role as 'caregiver' | 'patient' | 'self' | null | undefined}
-          initialCareGroupId={resolvedCareGroupId}
-          inviteError={inviteErrorMessage ?? undefined}
-        />
-      </div>
+      <OnboardingShell
+        allProfiles={forceNew ? [] : allProfiles}
+        userName={userName}
+        userEmail={userEmail}
+        userAvatar={userAvatar}
+        userRole={forceNew ? null : (dbUser.role as 'caregiver' | 'patient' | 'self' | null | undefined)}
+        initialCareGroupId={forceNew ? undefined : resolvedCareGroupId}
+        inviteError={inviteErrorMessage ?? undefined}
+      />
     </div>
   );
 }
