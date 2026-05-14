@@ -9,7 +9,9 @@ import {
   Platform,
   Alert,
   ScrollView,
+  Linking,
 } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -55,6 +57,15 @@ export default function LoginScreen() {
   const [appleAvailable, setAppleAvailable] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [consent, setConsent] = useState(false)
+
+  // Auto-check the consent box if the user has previously accepted (during
+  // signup or a prior login). Keeps return users from re-tapping every visit.
+  useEffect(() => {
+    AsyncStorage.getItem('cc-tos-accepted')
+      .then((v) => { if (v === '1') setConsent(true) })
+      .catch(() => {})
+  }, [])
 
   const passwordRef = useRef<TextInput | null>(null)
   const groupPwRef = useRef<TextInput | null>(null)
@@ -106,11 +117,16 @@ export default function LoginScreen() {
   }
 
   async function handleAppleSignIn() {
+    if (!consent) {
+      Alert.alert('Accept the Terms', 'Please accept the Terms of Service to continue.')
+      return
+    }
     try {
       setSocialLoading('apple')
+      await AsyncStorage.setItem('cc-tos-accepted', '1').catch(() => {})
       await signInWithApple()
       markSignedIn()
-      router.replace('/(tabs)')
+      router.replace('/care-type' as never)
     } catch (e: unknown) {
       handleSocialError('Apple', e)
     } finally {
@@ -119,11 +135,16 @@ export default function LoginScreen() {
   }
 
   async function handleGoogleSignIn() {
+    if (!consent) {
+      Alert.alert('Accept the Terms', 'Please accept the Terms of Service to continue.')
+      return
+    }
     try {
       setSocialLoading('google')
+      await AsyncStorage.setItem('cc-tos-accepted', '1').catch(() => {})
       await signInWithGoogle()
       markSignedIn()
-      router.replace('/(tabs)')
+      router.replace('/care-type' as never)
     } catch (e: unknown) {
       handleSocialError('Google', e)
     } finally {
@@ -184,8 +205,13 @@ export default function LoginScreen() {
 
   async function handleSignIn() {
     setError('')
+    if (!consent) {
+      setError('Please accept the Terms of Service to continue')
+      return
+    }
     try {
       setLoading(true)
+      await AsyncStorage.setItem('cc-tos-accepted', '1').catch(() => {})
       if (tab === 'care-group') {
         if (!groupName.trim() || !groupPassword) {
           setError('Enter your Care Group name and password')
@@ -386,8 +412,24 @@ export default function LoginScreen() {
             </>
           )}
 
+          <Pressable style={styles.consentRow} onPress={() => setConsent(!consent)}>
+            <View style={[styles.checkbox, consent && styles.checkboxChecked]}>
+              {consent && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+            <Text style={styles.consentText}>
+              I agree to the{' '}
+              <Text
+                style={styles.consentLink}
+                onPress={() => Linking.openURL('https://carecompanionai.org/terms')}
+              >
+                Terms of Service
+              </Text>
+              .
+            </Text>
+          </Pressable>
+
           <View style={styles.ctaWrap}>
-            <RippleButton onPress={handleSignIn} disabled={loading}>
+            <RippleButton onPress={handleSignIn} disabled={loading || !consent}>
               <Text style={styles.signInText}>
                 {loading ? 'Signing in…' : 'Sign In'}
               </Text>
@@ -402,7 +444,7 @@ export default function LoginScreen() {
             </Animated.View>
           </View>
 
-          <Pressable onPress={() => router.push('/care-type' as any)}>
+          <Pressable onPress={() => router.push('/signup' as never)}>
             <Text style={styles.createAccountText}>
               Don't have an account? <Text style={styles.createAccountLink}>Create one</Text>
             </Text>
@@ -466,6 +508,39 @@ const styles = StyleSheet.create({
   tabBtnActive: { backgroundColor: '#7c3aed' },
   tabText: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.5)' },
   tabTextActive: { color: '#fff' },
+  consentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+    paddingHorizontal: 2,
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  checkboxChecked: {
+    backgroundColor: '#A78BFA',
+    borderColor: '#A78BFA',
+  },
+  checkmark: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  consentText: {
+    flex: 1,
+    fontSize: 11,
+    lineHeight: 16,
+    color: 'rgba(255,255,255,0.55)',
+  },
+  consentLink: {
+    color: '#A78BFA',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
   ctaWrap: { position: 'relative', overflow: 'hidden', borderRadius: 12 },
   ctaShimmer: {
     position: 'absolute',

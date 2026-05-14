@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text, Pressable, StyleSheet, Dimensions, Alert, ScrollView, Platform } from 'react-native'
+import { View, Text, Pressable, StyleSheet, Dimensions, Alert, ScrollView, Platform, Linking } from 'react-native'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -15,6 +15,13 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from '../theme'
 import { useProfile } from '../context/ProfileContext'
 import { signOut as authSignOut } from '../services/auth'
+import {
+  useTokenContext,
+  useWelcomeContext,
+  useRecordsContext,
+  useUserTypeContext,
+  useCaregiverJoinedContext,
+} from '../../app/_layout'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 340)
@@ -36,7 +43,12 @@ export function Drawer({ visible, onClose, userName, userRole }: DrawerProps) {
   const theme = useTheme()
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { profile } = useProfile()
+  const { profile, clear: clearProfile } = useProfile()
+  const { markSignedOut } = useTokenContext()
+  const { reset: resetWelcome } = useWelcomeContext()
+  const { reset: resetRecords } = useRecordsContext()
+  const { reset: resetUserType } = useUserTypeContext()
+  const { reset: resetCaregiverJoined } = useCaregiverJoinedContext()
   const translateX = useSharedValue(-DRAWER_WIDTH)
   const backdropOpacity = useSharedValue(0)
   const timers = React.useRef<ReturnType<typeof setTimeout>[]>([])
@@ -93,6 +105,12 @@ export function Drawer({ visible, onClose, userName, userRole }: DrawerProps) {
     } catch {
       // ignore — local cleanup happens regardless
     }
+    markSignedOut()
+    clearProfile()
+    resetWelcome()
+    resetRecords()
+    resetUserType()
+    resetCaregiverJoined()
     onClose()
     timers.current.push(setTimeout(() => router.replace('/welcome' as any), 220))
   }
@@ -189,7 +207,7 @@ export function Drawer({ visible, onClose, userName, userRole }: DrawerProps) {
             iconColor={theme.lavender}
             iconBg="rgba(167,139,250,0.12)"
             label="Care Group"
-            onPress={() => navigate('/(tabs)/settings')}
+            onPress={() => navigate('/care-group-settings')}
             theme={theme}
           />
           <DrawerItem
@@ -205,7 +223,22 @@ export function Drawer({ visible, onClose, userName, userRole }: DrawerProps) {
             iconColor={theme.cyan}
             iconBg="rgba(103,232,249,0.12)"
             label="Help & Feedback"
-            onPress={() => navigate('/(tabs)/settings')}
+            onPress={() => {
+              Haptics.selectionAsync().catch(() => {})
+              onClose()
+              const url =
+                'mailto:carecompanioninc@gmail.com?subject=CareCompanion%20Help%20%26%20Feedback'
+              timers.current.push(
+                setTimeout(() => {
+                  Linking.openURL(url).catch(() => {
+                    Alert.alert(
+                      'Email unavailable',
+                      'Please email carecompanioninc@gmail.com for help and feedback.',
+                    )
+                  })
+                }, 250),
+              )
+            }}
             theme={theme}
           />
 

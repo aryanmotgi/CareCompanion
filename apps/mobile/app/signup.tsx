@@ -9,6 +9,7 @@ import {
   Platform,
   Alert,
   ScrollView,
+  Linking,
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import Animated, {
@@ -263,6 +264,7 @@ export default function SignupScreen() {
       if (displayName.trim()) {
         await AsyncStorage.setItem('cc-display-name', displayName.trim()).catch(() => {})
       }
+      await AsyncStorage.setItem('cc-tos-accepted', '1').catch(() => {})
 
       try {
         await signInWithCredentials(email.trim().toLowerCase(), password)
@@ -447,7 +449,14 @@ export default function SignupScreen() {
               {consent && <Text style={styles.checkmark}>✓</Text>}
             </View>
             <Text style={styles.consentText}>
-              I agree to the Terms and Privacy Policy, and I understand CareCompanion will access and process my health information.
+              I agree to the{' '}
+              <Text
+                style={styles.consentLink}
+                onPress={() => Linking.openURL('https://carecompanionai.org/terms')}
+              >
+                Terms of Service
+              </Text>
+              {' '}and Privacy Policy, and I understand CareCompanion will access and process my health information.
             </Text>
           </Pressable>
 
@@ -540,6 +549,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     color: 'rgba(255,255,255,0.45)',
+  },
+  consentLink: {
+    color: '#A78BFA',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   ctaWrap: { position: 'relative', overflow: 'hidden', borderRadius: 12 },
   ctaShimmer: {

@@ -12,7 +12,7 @@
  *   https://developer.apple.com/documentation/healthkit/hkclinicalrecord
  */
 import { NativeModules, Platform } from 'react-native'
-import * as SecureStore from 'expo-secure-store'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { apiClient } from './api'
 
 const CONNECTED_KEY = 'cc-healthkit-connected'
@@ -187,15 +187,15 @@ export async function requestHealthKitPermissions(): Promise<boolean> {
  */
 export async function markHealthKitConnected(): Promise<void> {
   try {
-    await SecureStore.setItemAsync(CONNECTED_KEY, '1')
+    await AsyncStorage.setItem(CONNECTED_KEY, '1')
   } catch {
-    // SecureStore unavailable (e.g. in tests) — fail open, sync just won't run.
+    // AsyncStorage unavailable (e.g. in tests) — fail open, sync just won't run.
   }
 }
 
 export async function isHealthKitConnected(): Promise<boolean> {
   try {
-    return (await SecureStore.getItemAsync(CONNECTED_KEY)) === '1'
+    return (await AsyncStorage.getItem(CONNECTED_KEY)) === '1'
   } catch {
     return false
   }

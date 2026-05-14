@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react'
-import { View, Text, Pressable, StyleSheet, StatusBar, Dimensions } from 'react-native'
+import { View, Text, Pressable, StyleSheet, StatusBar, Dimensions, Alert } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import Animated, {
   useSharedValue,
@@ -18,7 +18,15 @@ import { BlurView } from 'expo-blur'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import { useUserTypeContext } from './_layout'
+import {
+  useUserTypeContext,
+  useTokenContext,
+  useWelcomeContext,
+  useRecordsContext,
+  useCaregiverJoinedContext,
+} from './_layout'
+import { useProfile } from '../src/context/ProfileContext'
+import { signOut as authSignOut } from '../src/services/auth'
 
 const { width: SW, height: SH } = Dimensions.get('window')
 
@@ -62,6 +70,11 @@ export default function CareTypeScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { setUserType, reset } = useUserTypeContext()
+  const { markSignedOut } = useTokenContext()
+  const { reset: resetWelcome } = useWelcomeContext()
+  const { reset: resetRecords } = useRecordsContext()
+  const { reset: resetCaregiverJoined } = useCaregiverJoinedContext()
+  const { clear: clearProfile } = useProfile()
 
   const orb1 = useSharedValue(0)
   const orb2 = useSharedValue(0)
@@ -111,9 +124,27 @@ export default function CareTypeScreen() {
 
   function handleBack() {
     Haptics.selectionAsync().catch(() => {})
-    reset()
-    if (router.canGoBack()) router.back()
-    else router.replace('/signup')
+    Alert.alert(
+      'Go back?',
+      'Going back will sign you out of this account. You can sign in again later.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign out',
+          style: 'destructive',
+          onPress: async () => {
+            await authSignOut().catch(() => {})
+            markSignedOut()
+            clearProfile()
+            reset()
+            resetWelcome()
+            resetRecords()
+            resetCaregiverJoined()
+            router.replace('/welcome' as any)
+          },
+        },
+      ],
+    )
   }
 
   return (

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { Platform } from 'react-native'
 import * as SecureStore from 'expo-secure-store'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useRouter } from 'expo-router'
 import { createApiClient } from '@carecompanion/api'
 import { useTokenContext } from '../../app/_layout'
@@ -44,6 +45,7 @@ interface ProfileContextValue {
   error: Error | null
   csrfToken: string | null
   refetch: () => Promise<void>
+  clear: () => void
   apiClient: ReturnType<typeof createApiClient>
 }
 
@@ -53,6 +55,7 @@ const ProfileContext = createContext<ProfileContextValue>({
   error: null,
   csrfToken: null,
   refetch: async () => {},
+  clear: () => {},
   apiClient,
 })
 
@@ -81,6 +84,16 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       setProfile(profileData)
       setCsrfToken(csrfData.csrfToken)
       await store.setItem('cc-profile', JSON.stringify(profileData))
+      // Persist csrf so background notification handlers can POST without
+      // mounting React context (see notifications.ts daily check-in flow).
+      await store.setItem('cc-csrf-token', csrfData.csrfToken).catch(() => {})
+      // Sync the AsyncStorage 'cc-user-type' (read by RoleBadge, UserTypeContext
+      // hydration, OnboardingGate) to the backend's profile.role so the two
+      // sources of truth can't drift after sign-in on a fresh device.
+      const role = (profileData as { role?: string } | null)?.role
+      if (role === 'patient' || role === 'caregiver' || role === 'self') {
+        await AsyncStorage.setItem('cc-user-type', role).catch(() => {})
+      }
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to load profile')
 
@@ -109,8 +122,15 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     fetchProfile()
   }, [fetchProfile])
 
+  const clear = useCallback(() => {
+    setProfile(null)
+    setCsrfToken(null)
+    setError(null)
+    setLoading(false)
+  }, [])
+
   return (
-    <ProfileContext.Provider value={{ profile, loading, error, csrfToken, refetch: fetchProfile, apiClient }}>
+    <ProfileContext.Provider value={{ profile, loading, error, csrfToken, refetch: fetchProfile, clear, apiClient }}>
       {children}
     </ProfileContext.Provider>
   )
