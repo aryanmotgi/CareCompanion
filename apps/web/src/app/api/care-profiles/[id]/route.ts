@@ -59,6 +59,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (body.zipCode !== undefined) allowed.zipCode = body.zipCode
   if (body.city !== undefined) allowed.city = body.city
   if (body.state !== undefined) allowed.state = body.state
+  // self-care wizard fields
+  if (body.moodCheckIn !== undefined) allowed.moodCheckIn = body.moodCheckIn
+  if (body.supportStyle !== undefined) allowed.supportStyle = body.supportStyle
 
   if (Object.keys(allowed).length === 0) {
     return NextResponse.json({ error: 'No valid fields' }, { status: 400 })

@@ -2,6 +2,7 @@
 
 import { CaregiverWizard } from './CaregiverWizard'
 import { PatientWizard } from './PatientWizard'
+import { SelfCareWizard } from './SelfCareWizard'
 
 export function OnboardingWizard({
   careProfileId,
@@ -16,6 +17,9 @@ export function OnboardingWizard({
 }) {
   if (userRole === 'caregiver') {
     return <CaregiverWizard careProfileId={careProfileId} careGroupId={careGroupId} onComplete={onComplete} />
+  }
+  if (userRole === 'self') {
+    return <SelfCareWizard careProfileId={careProfileId} onComplete={onComplete} />
   }
   return <PatientWizard careProfileId={careProfileId} onComplete={onComplete} />
 }
