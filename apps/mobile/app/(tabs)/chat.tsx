@@ -241,7 +241,7 @@ function SuggestionCard({ icon, title, subtitle, color, onPress }: { icon: strin
     <Pressable onPress={onPress} style={styles.suggestionCard} accessibilityRole="button" accessibilityLabel={title}>
       <View style={{ borderRadius: 14, overflow: 'hidden' }}>
         <Animated.View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }, rotateStyle]}>
-          <LinearGradient colors={[color, theme.lavender, theme.cyan, color]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+          <LinearGradient colors={['#6366F1', '#A78BFA', '#6366F1']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
         </Animated.View>
         <View style={[styles.suggestionCardInner, { backgroundColor: theme.isDark ? '#0C0E1A' : '#FAFAFA', margin: 1.5, borderRadius: 12.5 }]}>
           <Ionicons name={icon as any} size={22} color={color} style={{ marginBottom: 8 }} />
@@ -984,7 +984,7 @@ const styles = StyleSheet.create({
   retryHint: { fontSize: 12, fontWeight: '600', marginTop: 6 },
   timestamp: { fontSize: 11, marginTop: 3, alignSelf: 'flex-start' },
   timestampRight: { alignSelf: 'flex-end' },
-  inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingTop: 10, paddingHorizontal: 16, borderTopWidth: 1, overflow: 'hidden' },
+  inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingTop: 10, paddingHorizontal: 12, borderTopWidth: 1 },
   scrollFab: {
     position: 'absolute',
     right: 16,
@@ -1006,7 +1006,7 @@ const styles = StyleSheet.create({
   sendIcon: { color: '#fff', fontSize: 18, fontWeight: '700' },
   suggestionsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginTop: 24, paddingHorizontal: 4 },
   suggestionCard: { width: '47%' },
-  suggestionCardInner: { borderWidth: 1, borderRadius: 14, padding: 14, minHeight: 110 },
+  suggestionCardInner: { borderWidth: 1, borderRadius: 14, padding: 14, height: 130 },
   suggestionTitle: { fontSize: 13, fontWeight: '600', lineHeight: 18, marginBottom: 4 },
   suggestionSubtitle: { fontSize: 11, lineHeight: 16 },
   introCard: {

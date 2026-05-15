@@ -49,198 +49,322 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const CARD_WIDTH = SCREEN_WIDTH - 56
 
 // ---------------------------------------------------------------------------
-// Tutorial step data
+// Tutorial step data — mirrors the real iOS HealthKit authorization flow
 // ---------------------------------------------------------------------------
 
 interface TutorialStep {
   step: number
-  title: string
   instruction: string
-  mockup: 'profile' | 'records' | 'search'
+  mockup: 'shareEmpty' | 'getStarted' | 'searchInstitution' | 'shareAdded' | 'permissions' | 'autoShare'
 }
 
 const TUTORIAL_STEPS: TutorialStep[] = [
   {
     step: 1,
-    title: 'Open Health App',
-    instruction: 'Open the Health app and tap your profile icon (top right)',
-    mockup: 'profile',
+    instruction: "Tap 'Add Account' to connect your health provider",
+    mockup: 'shareEmpty',
   },
   {
     step: 2,
-    title: 'Health Records',
-    instruction: 'Tap Health Records, then Get Started',
-    mockup: 'records',
+    instruction: "Tap 'Get Started' to begin linking your records",
+    mockup: 'getStarted',
   },
   {
     step: 3,
-    title: 'Connect Provider',
-    instruction: 'Search for your hospital and sign in with your patient portal',
-    mockup: 'search',
+    instruction: 'Search for your hospital or health network',
+    mockup: 'searchInstitution',
+  },
+  {
+    step: 4,
+    instruction: "Your institution is added — tap 'Next' to continue",
+    mockup: 'shareAdded',
+  },
+  {
+    step: 5,
+    instruction: "Allow all categories and tap 'Share'",
+    mockup: 'permissions',
+  },
+  {
+    step: 6,
+    instruction: "Select 'Automatically Share' then tap 'Done'",
+    mockup: 'autoShare',
   },
 ]
 
 // ---------------------------------------------------------------------------
-// Phone mockup components — styled to resemble iOS Health app
+// Phone mockup frames
 // ---------------------------------------------------------------------------
 
-function PhoneMockupFrame({ children }: { children: React.ReactNode }) {
+function DarkFrame({ children, backLabel }: { children: React.ReactNode; backLabel?: string }) {
   return (
-    <View style={mockStyles.phone}>
-      <LinearGradient
-        colors={['#1C1C1E', '#000000']}
-        style={mockStyles.phoneBg}
-      />
-      {/* Status bar */}
+    <View style={[mockStyles.phone, { backgroundColor: '#1C1C1E' }]}>
       <View style={mockStyles.statusBar}>
-        <Text style={mockStyles.statusTime}>9:41</Text>
+        <Text style={mockStyles.statusTime}>6:49</Text>
         <View style={mockStyles.statusRight}>
-          <Ionicons name="cellular" size={12} color="#fff" />
-          <Ionicons name="wifi" size={12} color="#fff" />
-          <Ionicons name="battery-full" size={12} color="#fff" />
+          <Ionicons name="cellular" size={10} color="#fff" />
+          <Ionicons name="wifi" size={10} color="#fff" />
+          <Ionicons name="battery-full" size={10} color="#fff" />
         </View>
       </View>
+      {backLabel && (
+        <View style={{ paddingHorizontal: 10, paddingBottom: 2 }}>
+          <Text style={{ color: '#007AFF', fontSize: 10 }}>◀ {backLabel}</Text>
+        </View>
+      )}
       {children}
     </View>
   )
 }
 
-function ProfileMockup() {
+function LightFrame({ children, backLabel }: { children: React.ReactNode; backLabel?: string }) {
   return (
-    <PhoneMockupFrame>
-      {/* Nav bar */}
-      <View style={mockStyles.navBar}>
-        <Text style={mockStyles.navTitle}>Summary</Text>
-        <View style={mockStyles.profileIcon}>
-          <Ionicons name="person-circle" size={28} color="#007AFF" />
+    <View style={[mockStyles.phone, { backgroundColor: '#F2F2F7' }]}>
+      <View style={mockStyles.statusBar}>
+        <Text style={[mockStyles.statusTime, { color: '#000' }]}>6:49</Text>
+        <View style={mockStyles.statusRight}>
+          <Ionicons name="cellular" size={10} color="#000" />
+          <Ionicons name="wifi" size={10} color="#000" />
+          <Ionicons name="battery-full" size={10} color="#000" />
         </View>
       </View>
-      {/* Highlight ring around profile icon */}
-      <View style={mockStyles.profileHighlight} />
-      {/* Content cards */}
-      <View style={mockStyles.cardList}>
-        <View style={mockStyles.healthCard}>
-          <View style={mockStyles.cardHeader}>
-            <Ionicons name="heart" size={16} color="#FF375F" />
-            <Text style={mockStyles.cardTitle}>Heart</Text>
-          </View>
-          <Text style={mockStyles.cardValue}>72 BPM</Text>
-          <Text style={mockStyles.cardSubtext}>Resting heart rate</Text>
+      {backLabel && (
+        <View style={{ paddingHorizontal: 10, paddingBottom: 2 }}>
+          <Text style={{ color: '#007AFF', fontSize: 10 }}>◀ {backLabel}</Text>
         </View>
-        <View style={mockStyles.healthCard}>
-          <View style={mockStyles.cardHeader}>
-            <Ionicons name="walk" size={16} color="#30D158" />
-            <Text style={mockStyles.cardTitle}>Activity</Text>
-          </View>
-          <Text style={mockStyles.cardValue}>8,432</Text>
-          <Text style={mockStyles.cardSubtext}>Steps today</Text>
-        </View>
-      </View>
-      {/* Arrow pointing to profile */}
-      <View style={mockStyles.arrowWrap}>
-        <Ionicons name="arrow-up" size={20} color="#6366F1" />
-        <Text style={mockStyles.arrowLabel}>Tap here</Text>
-      </View>
-    </PhoneMockupFrame>
+      )}
+      {children}
+    </View>
   )
 }
 
-function RecordsMockup() {
+// Shared dark iOS-style navigation bar (back + counter + close)
+function DarkNavBar({ counter }: { counter: string }) {
   return (
-    <PhoneMockupFrame>
-      <View style={mockStyles.navBar}>
-        <Text style={mockStyles.navTitle}>Profile</Text>
-        <View style={{ width: 28 }} />
+    <View style={mockStyles.darkNav}>
+      <View style={mockStyles.darkNavBtn}>
+        <Ionicons name="chevron-back" size={11} color="#fff" />
       </View>
-      <View style={mockStyles.cardList}>
-        <View style={mockStyles.menuItem}>
-          <Ionicons name="document-text" size={20} color="#FF9F0A" />
-          <Text style={mockStyles.menuLabel}>Health Details</Text>
-          <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
-        </View>
-        <View style={mockStyles.menuItemHighlighted}>
-          <Ionicons name="folder" size={20} color="#007AFF" />
-          <Text style={mockStyles.menuLabelHighlighted}>Health Records</Text>
-          <Ionicons name="chevron-forward" size={16} color="#007AFF" />
-        </View>
-        <View style={mockStyles.menuItem}>
-          <Ionicons name="id-card" size={20} color="#30D158" />
-          <Text style={mockStyles.menuLabel}>Health Checklist</Text>
-          <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
-        </View>
-        <View style={mockStyles.menuItem}>
-          <Ionicons name="notifications" size={20} color="#FF375F" />
-          <Text style={mockStyles.menuLabel}>Notifications</Text>
-          <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
-        </View>
+      <Text style={mockStyles.darkNavCounter}>{counter}</Text>
+      <View style={mockStyles.darkNavBtn}>
+        <Ionicons name="close" size={11} color="#fff" />
       </View>
-      {/* Get Started button */}
-      <View style={mockStyles.getStartedWrap}>
-        <View style={mockStyles.getStartedButton}>
-          <Text style={mockStyles.getStartedText}>Get Started</Text>
-        </View>
-      </View>
-    </PhoneMockupFrame>
+    </View>
   )
 }
 
-function SearchMockup() {
+// ---------------------------------------------------------------------------
+// Step 1 — Share Health Records (empty, "Add Account")
+// ---------------------------------------------------------------------------
+function ShareEmptyMockup() {
   return (
-    <PhoneMockupFrame>
-      <View style={mockStyles.navBar}>
-        <Text style={mockStyles.navTitle}>Health Records</Text>
-        <View style={{ width: 28 }} />
-      </View>
-      {/* Search bar */}
-      <View style={mockStyles.searchBar}>
-        <Ionicons name="search" size={16} color="rgba(255,255,255,0.4)" />
-        <Text style={mockStyles.searchPlaceholder}>Search for a provider...</Text>
-      </View>
-      {/* Results */}
-      <View style={mockStyles.cardList}>
-        <View style={mockStyles.providerItem}>
-          <View style={mockStyles.providerIcon}>
-            <Ionicons name="business" size={18} color="#007AFF" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={mockStyles.providerName}>Mayo Clinic</Text>
-            <Text style={mockStyles.providerLoc}>Rochester, MN</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
-        </View>
-        <View style={mockStyles.providerItem}>
-          <View style={mockStyles.providerIcon}>
-            <Ionicons name="business" size={18} color="#007AFF" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={mockStyles.providerName}>Cleveland Clinic</Text>
-            <Text style={mockStyles.providerLoc}>Cleveland, OH</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
-        </View>
-        <View style={mockStyles.providerItem}>
-          <View style={mockStyles.providerIcon}>
-            <Ionicons name="business" size={18} color="#007AFF" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={mockStyles.providerName}>Johns Hopkins</Text>
-            <Text style={mockStyles.providerLoc}>Baltimore, MD</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
+    <DarkFrame>
+      <DarkNavBar counter="1 of 4" />
+      <View style={{ paddingHorizontal: 12, paddingTop: 6 }}>
+        <Text style={mockStyles.iosTitle}>Share Health Records</Text>
+        <Text style={mockStyles.iosSubtitle}>
+          Add your provider accounts to grant "CareCompanion" access to the requested health records.
+        </Text>
+        <View style={mockStyles.emptyPill}>
+          <Text style={mockStyles.emptyPillText}>No Accounts Added</Text>
         </View>
       </View>
-      <View style={mockStyles.arrowWrapBottom}>
-        <Text style={mockStyles.arrowLabel}>Sign in with your portal</Text>
-        <Ionicons name="arrow-down" size={20} color="#6366F1" />
+      <View style={mockStyles.iosBottomBtn}>
+        <View style={mockStyles.iosBlueBtn}>
+          <Text style={mockStyles.iosBlueBtnText}>Add Account</Text>
+        </View>
       </View>
-    </PhoneMockupFrame>
+    </DarkFrame>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Step 2 — Health Records "Get Started" (light mode)
+// ---------------------------------------------------------------------------
+function GetStartedMockup() {
+  return (
+    <LightFrame backLabel="CareCompanion">
+      <View style={mockStyles.lightNav}>
+        <Text style={mockStyles.lightNavTitle}>Health Records</Text>
+        <View style={mockStyles.lightNavCheck}>
+          <Ionicons name="checkmark" size={12} color="#fff" />
+        </View>
+      </View>
+      <View style={{ paddingHorizontal: 10 }}>
+        <View style={mockStyles.lightCard}>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginBottom: 8 }}>
+            <View style={mockStyles.healthRecordsIcon}>
+              <Ionicons name="pulse" size={16} color="#007AFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={mockStyles.lightCardTitle}>Access Your Records</Text>
+              <Text style={mockStyles.lightCardBody}>
+                Connect to your provider to see your health records and get updates when there's a new entry.
+              </Text>
+            </View>
+          </View>
+          <Text style={mockStyles.lightCardLink}>About Health Records & Privacy</Text>
+          <View style={mockStyles.getStartedBtn}>
+            <Text style={mockStyles.getStartedBtnText}>Get Started</Text>
+          </View>
+        </View>
+      </View>
+    </LightFrame>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Step 3 — Search for institution (light mode)
+// ---------------------------------------------------------------------------
+function SearchInstitutionMockup() {
+  const institutions = [
+    'Sample Institution A',
+    'Sample Institution B',
+    'One Medical',
+    'Labcorp',
+  ]
+  return (
+    <LightFrame>
+      <View style={mockStyles.lightSearchNav}>
+        <View style={mockStyles.lightCloseBtn}>
+          <Ionicons name="close" size={12} color="#000" />
+        </View>
+        <Text style={mockStyles.lightNavTitle}>Search</Text>
+        <View style={{ width: 24 }} />
+      </View>
+      <View style={{ paddingHorizontal: 10 }}>
+        <Text style={mockStyles.suggestionsLabel}>Suggestions</Text>
+        <View style={mockStyles.lightList}>
+          {institutions.map((name, i) => (
+            <View key={i} style={[mockStyles.lightRow, i < institutions.length - 1 && mockStyles.lightRowBorder]}>
+              <View style={mockStyles.institutionAvatar}>
+                <Text style={mockStyles.institutionAvatarText}>S</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={mockStyles.institutionName}>{name}</Text>
+                <Text style={mockStyles.institutionSub}>Sample Data</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={12} color="#C7C7CC" />
+            </View>
+          ))}
+        </View>
+      </View>
+      <View style={mockStyles.lightSearchBar}>
+        <Ionicons name="search" size={12} color="#8E8E93" />
+        <Text style={mockStyles.lightSearchPlaceholder}>Hospitals, Networks, or Location…</Text>
+      </View>
+    </LightFrame>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Step 4 — Share Health Records (institution added)
+// ---------------------------------------------------------------------------
+function ShareAddedMockup() {
+  return (
+    <DarkFrame backLabel="Health">
+      <DarkNavBar counter="1 of 4" />
+      <View style={{ paddingHorizontal: 12, paddingTop: 6 }}>
+        <Text style={mockStyles.iosTitle}>Share Health Records</Text>
+        <Text style={mockStyles.iosSubtitle}>
+          Add your provider accounts to grant "CareCompanion" access to the requested health records.
+        </Text>
+        <View style={mockStyles.darkList}>
+          <View style={[mockStyles.darkRow, mockStyles.darkRowBorder]}>
+            <View style={mockStyles.institutionAvatarDark}>
+              <Text style={mockStyles.institutionAvatarText}>S</Text>
+            </View>
+            <Text style={mockStyles.darkRowText}>Sample Location A</Text>
+            <Ionicons name="chevron-forward" size={11} color="rgba(255,255,255,0.3)" />
+          </View>
+          <View style={mockStyles.darkRow}>
+            <View style={mockStyles.addIconCircle}>
+              <Ionicons name="add" size={13} color="#fff" />
+            </View>
+            <Text style={mockStyles.addAccountText}>Add Account</Text>
+          </View>
+        </View>
+      </View>
+      <View style={mockStyles.iosBottomBtn}>
+        <View style={mockStyles.iosBlueBtn}>
+          <Text style={mockStyles.iosBlueBtnText}>Next</Text>
+        </View>
+      </View>
+    </DarkFrame>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Step 5 — Permission toggles
+// ---------------------------------------------------------------------------
+function PermissionsMockup() {
+  const items = ['Allergies', 'Clinical Vitals', 'Conditions', 'Immunizations', 'Lab Results', 'Medications']
+  return (
+    <DarkFrame backLabel="Health">
+      <DarkNavBar counter="3 of 4" />
+      <View style={{ paddingHorizontal: 12, paddingTop: 4 }}>
+        <Text style={mockStyles.sectionLabel}>Allow "CareCompanion" to read</Text>
+        <View style={mockStyles.darkList}>
+          {items.map((label, i) => (
+            <View key={i} style={[mockStyles.toggleRow, i < items.length - 1 && mockStyles.darkRowBorder]}>
+              <Text style={mockStyles.toggleLabel}>{label}</Text>
+              <View style={mockStyles.toggleOn}>
+                <View style={mockStyles.toggleThumb} />
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+      <View style={mockStyles.iosBottomBtn}>
+        <View style={mockStyles.iosBlueBtn}>
+          <Text style={mockStyles.iosBlueBtnText}>Share</Text>
+        </View>
+        <View style={[mockStyles.iosBlueBtn, { backgroundColor: 'rgba(255,255,255,0.08)', marginTop: 5 }]}>
+          <Text style={[mockStyles.iosBlueBtnText, { color: 'rgba(255,255,255,0.6)' }]}>Don't Share</Text>
+        </View>
+      </View>
+    </DarkFrame>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Step 6 — New Health Records Requests (auto-share)
+// ---------------------------------------------------------------------------
+function AutoShareMockup() {
+  return (
+    <DarkFrame backLabel="Health">
+      <DarkNavBar counter="4 of 4" />
+      <View style={{ paddingHorizontal: 12, paddingTop: 6 }}>
+        <Text style={mockStyles.iosTitle}>New Health Records Requests</Text>
+        <Text style={mockStyles.iosSubtitle}>How would you like to share new records?</Text>
+        <View style={mockStyles.darkList}>
+          <View style={[mockStyles.darkRow, mockStyles.darkRowBorder]}>
+            <Text style={mockStyles.darkRowText}>Ask Before Sharing</Text>
+          </View>
+          <View style={mockStyles.darkRow}>
+            <Text style={mockStyles.darkRowText}>Automatically Share</Text>
+            <Ionicons name="checkmark" size={13} color="#007AFF" />
+          </View>
+        </View>
+        <Text style={mockStyles.autoShareNote}>
+          "CareCompanion" will automatically receive access to new records.
+        </Text>
+      </View>
+      <View style={mockStyles.iosBottomBtn}>
+        <View style={mockStyles.iosBlueBtn}>
+          <Text style={mockStyles.iosBlueBtnText}>Done</Text>
+        </View>
+      </View>
+    </DarkFrame>
   )
 }
 
 const MOCKUP_MAP = {
-  profile: ProfileMockup,
-  records: RecordsMockup,
-  search: SearchMockup,
+  shareEmpty: ShareEmptyMockup,
+  getStarted: GetStartedMockup,
+  searchInstitution: SearchInstitutionMockup,
+  shareAdded: ShareAddedMockup,
+  permissions: PermissionsMockup,
+  autoShare: AutoShareMockup,
 } as const
 
 // ---------------------------------------------------------------------------
@@ -306,7 +430,9 @@ export default function HealthConnectScreen() {
     setRequesting(true)
     try {
       const granted = await requestHealthKitPermissions()
-      if (!granted) {
+      // On simulator the native HK bridge is unavailable and always returns false.
+      // Proceed anyway so the success screen and navigation work in dev builds.
+      if (!granted && !__DEV__) {
         setRequesting(false)
         return
       }
@@ -556,6 +682,7 @@ export default function HealthConnectScreen() {
 // ---------------------------------------------------------------------------
 
 const mockStyles = StyleSheet.create({
+  // ── shared frame ──────────────────────────────────────────────────────────
   phone: {
     width: CARD_WIDTH * 0.65,
     height: CARD_WIDTH * 0.95,
@@ -563,10 +690,6 @@ const mockStyles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.1)',
-    position: 'relative',
-  },
-  phoneBg: {
-    ...StyleSheet.absoluteFillObject,
   },
   statusBar: {
     flexDirection: 'row',
@@ -576,178 +699,194 @@ const mockStyles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 4,
   },
-  statusTime: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  statusRight: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  navBar: {
+  statusTime: { color: '#fff', fontSize: 11, fontWeight: '600' },
+  statusRight: { flexDirection: 'row', gap: 4 },
+
+  // ── dark nav bar (steps 1, 4, 5, 6) ─────────────────────────────────────
+  darkNav: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  navTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  profileIcon: {
-    position: 'relative',
-  },
-  profileHighlight: {
-    position: 'absolute',
-    top: 38,
-    right: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: '#6366F1',
-    zIndex: 10,
-  },
-  cardList: {
     paddingHorizontal: 10,
-    gap: 6,
-    marginTop: 4,
+    paddingVertical: 4,
   },
-  healthCard: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 12,
-    padding: 10,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  cardTitle: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  cardValue: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  cardSubtext: {
-    color: 'rgba(255,255,255,0.3)',
-    fontSize: 10,
-    marginTop: 2,
-  },
-  arrowWrap: {
-    position: 'absolute',
-    top: 30,
-    right: 48,
-    alignItems: 'center',
-    zIndex: 20,
-  },
-  arrowWrapBottom: {
-    alignItems: 'center',
-    marginTop: 8,
-    gap: 4,
-  },
-  arrowLabel: {
-    color: '#6366F1',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 10,
-  },
-  menuLabel: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 13,
-    flex: 1,
-    fontWeight: '500',
-  },
-  menuItemHighlighted: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,122,255,0.12)',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(0,122,255,0.3)',
-  },
-  menuLabelHighlighted: {
-    color: '#007AFF',
-    fontSize: 13,
-    flex: 1,
-    fontWeight: '600',
-  },
-  getStartedWrap: {
-    paddingHorizontal: 10,
-    marginTop: 10,
-  },
-  getStartedButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  getStartedText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 10,
-    marginHorizontal: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 8,
-    marginBottom: 6,
-  },
-  searchPlaceholder: {
-    color: 'rgba(255,255,255,0.3)',
-    fontSize: 12,
-  },
-  providerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    gap: 10,
-  },
-  providerIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,122,255,0.12)',
+  darkNavBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  providerName: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
+  darkNavCounter: { color: 'rgba(255,255,255,0.5)', fontSize: 10 },
+
+  // ── dark-mode shared content ──────────────────────────────────────────────
+  iosTitle: { color: '#fff', fontSize: 13, fontWeight: '700', marginBottom: 4 },
+  iosSubtitle: { color: 'rgba(255,255,255,0.5)', fontSize: 10, lineHeight: 14, marginBottom: 10 },
+  emptyPill: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  providerLoc: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 10,
-    marginTop: 1,
+  emptyPillText: { color: 'rgba(255,255,255,0.3)', fontSize: 11 },
+  iosBottomBtn: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    right: 12,
   },
+  iosBlueBtn: {
+    backgroundColor: '#007AFF',
+    borderRadius: 10,
+    paddingVertical: 9,
+    alignItems: 'center',
+  },
+  iosBlueBtnText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+
+  // ── dark list (steps 4, 5, 6) ─────────────────────────────────────────────
+  darkList: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  darkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  darkRowBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)' },
+  darkRowText: { color: '#fff', fontSize: 11, flex: 1 },
+
+  // step 4 — institution row
+  institutionAvatarDark: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addIconCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#34C759',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addAccountText: { color: '#fff', fontSize: 11, fontWeight: '500' },
+
+  // step 5 — permission toggles
+  sectionLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 9, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  toggleLabel: { color: '#fff', fontSize: 10, flex: 1 },
+  toggleOn: {
+    width: 26,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#34C759',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  toggleThumb: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#fff', alignSelf: 'flex-end' },
+
+  // step 6 — auto-share note
+  autoShareNote: { color: 'rgba(255,255,255,0.35)', fontSize: 9, lineHeight: 13, marginTop: 6 },
+
+  // ── light-mode nav (steps 2, 3) ───────────────────────────────────────────
+  lightNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  lightNavTitle: { color: '#000', fontSize: 13, fontWeight: '600' },
+  lightNavCheck: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#34C759',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // step 2 — "Get Started" card
+  lightCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  healthRecordsIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,122,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lightCardTitle: { color: '#000', fontSize: 11, fontWeight: '600', marginBottom: 3 },
+  lightCardBody: { color: '#666', fontSize: 9, lineHeight: 13 },
+  lightCardLink: { color: '#007AFF', fontSize: 9, marginTop: 6, marginBottom: 8 },
+  getStartedBtn: { backgroundColor: '#007AFF', borderRadius: 8, paddingVertical: 7, alignItems: 'center' },
+  getStartedBtnText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+
+  // step 3 — search screen
+  lightSearchNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  lightCloseBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  suggestionsLabel: { color: '#8E8E93', fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
+  lightList: { backgroundColor: '#fff', borderRadius: 10, overflow: 'hidden' },
+  lightRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 7, gap: 8 },
+  lightRowBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E5E5EA' },
+  institutionAvatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  institutionAvatarText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  institutionName: { color: '#000', fontSize: 10, fontWeight: '500' },
+  institutionSub: { color: '#8E8E93', fontSize: 8 },
+  lightSearchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    borderRadius: 8,
+    marginHorizontal: 10,
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 6,
+  },
+  lightSearchPlaceholder: { color: '#8E8E93', fontSize: 9 },
 })
 
 // ---------------------------------------------------------------------------
