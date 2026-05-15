@@ -139,7 +139,7 @@ export async function POST(req: Request) {
       // Ensure HIPAA consent is set so the app layout doesn't redirect to /consent.
       // The E2E account bypasses the normal OAuth + consent UI flow, so this gate
       // would otherwise block every test navigation.
-      // Also set role so middleware doesn't redirect to /set-role on every request.
+      // Also set role so middleware doesn't redirect to /onboarding on every request.
       await db
         .update(users)
         .set({ hipaaConsent: true, role: 'patient' })

@@ -10,7 +10,7 @@ import {
 import { BlurView } from 'expo-blur'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-export const DISCLAIMER_SEEN_KEY = 'cc-disclaimer-seen'
+const DISCLAIMER_SEEN_KEY = 'cc-disclaimer-seen'
 
 export function DisclaimerModal() {
   const [state, setState] = useState<'loading' | 'visible' | 'dismissed'>(

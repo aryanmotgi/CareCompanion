@@ -9,6 +9,8 @@
     "ios:device": "expo run:ios --device",
     "prebuild": "expo prebuild --clean",
     "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
     "bundle-check": "expo export --platform ios --output-dir /tmp/cc-bundle-check --clear",
     "android": "expo run:android"
   },
@@ -57,6 +59,7 @@
   },
   "devDependencies": {
     "@types/react": "~18.3.12",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.0.0"
   }
 }

@@ -85,7 +85,7 @@ jobs:
 
       - name: Check 3 — Session cookie valid
         id: session
-        if: steps.auth.outputs.failed != 'true'
+        if: steps.auth.outputs.failed != 'true' && steps.auth.outputs.server_not_configured != 'true'
         run: |
           COOKIE="${{ steps.auth.outputs.cookie }}"
           if [ -z "$COOKIE" ]; then
@@ -106,7 +106,7 @@ jobs:
           fi
 
       - name: Send failure alert
-        if: steps.liveness.outputs.failed == 'true' || steps.auth.outputs.failed == 'true' || steps.session.outputs.failed == 'true'
+        if: (steps.liveness.outputs.failed == 'true' || steps.auth.outputs.failed == 'true' || steps.session.outputs.failed == 'true') && steps.auth.outputs.server_not_configured != 'true'
         uses: dawidd6/action-send-mail@611879133a9569642c41be66f4a323286e9b8a3b # v4
         with:
           server_address: smtp.gmail.com
@@ -133,5 +133,5 @@ jobs:
             Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Fail job if any check failed
-        if: steps.liveness.outputs.failed == 'true' || steps.auth.outputs.failed == 'true' || steps.session.outputs.failed == 'true'
+        if: (steps.liveness.outputs.failed == 'true' || steps.auth.outputs.failed == 'true' || steps.session.outputs.failed == 'true') && steps.auth.outputs.server_not_configured != 'true'
         run: exit 1

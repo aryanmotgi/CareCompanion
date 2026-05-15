@@ -30,6 +30,12 @@ class WellnessVitals: NSObject {
 
   // MARK: - Fetch
 
+  // Alias kept for the JS service layer (`NativeModules.WellnessVitals.today()`).
+  @objc func today(_ resolve: @escaping RCTPromiseResolveBlock,
+                    rejecter reject: @escaping RCTPromiseRejectBlock) {
+    fetchDailyVitals(resolve, rejecter: reject)
+  }
+
   @objc func fetchDailyVitals(_ resolve: @escaping RCTPromiseResolveBlock,
                                rejecter reject: @escaping RCTPromiseRejectBlock) {
     guard HKHealthStore.isHealthDataAvailable() else {

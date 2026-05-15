@@ -85,7 +85,7 @@ export const { handlers, auth } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user, account, profile, trigger, session }) {
-      // On session update (e.g. after /set-role saves to DB), update token immediately
+      // On session update (e.g. after onboarding RolePicker saves role to DB), update token immediately
       // from the data passed to update(), falling back to a DB re-read if not provided.
       if (trigger === 'update' && token.dbUserId) {
         if (session?.role !== undefined) {
@@ -139,7 +139,7 @@ export const { handlers, auth } = NextAuth({
           token.displayName = dbDisplayName ?? user.name ?? socialEmail
           token.isDemo = false
 
-          // Fetch role — non-critical; null sends user to /set-role after sign-in
+          // Fetch role — non-critical; null sends user to /onboarding after sign-in
           try {
             const socialDbUser = await db.query.users.findFirst({ where: eq(users.id, dbUserId) })
             token.role = socialDbUser?.role ?? null
@@ -152,7 +152,7 @@ export const { handlers, auth } = NextAuth({
           token.displayName = user.name ?? user.email ?? ''
           token.isDemo = false
 
-          // Fetch role — non-critical; null sends user to /set-role after sign-in
+          // Fetch role — non-critical; null sends user to /onboarding after sign-in
           try {
             const credDbUser = await db.query.users.findFirst({ where: eq(users.id, user.id as string) })
             token.role = credDbUser?.role ?? null

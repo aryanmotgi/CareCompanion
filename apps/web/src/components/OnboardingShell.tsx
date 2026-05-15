@@ -15,7 +15,8 @@ import { CareGroupJoin } from './onboarding/CareGroupJoin';
 import { CareRelationship } from './onboarding/CareRelationship';
 import { JoinedToast } from './onboarding/JoinedToast';
 import { IosAppBanner } from './onboarding/IosAppBanner';
-import { initialState, reducer, type Role } from '@/lib/onboarding/phase-machine';
+import { useSession } from 'next-auth/react';
+import { initialState, reducer, canGoBack, type Role } from '@/lib/onboarding/phase-machine';
 import { clearDraft, loadDraft, saveDraft } from '@/lib/onboarding/auto-save';
 import { onboardingAnalytics } from '@/lib/analytics/onboarding-events';
 
@@ -111,11 +112,16 @@ export function OnboardingShell({
     hydrated.current = true;
     if (skipToWizard) return;
     const draft = loadDraft();
-    if (draft) {
-      dispatch({ type: 'HYDRATE', state: draft });
-      onboardingAnalytics.resumed(draft.phase.kind);
+    if (!draft) return;
+    // Stale draft: server says user has no role yet but draft jumped past role pick.
+    // Discard so the role phase isn't skipped after a re-signup.
+    if (derivedRole == null && draft.role != null) {
+      clearDraft();
+      return;
     }
-  }, [skipToWizard]);
+    dispatch({ type: 'HYDRATE', state: draft });
+    onboardingAnalytics.resumed(draft.phase.kind);
+  }, [skipToWizard, derivedRole]);
 
   // Persist draft on every state change (debounced)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -184,7 +190,8 @@ export function OnboardingShell({
     return null;
   }, [state.careProfileId]);
 
-  // Onboarding completion: clear draft, fire analytics, redirect
+  // Onboarding completion: clear draft, fire analytics, refresh JWT, redirect
+  const { update: updateSession } = useSession();
   const onboardingStart = useRef<number>(Date.now());
   useEffect(() => {
     if (state.phase.kind !== 'complete') return;
@@ -196,8 +203,14 @@ export function OnboardingShell({
       window.localStorage.removeItem('welcome_banner_dismissed');
     } catch { /* private browsing */ }
     clearDraft();
-    window.location.href = '/dashboard';
-  }, [state.phase.kind, state.role, state.skipped]);
+    // Refresh JWT from DB so middleware sees current role before /dashboard nav.
+    // Without this, a session whose cookie predates the role pick (e.g. resumed-from-draft)
+    // gets bounced back to /onboarding on the very next request.
+    (async () => {
+      try { await updateSession(); } catch { /* network hiccup — middleware will recover via DB re-read on next request */ }
+      window.location.href = '/dashboard';
+    })();
+  }, [state.phase.kind, state.role, state.skipped, updateSession]);
 
   // ===== Render by phase =====
 
@@ -237,10 +250,31 @@ export function OnboardingShell({
     </div>
   ) : null;
 
+  const showBack = canGoBack(state.phase);
+
   return (
     <>
       {errorBanner}
       <IosAppBanner role={state.role} />
+
+      {showBack && (
+        <button
+          type="button"
+          onClick={() => dispatch({ type: 'BACK' })}
+          aria-label="Go back"
+          className="fixed left-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full transition-all duration-150 active:scale-95"
+          style={{
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            backdropFilter: 'blur(12px)',
+            color: 'var(--text, #EDE9FE)',
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+      )}
 
       {state.phase.kind === 'disclaimer' && (
         <DisclaimerModal onAccepted={() => dispatch({ type: 'DISMISS_DISCLAIMER' })} />

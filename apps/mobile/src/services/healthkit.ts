@@ -14,25 +14,35 @@
 import { NativeModules, Platform } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { apiClient } from './api'
+import {
+  classifyError,
+  formatLastSynced as formatLastSyncedPure,
+  backoffFor,
+} from './internal/pure'
+import {
+  normalise,
+  type ExtendedHealthKitRecord,
+  type RawClinicalRecord,
+} from './internal/normalizers'
+import type { HealthKitRecord } from '@carecompanion/types'
+
+// Re-exports for callers that previously imported these from this module.
+export { formatLastSyncedPure as formatLastSynced }
+export type {
+  HealthKitConditionRecord,
+  HealthKitAllergyRecord,
+  HealthKitProcedureRecord,
+  HealthKitVitalSignRecord,
+  HealthKitImmunizationRecord,
+} from './internal/normalizers'
 
 const CONNECTED_KEY = 'cc-healthkit-connected'
-import type {
-  HealthKitRecord,
-  HealthKitMedicationRecord,
-  HealthKitLabRecord,
-} from '@carecompanion/types'
+const LAST_SYNCED_KEY = 'cc-healthkit-last-synced'
+const RETRY_QUEUE_KEY = 'cc-healthkit-retry-queue'
 
 // ---------------------------------------------------------------------------
 // Native module type declaration
 // ---------------------------------------------------------------------------
-
-interface RawClinicalRecord {
-  id: string
-  type: string          // HKClinicalTypeIdentifier raw value
-  displayName: string
-  startDate: string     // ISO 8601
-  fhirData: string | null
-}
 
 interface NativeHealthKitBridge {
   requestAuthorization(): Promise<boolean>
@@ -47,6 +57,149 @@ interface NativeHealthKitBridge {
 type BaselineCharacteristics = {
   dateOfBirth: string | null
   sexAtBirth: 'female' | 'male' | 'intersex' | null
+}
+
+// ---------------------------------------------------------------------------
+// Sync state machine + listeners
+// ---------------------------------------------------------------------------
+
+export type SyncState =
+  | { status: 'idle' }
+  | { status: 'syncing' }
+  | { status: 'success'; at: number; synced: number }
+  | { status: 'error'; at: number; message: string; userActionable: boolean }
+  | { status: 'retrying'; at: number; attempt: number; nextAt: number }
+
+let currentState: SyncState = { status: 'idle' }
+const listeners = new Set<(s: SyncState) => void>()
+
+function emit(next: SyncState) {
+  currentState = next
+  for (const fn of listeners) {
+    try { fn(next) } catch { /* listener errors must not affect sync */ }
+  }
+}
+
+export function getSyncState(): SyncState {
+  return currentState
+}
+
+export function subscribeSyncState(fn: (s: SyncState) => void): () => void {
+  listeners.add(fn)
+  fn(currentState)
+  return () => { listeners.delete(fn) }
+}
+
+// ---------------------------------------------------------------------------
+// Retry queue (AsyncStorage-backed, exponential backoff)
+// ---------------------------------------------------------------------------
+
+type QueueEntry = {
+  id: string                     // uuid-ish
+  records: ExtendedHealthKitRecord[]
+  attempt: number                // 0-indexed attempts already made (0 = none)
+  nextAttemptAt: number          // epoch ms
+  lastError: string | null
+}
+
+async function readQueue(): Promise<QueueEntry[]> {
+  try {
+    const raw = await AsyncStorage.getItem(RETRY_QUEUE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? (parsed as QueueEntry[]) : []
+  } catch {
+    return []
+  }
+}
+
+async function writeQueue(q: QueueEntry[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(RETRY_QUEUE_KEY, JSON.stringify(q))
+  } catch {
+    // Storage full or unavailable — drop silently; next sync attempt re-queues.
+  }
+}
+
+async function enqueueRetry(records: ExtendedHealthKitRecord[], attempt: number, lastError: string): Promise<void> {
+  const delay = backoffFor(attempt)
+  if (delay === null) {
+    console.warn('[HealthKit] dropping batch after', attempt, 'attempts:', lastError)
+    return
+  }
+  const q = await readQueue()
+  q.push({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    records,
+    attempt,
+    nextAttemptAt: Date.now() + delay,
+    lastError,
+  })
+  await writeQueue(q)
+  emit({ status: 'retrying', at: Date.now(), attempt: attempt + 1, nextAt: Date.now() + delay })
+}
+
+/**
+ * Drain queue entries whose nextAttemptAt has passed. Called opportunistically
+ * on every syncHealthKitData() invocation and from background-sync.
+ */
+export async function drainRetryQueue(): Promise<{ retried: number; succeeded: number }> {
+  const q = await readQueue()
+  if (q.length === 0) return { retried: 0, succeeded: 0 }
+  const now = Date.now()
+  const ready = q.filter((e) => e.nextAttemptAt <= now)
+  if (ready.length === 0) return { retried: 0, succeeded: 0 }
+
+  const remaining: QueueEntry[] = q.filter((e) => e.nextAttemptAt > now)
+  let succeeded = 0
+
+  for (const entry of ready) {
+    try {
+      await apiClient.healthkit.sync(entry.records as HealthKitRecord[])
+      succeeded += 1
+    } catch (err) {
+      const { cls, message } = classifyError(err)
+      if (cls === 'drop' || cls === 'reauth') {
+        // 400 = malformed → drop. 401/403 = auth → drop from queue; UI must re-auth.
+        if (cls === 'reauth') {
+          emit({ status: 'error', at: Date.now(), message: 'Session expired — sign in again', userActionable: true })
+        }
+        continue
+      }
+      const nextAttempt = entry.attempt + 1
+      const delay = backoffFor(nextAttempt)
+      if (delay === null) {
+        console.warn('[HealthKit] dropping queued batch after', nextAttempt, 'attempts:', message)
+        continue
+      }
+      remaining.push({ ...entry, attempt: nextAttempt, nextAttemptAt: Date.now() + delay, lastError: message })
+    }
+  }
+  await writeQueue(remaining)
+  return { retried: ready.length, succeeded }
+}
+
+// ---------------------------------------------------------------------------
+// Last-synced tracking
+// ---------------------------------------------------------------------------
+
+export async function getLastSyncedAt(): Promise<number | null> {
+  try {
+    const raw = await AsyncStorage.getItem(LAST_SYNCED_KEY)
+    if (!raw) return null
+    const n = parseInt(raw, 10)
+    return Number.isFinite(n) ? n : null
+  } catch {
+    return null
+  }
+}
+
+async function setLastSyncedAt(epochMs: number): Promise<void> {
+  try {
+    await AsyncStorage.setItem(LAST_SYNCED_KEY, String(epochMs))
+  } catch {
+    // ignore
+  }
 }
 
 /**
@@ -205,43 +358,59 @@ export async function isHealthKitConnected(): Promise<boolean> {
  * Fetch clinical records from HealthKit, normalise them into HealthKitRecord
  * objects, and POST them to the backend sync endpoint.
  */
-export async function syncHealthKitData(): Promise<{ synced: number }> {
-  if (!Bridge) return { synced: 0 }
+export async function syncHealthKitData(): Promise<{ synced: number; queued: boolean; error?: string }> {
+  if (!Bridge) return { synced: 0, queued: false }
+
+  emit({ status: 'syncing' })
+
+  // Drain anything ready from the retry queue first.
+  await drainRetryQueue()
 
   let raw: RawClinicalRecord[]
   try {
     raw = await Bridge.fetchClinicalRecords()
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
     console.warn('[HealthKit] fetchClinicalRecords failed:', err)
-    return { synced: 0 }
+    emit({ status: 'error', at: Date.now(), message, userActionable: false })
+    return { synced: 0, queued: false, error: message }
   }
 
-  // __DEV__ MOCK: the simulator can never surface real HKClinicalRecord data
-  // (no path to provider OAuth portals). Substitute hardcoded FHIR-shaped
-  // records so we can walk the post-onboarding screens (home, timeline, AI)
-  // with realistic shapes. Production builds are unaffected.
   if (__DEV__ && raw.length === 0) {
     raw = DEV_MOCK_RECORDS
     console.log('[HealthKit] __DEV__: substituting', raw.length, 'mock clinical records (simulator has no real provider portal)')
   }
 
-  const records: HealthKitRecord[] = raw.flatMap((r) => {
+  const records: ExtendedHealthKitRecord[] = raw.flatMap((r) => {
     const parsed = normalise(r)
     return parsed ? [parsed] : []
   })
 
-  if (records.length === 0) return { synced: 0 }
+  if (records.length === 0) {
+    emit({ status: 'success', at: Date.now(), synced: 0 })
+    return { synced: 0, queued: false }
+  }
 
-  // Don't let a backend failure (auth, network, migration not yet run) propagate
-  // up and bail the onboarding flow. Treat it as zero-synced — the gate logic in
-  // /onboarding-records can then surface a friendly "no records found yet"
-  // alert instead of a generic "could not connect" error. A real fix happens
-  // later when the user retries from inside the app.
   try {
-    return await apiClient.healthkit.sync(records)
+    const result = await apiClient.healthkit.sync(records as HealthKitRecord[])
+    const now = Date.now()
+    await setLastSyncedAt(now)
+    emit({ status: 'success', at: now, synced: result.synced })
+    return { synced: result.synced, queued: false }
   } catch (err) {
-    console.warn('[HealthKit] sync POST failed:', err)
-    return { synced: 0 }
+    const { cls, status, message } = classifyError(err)
+    if (cls === 'reauth') {
+      emit({ status: 'error', at: Date.now(), message: 'Session expired — sign in again', userActionable: true })
+      return { synced: 0, queued: false, error: message }
+    }
+    if (cls === 'drop') {
+      console.warn('[HealthKit] sync POST rejected (400) — dropping batch:', message)
+      emit({ status: 'error', at: Date.now(), message: `Backend rejected payload (${status})`, userActionable: false })
+      return { synced: 0, queued: false, error: message }
+    }
+    // 5xx / network — queue for retry.
+    await enqueueRetry(records, 0, message)
+    return { synced: 0, queued: true, error: message }
   }
 }
 
@@ -258,135 +427,40 @@ export async function replaceHealthKitData(): Promise<{
   const empty = { synced: 0, errors: 0, deleted: { medications: 0, appointments: 0, labResults: 0 } }
   if (!Bridge) return empty
 
+  emit({ status: 'syncing' })
+
   let raw: RawClinicalRecord[]
   try {
     raw = await Bridge.fetchClinicalRecords()
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
     console.warn('[HealthKit] fetchClinicalRecords failed:', err)
+    emit({ status: 'error', at: Date.now(), message, userActionable: false })
     return empty
   }
 
-  const records: HealthKitRecord[] = raw.flatMap((r) => {
+  const records: ExtendedHealthKitRecord[] = raw.flatMap((r) => {
     const parsed = normalise(r)
     return parsed ? [parsed] : []
   })
 
-  return apiClient.healthkit.replace(records, { keepCareProfile: true })
-}
-
-// ---------------------------------------------------------------------------
-// Normalisation helpers
-// ---------------------------------------------------------------------------
-
-function normalise(r: RawClinicalRecord): HealthKitRecord | null {
-  const fhir = parseFhir(r.fhirData)
-
-  switch (r.type) {
-    case 'HKClinicalTypeIdentifierMedicationRecord':
-      return normaliseMedication(r, fhir)
-    case 'HKClinicalTypeIdentifierLabResultRecord':
-      return normaliseLabResult(r, fhir)
-    default:
-      // Condition, Procedure, Allergy, VitalSign, Immunization records — no
-      // CC type maps cleanly to them yet, skip rather than coerce.
-      return null
-  }
-}
-
-function normaliseMedication(
-  r: RawClinicalRecord,
-  fhir: Record<string, unknown> | null,
-): HealthKitMedicationRecord {
-  // Pull FHIR MedicationRequest fields when available.
-  const dosage = firstPath<Record<string, unknown>[]>(fhir, 'dosageInstruction')?.[0]
-  const coding = firstPath<Record<string, unknown>[]>(fhir, 'medicationCodeableConcept', 'coding')?.[0]
-
-  return {
-    type: 'medication',
-    healthkitFhirId: r.id,
-    name: (coding?.display as string) ?? r.displayName,
-    dose: (dosage?.text as string) ?? null,
-    frequency: stringifyTiming(
-      firstPath<Record<string, unknown>>(dosage ?? {}, 'timing'),
-    ),
-    prescribingDoctor: extractPractitionerName(fhir),
-  }
-}
-
-function normaliseLabResult(
-  r: RawClinicalRecord,
-  fhir: Record<string, unknown> | null,
-): HealthKitLabRecord {
-  const valueQuantity = firstPath<Record<string, unknown>>(fhir, 'valueQuantity')
-  const refRange = firstPath<Record<string, unknown>[]>(fhir, 'referenceRange')?.[0]
-
-  return {
-    type: 'labResult',
-    healthkitFhirId: r.id,
-    testName: r.displayName,
-    value: valueQuantity
-      ? String(valueQuantity.value ?? '')
-      : (firstPath<string>(fhir, 'valueString') ?? ''),
-    unit: (valueQuantity?.unit as string) ?? null,
-    referenceRange: refRange
-      ? `${refRange.low ?? ''}–${refRange.high ?? ''}`
-      : null,
-    dateTaken: isoToDate(r.startDate),
-  }
-}
-
-// ---------------------------------------------------------------------------
-// FHIR utilities
-// ---------------------------------------------------------------------------
-
-function parseFhir(raw: string | null): Record<string, unknown> | null {
-  if (!raw) return null
   try {
-    return JSON.parse(raw) as Record<string, unknown>
-  } catch {
-    return null
+    const result = await apiClient.healthkit.replace(records as HealthKitRecord[], { keepCareProfile: true })
+    const now = Date.now()
+    await setLastSyncedAt(now)
+    emit({ status: 'success', at: now, synced: result.synced })
+    return result
+  } catch (err) {
+    const { cls, message } = classifyError(err)
+    if (cls === 'reauth') {
+      emit({ status: 'error', at: Date.now(), message: 'Session expired — sign in again', userActionable: true })
+    } else {
+      emit({ status: 'error', at: Date.now(), message, userActionable: false })
+    }
+    return empty
   }
 }
 
-/** Traverse a FHIR object by a dot-separated path. */
-function firstPath<T>(
-  obj: Record<string, unknown> | null | undefined,
-  ...keys: string[]
-): T | null {
-  let cursor: unknown = obj
-  for (const key of keys) {
-    if (cursor == null || typeof cursor !== 'object') return null
-    cursor = (cursor as Record<string, unknown>)[key]
-  }
-  return (cursor as T) ?? null
-}
+// Normalisers + FHIR helpers live in ./internal/normalizers — pure code,
+// unit-tested in src/services/internal/__tests__/normalizers.test.ts.
 
-function extractPractitionerName(fhir: Record<string, unknown> | null): string | null {
-  // MedicationRequest.requester or Observation.performer
-  const ref =
-    firstPath<Record<string, unknown>>(fhir, 'requester') ??
-    firstPath<Record<string, unknown>[]>(fhir, 'performer')?.[0]
-  return (ref?.display as string) ?? null
-}
-
-function stringifyTiming(timing: Record<string, unknown> | null): string | null {
-  if (!timing) return null
-  const code = firstPath<string>(timing, 'code', 'text')
-  if (code) return code
-  const repeat_ = firstPath<Record<string, unknown>>(timing, 'repeat')
-  if (!repeat_) return null
-  const freq = repeat_.frequency
-  const period = repeat_.period
-  const periodUnit = repeat_.periodUnit
-  if (freq && period && periodUnit) return `${freq}x per ${period}${periodUnit}`
-  return null
-}
-
-/** Convert an ISO 8601 timestamp to a YYYY-MM-DD date string. */
-function isoToDate(iso: string): string | null {
-  try {
-    return new Date(iso).toISOString().split('T')[0] ?? null
-  } catch {
-    return null
-  }
-}
