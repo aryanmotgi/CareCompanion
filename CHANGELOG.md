@@ -32,6 +32,17 @@ Web onboarding port from mobile — cinematic welcome carousel, role picker, hea
 ### Removed
 - Inline `@keyframes wizardStepIn` in `PatientWizard.tsx` body styles; moved canonical keyframes into `globals.css` plus reduced-motion override
 
+### Fixed (Mobile App)
+- **Auth persistence for self-care users** — `UserTypeProvider` now recognizes `'self'` as a valid stored value; previously fell through to `'unset'`, causing onboarding funnel restart on every cold launch
+- **Post-signup care-type navigation glitch** — moved `markSignedIn()` inside the 950ms timeout after `router.replace('/care-type')` so AuthGate no longer races the explicit navigation with its own redirect, eliminating the double-navigate flash
+- **Double password bullet dots** — iOS native UIKit renders `secureTextEntry` bullets at a system layer that ignores `color:'transparent'`; set `secureTextEntry={false}` on the TextInput and manage display entirely in JS so only the custom overlay dots show
+- **"Try Again" pill too narrow** — added `paddingHorizontal: 32` to `RippleButton` gradient style; button now fits multi-word labels without clipping
+- **Insurance screen** — replaced WIP placeholder with minimal Coming Soon screen (shield icon + centered heading); no broken or partial UI
+- **Health-connect carousel mockups** — rewrote `mockStyles` to cover all 6 panels (Share Empty, Get Started, Search Institution, Share Added, Permissions, Auto Share) with correct dark/light theming
+- **HealthKit authorization race** — `requestAuthorization()` return value ignored; iOS never reveals denial (privacy by design) and some bridge implementations return `false` on already-authorized, which blocked the connect flow
+- **DocumentScanner LogBox crash** — `TurboModuleRegistry.get()` check before `require()` prevents Hermes from throwing through the native error channel when the scanner binary isn't compiled in
+- **Guided tour Labs tab alignment** — added Labs tab step (TAB_COUNT 4→5) to match the updated tab bar
+
 ### Notes
 - Caregivers skip consent, records, and health-connect intentionally — they observe the patient's data via care-group membership and don't connect their own health records
 - Wizard per-step component split (D4 in the plan) deferred to a follow-up PR
