@@ -310,12 +310,23 @@ const DEV_MOCK_RECORDS: RawClinicalRecord[] = [
 
 /**
  * Request HealthKit authorization for all clinical record types.
- * Returns false (not throws) when HealthKit is unavailable or the user denies.
+ *
+ * iOS authorization is intentionally opaque: HK never reveals whether the user
+ * denied (privacy by design). The native callback's `success` flag means only
+ * "the authorization process completed without a system error" — it is true
+ * even when all types were already authorized and no UI was shown. Some native
+ * bridge implementations incorrectly forward `false` in the already-authorized
+ * case, which would block the connect flow. We therefore ignore the return
+ * value and treat any non-throwing call as success.
+ *
+ * Returns false only when HealthKit is genuinely unavailable (no Bridge) or
+ * when the native call throws a real system error.
  */
 export async function requestHealthKitPermissions(): Promise<boolean> {
   if (!Bridge) return false
   try {
-    return await Bridge.requestAuthorization()
+    await Bridge.requestAuthorization()
+    return true
   } catch {
     return false
   }

@@ -11,6 +11,8 @@
  *   npx expo install react-native-document-scanner-plugin
  * Then rebuild via `npx expo run:ios --device <udid>`.
  */
+import { TurboModuleRegistry } from 'react-native'
+
 interface ScanResult {
   imageUris: string[]
   // Best-effort OCR text from the first page. null when OCR unavailable.
@@ -34,6 +36,15 @@ let pickerCached: ImagePickerModule | undefined
 
 function getScanner(): ScannerModule {
   if (scannerCached !== undefined) return scannerCached
+  // Use non-enforcing .get() to probe availability without throwing.
+  // TurboModuleRegistry.getEnforcing (called by the package at module-init)
+  // fires through Hermes's own error channel before JS try/catch can suppress
+  // it, causing a LogBox crash every render. Checking first avoids the require
+  // entirely when the native binary doesn't have DocumentScanner compiled in.
+  if (TurboModuleRegistry.get('DocumentScanner') == null) {
+    scannerCached = null
+    return null
+  }
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require('react-native-document-scanner-plugin')
