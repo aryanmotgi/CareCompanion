@@ -17,8 +17,10 @@ import { validateCsrf } from '@/lib/csrf';
 const ipLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 30 });
 const userLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 10 });
 
-// maxDuration = 60s requires Vercel Pro plan or higher. Hobby plan caps at 10s.
-export const maxDuration = 60;
+// Vercel Pro/Fluid Compute allows up to 300s. Chat pipeline (Aurora cold-start
+// + orchestrator + Claude streaming) can exceed 60s under load, causing
+// ERR_ABORTED mid-stream and "Having trouble connecting" in the UI.
+export const maxDuration = 300;
 
 async function handler(req: Request) {
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
