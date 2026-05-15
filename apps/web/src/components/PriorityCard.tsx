@@ -15,6 +15,7 @@ interface PriorityCardProps {
   onToggle?: () => void
   expandedContent?: React.ReactNode
   isPriority?: boolean
+  accentBorder?: string
 }
 
 const VARIANT_STYLES = {
@@ -60,6 +61,7 @@ export function PriorityCard({
   onToggle,
   expandedContent,
   isPriority = false,
+  accentBorder,
 }: PriorityCardProps) {
   const s = VARIANT_STYLES[variant]
   const isUrgent = variant === 'urgent'
@@ -102,7 +104,10 @@ export function PriorityCard({
   // Expandable cards — urgent gets spinning gradient border
   if (expandedContent && onToggle) {
     return (
-      <div className={isUrgent ? 'gradient-border-spin' : ''}>
+      <div
+        className={isUrgent ? 'gradient-border-spin' : ''}
+        style={!isUrgent && accentBorder ? { borderLeft: `3px solid ${accentBorder}`, borderRadius: '12px', overflow: 'hidden' } : undefined}
+      >
         <ExpandableCard
           expanded={expanded}
           onToggle={onToggle}
@@ -129,7 +134,10 @@ export function PriorityCard({
 
   // Fallback: non-expandable card
   return (
-    <div className={isUrgent ? 'gradient-border-spin' : ''}>
+    <div
+      className={isUrgent ? 'gradient-border-spin' : ''}
+      style={!isUrgent && accentBorder ? { borderLeft: `3px solid ${accentBorder}`, borderRadius: '12px', overflow: 'hidden' } : undefined}
+    >
       <div
         className={`${s.bg} border ${s.border} rounded-xl p-4 animate-press card-hover-glow`}
         style={animStyle}

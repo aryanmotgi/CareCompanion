@@ -1,6 +1,7 @@
 // apps/mobile/app/(tabs)/trials.tsx
 import React, { useEffect, useState } from 'react'
 import {
+  Alert,
   View,
   Text,
   ScrollView,
@@ -26,6 +27,8 @@ import { useProfile } from '../../src/context/ProfileContext'
 import { ShimmerSkeleton } from '../../src/components/ShimmerSkeleton'
 import { TrialMatchCard } from '../../src/components/trials/TrialMatchCard'
 import { CloseMatchCard } from '../../src/components/trials/CloseMatchCard'
+import { ErrorCard } from '../../src/components/ErrorCard'
+import { AmbientOrbs } from '../../src/components/AmbientOrbs'
 import { TabFadeWrapper } from './_layout'
 import type { TrialMatch } from '@carecompanion/api'
 
@@ -218,13 +221,21 @@ export default function TrialsScreen() {
   }
 
   async function saveCancerType() {
-    if (!cancerTypeInput.trim() || !csrfToken) return
+    const value = cancerTypeInput.trim()
+    if (!value) {
+      Alert.alert('Diagnosis required', 'Enter your cancer type to find matching trials.')
+      return
+    }
+    if (!csrfToken) {
+      Alert.alert('Session not ready', 'Restart the app and try again.')
+      return
+    }
     setSubmittingCancerType(true)
     try {
-      await apiClient.updateMe({ cancerType: cancerTypeInput.trim() }, csrfToken)
+      await apiClient.careProfile.update({ cancer_type: value }, csrfToken)
       await refetch()
-    } catch {
-      // Silent fail — user sees the input still populated
+    } catch (err: any) {
+      Alert.alert('Could not save diagnosis', err?.message || 'Try again.')
     } finally {
       setSubmittingCancerType(false)
     }
@@ -268,6 +279,7 @@ export default function TrialsScreen() {
   return (
     <TabFadeWrapper>
       <View style={[styles.root, { backgroundColor: theme.bg }]}>
+        <AmbientOrbs speedMultiplier={0.2} />
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <View style={styles.headerRow}>
@@ -332,23 +344,46 @@ export default function TrialsScreen() {
             </View>
           )}
 
-          {/* Error banner from live search */}
+          {/* Error from live search */}
           {liveError ? (
-            <View style={[styles.errorBanner, { backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.25)' }]}>
-              <Text style={[styles.errorText, { color: '#F87171' }]}>
-                Search failed: {liveError}
-              </Text>
+            <View style={{ marginBottom: 12 }}>
+              <ErrorCard
+                title="Search failed"
+                message={liveError}
+                retrying={liveRunning}
+                onRetry={() => void runLive()}
+              />
             </View>
           ) : null}
 
           {/* Load error */}
           {loadError && !loading ? (
-            <View style={[styles.promptCard, { backgroundColor: theme.bgCard, borderColor: theme.border, alignItems: 'center' }]}>
-              <Ionicons name="alert-circle-outline" size={36} color={theme.rose} style={{ marginBottom: 10 }} />
-              <Text style={[styles.promptTitle, { color: theme.text }]}>Couldn't load matches</Text>
-              <Text style={[styles.promptSub, { color: theme.textMuted, textAlign: 'center' }]}>
-                Check your connection and try again.
-              </Text>
+            <View style={{ marginBottom: 12 }}>
+              <ErrorCard
+                title="Couldn't load matches"
+                message="Check your connection and try again."
+                retrying={loading}
+                onRetry={() => {
+                  setLoadError(false)
+                  setLoading(true)
+                  Promise.allSettled([
+                    apiClient.trials.getMatches(),
+                    apiClient.trials.getSaved(),
+                  ]).then(([matchResult, savedResult]) => {
+                    if (matchResult.status === 'fulfilled') {
+                      setMatched(matchResult.value.matched ?? [])
+                      setClose(matchResult.value.close ?? [])
+                    } else {
+                      setLoadError(true)
+                    }
+                    if (savedResult.status === 'fulfilled') {
+                      const savedMap: Record<string, string> = {}
+                      for (const s of savedResult.value) savedMap[s.nctId] = s.interestStatus
+                      setSaved(savedMap)
+                    }
+                  }).finally(() => setLoading(false))
+                }}
+              />
             </View>
           ) : null}
 

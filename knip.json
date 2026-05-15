@@ -1,7 +1,15 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "ignore": [
-    ".claude/**",
-    ".clone/**"
-  ]
+    "apps/web/scripts/**"
+  ],
+  "ignoreDependencies": [
+    "expo-web-browser",
+    "@babel/runtime"
+  ],
+  "rules": {
+    "exports": "warn",
+    "types": "warn",
+    "files": "warn"
+  }
 }

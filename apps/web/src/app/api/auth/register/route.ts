@@ -44,7 +44,6 @@ export async function POST(req: Request) {
         email: normalizedEmail,
         displayName,
         passwordHash,
-        role: parsed.data.role ?? null,
         ...(hipaaConsent && {
           hipaaConsent: true,
           hipaaConsentAt: new Date(),

@@ -88,7 +88,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   if (isUser) {
     return (
       <div className="flex justify-end mb-3 animate-slide-up">
-        <div className="chat-bubble-user max-w-[85%] sm:max-w-[75%] bg-gradient-to-br from-[#6366F1] to-[#A78BFA] rounded-[16px_16px_4px_16px] px-4 py-2.5 text-white text-sm leading-relaxed">
+        <div data-testid="chat-bubble-user" className="chat-bubble-user max-w-[85%] sm:max-w-[75%] bg-gradient-to-br from-[#6366F1] to-[#A78BFA] rounded-[16px_16px_4px_16px] px-4 py-2.5 text-white text-sm leading-relaxed">
           {text}
         </div>
       </div>
@@ -102,7 +102,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
         </svg>
       </div>
-      <div className="flex-1 chat-bubble-ai max-w-[90%] sm:max-w-[80%] group">
+      <div data-testid="chat-bubble-ai" className="flex-1 chat-bubble-ai max-w-[90%] sm:max-w-[80%] group">
         {/* Tool results */}
         {toolParts.map((part) => {
           const toolPart = part as unknown as { type: string; toolName?: string; state?: string; result?: Record<string, unknown>; input?: Record<string, unknown> };

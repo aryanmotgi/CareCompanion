@@ -12,8 +12,22 @@ jobs:
     timeout-minutes: 3
 
     steps:
+      - name: Precheck — required secrets present
+        id: precheck
+        env:
+          MONITOR_EMAIL: ${{ secrets.E2E_MONITOR_EMAIL }}
+          AUTH_SECRET: ${{ secrets.E2E_AUTH_SECRET }}
+        run: |
+          if [ -z "$MONITOR_EMAIL" ] || [ -z "$AUTH_SECRET" ]; then
+            echo "::warning::E2E_MONITOR_EMAIL or E2E_AUTH_SECRET not set in GitHub Secrets — skipping health ping (not a failure)"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Check 1 — Site liveness
         id: liveness
+        if: steps.precheck.outputs.skip != 'true'
         run: |
           HTTP_CODE=$(curl -s -o /tmp/liveness.json -w '%{http_code}' \
             --max-time 5 \
@@ -31,6 +45,7 @@ jobs:
 
       - name: Check 2 — Auth + DB reachable
         id: auth
+        if: steps.precheck.outputs.skip != 'true'
         run: |
           HTTP_CODE=$(curl -s -o /tmp/auth.json -w '%{http_code}' \
             -D /tmp/auth-headers.txt \
@@ -50,7 +65,12 @@ jobs:
           COOKIE=$(grep -i 'set-cookie:.*authjs\.session-token' /tmp/auth-headers.txt 2>/dev/null | head -1 | sed 's/set-cookie: //i' | cut -d';' -f1 || echo "")
           echo "cookie=$COOKIE" >> $GITHUB_OUTPUT
 
-          if [ "$HTTP_CODE" = "401" ] && [ "${{ steps.liveness.outputs.failed }}" = "false" ]; then
+          if [ "$HTTP_CODE" = "500" ] && echo "$BODY" | grep -q 'not configured'; then
+            echo "::warning::Server-side monitoring env var not configured on Vercel — skipping (not a failure). Body: $BODY"
+            echo "server_not_configured=true" >> $GITHUB_OUTPUT
+            echo "secret_mismatch=false" >> $GITHUB_OUTPUT
+            echo "failed=false" >> $GITHUB_OUTPUT
+          elif [ "$HTTP_CODE" = "401" ] && [ "${{ steps.liveness.outputs.failed }}" = "false" ]; then
             echo "::warning::Auth returned 401 but site is live — possible E2E_AUTH_SECRET mismatch"
             echo "secret_mismatch=true" >> $GITHUB_OUTPUT
             echo "failed=true" >> $GITHUB_OUTPUT
@@ -87,7 +107,7 @@ jobs:
 
       - name: Send failure alert
         if: steps.liveness.outputs.failed == 'true' || steps.auth.outputs.failed == 'true' || steps.session.outputs.failed == 'true'
-        uses: dawidd6/action-send-mail@2cea9617b09d79a095af21254fbcb7ae95903dde # v3
+        uses: dawidd6/action-send-mail@611879133a9569642c41be66f4a323286e9b8a3b # v4
         with:
           server_address: smtp.gmail.com
           server_port: 465

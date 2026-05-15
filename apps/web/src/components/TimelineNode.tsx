@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -81,10 +81,63 @@ function formatEventTime(isoString: string): string {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
+// ─── ICS helper ──────────────────────────────────────────────────────────────
+
+function toIcsDate(isoString: string): string {
+  return isoString.replace(/[-:]/g, '').split('.')[0] + 'Z';
+}
+
 // ─── Detail renderer ─────────────────────────────────────────────────────────
 
 function EventDetails({ event }: { event: TimelineEvent }) {
-  const data = event.data || {};
+  const [prepItems, setPrepItems] = useState<string[] | null>(null);
+  const [prepLoading, setPrepLoading] = useState(false);
+
+  const data = useMemo(() => event.data || {}, [event.data]);
+  const isAppointment = event.type === 'appointment';
+  const location = isAppointment && data.location ? String(data.location) : null;
+
+  useEffect(() => {
+    if (!isAppointment) return;
+    const rawId = event.id.replace(/^appt-/, '');
+    setPrepLoading(true);
+    fetch(`/api/prep?appointmentId=${encodeURIComponent(rawId)}`)
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d.data?.items)) setPrepItems(d.data.items); })
+      .catch(() => {})
+      .finally(() => setPrepLoading(false));
+  }, [event.id, isAppointment]);
+
+  const handleAddToCalendar = useCallback(() => {
+    const start = toIcsDate(event.date);
+    const end = toIcsDate(new Date(new Date(event.date).getTime() + 60 * 60 * 1000).toISOString());
+    const loc = data.location ? String(data.location) : '';
+    const doctor = data.doctorName ? `Dr. ${String(data.doctorName)}` : '';
+
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//CareCompanion//EN',
+      'BEGIN:VEVENT',
+      `SUMMARY:${event.title}`,
+      `DTSTART:${start}`,
+      `DTEND:${end}`,
+      loc ? `LOCATION:${loc}` : null,
+      doctor ? `DESCRIPTION:Appointment with ${doctor}` : 'DESCRIPTION:CareCompanion appointment',
+      `UID:${event.id}@carecompanion`,
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].filter(Boolean).join('\r\n');
+
+    const blob = new Blob([ics], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${event.title.replace(/[^a-z0-9]/gi, '-')}.ics`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [event, data]);
+
   const details: { label: string; value: string }[] = [];
 
   switch (event.type) {
@@ -95,7 +148,6 @@ function EventDetails({ event }: { event: TimelineEvent }) {
       break;
     case 'appointment':
       if (data.specialty) details.push({ label: 'Specialty', value: String(data.specialty) });
-      if (data.location) details.push({ label: 'Location', value: String(data.location) });
       if (data.doctorName) details.push({ label: 'Doctor', value: String(data.doctorName) });
       break;
     case 'lab':
@@ -120,16 +172,80 @@ function EventDetails({ event }: { event: TimelineEvent }) {
       break;
   }
 
-  if (details.length === 0) return null;
+  if (details.length === 0 && !isAppointment) return null;
 
   return (
-    <div className="mt-3 space-y-1.5">
-      {details.map((d, i) => (
-        <div key={i} className="flex items-baseline gap-2 text-xs">
-          <span className="text-[var(--text-muted)] shrink-0">{d.label}:</span>
-          <span className="text-[var(--text-secondary)]">{d.value}</span>
+    <div className="mt-3 space-y-2" onClick={e => e.stopPropagation()}>
+      {/* Detail rows */}
+      {details.length > 0 && (
+        <div className="space-y-1.5">
+          {details.map((d, i) => (
+            <div key={i} className="flex items-baseline gap-2 text-xs">
+              <span className="text-[var(--text-muted)] shrink-0">{d.label}:</span>
+              <span className="text-[var(--text-secondary)]">{d.value}</span>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
+
+      {/* Action buttons */}
+      {isAppointment && (
+        <div className="flex items-center gap-2 flex-wrap pt-0.5">
+          <button
+            onClick={handleAddToCalendar}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 text-xs font-medium hover:bg-indigo-500/20 transition-colors"
+          >
+            <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            Add to Calendar
+          </button>
+          {location && (
+            <a
+              href={`https://maps.google.com/?q=${encodeURIComponent(location)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors"
+            >
+              <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              Get Directions
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* AI Prep checklist */}
+      {isAppointment && (
+        <div className="pt-0.5">
+          {prepLoading && (
+            <div className="space-y-1.5 animate-pulse">
+              <div className="h-2 w-24 bg-white/[0.06] rounded" />
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-2 bg-white/[0.04] rounded" style={{ width: `${70 + i * 8}%` }} />
+              ))}
+            </div>
+          )}
+          {!prepLoading && prepItems && prepItems.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Prep checklist</p>
+              <ul className="space-y-1">
+                {prepItems.map((item, i) => (
+                  <li key={i} className="flex items-start gap-1.5 text-xs text-[var(--text-secondary)]">
+                    <span className="text-indigo-400 shrink-0 mt-0.5">•</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

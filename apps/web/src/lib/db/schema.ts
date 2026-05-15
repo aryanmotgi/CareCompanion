@@ -30,6 +30,23 @@ export const users = pgTable('users', {
   role: text('role'),  // 'caregiver' | 'patient' | 'self' — null for pre-feature users
 })
 
+// ── User Identities (per-provider linkage) ───────────────────────────────────
+// One row per (user, auth provider). Lets a single user link 'password' +
+// 'apple' + 'google' without provider collisions on the legacy users.cognito_sub
+// column.
+export const userIdentities = pgTable('user_identities', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull(),       // 'password' | 'apple' | 'google' | 'cognito'
+  providerSub: text('provider_sub'),          // null for password rows
+  email: text('email'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (t) => ({
+  providerSubUniq: uniqueIndex('user_identities_provider_sub_uniq').on(t.provider, t.providerSub),
+  userProviderUniq: uniqueIndex('user_identities_user_provider_uniq').on(t.userId, t.provider),
+  emailIdx: index('user_identities_email_idx').on(t.email),
+}))
+
 // ── Care Profiles ─────────────────────────────────────────────────────────────
 export const careProfiles = pgTable('care_profiles', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -53,9 +70,18 @@ export const careProfiles = pgTable('care_profiles', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   caregivingExperience: text('caregiving_experience'), // 'first_time' | 'some_experience' | 'experienced'
   primaryConcern: text('primary_concern'),             // 'medications' | 'lab_results' | 'coordinating_care' | 'emotional_support'
+  moodCheckIn: text('mood_check_in'),                  // 'okay' | 'anxious' | 'overwhelmed' | 'proactive' — self-care wizard step 1
+  supportStyle: text('support_style'),                 // 'informed' | 'check_in' | 'appointments' | 'available' — self-care wizard step 4
   city:    text('city'),
   state:   text('state'),
   zipCode: text('zip_code'),
+  // ── Tier-1 onboarding additions (migration 010) ─────────────────────────
+  dateOfBirth:     date('date_of_birth'),               // PHI — never log
+  sexAtBirth:      text('sex_at_birth'),                // 'female' | 'male' | 'intersex' | 'prefer_not'
+  biomarkers:      jsonb('biomarkers'),                 // cancer-type-specific keys: HER2, ER, PR, EGFR, ALK, PD-L1, KRAS, …
+  diagnosisDate:   date('diagnosis_date'),
+  ecogStatus:      integer('ecog_status'),              // 0..4
+  priorTreatments: text('prior_treatments'),
   fieldOverrides: jsonb('field_overrides'),            // { cancerType: true, stage: true, ... } — FHIR sync skips true fields
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })
@@ -397,10 +423,12 @@ export const sharedLinks = pgTable('shared_links', {
   title: text('title'),
   data: jsonb('data').notNull().default({}),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-  viewCount: integer('view_count').default(0),
+  viewCount: integer('view_count').notNull().default(0),
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-})
+}, (table) => ({
+  userTypExpiryIdx: index('shared_links_user_type_expiry_idx').on(table.userId, table.type, table.expiresAt, table.revokedAt),
+}))
 
 // ── Scanned Documents ─────────────────────────────────────────────────────────
 export const scannedDocuments = pgTable('scanned_documents', {
@@ -512,7 +540,7 @@ export const symptomInsights = pgTable('symptom_insights', {
   id: uuid('id').defaultRandom().primaryKey(),
   careProfileId: uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
   type: text('type').notNull(), // 'trend' | 'correlation' | 'anomaly' | 'milestone'
-  severity: text('severity').notNull(), // 'info' | 'watch' | 'alert'
+  severity: text('severity').notNull(), // 'critical' | 'warning' | 'positive' | 'informational' (legacy: 'info' | 'watch' | 'alert')
   status: text('status').notNull().default('active'), // 'active' | 'read' | 'dismissed' | 'archived'
   title: text('title').notNull(),
   body: text('body').notNull(),
@@ -555,7 +583,12 @@ export const careGroups = pgTable('care_groups', {
 export const careGroupMembers = pgTable('care_group_members', {
   careGroupId: uuid('care_group_id').notNull().references(() => careGroups.id, { onDelete: 'cascade' }),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  role: text('role').notNull(),  // 'owner' | 'member'
+  role: text('role').notNull(),  // 'owner' | 'member' — group leadership axis
+  // ── Caregiver split (migration 012) ────────────────────────────────────────
+  userType: text('user_type').notNull().default('patient'),  // 'patient' | 'caregiver' — user type axis
+  relationship: text('relationship'),                         // 'spouse'|'parent'|'child'|'sibling'|'friend'|'other' (null for patients)
+  perms: jsonb('perms').notNull().default({}),                // { can_read_meds, can_read_appts, can_read_labs, can_chat, can_edit_appts }
+  paused: boolean('paused').notNull().default(false),         // patient's privacy mute toggle (deferred UI — see TODOS)
   joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow(),
 }, (t) => ({
   pk: primaryKey({ columns: [t.careGroupId, t.userId] }),
@@ -570,6 +603,36 @@ export const careGroupInvites = pgTable('care_group_invites', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+// ── Care Group Codes (migration 012) ──────────────────────────────────────────
+// 5-char invite codes (Crockford base32 minus 0/O/1/I/L/U). Replaces the long
+// invite token for new caregiver onboarding flows. Old `careGroupInvites`
+// coexists for 30 days behind a deprecation header.
+export const careGroupCodes = pgTable('care_group_codes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  careGroupId: uuid('care_group_id').notNull().references(() => careGroups.id, { onDelete: 'cascade' }),
+  code: text('code').notNull().unique(),
+  createdBy: uuid('created_by').notNull().references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  maxUses: integer('max_uses').notNull().default(5),
+  useCount: integer('use_count').notNull().default(0),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+})
+
+// ── Care Group Join Requests (migration 012) ──────────────────────────────────
+// Caregiver-first email fallback: when a caregiver downloads the app before
+// the patient has sent them a code, they enter the patient's email and the
+// patient gets an in-app approval prompt.
+export const careGroupJoinRequests = pgTable('care_group_join_requests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  patientUserId: uuid('patient_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  caregiverUserId: uuid('caregiver_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('pending'),  // 'pending' | 'approved' | 'denied' | 'expired'
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
 })
 
 // ── Clinical Trials — Mutations ───────────────────────────────────────────────

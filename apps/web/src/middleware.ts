@@ -18,6 +18,7 @@ const PUBLIC_PATHS = [
   '/api/auth',       // Auth.js callback routes — prefix covers /api/auth/callback/cognito etc.
   '/api/chat/guest', // Guest chat API
   '/api/e2e',        // E2E production monitor auth (gated by E2E_AUTH_SECRET, not session)
+  '/api/health',     // Health check — no session required; route gates detail behind CRON_SECRET
   '/demo-walkthrough',
   '/about',
   '/privacy',
@@ -39,6 +40,7 @@ const PUBLIC_PATHS = [
   // '/api/debug-auth' intentionally omitted — dev-only, requires NODE_ENV check internally
   '/shared',                 // Public share pages
   '/reset-password',          // Password reset pages
+  '/join',                    // Care Group invite landing — page handles new-user redirect to /signup
 ]
 
 export default auth((req) => {
@@ -69,7 +71,9 @@ export default auth((req) => {
       return new NextResponse(null, { status: 204 })
     }
     const url = req.nextUrl.clone()
+    const callbackPath = pathname + req.nextUrl.search
     url.pathname = '/login'
+    url.search = '?callbackUrl=' + encodeURIComponent(callbackPath)
     return NextResponse.redirect(url)
   }
 

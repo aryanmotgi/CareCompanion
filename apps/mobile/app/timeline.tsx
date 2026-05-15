@@ -1,17 +1,19 @@
-import React from 'react'
+import React, { useRef, useState } from 'react'
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from '../src/theme'
-import { Timeline, TimelineShareButton } from '../src/components/Timeline'
+import { Timeline, TimelineShareButton, TimelineFilterBar } from '../src/components/Timeline'
 import { AmbientOrbs } from '../src/components/AmbientOrbs'
 
 export default function TimelineScreen() {
   const theme = useTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
+  const scrollRef = useRef<ScrollView>(null)
+  const [filter, setFilter] = useState<string>('all')
 
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
@@ -24,20 +26,24 @@ export default function TimelineScreen() {
       <AmbientOrbs speedMultiplier={0.2} />
 
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={22} color={theme.text} />
-        </Pressable>
-        <Text style={[styles.title, { color: theme.text }]}>Treatment Journey</Text>
-        <TimelineShareButton />
+      <View style={[styles.headerWrap, { paddingTop: insets.top + 8 }]}>
+        <View style={styles.headerRow}>
+          <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={22} color={theme.text} />
+          </Pressable>
+          <Text style={[styles.title, { color: theme.text }]}>Treatment Journey</Text>
+          <TimelineShareButton />
+        </View>
+        <TimelineFilterBar filter={filter} onChange={setFilter} />
       </View>
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Timeline />
+        <Timeline scrollRef={scrollRef} filter={filter} />
       </ScrollView>
     </View>
   )
@@ -45,7 +51,8 @@ export default function TimelineScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, overflow: 'hidden' },
-  header: {
+  headerWrap: { paddingBottom: 10 },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

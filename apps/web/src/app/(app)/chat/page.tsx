@@ -2,8 +2,8 @@ import { Suspense } from 'react';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { users, careProfiles, messages } from '@/lib/db/schema';
-import { eq, asc } from 'drizzle-orm';
+import { users, careProfiles, messages, conversations } from '@/lib/db/schema';
+import { eq, asc, desc } from 'drizzle-orm';
 import { ChatInterface } from '@/components/ChatInterface';
 
 async function ChatContent() {
@@ -21,12 +21,23 @@ async function ChatContent() {
 
   if (!profile) redirect('/setup');
 
-  const dbMessages = await db
-    .select()
-    .from(messages)
-    .where(eq(messages.userId, dbUser.id))
-    .orderBy(asc(messages.createdAt))
-    .limit(50);
+  const [dbMessages, recentConversations] = await Promise.all([
+    db.select()
+      .from(messages)
+      .where(eq(messages.userId, dbUser.id))
+      .orderBy(asc(messages.createdAt))
+      .limit(50),
+    db.select({
+        id: conversations.id,
+        title: conversations.title,
+        lastMessagePreview: conversations.lastMessagePreview,
+        updatedAt: conversations.updatedAt,
+      })
+      .from(conversations)
+      .where(eq(conversations.userId, dbUser.id))
+      .orderBy(desc(conversations.updatedAt))
+      .limit(3),
+  ]);
 
   const initialMessages = dbMessages.map((msg) => ({
     id: msg.id,
@@ -39,6 +50,7 @@ async function ChatContent() {
     <ChatInterface
       initialMessages={initialMessages}
       patientName={profile.patientName ?? undefined}
+      recentConversations={recentConversations}
     />
   );
 }

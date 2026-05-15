@@ -2,6 +2,81 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.5.0.1] - 2026-05-14
+
+### Fixed
+- **Chat UI** — suggestion cards now uniform fixed height (130pt) with consistent purple gradient border matching the send button
+- **Chat input bar** — removed overflow clipping so scan/send buttons are fully visible; tightened spacing
+- **Guided tour** — added missing Labs tab step (5 steps for 5 tabs), corrected pill centering math with `TAB_H_PAD=4` offset to align highlights under correct tab icons
+- **DocumentScanner crash** — replaced `TurboModuleRegistry.getEnforcing` with a non-enforcing `.get()` guard; prevents Hermes error-channel crash on every render of NewMedicationScreen when DocumentScanner native binary is not compiled in
+
+## [0.5.0.0] - 2026-05-13
+
+Web onboarding port from mobile — cinematic welcome carousel, role picker, health consent, share-invite code, caregiver code-join, live presence, iOS app nudge. Full visual + motion parity with the iPhone flow.
+
+### Added
+- **Welcome carousel** on /onboarding — 4 scenes (medications, AI chat, clinical trials, timeline) with crossfade, drift orbs, noise grain, dot pagination, auto-advance with pause-on-hover, and Skip
+- **Disclaimer modal** — server-logged consent via `/api/consent/accept` plus localStorage flag; matches mobile gate
+- **Role picker screen** — three animated option cards (Patient / Caregiver / Self) that PATCH `relationship` on the care profile before advancing
+- **Health consent screen** — what we read / what we do / what we never do / HIPAA-aligned card; animated checkbox-gated Continue
+- **Onboarding records intro** — pulse-ring icon, benefits checklist, Connect or Skip
+- **Health-connect tutorial** — three Apple Health phone-frame mockups with horizontal pager and dot indicators
+- **Share-invite screen** — 5-char code card (formatted XX-XXX), regenerate, Web Share API with clipboard fallback
+- **Caregiver code-join path** — 5-character code mode plus email-fallback with 5-second polling and 10-minute timeout
+- **Care-relationship picker** — relationship pills (spouse, parent, child, sibling, friend, other) after caregiver join
+- **Live presence toast** — when Person 2 joins the care group, Person 1 sitting on the share-invite screen sees a glow burst with their name in real time
+- **iOS app nudge banner** — soft dismissible banner shown only when the role is Patient and the browser is iOS Safari, suggesting the native app for Apple Health connect
+- **`packages/design-tokens`** — new workspace package sourced from root DESIGN.md; exports color, radii, spacing, typography, motion (Apple ease + spring presets), and named glow palette; emits a generated `globals-tokens.css` for direct CSS-var consumption
+- **Motion primitives** at `apps/web/src/components/motion/` — NoiseVeil, DriftOrbs, FadeIn, PulseRing, PhoneFrame, ProgressRing, GradientButton, useReducedMotion (Framer Motion under the hood)
+- **Phase machine** at `apps/web/src/lib/onboarding/phase-machine.ts` — discriminated-union state with useReducer, ten phases, typed actions
+- **Versioned localStorage auto-save** at `apps/web/src/lib/onboarding/auto-save.ts` — envelope schema with 7-day TTL, falls through to sessionStorage and in-memory in private browsing
+- **Onboarding funnel events** at `apps/web/src/lib/analytics/onboarding-events.ts` — phase_entered, phase_completed, error, completed, joined_toast_shown, resumed; emits to PostHog and Vercel Analytics with no PII
+
+### Changed
+- **`OnboardingShell`** rewritten around the phase machine; legacy profile picker preserved for returning multi-profile users; full reducer-driven 10-phase flow for fresh accounts
+- **Glow palette** — added cyan, violet, emerald, rose, amber variants plus press-state glow boost in `globals.css`
+- **`/onboarding` route** — added `robots: noindex,nofollow` metadata; dropped the constraining `max-w-lg` page wrapper so new phases render full-bleed; added `?force=new` dev escape for previewing the new flow as a completed user
+
+### Removed
+- Inline `@keyframes wizardStepIn` in `PatientWizard.tsx` body styles; moved canonical keyframes into `globals.css` plus reduced-motion override
+
+### Notes
+- Caregivers skip consent, records, and health-connect intentionally — they observe the patient's data via care-group membership and don't connect their own health records
+- Wizard per-step component split (D4 in the plan) deferred to a follow-up PR
+- `packages/design-tokens` mobile-consumer migration tracked in TODOS.md as P1; until that follow-up lands, mobile `theme.ts` still holds its own values (seeded from the same source so day-1 drift is zero)
+
+## [0.4.0.1] - 2026-05-08
+
+### Fixed
+- **Production monitor** — E2E send button selector updated from `button[title="Send"]` to `button[title="Send message"]` to match ChatInterface — fixes 5 consecutive failing smoke test runs
+
+## [0.4.0.0] - 2026-05-06
+
+Oncology-aware radar, richer memory extraction, AI orchestration improvements, Premium Care OS DB migration, health API and middleware fixes.
+
+### Added
+- **Oncology-aware daily radar** — nadir window detection (days 7–14 of chemo cycle), recovery phase signals, caregiver burnout detection (prior 7-day vs last 7-day activity drop), 48hr per-category dedup on push notifications, guaranteed positive insight when any positive signal exists, treatment cycle context injected into Claude prompt
+- **Treatment cycle tracking in radar** — batch-fetches active `treatmentCycles` per profile; computes `cycleDay`, `isNadir`, `isRecovery`; surfaces oncology-specific warnings proactively
+- **Memory extraction: emotional_state and treatment_response categories** — AI now extracts caregiver/patient emotional signals ("exhausted", "hopeful", "scared") and treatment response signals ("tumor shrinking", "CEA went down", "nausea improving after cycle 3") into dedicated memory categories
+- **Memory extraction: richer fact specificity** — updated Haiku prompt extracts dose changes, specific lab values, upcoming events, and doctor opinions; source rules prevent extracting questions, hypotheticals, or AI-said content as facts
+- **Premium Care OS DB migration** — migration 008 adds check-in radar, care hub, timeline, and notification tables; `apply-migration` runner script for safe schema application
+- **CLAUDE.md team rules** — commit conventions, file ownership, pre-push checklist, branch hygiene, PHI logging rules, Aurora migration requirements, security guidelines
+
+### Fixed
+- **Health API IN-list binding** — corrected RDS Data API parameter binding for multi-value IN queries; fixed `rows` shape mismatch in response
+- **Middleware session bypass** — `/api/health` now accessible without session for uptime monitoring
+- **Demo account password** — requires `!` character for password strength compliance
+- **Severity string mismatch** — CareHub view, PDF export, and timeline API now handle both legacy (`info`/`watch`/`alert`) and new (`critical`/`warning`/`positive`/`informational`) insight severity strings
+
+### Changed
+- **AI orchestration fast-path** — short messages (< 20 words) bypass specialist routing for lower latency
+- **Radar push notifications** — gated to `CRITICAL`/`WARNING` only; `informational` and `positive` insights appear in-app only
+- **Aurora auto-pause retry shim removed** — simplified DB connection handling after Aurora reliability improvements
+
+### Removed
+- Aurora auto-pause retry logic (no longer needed)
+- Duplicate `scripts/seed_demo.ts` (consolidated into `apps/web/scripts/`)
+
 ## [0.3.1.0] - 2026-05-03
 
 Security hardening, Care Tab reliability, dashboard fixes, trials engine improvements, design system polish, document scan/upload fixes, Settings/Profile/Emergency Card audit, Care Groups/Care Team/Sharing security audit, Insurance/Financial/Compliance/HIPAA security audit, Google Calendar / HealthKit Integrations audit, Community Forum + Sharing Links full security audit, Cron Jobs / Production Monitor / Admin Routes security audit, auth UX polish, Clinical Trials full UX+a11y+security pass, full onboarding flow UX+a11y+bug-fix pass, Care Groups onboarding deep UX audit, and mobile app: Batch 1+2 features.

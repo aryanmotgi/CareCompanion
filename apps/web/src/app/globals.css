@@ -60,11 +60,67 @@
   --shadow-glow-cyan: 0 0 40px rgba(103, 232, 249, 0.08);
   --shadow-glow-violet: 0 0 40px rgba(167, 139, 250, 0.12);
 
+  /* Named glow palette (used by onboarding screens) */
+  --glow-blue:    0 0 40px rgba(99, 102, 241, 0.40);
+  --glow-cyan:    0 0 40px rgba(103, 232, 249, 0.35);
+  --glow-violet:  0 0 40px rgba(167, 139, 250, 0.35);
+  --glow-emerald: 0 0 40px rgba(110, 231, 183, 0.30);
+  --glow-rose:    0 0 40px rgba(252, 165, 165, 0.35);
+  --glow-amber:   0 0 40px rgba(252, 211, 77, 0.30);
+
+  --glow-soft-blue:    0 0 24px rgba(99, 102, 241, 0.20);
+  --glow-soft-cyan:    0 0 24px rgba(103, 232, 249, 0.18);
+  --glow-soft-violet:  0 0 24px rgba(167, 139, 250, 0.18);
+  --glow-soft-emerald: 0 0 24px rgba(110, 231, 183, 0.15);
+  --glow-soft-rose:    0 0 24px rgba(252, 165, 165, 0.18);
+
+  --glow-press-blue: 0 0 56px rgba(99, 102, 241, 0.55);
+
+  /* Motion easing */
+  --easing-apple-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --easing-out-cubic:  cubic-bezier(0.33, 1, 0.68, 1);
+  --easing-out-quad:   cubic-bezier(0.5, 1, 0.89, 1);
+  --easing-in-out-sin: cubic-bezier(0.37, 0, 0.63, 1);
+
+  /* Motion duration */
+  --duration-fast:     120ms;
+  --duration-base:     280ms;
+  --duration-medium:   420ms;
+  --duration-slow:     500ms;
+  --duration-carousel: 700ms;
+  --duration-ambient:  1400ms;
+
   /* Radius — soft & rounded */
   --radius-sm: 10px;
   --radius-md: 14px;
   --radius-lg: 20px;
   --radius-xl: 24px;
+}
+
+/* ===== Onboarding wizard keyframes (moved out of inline component styles) ===== */
+@keyframes wizardStepIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes onboardingPulse {
+  0%   { opacity: 0;   transform: scale(1); }
+  55%  { opacity: 0.2; }
+  100% { opacity: 0;   transform: scale(1.9); }
+}
+@keyframes onboardingOrbDrift {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(12px, -16px); }
+}
+@keyframes onboardingGlowPulse {
+  0%, 100% { box-shadow: var(--glow-soft-blue); }
+  50%      { box-shadow: var(--glow-blue); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
 
 /* ===== DARK MODE (explicit override for WCAG AA contrast) ===== */
@@ -1609,6 +1665,50 @@ img, video, svg {
   }
 }
 
+/* ===== PHONE MOCKUP: SCREEN + CHIP ANIMATIONS ===== */
+@keyframes screen-slide-in {
+  from { opacity: 0; transform: translateY(5px) scale(0.986); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes screen-slide-forward {
+  from { opacity: 0; transform: translateX(18px) scale(0.984); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes screen-slide-back {
+  from { opacity: 0; transform: translateX(-18px) scale(0.984); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes chip-drift {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-5px); }
+}
+
+.animate-chip-drift {
+  animation: chip-drift 3.5s ease-in-out infinite;
+}
+
+@keyframes scan-sweep {
+  0%   { transform: translateY(0); opacity: 0; }
+  8%   { opacity: 0.75; }
+  92%  { opacity: 0.75; }
+  100% { transform: translateY(92px); opacity: 0; }
+}
+.animate-scan-sweep {
+  animation: scan-sweep 2.8s ease-in-out infinite;
+  animation-delay: 0.9s;
+}
+
+@keyframes phone-rise {
+  0%   { opacity: 0; transform: translateY(52px) scale(0.93); }
+  55%  { opacity: 1; transform: translateY(-9px) scale(1.015); }
+  75%  { transform: translateY(3px) scale(0.99); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-phone-rise {
+  animation: phone-rise 0.95s cubic-bezier(0.2, 0, 0, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -1747,4 +1847,20 @@ h1, h2, h3, .font-display {
 @keyframes loginFadeUp {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Chat empty state entrance */
+@keyframes chatFadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Prompt card emoji pulse — one card at a time */
+@keyframes emojiPulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.18); }
+}
+.emoji-pulse {
+  display: inline-block;
+  animation: emojiPulse 0.6s ease;
 }

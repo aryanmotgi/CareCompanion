@@ -29,12 +29,6 @@ export function hapticScanComplete(): void {
   setTimeout(() => void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success), 300)
 }
 
-/** Double warning pulse for abnormal lab values on entrance */
-export function hapticAbnormalLabEntrance(): void {
-  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
-  setTimeout(() => void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning), 100)
-}
-
 /** Soft landing for card entrance */
 function hapticCardLand(): void {
   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft)

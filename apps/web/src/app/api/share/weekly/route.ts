@@ -3,9 +3,9 @@ import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { db } from '@/lib/db';
 import { sharedLinks } from '@/lib/db/schema';
-import { eq, and, gt, desc } from 'drizzle-orm';
+import { eq, and, gt, desc, isNull } from 'drizzle-orm';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { user, error: authError } = await getAuthenticatedUser();
     if (authError) return authError;
@@ -25,6 +25,7 @@ export async function GET() {
           eq(sharedLinks.userId, user!.id),
           eq(sharedLinks.type, 'weekly_summary'),
           gt(sharedLinks.expiresAt, now),
+          isNull(sharedLinks.revokedAt),
         ),
       )
       .orderBy(desc(sharedLinks.createdAt))
@@ -32,12 +33,13 @@ export async function GET() {
 
     if (!link) return apiSuccess({ token: null });
 
+    const shareUrl = `${new URL(request.url).origin}/shared/${link.token}`;
     return apiSuccess({
       token: link.token,
       title: link.title,
       createdAt: link.createdAt,
       viewCount: link.viewCount ?? 0,
-      shareUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://carecompanionai.org'}/shared/${link.token}`,
+      shareUrl,
     });
   } catch (err) {
     console.error('[share/weekly] GET error:', err);

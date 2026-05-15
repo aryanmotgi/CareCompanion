@@ -36,6 +36,16 @@ export async function PATCH(req: Request) {
     onboarding_priorities?: string[] | null;
     role?: string; caregiver_for_name?: string;
     caregiving_experience?: string; primary_concern?: string; field_overrides?: unknown;
+    // Tier-1 onboarding additions (migration 010)
+    date_of_birth?: string | null;
+    sex_at_birth?: string | null;
+    biomarkers?: Record<string, unknown> | null;
+    diagnosis_date?: string | null;
+    ecog_status?: number | null;
+    prior_treatments?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip_code?: string | null;
   }>(req);
   if (bodyError) return bodyError;
   const { id, ...fields } = body;
@@ -57,6 +67,16 @@ export async function PATCH(req: Request) {
   if (fields.caregiving_experience !== undefined) allowed.caregivingExperience = fields.caregiving_experience;
   if (fields.primary_concern !== undefined) allowed.primaryConcern = fields.primary_concern;
   if (fields.field_overrides !== undefined) allowed.fieldOverrides = fields.field_overrides;
+  // Tier-1 onboarding additions
+  if (fields.date_of_birth !== undefined) allowed.dateOfBirth = fields.date_of_birth;
+  if (fields.sex_at_birth !== undefined) allowed.sexAtBirth = fields.sex_at_birth;
+  if (fields.biomarkers !== undefined) allowed.biomarkers = fields.biomarkers;
+  if (fields.diagnosis_date !== undefined) allowed.diagnosisDate = fields.diagnosis_date;
+  if (fields.ecog_status !== undefined) allowed.ecogStatus = fields.ecog_status;
+  if (fields.prior_treatments !== undefined) allowed.priorTreatments = fields.prior_treatments;
+  if (fields.city !== undefined) allowed.city = fields.city;
+  if (fields.state !== undefined) allowed.state = fields.state;
+  if (fields.zip_code !== undefined) allowed.zipCode = fields.zip_code;
 
   if (Object.keys(allowed).length === 0) return apiError('No valid fields to update', 400);
   allowed.updatedAt = new Date();

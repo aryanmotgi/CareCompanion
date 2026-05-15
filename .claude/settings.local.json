@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-Content \"C:\\\\Users\\\\rahil\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-rahil-Downloads-CareCompanion\\\\ed3c0488-3b16-4663-b7f4-6d2a967489d5\\\\tasks\\\\blq23yw8i.output\" -Wait)",
+      "Bash(Select-String --line-buffered \"Ready|ready|error|Error|localhost|warn|compil|Failed|failed|SyntaxError|TypeError\")",
+      "Skill(browse)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000\" -TimeoutSec 5 -UseBasicParsing; Write-Output \"HTTP $\\($r.StatusCode\\)\" } catch { Write-Output \"Error: $_\" })",
+      "Bash(curl -sf http://localhost:3000 -o /dev/null)",
+      "PowerShell(Get-NetTCPConnection *)"
+    ]
+  }
+}

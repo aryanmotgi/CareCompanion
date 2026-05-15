@@ -5,11 +5,11 @@ import { signIn } from 'next-auth/react'
 
 function FloatingInput({
   id, label, type = 'text', value, onChange, autoComplete, required, minLength,
-  rightElement,
+  rightElement, testId,
 }: {
   id: string; label: string; type?: string; value: string;
   onChange: (v: string) => void; autoComplete?: string; required?: boolean;
-  minLength?: number; rightElement?: React.ReactNode;
+  minLength?: number; rightElement?: React.ReactNode; testId?: string;
 }) {
   const [focused, setFocused] = useState(false)
   const active = focused || value.length > 0
@@ -25,6 +25,7 @@ function FloatingInput({
         autoComplete={autoComplete}
         required={required}
         minLength={minLength}
+        data-testid={testId}
         className="w-full rounded-xl pt-5 pb-2 px-4 text-sm text-white/90 placeholder:text-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500/60 transition-all peer"
         style={{
           background: 'rgba(255,255,255,0.06)',
@@ -55,10 +56,10 @@ function FloatingInput({
 }
 
 function PasswordInput({
-  id, label, value, onChange, autoComplete, required, minLength,
+  id, label, value, onChange, autoComplete, required, minLength, testId,
 }: {
   id: string; label: string; value: string; onChange: (v: string) => void;
-  autoComplete?: string; required?: boolean; minLength?: number;
+  autoComplete?: string; required?: boolean; minLength?: number; testId?: string;
 }) {
   const [show, setShow] = useState(false)
   return (
@@ -71,6 +72,7 @@ function PasswordInput({
       autoComplete={autoComplete}
       required={required}
       minLength={minLength}
+      testId={testId}
       rightElement={
         <button
           type="button"
@@ -223,9 +225,9 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
                 <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
               </div>
 
-              <FloatingInput id="login-email" label="Email address" type="email" value={email} onChange={setEmail} autoComplete="email" required />
+              <FloatingInput id="login-email" label="Email address" type="email" value={email} onChange={setEmail} autoComplete="email" required testId="login-email" />
 
-              <PasswordInput id="login-password" label="Password" value={password} onChange={setPassword} autoComplete="current-password" required />
+              <PasswordInput id="login-password" label="Password" value={password} onChange={setPassword} autoComplete="current-password" required testId="login-password" />
 
               {/* Forgot password link */}
               <div className="text-right">
@@ -283,6 +285,7 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
           <button
             type="submit"
             disabled={loading}
+            data-testid="login-submit"
             className="w-full relative rounded-xl py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-indigo-400/70 focus:ring-offset-2 focus:ring-offset-[#05060F] overflow-hidden disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100"
             style={{
               background: 'linear-gradient(135deg, #6366F1, #A78BFA)',
@@ -305,7 +308,11 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
           {/* Create account link */}
           <p className="text-center text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
             Don&apos;t have an account?{' '}
-            <a href="/signup" className="underline underline-offset-2 transition-colors hover:text-white/60" style={{ color: 'rgba(167,139,250,0.7)' }}>
+            <a
+              href={safeCallback !== '/dashboard' ? `/signup?callbackUrl=${encodeURIComponent(safeCallback)}` : '/signup'}
+              className="underline underline-offset-2 transition-colors hover:text-white/60"
+              style={{ color: 'rgba(167,139,250,0.7)' }}
+            >
               Create one
             </a>
           </p>

@@ -168,3 +168,165 @@ Deferred work from gstack plan reviews. One item per section. Priority: P1 (bloc
 **Effort:** M (human: ~2h / CC: ~15 min)
 **Priority:** P2
 **Depends on:** Aurora Serverless v2 migration (Data API v1 has limited transaction support)
+
+---
+
+## [P1] Add Redis to eliminate serverless rate limit bypass
+
+**What:** Rate limiting in `src/lib/rate-limit.ts` falls back to in-memory `Map` when `KV_REST_API_URL`/`KV_REST_API_TOKEN` are absent. On Vercel, each cold function instance starts fresh — 14 requests per instance × N cold starts = unlimited free model calls.
+
+**Why:** An attacker can exceed the 15/hour guest limit by simply triggering cold starts across Vercel regions. No Redis = no real rate limit in production.
+
+**Fix:** Ensure `KV_REST_API_URL` and `KV_REST_API_TOKEN` are set in Vercel environment. Upstash Redis is already wired in `.env.example`.
+
+**Effort:** XS (human: ~15 min / CC: ~5 min)
+**Priority:** P1 — rate limit bypass exposes unlimited AI cost
+**Depends on:** Upstash Redis account setup
+
+---
+
+## [P2] Filter PHI fields before sending to specialist agents (Haiku)
+
+**What:** `src/lib/agents/orchestrator.ts` serializes full insurance records, claims, and prior auth data via `JSON.stringify()` into Haiku prompts. These include policy numbers, claim denial reasons, and auth codes.
+
+**Why:** Haiku is a smaller model potentially under a different logging/retention policy than Sonnet. Full PHI serialization to specialist prompts increases HIPAA BAA scope.
+
+**Fix:** Create a `scrubForSpecialist()` helper that strips or masks non-essential PHI fields before passing to Haiku. Pass summaries, not raw DB rows.
+
+**Effort:** M (human: ~2h / CC: ~20 min)
+**Priority:** P2 — HIPAA data minimization principle
+**Depends on:** Agreement on which fields are "essential" for specialist routing
+
+---
+
+## [P1] Gate e2e/signin endpoint to non-production only
+
+**What:** `apps/web/src/app/api/e2e/signin/route.ts` is live in production. It mints a full session JWT for any email in the DB and sets `hipaaConsent: true` + `role: 'patient'` on that user. If `E2E_AUTH_SECRET` is compromised, any user account can be impersonated and HIPAA consent bypassed.
+
+**Why:** E2E test endpoints should never be accessible in production environments. Middleware or build-time exclusion should prevent this route from being compiled into production.
+
+**Fix:** Add `if (process.env.NODE_ENV === 'production') return NextResponse.json({ error: 'Not found' }, { status: 404 })` at the top of the handler. Or exclude via Next.js route rewrites in `vercel.json` for production.
+
+**Effort:** S (human: ~30 min / CC: ~10 min)
+**Priority:** P1 — live production attack surface
+**Depends on:** Nothing
+
+---
+
+## [P1] Add audit logging to share link views
+
+**What:** `apps/web/src/app/api/share/[token]/route.ts` returns full PHI data blob (health summaries, medications, labs) with no auth required and no audit trail of who viewed what.
+
+**Why:** HIPAA requires audit trails for PHI access. Currently no record is written when a share link is accessed, violating access audit requirements.
+
+**Fix:** INSERT a `shareLink_access_log` record (or write to the existing audit log table) whenever this endpoint returns a 200, including: timestamp, token, IP (hashed), user-agent.
+
+**Effort:** S (human: ~1h / CC: ~15 min)
+**Priority:** P1 — HIPAA audit requirement
+**Depends on:** Aurora migration for audit_log table (or use existing logs table)
+
+---
+
+## [P0] Fix system-prompt appointment data not appearing in output
+
+**What:** `src/lib/__tests__/system-prompt.test.ts:82` fails — `expect(result).toContain('Dr. Patel')` — appointment doctor name missing from built system prompt.
+
+**Why:** Tests confirm the system prompt builder isn't including appointment details (doctor name, procedure) when appointments are passed in. AI responses will be missing clinical context about upcoming appointments.
+
+**Error:** `expect(result).toContain('Dr. Patel')` failed — value not in output despite appointments being passed to `buildSystemPrompt`.
+
+**Effort:** S (human: ~30 min / CC: ~5 min)
+**Priority:** P0 — AI loses appointment context
+**Depends on:** Nothing
+
+---
+
+## [P0] Fix medications API test timeout
+
+**What:** `src/__tests__/api/medications.test.ts:41` times out at 5000ms — `'returns medications for authenticated user'` test.
+
+**Why:** Mock setup or import chain is slow. Real API calls may be leaking through mocks, causing network timeouts in test environment.
+
+**Error:** `Test timed out in 5000ms` at `medications.test.ts:41`.
+
+**Effort:** S (human: ~30 min / CC: ~10 min)
+**Priority:** P0 — test suite unreliable
+**Depends on:** Nothing
+
+---
+
+## [P1] Mobile consumer migration for `packages/design-tokens`
+
+**What:** After the web onboarding port lands (2026-05-13 CEO plan), follow-up PR has `apps/mobile/src/theme.ts` re-export from `packages/design-tokens` instead of holding its own values.
+
+**Why:** This plan ships the tokens package + web consumer only. Until mobile consumes it, the "design drift impossible" claim in the platonic ideal is theoretical, not enforced.
+
+**Pros:** Cross-platform parity becomes structurally guaranteed. Changing a brand color updates both apps in one PR.
+
+**Cons:** Mobile bundle re-test required. EAS build needed before merging.
+
+**Context:** Day-1 drift is zero (package seeded from mobile's existing theme.ts values), so this is not urgent — but should land within ~1 week of web port to avoid divergence.
+
+**Effort:** S (human: ~2 hrs / CC: ~20 min)
+**Priority:** P1 — closes the cross-platform parity claim
+**Depends on:** 2026-05-13 web onboarding port PR landing first
+
+---
+
+## [P2] Animation primitives shared package (`packages/motion`)
+
+**What:** If both apps need to share motion primitives long-term, extract Framer Motion (web) + Reanimated (mobile) wrappers into a single API surface in `packages/motion`. Each platform implementation lives behind the same component contract.
+
+**Why:** Currently rejected in 2026-05-13 plan due to RN/Framer Motion API gap. Revisit after web port stabilizes and we have empirical evidence of where primitives diverge.
+
+**Pros:** Single mental model for animations across platforms.
+
+**Cons:** Real abstraction risk — the two libraries' APIs are quite different. May not be worth the contortion.
+
+**Context:** Decision made during 2026-05-13 CEO review (E2 = REJECTED in favor of inline web primitives). Reconsider after 2-3 months of running both apps.
+
+**Effort:** M (human: ~3 days / CC: ~2 hrs)
+**Priority:** P2 — quality-of-life, not blocking
+**Depends on:** 2026-05-13 web onboarding port + 1-2 months of usage data
+
+---
+
+## [P3] Cross-device onboarding handoff
+
+**What:** User starts onboarding on web, gets a SMS/email magic link to continue on mobile (or vice versa). State carries via signed token in URL.
+
+**Why:** Mobile signup is HealthKit-native; web FHIR connect is TBD. Caregiver may start on web while patient finishes HealthKit linking on phone.
+
+**Pros:** Removes platform-specific bottlenecks. Caregiver journey becomes "send patient a link" instead of "ask patient to download app."
+
+**Cons:** Requires signed-token plumbing, SMS sending (Twilio?), and dual-platform state sync. Non-trivial.
+
+**Context:** Surfaced as expansion opportunity during 2026-05-13 CEO review. Out of scope for visual port — separate design doc when prioritized.
+
+**Effort:** L (human: ~1-2 weeks / CC: ~6 hrs)
+**Priority:** P3 — when caregiver onboarding analytics show the cross-device pain point
+**Depends on:** SMS provider decision; signed-token infra
+
+---
+
+## [P3] Welcome carousel skip detection for returning users
+
+**What:** Cookie or localStorage check. If user has signed in before, skip welcome carousel on next /onboarding visit.
+
+**Why:** Returning users (e.g., re-onboarding after sign-out) don't need the same emotional intro.
+
+**Effort:** XS (human: ~15 min / CC: ~5 min)
+**Priority:** P3 — only valuable if welcome carousel analytics show drop-off from re-visitors
+**Depends on:** Carousel ships + analytics show signal
+
+---
+
+## [P3] Hospital picker recent-search localStorage
+
+**What:** PatientWizard hospital search caches recently-searched results in localStorage and surfaces them at top of results list.
+
+**Why:** Repeat visitors and users on slow connections benefit.
+
+**Effort:** XS (human: ~30 min / CC: ~5 min)
+**Priority:** P3 — micro-QoL
+**Depends on:** Usage data showing repeat search

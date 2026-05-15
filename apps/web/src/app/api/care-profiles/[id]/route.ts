@@ -59,6 +59,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (body.zipCode !== undefined) allowed.zipCode = body.zipCode
   if (body.city !== undefined) allowed.city = body.city
   if (body.state !== undefined) allowed.state = body.state
+  // self-care wizard fields
+  if (body.moodCheckIn !== undefined) allowed.moodCheckIn = body.moodCheckIn
+  if (body.supportStyle !== undefined) allowed.supportStyle = body.supportStyle
+  // Tier-1 onboarding fields (migration 010)
+  if (body.dateOfBirth !== undefined) allowed.dateOfBirth = body.dateOfBirth
+  if (body.sexAtBirth !== undefined) allowed.sexAtBirth = body.sexAtBirth
+  if (body.biomarkers !== undefined) allowed.biomarkers = body.biomarkers
+  if (body.diagnosisDate !== undefined) allowed.diagnosisDate = body.diagnosisDate
+  if (body.ecogStatus !== undefined) allowed.ecogStatus = body.ecogStatus
+  if (body.priorTreatments !== undefined) allowed.priorTreatments = body.priorTreatments
 
   if (Object.keys(allowed).length === 0) {
     return NextResponse.json({ error: 'No valid fields' }, { status: 400 })

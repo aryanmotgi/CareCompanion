@@ -6,11 +6,27 @@ import { eq, and, count } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { validateCsrf } from '@/lib/csrf'
 
+// DEPRECATED 2026-05-12 — name+password join is being phased out in favor of
+// 5-char codes (see POST /api/care-group/join-by-code + POST /api/care-group/code).
+// Keeping live for 30 days for backwards compat with old mobile/web builds,
+// then removing in a separate cleanup PR. Every successful call logs so we
+// can confirm zero traffic before removal.
+const DEPRECATION_HEADER = 'true'
+const DEPRECATION_SUNSET = '2026-06-12'  // 30 days post-launch
+const DEPRECATION_SUCCESSOR = '/api/care-group/join-by-code'
+
 const MAX_MEMBERS = 10
 
 export async function POST(req: Request) {
   const { valid, error: csrfError } = await validateCsrf(req)
   if (!valid) return csrfError!
+
+  // Structured log so we can track usage and confirm zero traffic before removal.
+  console.warn('[DEPRECATED] /api/care-group/join (name+password) called', {
+    sunset: DEPRECATION_SUNSET,
+    successor: DEPRECATION_SUCCESSOR,
+    ua: req.headers.get('user-agent') ?? 'unknown',
+  })
 
   try {
     const session = await auth()
@@ -77,7 +93,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'This Care Group is full (max 10 members).' }, { status: 400 })
     }
 
-    return NextResponse.json({ id: matchedGroup.id, name: matchedGroup.name }, { status: 200 })
+    return NextResponse.json({ id: matchedGroup.id, name: matchedGroup.name }, {
+      status: 200,
+      headers: {
+        'X-Deprecated': DEPRECATION_HEADER,
+        'X-Deprecation-Sunset': DEPRECATION_SUNSET,
+        'X-Deprecation-Successor': DEPRECATION_SUCCESSOR,
+      },
+    })
   } catch (err) {
     console.error('[care-group/join] error:', err instanceof Error ? err.message : err)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
