@@ -20,8 +20,8 @@ import { useTheme } from '../theme'
 
 const TOUR_KEY = 'tour_completed'
 const TOOLTIP_WIDTH = 240
-// Visible tabs: Home=0, Chat=1, Care=2, Trials=3 (Community/Scan/Settings hidden via href:null)
-const TAB_COUNT = 4
+// Visible tabs: Home=0, Chat=1, Care=2, Labs=3, Trials=4 (Community/Scan/Settings hidden via href:null)
+const TAB_COUNT = 5
 const TAB_BAR_CONTENT_HEIGHT = 68  // paddingTop(8)+icon(36)+dot(7)+label(13)+paddingBottom(4)
 const CARD_BG_DARK = '#1A1B2E'
 const CARD_BG_LIGHT = '#FFFFFF'
@@ -44,6 +44,11 @@ const STEPS = [
   },
   {
     tabIndex: 3,
+    label: 'Labs',
+    text: 'See your lab results and health trends here',
+  },
+  {
+    tabIndex: 4,
     label: 'Trials',
     text: 'Find clinical trials matched to your situation',
   },
@@ -68,6 +73,7 @@ export function GuidedTour() {
   }))
 
   useEffect(() => {
+    AsyncStorage.removeItem(TOUR_KEY).catch(() => {}) // DEV RESET — remove this line after verifying tour alignment
     AsyncStorage.getItem(TOUR_KEY).then(val => {
       if (!val) {
         setVisible(true)
@@ -120,8 +126,11 @@ export function GuidedTour() {
   if (!visible) return null
 
   const current = STEPS[step]!
-  const tabWidth = screenWidth / TAB_COUNT
-  const tabCenterX = (current.tabIndex + 0.5) * tabWidth
+  // tabBarInner in _layout.tsx has paddingHorizontal: 4 — tabs live inside
+  // that 4px margin on each side, so width and origin must match exactly.
+  const TAB_H_PAD = 4
+  const tabWidth = (screenWidth - TAB_H_PAD * 2) / TAB_COUNT
+  const tabCenterX = TAB_H_PAD + (current.tabIndex + 0.5) * tabWidth
 
   // Clamp so tooltip stays on screen
   const tooltipLeft = Math.max(
@@ -139,7 +148,7 @@ export function GuidedTour() {
   // the target tab icon, so the highlighted tab stands out instead of being
   // dimmed along with the rest of the screen.
   const tabBarTotalHeight = TAB_BAR_CONTENT_HEIGHT + insets.bottom
-  const cutoutLeft = current.tabIndex * tabWidth
+  const cutoutLeft = TAB_H_PAD + current.tabIndex * tabWidth
   const cutoutWidth = tabWidth
   const dimColor = 'rgba(0,0,0,0.72)'
 
