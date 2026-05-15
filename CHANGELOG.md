@@ -2,6 +2,14 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.5.0.1] - 2026-05-14
+
+### Fixed
+- **Chat UI** — suggestion cards now uniform fixed height (130pt) with consistent purple gradient border matching the send button
+- **Chat input bar** — removed overflow clipping so scan/send buttons are fully visible; tightened spacing
+- **Guided tour** — added missing Labs tab step (5 steps for 5 tabs), corrected pill centering math with `TAB_H_PAD=4` offset to align highlights under correct tab icons
+- **DocumentScanner crash** — replaced `TurboModuleRegistry.getEnforcing` with a non-enforcing `.get()` guard; prevents Hermes error-channel crash on every render of NewMedicationScreen when DocumentScanner native binary is not compiled in
+
 ## [0.5.0.0] - 2026-05-13
 
 Web onboarding port from mobile — cinematic welcome carousel, role picker, health consent, share-invite code, caregiver code-join, live presence, iOS app nudge. Full visual + motion parity with the iPhone flow.
