@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { View, Text, StyleSheet, Dimensions, Pressable } from 'react-native'
+import { View, Text, StyleSheet, Dimensions, Pressable, Platform } from 'react-native'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -466,14 +466,32 @@ export function FloatingInput(props: FloatingInputProps) {
       >
         <Ionicons name={icon} size={16} color="rgba(167,139,250,0.7)" style={fiStyles.icon} />
         <View style={fiStyles.inputWrap}>
+          {/* Custom bullet overlay: ensures identical dot size/spacing in both password
+              fields regardless of iOS focus-state rendering differences. The native
+              TextInput remains secureTextEntry=true (clipboard/screenshot protection)
+              but its text is transparent; only the cursor shows through on top. */}
+          {secureTextEntry && !revealed && (
+            <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, fiStyles.secureDots]}>
+              <Text style={fiStyles.secureText} numberOfLines={1} allowFontScaling={false}>
+                {'•'.repeat(value.length)}
+              </Text>
+            </View>
+          )}
           <TextInput
             ref={inputRef as unknown as React.RefObject<TextInput>}
             value={value}
             onChangeText={onChangeText}
             placeholder={placeholder}
             placeholderTextColor="rgba(255,255,255,0.4)"
-            secureTextEntry={secureTextEntry && !revealed}
+            // Always false — iOS native secureTextEntry renders its own bullet
+            // dots via an internal system layer that ignores color:'transparent',
+            // producing a visible second set of dots beneath our custom overlay.
+            // With secureTextEntry=false, regular text IS fully transparent when
+            // color:'transparent' is set, so only our overlay bullets show.
+            secureTextEntry={false}
             keyboardType={keyboardType}
+            // Secure fields need these disabled explicitly since secureTextEntry
+            // normally suppresses them automatically on iOS.
             autoCapitalize={secureTextEntry ? 'none' : autoCapitalize}
             autoCorrect={secureTextEntry ? false : autoCorrect}
             spellCheck={secureTextEntry ? false : undefined}
@@ -483,7 +501,7 @@ export function FloatingInput(props: FloatingInputProps) {
             onSubmitEditing={onSubmitEditing}
             onFocus={() => { setFocused(true); onFocus?.() }}
             onBlur={() => { setFocused(false); onBlur?.() }}
-            style={fiStyles.input}
+            style={[fiStyles.input, secureTextEntry && !revealed && fiStyles.inputSecure]}
             cursorColor="rgba(167,139,250,0.7)"
             allowFontScaling={false}
           />
@@ -541,6 +559,18 @@ const fiStyles = StyleSheet.create({
     paddingVertical: 13,
     fontSize: 15,
     color: '#EDE9FE',
+  },
+  inputSecure: {
+    color: 'transparent',
+  },
+  secureDots: {
+    justifyContent: 'center',
+  },
+  secureText: {
+    fontSize: 10,
+    letterSpacing: Platform.OS === 'ios' ? 4 : 2,
+    color: '#EDE9FE',
+    lineHeight: 16,
   },
   eye: { padding: 4 },
   error: {
