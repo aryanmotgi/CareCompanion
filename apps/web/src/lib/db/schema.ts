@@ -11,8 +11,34 @@ import {
   primaryKey,
   uniqueIndex,
   index,
+  customType,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
+
+/**
+ * pgvector halfvec (0.7+) — half-precision float vector. Postgres returns
+ * `[1,2,3]` string form; we parse to number[] on read and emit the same
+ * literal form on write.
+ */
+export const halfvec = (dimensions: number) =>
+  customType<{ data: number[]; driverData: string }>({
+    dataType() {
+      return `halfvec(${dimensions})`
+    },
+    toDriver(value: number[]): string {
+      return `[${value.join(',')}]`
+    },
+    fromDriver(value: string): number[] {
+      return JSON.parse(value)
+    },
+  })
+
+/** tsvector — read-only from Drizzle (populated by trigger in migration 014). */
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return 'tsvector'
+  },
+})
 
 // ── Users (populated on sign-in via OAuth provider) ──────────────────────────
 export const users = pgTable('users', {
@@ -274,6 +300,25 @@ export const memories = pgTable('memories', {
   confidence: text('confidence').notNull().default('high'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   lastReferenced: timestamp('last_referenced', { withTimezone: true }).defaultNow(),
+  // ── Memory-v2 (migration 014) ──────────────────────────────────────────
+  embedding: halfvec(768)('embedding'),
+  factTsv: tsvector('fact_tsv'),
+  validFrom: timestamp('valid_from', { withTimezone: true }).defaultNow(),
+  validTo:   timestamp('valid_to',   { withTimezone: true }),
+  polarity:  text('polarity').notNull().default('asserted'),
+  status:    text('status').notNull().default('active'),
+  subject:   text('subject').notNull().default('patient'),
+  importance: numeric('importance', { precision: 2, scale: 1 }).notNull().default('0.5'),
+  seenCount: integer('seen_count').notNull().default(1),
+  tier:      integer('tier').notNull().default(3),
+  trust:     numeric('trust', { precision: 2, scale: 1 }).notNull().default('0.5'),
+  decayAt:   timestamp('decay_at', { withTimezone: true }),
+  cycleNumber: integer('cycle_number'),
+  labValueNumeric: numeric('lab_value_numeric'),
+  labValueUnit: text('lab_value_unit'),
+  measuredAt: timestamp('measured_at', { withTimezone: true }),
+  severity: integer('severity'),
+  slug: text('slug'),
 })
 
 // ── Conversation Summaries ────────────────────────────────────────────────────
@@ -284,6 +329,29 @@ export const conversationSummaries = pgTable('conversation_summaries', {
   topics: text('topics').array().default(sql`'{}'`),
   messageCount: integer('message_count').default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  embedding: halfvec(768)('embedding'),
+})
+
+// ── Memory access log (HIPAA audit, migration 014) ────────────────────────────
+export const memoryAccessLog = pgTable('memory_access_log', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  memoryIds: uuid('memory_ids').array().notNull(),
+  reason: text('reason').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+// ── Daily token usage (budget caps, migration 014) ────────────────────────────
+export const userUsage = pgTable('user_usage', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  usageDate: date('usage_date').notNull().default(sql`CURRENT_DATE`),
+  inputTokens: integer('input_tokens').notNull().default(0),
+  outputTokens: integer('output_tokens').notNull().default(0),
+  cacheReadTokens: integer('cache_read_tokens').notNull().default(0),
+  cacheCreateTokens: integer('cache_create_tokens').notNull().default(0),
+  reservedInputTokens: integer('reserved_input_tokens').notNull().default(0),
+  modelCalls: integer('model_calls').notNull().default(0),
 })
 
 // ── User Preferences ──────────────────────────────────────────────────────────
