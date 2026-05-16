@@ -1,14 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { dbMock } = vi.hoisted(() => ({
+const { dbMock, generateTextMock } = vi.hoisted(() => ({
   dbMock: {
     execute: vi.fn(),
+    update: vi.fn(),
   },
+  generateTextMock: vi.fn(),
 }));
 
 vi.mock('@/lib/db', () => ({ db: dbMock }));
+vi.mock('ai', async () => {
+  const actual = await vi.importActual<typeof import('ai')>('ai');
+  return { ...actual, generateText: generateTextMock };
+});
 
-import { findCosineDuplicate, bumpSeenCount } from '@/lib/memory-conflict';
+import {
+  findCosineDuplicate,
+  bumpSeenCount,
+  resolveConflicts,
+} from '@/lib/memory-conflict';
+import type { Memory } from '@/lib/types';
 
 const USER_A = '00000000-0000-0000-0000-000000000001';
 const USER_B = '00000000-0000-0000-0000-000000000002';
@@ -116,6 +127,152 @@ describe('findCosineDuplicate', () => {
 
     const sqlText = extractSqlText(dbMock.execute.mock.calls[0]?.[0]);
     expect(sqlText).toContain('embedding is not null');
+  });
+});
+
+function makeMemory(overrides: Partial<Memory> = {}): Memory {
+  return {
+    id: 'mem-' + Math.random().toString(36).slice(2, 8),
+    userId: USER_A,
+    careProfileId: null,
+    category: 'medication',
+    fact: 'Eleanor takes Tamoxifen 10mg daily',
+    source: 'conversation',
+    confidence: 'high',
+    createdAt: new Date(),
+    lastReferenced: new Date(),
+    validFrom: new Date(),
+    validTo: null,
+    polarity: 'asserted',
+    status: 'active',
+    subject: 'patient',
+    ...overrides,
+  };
+}
+
+describe('resolveConflicts (chunk 4: temporal contradiction)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbMock.execute.mockReset();
+    dbMock.update.mockReset();
+    generateTextMock.mockReset();
+    dbMock.update.mockReturnValue({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue(undefined),
+      }),
+    });
+  });
+
+  it('on conflict: closes old row via valid_to + status=historical (does NOT mutate fact)', async () => {
+    const existing = makeMemory({
+      fact: 'Eleanor takes Tamoxifen 10mg daily',
+    });
+    generateTextMock.mockResolvedValueOnce({
+      text: 'Eleanor was on Tamoxifen 10mg; now on Tamoxifen 20mg',
+    });
+
+    await resolveConflicts(
+      USER_A,
+      'Eleanor takes Tamoxifen 20mg daily',
+      'medication',
+      [existing],
+    );
+
+    expect(dbMock.update).toHaveBeenCalled();
+    const setCall = (dbMock.update.mock.results[0].value.set as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+    expect(setCall).toHaveProperty('validTo');
+    expect(setCall).toHaveProperty('status', 'historical');
+    expect(setCall).not.toHaveProperty('fact');
+  });
+
+  it('on conflict: returns rewrittenFact from Haiku', async () => {
+    const existing = makeMemory({
+      fact: 'Eleanor takes Tamoxifen 10mg daily',
+    });
+    generateTextMock.mockResolvedValueOnce({
+      text: 'Eleanor was on Tamoxifen 10mg; now on Tamoxifen 20mg',
+    });
+
+    const result = await resolveConflicts(
+      USER_A,
+      'Eleanor takes Tamoxifen 20mg daily',
+      'medication',
+      [existing],
+    );
+
+    expect(result.superseded).toContain(existing.id);
+    expect(result.rewrittenFact).toBe('Eleanor was on Tamoxifen 10mg; now on Tamoxifen 20mg');
+  });
+
+  it('no conflict → no Haiku call (cost guard)', async () => {
+    const existing = makeMemory({
+      category: 'medication',
+      fact: 'Eleanor takes Metformin 500mg twice daily',
+    });
+
+    const result = await resolveConflicts(
+      USER_A,
+      'Eleanor saw Dr. Patel for follow-up appointment',
+      'appointment',
+      [existing],
+    );
+
+    expect(generateTextMock).not.toHaveBeenCalled();
+    expect(result.superseded).toEqual([]);
+    expect(result.rewrittenFact).toBeNull();
+  });
+
+  it('Haiku failure → still closes old row, returns rewrittenFact=null', async () => {
+    const existing = makeMemory({
+      fact: 'Eleanor takes Tamoxifen 10mg daily',
+    });
+    generateTextMock.mockRejectedValueOnce(new Error('Haiku timeout'));
+
+    const result = await resolveConflicts(
+      USER_A,
+      'Eleanor takes Tamoxifen 20mg daily',
+      'medication',
+      [existing],
+    );
+
+    expect(dbMock.update).toHaveBeenCalled();
+    expect(result.superseded).toContain(existing.id);
+    expect(result.rewrittenFact).toBeNull();
+  });
+
+  it('duplicate → returns isDuplicate true, no row mutation, no Haiku call', async () => {
+    const existing = makeMemory({
+      fact: 'Eleanor takes Tamoxifen 10mg daily',
+    });
+
+    const result = await resolveConflicts(
+      USER_A,
+      'Eleanor takes Tamoxifen 10mg daily',
+      'medication',
+      [existing],
+    );
+
+    expect(result.isDuplicate).toBe(true);
+    expect(dbMock.update).not.toHaveBeenCalled();
+    expect(generateTextMock).not.toHaveBeenCalled();
+  });
+
+  it('soft-deleted (validTo set) existing memory is skipped', async () => {
+    const closed = makeMemory({
+      fact: 'Eleanor takes Tamoxifen 10mg daily',
+      validTo: new Date(),
+    });
+
+    const result = await resolveConflicts(
+      USER_A,
+      'Eleanor takes Tamoxifen 20mg daily',
+      'medication',
+      [closed],
+    );
+
+    expect(dbMock.update).not.toHaveBeenCalled();
+    expect(result.superseded).toEqual([]);
+    expect(generateTextMock).not.toHaveBeenCalled();
   });
 });
 

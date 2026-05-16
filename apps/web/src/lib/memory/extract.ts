@@ -161,17 +161,24 @@ export async function extractAndSaveMemories(
     const sanitized = extracted.filter((m) => !isInstructionShaped(m.fact));
     if (sanitized.length === 0) return;
 
-    const factsAfterWordOverlap: ExtractedFact[] = [];
+    const factsAfterWordOverlap: Array<{ fact: ExtractedFact; effectiveText: string }> = [];
     for (const fact of sanitized) {
-      const { isDuplicate } = await resolveConflicts(userId, fact.fact, fact.category, existingMemories);
-      if (!isDuplicate) factsAfterWordOverlap.push(fact);
+      const { isDuplicate, rewrittenFact } = await resolveConflicts(
+        userId,
+        fact.fact,
+        fact.category,
+        existingMemories,
+      );
+      if (!isDuplicate) {
+        factsAfterWordOverlap.push({ fact, effectiveText: rewrittenFact ?? fact.fact });
+      }
     }
     if (factsAfterWordOverlap.length === 0) return;
 
-    const embeddings = await embedTextBatch(factsAfterWordOverlap.map((f) => f.fact));
+    const embeddings = await embedTextBatch(factsAfterWordOverlap.map((e) => e.effectiveText));
 
     for (let i = 0; i < factsAfterWordOverlap.length; i++) {
-      const f = factsAfterWordOverlap[i];
+      const { fact: f, effectiveText } = factsAfterWordOverlap[i];
       const embeddingLit = toHalfvecLiteral(embeddings[i]);
 
       const { duplicateId } = await findCosineDuplicate(userId, f.category, embeddingLit);
@@ -191,7 +198,7 @@ export async function extractAndSaveMemories(
           importance, tier, trust, confidence, source, embedding, decay_at
         ) VALUES (
           ${userId}, ${careProfileId}, ${f.category},
-          ${f.fact}, ${f.polarity}, ${f.status}, ${f.subject},
+          ${effectiveText}, ${f.polarity}, ${f.status}, ${f.subject},
           ${importance}, ${tier}, ${trust},
           ${f.confidence}, ${'conversation'},
           ${embeddingLit}::halfvec,
