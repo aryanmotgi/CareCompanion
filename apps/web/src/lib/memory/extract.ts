@@ -11,6 +11,7 @@ import {
   defaultImportance,
   trustForSource,
   tierForCategory,
+  decayForCategory,
 } from './validators';
 import { embedTextBatch, toHalfvecLiteral } from './embed';
 
@@ -182,17 +183,19 @@ export async function extractAndSaveMemories(
       const importance = String(f.importance ?? defaultImportance(f.category));
       const tier = tierForCategory(f.category, f.status, f.polarity);
       const trust = String(trustForSource('conversation'));
+      const decayAt = decayForCategory(f.category, f.status);
 
       await db.execute(sql`
         INSERT INTO memories (
           user_id, care_profile_id, category, fact, polarity, status, subject,
-          importance, tier, trust, confidence, source, embedding
+          importance, tier, trust, confidence, source, embedding, decay_at
         ) VALUES (
           ${userId}, ${careProfileId}, ${f.category},
           ${f.fact}, ${f.polarity}, ${f.status}, ${f.subject},
           ${importance}, ${tier}, ${trust},
           ${f.confidence}, ${'conversation'},
-          ${embeddingLit}::halfvec
+          ${embeddingLit}::halfvec,
+          ${decayAt}
         )
       `);
     }

@@ -51,6 +51,36 @@ export function trustForSource(source: string): number {
 }
 
 /**
+ * Per-category TTL for soft-delete via the memory-decay cron.
+ * Returns a future Date when the memory should be soft-deleted, or null for
+ * never-decay categories. The cron sets `valid_to = NOW()` on rows where
+ * `decay_at < NOW()`, which makes them invisible to retrieval.
+ *
+ * Safety floor (allergy/condition/active-medication) never decays — long-tail
+ * medical facts must remain available even after long quiet periods.
+ */
+export function decayForCategory(
+  category: string,
+  status: string,
+): Date | null {
+  if (category === 'allergy') return null
+  if (category === 'condition' && status === 'active') return null
+  if (category === 'medication') return null
+  if (category === 'provider' || category === 'insurance' || category === 'family' || category === 'legal' || category === 'financial') {
+    return null
+  }
+
+  const days = (() => {
+    if (category === 'lab_result') return 365
+    if (category === 'emotional_state' || category === 'preference' || category === 'lifestyle' || category === 'treatment_response') return 180
+    if (category === 'appointment') return 90
+    return 90
+  })()
+
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+}
+
+/**
  * Tier assignment.
  * Tier 1 = always-include safety floor. ONLY asserted + active safety facts.
  * Negated or historical/denied entries fall through to tier 3 — never bypass
