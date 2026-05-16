@@ -1,0 +1,110 @@
+name: Canary monitor
+
+on:
+  schedule:
+    # Every 6 hours
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+
+      - name: Install deps
+        run: bun install --frozen-lockfile
+
+      - name: Run canary monitor
+        id: monitor
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_RESOURCE_ARN: ${{ secrets.AWS_RESOURCE_ARN }}
+          AWS_SECRET_ARN: ${{ secrets.AWS_SECRET_ARN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          GH_REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CANARY_ABORT: ${{ vars.CANARY_ABORT }}
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          bun apps/web/scripts/canary-monitor.ts | tee /tmp/canary-status.json
+          STATUS=$(jq -r '.kind' /tmp/canary-status.json)
+          {
+            echo "status=$STATUS"
+            echo "payload<<EOF"
+            cat /tmp/canary-status.json
+            echo
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open abort issue
+        if: steps.monitor.outputs.status == 'abort'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAYLOAD: ${{ steps.monitor.outputs.payload }}
+        run: |
+          REASON=$(echo "$PAYLOAD" | jq -r '.reason')
+          DETAILS=$(echo "$PAYLOAD" | jq -r '.details // {}')
+          gh issue create \
+            --title "Canary monitor: ABORT — $REASON" \
+            --body "$(cat <<EOF
+          The canary monitor (\`canary-monitor.yml\`) tripped a stop condition and did **not** promote ENABLE_MEMORY_HYBRID to \`true\`.
+
+          **Reason:** $REASON
+
+          **Details:**
+          \`\`\`json
+          $DETAILS
+          \`\`\`
+
+          **Workflow run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          ## Next steps
+          1. Investigate the stop condition.
+          2. If safe to resume monitoring: clear by re-running the workflow. To force-abort again, set repo variable \`CANARY_ABORT=true\`.
+          3. If rolling back: \`vercel env rm ENABLE_MEMORY_HYBRID production -y && vercel env add ENABLE_MEMORY_HYBRID production --value false --no-sensitive && vercel --prod --archive=tgz --yes\`
+          EOF
+          )" \
+            --label "memory-v2,canary,p0"
+
+      - name: Open promotion issue
+        if: steps.monitor.outputs.status == 'promoted'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAYLOAD: ${{ steps.monitor.outputs.payload }}
+        run: |
+          DEPLOY=$(echo "$PAYLOAD" | jq -r '.deployUrl // "(no deploy URL returned)"')
+          gh issue create \
+            --title "Canary monitor: promoted ENABLE_MEMORY_HYBRID → true" \
+            --body "$(cat <<EOF
+          48h canary window clean. The monitor has flipped \`ENABLE_MEMORY_HYBRID=true\` on production and triggered a redeploy.
+
+          **Deployment:** $DEPLOY
+
+          **Workflow run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          ## Verify
+          1. \`curl https://carecompanionai.org/api/health\` returns healthy
+          2. \`memory_access_log\` rows continue to grow
+          3. \`vercel env pull --environment=production /tmp/v && grep ENABLE_MEMORY_HYBRID /tmp/v\` shows \`"true"\`
+          EOF
+          )" \
+            --label "memory-v2,canary"
+
+      - name: Fail step on abort (signal red on Actions UI)
+        if: steps.monitor.outputs.status == 'abort'
+        run: exit 1
