@@ -785,3 +785,33 @@ export const cronState = pgTable('cron_state', {
   value:     text('value').notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })
+
+// ── Medication Observations (migration 016) ────────────────────────────────────
+// Caregiver-reported dose events. Neither source overwrites the other — both
+// the EHR prescription (medications.dose) and the caregiver report persist.
+// Discrepancy detection runs at write time; resolution requires explicit action.
+export const medicationObservations = pgTable('medication_observations', {
+  id:              uuid('id').primaryKey().defaultRandom(),
+  careProfileId:   uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
+  medicationId:    uuid('medication_id').notNull().references(() => medications.id, { onDelete: 'cascade' }),
+  reportedBy:      uuid('reported_by').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  reportedAt:      timestamp('reported_at', { withTimezone: true }).notNull().defaultNow(),
+
+  observationType: text('observation_type').notNull(),  // 'dose_taken' | 'dose_skipped' | 'dose_partial' | 'dose_delayed' | 'other'
+  doseReported:    text('dose_reported'),               // null when skipped/other
+  notes:           text('notes'),
+
+  discrepancyFlag: boolean('discrepancy_flag').notNull().default(false),
+  discrepancyType: text('discrepancy_type'),            // 'DOSE_DIFFERS' | 'MED_NOT_IN_EHR' | 'DOSE_SKIPPED'
+  ehrDoseAtTime:   text('ehr_dose_at_time'),            // snapshot of medications.dose at observation time
+
+  resolvedAt:        timestamp('resolved_at', { withTimezone: true }),
+  resolvedBy:        uuid('resolved_by').references(() => users.id),
+  resolutionAction:  text('resolution_action'),         // 'intentional_change' | 'caregiver_error' | 'clinical_review_needed' | 'no_action'
+  resolutionNotes:   text('resolution_notes'),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  careProfileIdx:  index('medication_observations_care_profile_idx').on(t.careProfileId, t.reportedAt),
+  medicationIdx:   index('medication_observations_medication_idx').on(t.medicationId, t.reportedAt),
+}))
