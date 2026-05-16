@@ -44,6 +44,20 @@ jobs:
             sleep 10
           done
 
+      - name: Health endpoint check (Claude-free)
+        id: health
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/health.json -w '%{http_code}' \
+            --max-time 30 \
+            https://carecompanionai.org/api/health 2>/dev/null || echo "000")
+          BODY=$(cat /tmp/health.json 2>/dev/null | head -c 500 || echo "no response")
+          echo "status=$HTTP_CODE" >> $GITHUB_OUTPUT
+          echo "body=$BODY" >> $GITHUB_OUTPUT
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::/api/health failed: HTTP $HTTP_CODE — $BODY"
+            exit 1
+          fi
+
       - name: Run E2E Production Monitor
         id: e2e
         continue-on-error: true
@@ -191,12 +205,12 @@ jobs:
             The CareCompanion production monitor ran successfully against carecompanionai.org.
 
             All checks passed:
+            - /api/health endpoint (Claude-free schema + DB + env)
             - Dashboard renders and shows navigation
             - Care page loads without errors
             - 1upHealth connect page renders
             - AI chat interface renders
             - Medications data renders on care page
-            - AI chat responds to a message
             - Page load performance within budgets
             - No unexpected console errors
             - Notifications exist (cron health)
