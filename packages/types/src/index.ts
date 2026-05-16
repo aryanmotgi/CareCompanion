@@ -114,6 +114,7 @@ export type HealthKitEncounterRecord = {
   location?: { location?: { display?: string } }[]
 }
 
+
 export type HealthKitRecord =
   | HealthKitMedicationRecord
   | HealthKitLabRecord
