@@ -1,10 +1,10 @@
 import { anthropic } from '@ai-sdk/anthropic';
-import { streamText, stepCountIs, type UIMessage } from 'ai';
+import { streamText, stepCountIs, type UIMessage, type SystemModelMessage } from 'ai';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { db } from '@/lib/db';
 import { careProfiles, medications, doctors, appointments, labResults, notifications, claims, priorAuths, fsaHsa, symptomEntries, insurance, messages, treatmentCycles } from '@/lib/db/schema';
 import { eq, desc, and, isNull, sql } from 'drizzle-orm';
-import { buildSystemPrompt, buildRoleContext } from '@/lib/system-prompt';
+import { buildSystemPromptBlocks, buildRoleContext } from '@/lib/system-prompt';
 import { buildTools } from '@/lib/tools';
 import { extractAndSaveMemories, loadMemories, loadRelevantMemories, loadConversationSummaries, touchReferencedMemories, summarizeConversation } from '@/lib/memory';
 import { orchestrate } from '@/lib/agents/orchestrator';
@@ -189,7 +189,7 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     caregivingExperience: profile?.caregivingExperience ?? null,
   })
 
-  const [orchestratorResult, baseSystemPrompt] = await Promise.all([
+  const [orchestratorResult, promptBlocks] = await Promise.all([
     userMessageText
       ? orchestrate(userMessageText, conversationHistory, {
           profile,
@@ -205,23 +205,49 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
           symptoms: symptoms as Record<string, unknown>[],
         }, dbUser!.id)
       : Promise.resolve({ specialistsUsed: [], agentOutputs: {}, synthesizedContext: '', isMultiAgent: false }),
-    Promise.resolve(buildSystemPrompt(
+    Promise.resolve(buildSystemPromptBlocks(
       profile,
       meds,
       docs,
       appts,
-      { labResults: labs, notifications: notifs, claims: claimsData, priorAuths: priorAuthsData, fsaHsa: fsaHsaData, memories: memoriesData, conversationSummaries: conversationSummariesData, symptoms, treatmentCycle: activeCycle || null }
+      {
+        labResults: labs,
+        notifications: notifs,
+        claims: claimsData,
+        priorAuths: priorAuthsData,
+        fsaHsa: fsaHsaData,
+        memories: memoriesData,
+        conversationSummaries: conversationSummariesData,
+        symptoms,
+        treatmentCycle: activeCycle || null,
+        roleContext,
+      },
     )),
   ]);
 
-  const systemPrompt = roleContext
-    ? `${roleContext}\n\n${baseSystemPrompt}`
-    : baseSystemPrompt
+  // 4-block system: L1+L2 marked cacheable (stable); L3 (per-turn) + L4
+  // (retrieved) + specialist context unmarked. Cache control only attached when
+  // ENABLE_PROMPT_CACHE=true. AI SDK v6 SystemModelMessage shape:
+  // { role: 'system', content: string, providerOptions? }
+  const enableCache = process.env.ENABLE_PROMPT_CACHE === 'true';
+  const cacheAttr = enableCache
+    ? { providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' as const } } } }
+    : {};
 
-  // Append specialist context to system prompt if multi-agent was used
-  const fullSystemPrompt = orchestratorResult.synthesizedContext
-    ? systemPrompt + orchestratorResult.synthesizedContext
-    : systemPrompt;
+  const systemMessages: SystemModelMessage[] = [];
+  if (promptBlocks.base) {
+    systemMessages.push({ role: 'system', content: promptBlocks.base, ...cacheAttr });
+  }
+  if (promptBlocks.userStable) {
+    systemMessages.push({ role: 'system', content: promptBlocks.userStable, ...cacheAttr });
+  }
+  if (promptBlocks.userDynamic) {
+    systemMessages.push({ role: 'system', content: promptBlocks.userDynamic });
+  }
+  const tailBlock = (promptBlocks.retrieved ?? '') + (orchestratorResult.synthesizedContext ?? '');
+  if (tailBlock) {
+    systemMessages.push({ role: 'system', content: tailBlock });
+  }
 
   // Build tools for this user session
   const tools = buildTools(dbUser!.id, profile?.id || null);
@@ -229,11 +255,20 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
   const result = streamText({
     model: anthropic('claude-sonnet-4-6'),
     maxOutputTokens: 4096,
-    system: fullSystemPrompt,
+    system: systemMessages,
     messages: conversationMessages,
     tools,
     stopWhen: stepCountIs(10),
-    onFinish: async ({ text, steps }) => {
+    onFinish: async ({ text, steps, usage }) => {
+      // Cache telemetry — AI SDK v6 reports cache reads via `cachedInputTokens`.
+      // No separate creation-token field; first call seeds the cache implicitly.
+      console.log('[chat-cache]', JSON.stringify({
+        userId: dbUser!.id,
+        cachedInputTokens: usage?.cachedInputTokens ?? 0,
+        inputTokens: usage?.inputTokens ?? 0,
+        outputTokens: usage?.outputTokens ?? 0,
+        cacheEnabled: enableCache,
+      }));
       // Fallback message if model used all tool steps but produced no text
       const finalText = (!text || text.length < 20) && steps && steps.length >= 10
         ? "I ran into a complexity limit on that request. Could you try breaking it into smaller questions?"

@@ -3,6 +3,7 @@ export interface CareProfile {
   userId: string;
   patientName: string | null;
   patientAge: number | null;
+  dateOfBirth?: string | null;
   relationship: string | null;
   emergencyContactName?: string | null;
   emergencyContactPhone?: string | null;
@@ -13,6 +14,9 @@ export interface CareProfile {
   allergies?: string | null;
   onboardingPriorities?: string[] | null;
   onboardingCompleted?: boolean | null;
+  primaryConcern?: string | null;
+  caregivingExperience?: string | null;
+  caregiverRelationship?: string | null;
   role: string;
   caregiverForName?: string | null;
   createdAt: Date | null;
