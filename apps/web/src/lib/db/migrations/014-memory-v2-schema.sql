@@ -1,9 +1,15 @@
 -- Memory upgrade v2: schema additions for hybrid retrieval + safety
 -- See docs/superpowers/plans/2026-05-15-memory-upgrade-v2.md Chunk 2 Day 2.
--- Run inside a single transaction. Indexes live in 015 (CONCURRENT).
+--
+-- Runner-compatible form (each statement standalone, no plpgsql, no CONCURRENTLY).
+-- Trade-off: fact_tsv is a STORED generated column instead of trigger — the
+-- ALTER TABLE rewrites the table once. On dev / current prod row count, brief
+-- lock is acceptable. Indexes live in 015 (also non-concurrent for the same
+-- Data-API reason).
 
 -- Required extensions
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- date_of_birth already exists on care_profiles via migration 010.
@@ -11,7 +17,6 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- Memories: new columns (additive, NULL-safe defaults)
 ALTER TABLE memories
   ADD COLUMN IF NOT EXISTS embedding halfvec(768),
-  ADD COLUMN IF NOT EXISTS fact_tsv tsvector,
   ADD COLUMN IF NOT EXISTS valid_from timestamptz DEFAULT NOW(),
   ADD COLUMN IF NOT EXISTS valid_to   timestamptz,
   ADD COLUMN IF NOT EXISTS polarity   text NOT NULL DEFAULT 'asserted'
@@ -35,24 +40,14 @@ ALTER TABLE memories
   ADD COLUMN IF NOT EXISTS measured_at timestamptz,
   ADD COLUMN IF NOT EXISTS severity integer
     CHECK (severity IS NULL OR (severity >= 0 AND severity <= 10)),
-  -- Slug for stable eval fixture keying (Day 5)
   ADD COLUMN IF NOT EXISTS slug text;
 
--- Populate fact_tsv from existing fact text (one-shot — not a generated column
--- to avoid synchronous table rewrite on a populated table)
-UPDATE memories SET fact_tsv = to_tsvector('english', fact) WHERE fact_tsv IS NULL;
-
--- Trigger keeps fact_tsv current on insert/update
-CREATE OR REPLACE FUNCTION memories_fact_tsv_trigger() RETURNS trigger AS $$
-BEGIN
-  NEW.fact_tsv := to_tsvector('english', NEW.fact);
-  RETURN NEW;
-END $$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS memories_fact_tsv_update ON memories;
-CREATE TRIGGER memories_fact_tsv_update
-  BEFORE INSERT OR UPDATE OF fact ON memories
-  FOR EACH ROW EXECUTE FUNCTION memories_fact_tsv_trigger();
+-- Generated column for full-text search (single-shot, no trigger needed).
+-- to_tsvector('english', ...) is IMMUTABLE so it is allowed in a stored
+-- generated column.
+ALTER TABLE memories
+  ADD COLUMN IF NOT EXISTS fact_tsv tsvector
+    GENERATED ALWAYS AS (to_tsvector('english', fact)) STORED;
 
 -- Audit log (HIPAA)
 CREATE TABLE IF NOT EXISTS memory_access_log (
@@ -62,6 +57,7 @@ CREATE TABLE IF NOT EXISTS memory_access_log (
   reason text NOT NULL,
   created_at timestamptz DEFAULT NOW()
 );
+
 CREATE INDEX IF NOT EXISTS memory_access_log_user_idx
   ON memory_access_log(user_id, created_at DESC);
 
@@ -78,6 +74,7 @@ CREATE TABLE IF NOT EXISTS user_usage (
   model_calls integer NOT NULL DEFAULT 0,
   UNIQUE(user_id, usage_date)
 );
+
 CREATE INDEX IF NOT EXISTS user_usage_user_date_idx
   ON user_usage(user_id, usage_date DESC);
 
