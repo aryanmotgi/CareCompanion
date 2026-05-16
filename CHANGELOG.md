@@ -2,6 +2,16 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.5.0.1] - 2026-05-16
+
+Memory v2 hybrid retrieval now active in the mobile chat endpoint.
+
+### Changed
+- **Mobile chat** now uses `loadRelevantMemories` (hybrid semantic) instead of full-load `loadMemories` — ConvoMem users get hybrid retrieval; others get query-matched hybrid keyed to the user's message
+- **Conversation summaries** skipped for ConvoMem users in mobile chat (matches web behavior)
+- **Memory recency scores** updated via `touchReferencedMemories` after each user message in mobile chat
+- Model aliases updated to dot notation (`claude-haiku-4.5`, `claude-sonnet-4.6`)
+
 ## [0.5.0.0] - 2026-05-13
 
 Web onboarding port from mobile — cinematic welcome carousel, role picker, health consent, share-invite code, caregiver code-join, live presence, iOS app nudge. Full visual + motion parity with the iPhone flow.
