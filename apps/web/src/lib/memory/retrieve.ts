@@ -7,6 +7,36 @@ import type { Memory, ConversationSummary } from './types';
 
 const TIER1_CAP = 5;
 
+// RDS Data API cannot serialize halfvec/tsvector result columns. Select an
+// explicit projection that excludes `embedding` and `fact_tsv`.
+const MEMORY_COLS = {
+  id: memories.id,
+  userId: memories.userId,
+  careProfileId: memories.careProfileId,
+  category: memories.category,
+  fact: memories.fact,
+  source: memories.source,
+  confidence: memories.confidence,
+  createdAt: memories.createdAt,
+  lastReferenced: memories.lastReferenced,
+  validFrom: memories.validFrom,
+  validTo: memories.validTo,
+  polarity: memories.polarity,
+  status: memories.status,
+  subject: memories.subject,
+  importance: memories.importance,
+  seenCount: memories.seenCount,
+  tier: memories.tier,
+  trust: memories.trust,
+  decayAt: memories.decayAt,
+  cycleNumber: memories.cycleNumber,
+  labValueNumeric: memories.labValueNumeric,
+  labValueUnit: memories.labValueUnit,
+  measuredAt: memories.measuredAt,
+  severity: memories.severity,
+  slug: memories.slug,
+} as const;
+
 const CATEGORY_SIGNALS: Record<string, string[]> = {
   medication: ['medication', 'medicine', 'drug', 'pill', 'dose', 'dosage', 'mg', 'prescription', 'pharmacy', 'tablet', 'capsule'],
   insurance: ['insurance', 'claim', 'coverage', 'copay', 'deductible', 'premium', 'benefit', 'authorization', 'denial'],
@@ -32,7 +62,7 @@ export async function loadMemories(userId: string, limit = 150, categories?: str
       : eq(memories.userId, userId);
 
     const data = await db
-      .select()
+      .select(MEMORY_COLS)
       .from(memories)
       .where(whereClause)
       .orderBy(desc(memories.lastReferenced))
@@ -104,7 +134,7 @@ export async function loadRelevantMemories(
     WITH vec AS (
       SELECT id, embedding <=> ${queryVecLit}::halfvec AS dist
       FROM memories
-      WHERE user_id = ${userId}
+      WHERE user_id = ${userId}::uuid
         AND embedding IS NOT NULL
         AND valid_to IS NULL AND tier != 1
         AND (decay_at IS NULL OR decay_at > NOW())
@@ -119,7 +149,7 @@ export async function loadRelevantMemories(
         ORDER BY ts_rank_cd(fact_tsv, plainto_tsquery('english', ${trimmed})) DESC
       ) AS rnk
       FROM memories
-      WHERE user_id = ${userId} AND valid_to IS NULL AND tier != 1
+      WHERE user_id = ${userId}::uuid AND valid_to IS NULL AND tier != 1
         AND (decay_at IS NULL OR decay_at > NOW())
         AND fact_tsv @@ plainto_tsquery('english', ${trimmed})
       LIMIT 30
@@ -134,7 +164,7 @@ export async function loadRelevantMemories(
       LEFT JOIN vec_ranked v ON v.id = m.id
       LEFT JOIN kw         k ON k.id = m.id
       WHERE (v.id IS NOT NULL OR k.id IS NOT NULL)
-        AND m.user_id = ${userId} AND m.valid_to IS NULL
+        AND m.user_id = ${userId}::uuid AND m.valid_to IS NULL
     )
     SELECT id, fact
     FROM (
@@ -157,7 +187,7 @@ export async function loadRelevantMemories(
 
   let extras: Memory[] = [];
   if (fetchIds.length > 0) {
-    const rows = await db.select().from(memories).where(inArray(memories.id, fetchIds));
+    const rows = await db.select(MEMORY_COLS).from(memories).where(inArray(memories.id, fetchIds));
     const byId = new Map<string, Memory>();
     for (const r of rows as Memory[]) byId.set(r.id, r);
     // Preserve reranker order
@@ -177,7 +207,7 @@ export async function loadRelevantMemories(
 
 async function tier1Facts(userId: string): Promise<Memory[]> {
   const rows = await db
-    .select()
+    .select(MEMORY_COLS)
     .from(memories)
     .where(
       and(
