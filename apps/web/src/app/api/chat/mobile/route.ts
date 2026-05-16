@@ -5,7 +5,9 @@ import { db } from '@/lib/db';
 import { careProfiles, medications, doctors, appointments, labResults, symptomEntries, messages, conversations, treatmentCycles } from '@/lib/db/schema';
 import { eq, desc, and, isNull } from 'drizzle-orm';
 import { buildSystemPrompt } from '@/lib/system-prompt';
-import { extractAndSaveMemories, loadMemories, loadConversationSummaries } from '@/lib/memory';
+import { extractAndSaveMemories, loadRelevantMemories, loadConversationSummaries, touchReferencedMemories } from '@/lib/memory';
+import { hybridEnabledForUser } from '@/lib/memory/gate';
+import { convoMemEnabledForUser } from '@/lib/memory/convomem';
 import { validateCsrf } from '@/lib/csrf';
 import { ApiErrors } from '@/lib/api-response';
 import { rateLimit } from '@/lib/rate-limit';
@@ -18,7 +20,7 @@ const TAG_OPTIONS = ['Labs', 'Medications', 'Side Effects', 'Appointments', 'Emo
 async function autoTitleConversation(conversationId: string, userId: string, firstUserMsg: string, firstAiMsg: string) {
   try {
     const { text } = await generateText({
-      model: anthropic('claude-haiku-4-5-20251001'),
+      model: anthropic('claude-haiku-4.5'),
       maxOutputTokens: 60,
       system: `You generate short conversation titles and topic tags for a cancer care app.
 Given the first exchange in a conversation, output JSON with:
@@ -93,8 +95,16 @@ export async function POST(req: Request) {
       profile?.id ? db.select().from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))).limit(20).catch(() => []) : Promise.resolve([]),
       profile?.id ? db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).limit(20).catch(() => []) : Promise.resolve([]),
       db.select().from(labResults).where(eq(labResults.userId, user!.id)).orderBy(desc(labResults.dateTaken)).limit(20).catch(() => []),
-      loadMemories(user!.id).catch(() => []),
-      loadConversationSummaries(user!.id).catch(() => []),
+      (async () => {
+        const convoMem = await convoMemEnabledForUser(user!.id).catch(() => false);
+        if (convoMem) return loadRelevantMemories(user!.id, '', 8, { hybrid: true });
+        return loadRelevantMemories(user!.id, lastUserMessage.content, 8, { hybrid: hybridEnabledForUser(user!.id) });
+      })().catch(() => []),
+      (async () => {
+        const convoMem = await convoMemEnabledForUser(user!.id).catch(() => false);
+        if (convoMem) return [];
+        return loadConversationSummaries(user!.id);
+      })().catch(() => []),
       db.select().from(symptomEntries).where(eq(symptomEntries.userId, user!.id)).orderBy(desc(symptomEntries.date)).limit(14).catch(() => []),
       profile?.id ? db.select().from(treatmentCycles).where(and(eq(treatmentCycles.careProfileId, profile.id), eq(treatmentCycles.isActive, true))).limit(1).catch(() => []) : Promise.resolve([]),
     ]);
@@ -115,9 +125,10 @@ export async function POST(req: Request) {
       role: 'user',
       content: lastUserMessage.content,
     });
+    touchReferencedMemories(user!.id, lastUserMessage.content, memoriesData).catch(() => {});
 
     const { text } = await generateText({
-      model: anthropic('claude-sonnet-4-6'),
+      model: anthropic('claude-sonnet-4.6'),
       maxOutputTokens: 1024,
       system: systemPrompt,
       messages: inputMessages.map(m => ({ role: m.role, content: m.content })),
