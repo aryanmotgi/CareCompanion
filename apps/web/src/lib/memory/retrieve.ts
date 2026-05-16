@@ -5,7 +5,24 @@ import { embedQuery, toHalfvecLiteral } from './embed';
 import { rerank } from './rerank';
 import type { Memory, ConversationSummary } from './types';
 
-const TIER1_CAP = 5;
+export const TIER1_CAP = 5;
+
+/** Mirrors the SQL scoring formula in the hybrid retrieval CTE. */
+export function computeHybridScore(p: {
+  vecScore: number;
+  kwScore: number;
+  recency: number;
+  importance: number;
+  seenCount: number;
+  trust: number;
+}): number {
+  return (
+    0.5 * (p.vecScore + p.kwScore) +
+    0.2 * p.recency +
+    0.1 * (p.importance * Math.log(1 + p.seenCount)) +
+    0.2 * p.trust
+  );
+}
 
 // RDS Data API cannot serialize halfvec/tsvector result columns. Select an
 // explicit projection that excludes `embedding` and `fact_tsv`.

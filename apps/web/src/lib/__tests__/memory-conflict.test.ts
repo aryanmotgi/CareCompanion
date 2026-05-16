@@ -276,6 +276,7 @@ describe('resolveConflicts (chunk 4: temporal contradiction)', () => {
   });
 });
 
+
 describe('bumpSeenCount', () => {
   beforeEach(() => {
     vi.clearAllMocks();

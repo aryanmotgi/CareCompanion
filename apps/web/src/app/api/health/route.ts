@@ -26,6 +26,9 @@ const REQUIRED_COLUMNS: { table: string; column: string }[] = [
   // messages (core chat)
   { table: 'messages', column: 'id' },
   { table: 'messages', column: 'user_id' },
+  // medication observations (migration 016)
+  { table: 'medication_observations', column: 'id' },
+  { table: 'medication_observations', column: 'discrepancy_flag' },
 ]
 
 /**
