@@ -258,12 +258,27 @@ CONVERSATION:
 ${transcript}`,
     });
 
-    await db.insert(conversationSummaries).values({
-      userId,
-      summary: output.summary,
-      topics: output.topics,
-      messageCount: msgs.length,
-    });
+    let embeddingLit: string | null = null;
+    try {
+      const [vec] = await embedTextBatch([output.summary]);
+      embeddingLit = toHalfvecLiteral(vec);
+    } catch (embedErr) {
+      console.error('[memory] summary embed failed (inserting without embedding):', embedErr instanceof Error ? embedErr.message : String(embedErr));
+    }
+
+    if (embeddingLit) {
+      await db.execute(sql`
+        INSERT INTO conversation_summaries (user_id, summary, topics, message_count, embedding)
+        VALUES (${userId}, ${output.summary}, ${output.topics}, ${msgs.length}, ${embeddingLit}::halfvec)
+      `);
+    } else {
+      await db.insert(conversationSummaries).values({
+        userId,
+        summary: output.summary,
+        topics: output.topics,
+        messageCount: msgs.length,
+      });
+    }
   } catch (error) {
     console.error('[memory] summarization failed:', error);
   }
