@@ -7,6 +7,7 @@ import { eq, desc, and, isNull, sql } from 'drizzle-orm';
 import { buildSystemPromptBlocks, buildRoleContext } from '@/lib/system-prompt';
 import { buildTools } from '@/lib/tools';
 import { extractAndSaveMemories, loadMemories, loadRelevantMemories, loadConversationSummaries, touchReferencedMemories, summarizeConversation } from '@/lib/memory';
+import { hybridEnabledForUser } from '@/lib/memory/gate';
 import { orchestrate } from '@/lib/agents/orchestrator';
 import { isSimpleMessage } from '@/lib/agents/router';
 import { rateLimit } from '@/lib/rate-limit';
@@ -148,7 +149,10 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     db.select().from(claims).where(and(eq(claims.userId, dbUser!.id), eq(claims.status, 'denied'))).limit(5).catch(() => []),
     db.select().from(priorAuths).where(eq(priorAuths.userId, dbUser!.id)).limit(50).catch(() => []),
     db.select().from(fsaHsa).where(eq(fsaHsa.userId, dbUser!.id)).limit(50).catch(() => []),
-    (userMessageText ? loadRelevantMemories(dbUser!.id, userMessageText) : loadMemories(dbUser!.id, 50)).catch(() => []),
+    (userMessageText
+      ? loadRelevantMemories(dbUser!.id, userMessageText, 8, { hybrid: hybridEnabledForUser(dbUser!.id) })
+      : loadMemories(dbUser!.id, 50)
+    ).catch(() => []),
     loadConversationSummaries(dbUser!.id).catch(() => []),
     db.select().from(symptomEntries).where(eq(symptomEntries.userId, dbUser!.id)).orderBy(desc(symptomEntries.date)).limit(14).catch(() => []),
     db.select().from(insurance).where(eq(insurance.userId, dbUser!.id)).limit(1).catch(() => []),

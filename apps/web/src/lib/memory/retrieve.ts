@@ -113,8 +113,12 @@ export async function loadRelevantMemories(
   userId: string,
   userMessage: string,
   limit = 8,
+  options: { hybrid?: boolean } = {},
 ): Promise<Memory[]> {
-  if (process.env.ENABLE_MEMORY_HYBRID !== 'true') {
+  // Default to env flag for back-compat with eval scripts/tests that don't
+  // pass `hybrid`. Route.ts passes the per-user gate result explicitly.
+  const hybrid = options.hybrid ?? (process.env.ENABLE_MEMORY_HYBRID === 'true');
+  if (!hybrid) {
     return loadRelevantMemoriesLegacy(userId, userMessage, 50);
   }
 
