@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { DEV_STORE_LABS_KEY } from '../../src/services/healthkit'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -51,6 +52,26 @@ export default function LabsScreen() {
 
   const loadLabs = useCallback(async () => {
     if (!profile?.careProfileId) {
+      if (__DEV__) {
+        const raw = await AsyncStorage.getItem(DEV_STORE_LABS_KEY).catch(() => null)
+        const arr: any[] = raw ? JSON.parse(raw) : []
+        const normalised: Lab[] = arr.map((l) => ({
+          id: l.id,
+          testName: l.testName ?? 'Unknown',
+          value: l.value ?? null,
+          unit: l.unit ?? null,
+          referenceRange: l.referenceRange ?? null,
+          isAbnormal: l.isAbnormal ?? false,
+          directionIsGood: l.directionIsGood ?? null,
+          dateTaken: l.dateTaken ?? null,
+        }))
+        normalised.sort((a, b) => {
+          const ta = a.dateTaken ? new Date(a.dateTaken).getTime() : 0
+          const tb = b.dateTaken ? new Date(b.dateTaken).getTime() : 0
+          return tb - ta
+        })
+        setLabs(normalised)
+      }
       setLoading(false)
       return
     }

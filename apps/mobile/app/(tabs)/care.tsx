@@ -25,6 +25,7 @@ import Animated, {
   useReducedMotion,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as SecureStore from 'expo-secure-store'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { useTheme } from '../../src/theme'
@@ -33,6 +34,7 @@ import { hapticMedTaken } from '../../src/utils/haptics'
 import { useStaggerEntrance } from '../../src/hooks/useStaggerEntrance'
 import { TabFadeWrapper } from './_layout'
 import { useProfile } from '../../src/context/ProfileContext'
+import { DEV_STORE_MEDS_KEY, DEV_STORE_LABS_KEY } from '../../src/services/healthkit'
 import { CareGroupTab } from '../../src/components/care/CareGroupTab'
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
@@ -804,7 +806,38 @@ export default function CareScreen() {
   const stagger = useStaggerEntrance(3)
 
   useEffect(() => {
-    if (!profile?.careProfileId) { setLoading(false); return }
+    if (!profile?.careProfileId) {
+      if (__DEV__) {
+        Promise.all([
+          AsyncStorage.getItem(DEV_STORE_MEDS_KEY).then((v) => (v ? JSON.parse(v) : [])).catch(() => []),
+          AsyncStorage.getItem(DEV_STORE_LABS_KEY).then((v) => (v ? JSON.parse(v) : [])).catch(() => []),
+        ]).then(([devMeds, devLabs]) => {
+          setMeds((devMeds as any[]).map((m) => ({
+            id: m.id,
+            logId: undefined,
+            name: m.name,
+            dose: m.dose || '',
+            time: m.frequency || '',
+            status: 'upcoming' as MedStatus,
+            isAsNeeded: false,
+            refillDueInDays: undefined,
+          })))
+          setLabs((devLabs as any[]).map((l) => ({
+            id: l.id,
+            name: l.testName,
+            value: String(l.value ?? ''),
+            range: l.referenceRange || '',
+            date: l.dateTaken
+              ? new Date(l.dateTaken).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              : '',
+            status: (l.isAbnormal ? 'abnormal' : 'normal') as 'normal' | 'abnormal',
+          })))
+        }).catch(() => {}).finally(() => setLoading(false))
+      } else {
+        setLoading(false)
+      }
+      return
+    }
     const careProfileId = profile.careProfileId
     setLoading(true)
 

@@ -35,7 +35,7 @@ import { AmbientOrbs } from '../../src/components/AmbientOrbs'
 import { AnimatedCounter } from '../../src/components/AnimatedCounter'
 import { Drawer } from '../../src/components/Drawer'
 import { RoleBadge } from '../../src/components/RoleBadge'
-import { syncHealthKitData, isHealthKitConnected } from '../../src/services/healthkit'
+import { syncHealthKitData, isHealthKitConnected, DEV_STORE_MEDS_KEY, DEV_STORE_LABS_KEY } from '../../src/services/healthkit'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { ShimmerSkeleton } from '../../src/components/ShimmerSkeleton'
 import { DailyAlertsCard } from '../../src/components/DailyAlertsCard'
@@ -168,7 +168,19 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!profile?.careProfileId) {
-      setDataLoading(false)
+      if (__DEV__) {
+        // No care profile yet — load from the local DEV store populated by
+        // syncHealthKitData/replaceHealthKitData so the UI shows mock data.
+        Promise.all([
+          AsyncStorage.getItem(DEV_STORE_MEDS_KEY).then((v) => (v ? JSON.parse(v) : [])).catch(() => []),
+          AsyncStorage.getItem(DEV_STORE_LABS_KEY).then((v) => (v ? JSON.parse(v) : [])).catch(() => []),
+        ]).then(([devMeds, devLabs]) => {
+          setMeds(devMeds)
+          setLabs(devLabs)
+        }).catch(() => {}).finally(() => setDataLoading(false))
+      } else {
+        setDataLoading(false)
+      }
       return
     }
     setDataLoading(true)
