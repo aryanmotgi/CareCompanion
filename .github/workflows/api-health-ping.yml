@@ -25,6 +25,22 @@ jobs:
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Check 0 — /api/health (schema + DB + env, Claude-free)
+        id: health
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/health.json -w '%{http_code}' \
+            --max-time 10 \
+            https://carecompanionai.org/api/health 2>/dev/null || echo "000")
+          BODY=$(cat /tmp/health.json 2>/dev/null | head -c 500 || echo "no response")
+          echo "status=$HTTP_CODE" >> $GITHUB_OUTPUT
+          echo "body=$BODY" >> $GITHUB_OUTPUT
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::/api/health failed: HTTP $HTTP_CODE"
+            echo "failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "failed=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Check 1 — Site liveness
         id: liveness
         if: steps.precheck.outputs.skip != 'true'
@@ -106,7 +122,7 @@ jobs:
           fi
 
       - name: Send failure alert
-        if: (steps.liveness.outputs.failed == 'true' || steps.auth.outputs.failed == 'true' || steps.session.outputs.failed == 'true') && steps.auth.outputs.server_not_configured != 'true'
+        if: (steps.health.outputs.failed == 'true' || steps.liveness.outputs.failed == 'true' || steps.auth.outputs.failed == 'true' || steps.session.outputs.failed == 'true') && steps.auth.outputs.server_not_configured != 'true'
         uses: dawidd6/action-send-mail@611879133a9569642c41be66f4a323286e9b8a3b # v4
         with:
           server_address: smtp.gmail.com
@@ -120,6 +136,7 @@ jobs:
           body: |
             CareCompanion API health ping detected a failure.
 
+            Check 0 (/api/health): ${{ steps.health.outputs.failed == 'true' && 'FAILED' || 'OK' }} — HTTP ${{ steps.health.outputs.status }}
             Check 1 (Site liveness): ${{ steps.liveness.outputs.failed == 'true' && 'FAILED' || 'OK' }} — HTTP ${{ steps.liveness.outputs.status }}
             Check 2 (Auth + DB): ${{ steps.auth.outputs.failed == 'true' && 'FAILED' || 'OK' }} — HTTP ${{ steps.auth.outputs.status }}
             Check 3 (Session valid): ${{ steps.session.outputs.failed == 'true' && 'FAILED' || 'SKIPPED/OK' }}
@@ -133,5 +150,5 @@ jobs:
             Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Fail job if any check failed
-        if: (steps.liveness.outputs.failed == 'true' || steps.auth.outputs.failed == 'true' || steps.session.outputs.failed == 'true') && steps.auth.outputs.server_not_configured != 'true'
+        if: (steps.health.outputs.failed == 'true' || steps.liveness.outputs.failed == 'true' || steps.auth.outputs.failed == 'true' || steps.session.outputs.failed == 'true') && steps.auth.outputs.server_not_configured != 'true'
         run: exit 1

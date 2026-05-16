@@ -11,9 +11,7 @@
  */
 import { NativeModules, Platform } from 'react-native'
 import { apiClient } from './api'
-import { isMedicalEvent as isMedicalEventPure, MEDICAL_KEYWORDS as MEDICAL_KEYWORDS_PURE } from './internal/pure'
-
-export const MEDICAL_KEYWORDS = MEDICAL_KEYWORDS_PURE
+import { isMedicalEvent as isMedicalEventPure } from './internal/pure'
 
 interface RawCalendarEvent {
   id: string
@@ -36,8 +34,7 @@ const DEFAULT_MAX_EVENTS = 500
 const Bridge: NativeCalendarBridge | null =
   Platform.OS === 'ios' ? (NativeModules.CalendarBridge ?? null) : null
 
-/** Returns true if the event title/notes/calendar match any medical keyword. */
-export function isMedicalEvent(ev: RawCalendarEvent): boolean {
+function isMedicalEvent(ev: RawCalendarEvent): boolean {
   return isMedicalEventPure(ev)
 }
 

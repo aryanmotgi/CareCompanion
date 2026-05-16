@@ -4,13 +4,14 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { conversationSummaries } from '@/lib/db/schema';
 import { eq, desc, sql } from 'drizzle-orm';
-import { resolveConflicts } from '@/lib/memory-conflict';
+import { resolveConflicts, findCosineDuplicate, bumpSeenCount } from '@/lib/memory-conflict';
 import type { Memory } from './types';
 import {
   isInstructionShaped,
   defaultImportance,
   trustForSource,
   tierForCategory,
+  decayForCategory,
 } from './validators';
 import { embedTextBatch, toHalfvecLiteral } from './embed';
 
@@ -160,32 +161,48 @@ export async function extractAndSaveMemories(
     const sanitized = extracted.filter((m) => !isInstructionShaped(m.fact));
     if (sanitized.length === 0) return;
 
-    const factsToInsert: ExtractedFact[] = [];
+    const factsAfterWordOverlap: Array<{ fact: ExtractedFact; effectiveText: string }> = [];
     for (const fact of sanitized) {
-      const { isDuplicate } = await resolveConflicts(userId, fact.fact, fact.category, existingMemories);
-      if (!isDuplicate) factsToInsert.push(fact);
+      const { isDuplicate, rewrittenFact } = await resolveConflicts(
+        userId,
+        fact.fact,
+        fact.category,
+        existingMemories,
+      );
+      if (!isDuplicate) {
+        factsAfterWordOverlap.push({ fact, effectiveText: rewrittenFact ?? fact.fact });
+      }
     }
-    if (factsToInsert.length === 0) return;
+    if (factsAfterWordOverlap.length === 0) return;
 
-    const embeddings = await embedTextBatch(factsToInsert.map((f) => f.fact));
+    const embeddings = await embedTextBatch(factsAfterWordOverlap.map((e) => e.effectiveText));
 
-    for (let i = 0; i < factsToInsert.length; i++) {
-      const f = factsToInsert[i];
+    for (let i = 0; i < factsAfterWordOverlap.length; i++) {
+      const { fact: f, effectiveText } = factsAfterWordOverlap[i];
+      const embeddingLit = toHalfvecLiteral(embeddings[i]);
+
+      const { duplicateId } = await findCosineDuplicate(userId, f.category, embeddingLit);
+      if (duplicateId) {
+        await bumpSeenCount(duplicateId);
+        continue;
+      }
+
       const importance = String(f.importance ?? defaultImportance(f.category));
       const tier = tierForCategory(f.category, f.status, f.polarity);
       const trust = String(trustForSource('conversation'));
-      const embeddingLit = toHalfvecLiteral(embeddings[i]);
+      const decayAt = decayForCategory(f.category, f.status);
 
       await db.execute(sql`
         INSERT INTO memories (
           user_id, care_profile_id, category, fact, polarity, status, subject,
-          importance, tier, trust, confidence, source, embedding
+          importance, tier, trust, confidence, source, embedding, decay_at
         ) VALUES (
           ${userId}, ${careProfileId}, ${f.category},
-          ${f.fact}, ${f.polarity}, ${f.status}, ${f.subject},
+          ${effectiveText}, ${f.polarity}, ${f.status}, ${f.subject},
           ${importance}, ${tier}, ${trust},
           ${f.confidence}, ${'conversation'},
-          ${embeddingLit}::halfvec
+          ${embeddingLit}::halfvec,
+          ${decayAt}
         )
       `);
     }
@@ -248,12 +265,27 @@ CONVERSATION:
 ${transcript}`,
     });
 
-    await db.insert(conversationSummaries).values({
-      userId,
-      summary: output.summary,
-      topics: output.topics,
-      messageCount: msgs.length,
-    });
+    let embeddingLit: string | null = null;
+    try {
+      const [vec] = await embedTextBatch([output.summary]);
+      embeddingLit = toHalfvecLiteral(vec);
+    } catch (embedErr) {
+      console.error('[memory] summary embed failed (inserting without embedding):', embedErr instanceof Error ? embedErr.message : String(embedErr));
+    }
+
+    if (embeddingLit) {
+      await db.execute(sql`
+        INSERT INTO conversation_summaries (user_id, summary, topics, message_count, embedding)
+        VALUES (${userId}, ${output.summary}, ${output.topics}, ${msgs.length}, ${embeddingLit}::halfvec)
+      `);
+    } else {
+      await db.insert(conversationSummaries).values({
+        userId,
+        summary: output.summary,
+        topics: output.topics,
+        messageCount: msgs.length,
+      });
+    }
   } catch (error) {
     console.error('[memory] summarization failed:', error);
   }

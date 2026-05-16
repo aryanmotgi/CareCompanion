@@ -8,6 +8,7 @@ import { buildSystemPromptBlocks, buildRoleContext } from '@/lib/system-prompt';
 import { buildTools } from '@/lib/tools';
 import { extractAndSaveMemories, loadMemories, loadRelevantMemories, loadConversationSummaries, touchReferencedMemories, summarizeConversation } from '@/lib/memory';
 import { hybridEnabledForUser } from '@/lib/memory/gate';
+import { convoMemEnabledForUser } from '@/lib/memory/convomem';
 import { orchestrate } from '@/lib/agents/orchestrator';
 import { isSimpleMessage } from '@/lib/agents/router';
 import { rateLimit } from '@/lib/rate-limit';
@@ -149,11 +150,25 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     db.select().from(claims).where(and(eq(claims.userId, dbUser!.id), eq(claims.status, 'denied'))).limit(5).catch(() => []),
     db.select().from(priorAuths).where(eq(priorAuths.userId, dbUser!.id)).limit(50).catch(() => []),
     db.select().from(fsaHsa).where(eq(fsaHsa.userId, dbUser!.id)).limit(50).catch(() => []),
-    (userMessageText
-      ? loadRelevantMemories(dbUser!.id, userMessageText, 8, { hybrid: hybridEnabledForUser(dbUser!.id) })
-      : loadMemories(dbUser!.id, 50)
-    ).catch(() => []),
-    loadConversationSummaries(dbUser!.id).catch(() => []),
+    (async () => {
+      if (!userMessageText) return loadMemories(dbUser!.id, 50);
+      const convoMem = await convoMemEnabledForUser(dbUser!.id).catch(() => false);
+      if (convoMem) {
+        // Bypass hybrid retrieval on near-empty corpus; tier-1 facts only.
+        // Chat handler still has the last N raw messages via msgs.slice(-8).
+        return loadRelevantMemories(dbUser!.id, '', 8, { hybrid: true });
+      }
+      return loadRelevantMemories(dbUser!.id, userMessageText, 8, { hybrid: hybridEnabledForUser(dbUser!.id) });
+    })().catch(() => []),
+    (async () => {
+      // ConvoMem users have <30 sessions and therefore no useful summary
+      // history; skip the load entirely.
+      const convoMem = userMessageText
+        ? await convoMemEnabledForUser(dbUser!.id).catch(() => false)
+        : false;
+      if (convoMem) return [];
+      return loadConversationSummaries(dbUser!.id);
+    })().catch(() => []),
     db.select().from(symptomEntries).where(eq(symptomEntries.userId, dbUser!.id)).orderBy(desc(symptomEntries.date)).limit(14).catch(() => []),
     db.select().from(insurance).where(eq(insurance.userId, dbUser!.id)).limit(1).catch(() => []),
     profile?.id ? db.select().from(treatmentCycles).where(and(eq(treatmentCycles.careProfileId, profile.id), eq(treatmentCycles.isActive, true))).limit(1).catch(() => []) : Promise.resolve([]),

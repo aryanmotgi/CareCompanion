@@ -266,3 +266,68 @@ export async function loadConversationSummaries(
     return [];
   }
 }
+
+/**
+ * Summary candidate returned to chat context. Score is cosine similarity
+ * multiplied by SUMMARY_SCORE_MULTIPLIER (0.7) so summaries don't crowd
+ * out higher-precision tier-1 memory facts.
+ */
+export type RelevantSummary = {
+  id: string;
+  summary: string;
+  topics: string[] | null;
+  createdAt: Date | null;
+  score: number;
+};
+
+export const SUMMARY_SCORE_MULTIPLIER = 0.7;
+
+/**
+ * Cosine-nearest summaries for a user. Returns top-2 by default. Scores are
+ * cosine similarity * SUMMARY_SCORE_MULTIPLIER so the caller can rank them
+ * alongside memory facts without summaries dominating purely on recency.
+ */
+export async function loadRelevantSummaries(
+  userId: string,
+  userMessage: string,
+  limit = 2,
+): Promise<RelevantSummary[]> {
+  const trimmed = (userMessage ?? '').trim();
+  if (trimmed.length === 0) return [];
+
+  try {
+    const queryVec = await embedQuery(trimmed);
+    const queryVecLit = toHalfvecLiteral(queryVec);
+
+    const result = await db.execute(sql`
+      SELECT id, summary, topics, created_at,
+             1 - (embedding <=> ${queryVecLit}::halfvec) AS similarity
+      FROM conversation_summaries
+      WHERE user_id = ${userId}::uuid
+        AND embedding IS NOT NULL
+      ORDER BY embedding <=> ${queryVecLit}::halfvec
+      LIMIT 2
+    `);
+
+    const rows = (result as unknown as {
+      rows: Array<{
+        id: string;
+        summary: string;
+        topics: string[] | null;
+        created_at: Date | null;
+        similarity: number;
+      }>;
+    }).rows;
+
+    return rows.slice(0, limit).map((r) => ({
+      id: r.id,
+      summary: r.summary,
+      topics: r.topics,
+      createdAt: r.created_at,
+      score: Number(r.similarity) * SUMMARY_SCORE_MULTIPLIER,
+    }));
+  } catch (error) {
+    console.error('[memory] loadRelevantSummaries failed:', error);
+    return [];
+  }
+}

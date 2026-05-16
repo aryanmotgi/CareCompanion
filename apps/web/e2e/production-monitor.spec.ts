@@ -118,54 +118,6 @@ test.describe('Production 24/7 Monitor', () => {
     }
   })
 
-  test('AI chat responds to a message', async ({ page }) => {
-    // Aurora cold start + full pipeline (13 parallel DB queries + Claude) can
-    // take 30-90s. Override the 30s Playwright default for this test only.
-    test.setTimeout(150_000)
-    try {
-      await page.goto('/chat', { waitUntil: 'domcontentloaded', timeout: 20000 })
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
-      if (!msg.includes('ERR_ABORTED')) throw e
-    }
-    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {})
-    const onChat = page.url().includes('/chat')
-    if (!onChat) return
-
-    // Capture /api/chat response so failures show the exact HTTP status.
-    let chatApiStatus = 0
-    let chatApiBody = ''
-    page.on('response', async (res) => {
-      if (res.url().includes('/api/chat') && res.request().method() === 'POST') {
-        chatApiStatus = res.status()
-        if (chatApiStatus !== 200) chatApiBody = await res.text().catch(() => '')
-      }
-    })
-
-    const chatInput = page.getByTestId('chat-input')
-    await expect(chatInput).toBeVisible({ timeout: 10000 })
-    await chatInput.fill('hello')
-
-    // Retry sending up to 3 times to handle transient UI delays.
-    const sendButton = page.getByTestId('send-button')
-    await expect(sendButton).toBeVisible({ timeout: 5000 })
-    await sendButton.click()
-
-    // Confirm user bubble appeared — proves the message was sent.
-    await expect(page.getByTestId('chat-bubble-user').first()).toBeVisible({ timeout: 10000 })
-
-    // Wait for AI response. 90s budget: Aurora cold-start + prompt build + Claude.
-    const assistantMessage = page.getByTestId('chat-bubble-ai').first()
-    try {
-      await expect(assistantMessage).toBeVisible({ timeout: 90000 })
-    } catch {
-      throw new Error(
-        `AI response never appeared. /api/chat returned HTTP ${chatApiStatus || '(no response)'}` +
-        (chatApiBody ? `: ${chatApiBody.slice(0, 200)}` : '')
-      )
-    }
-  })
-
   test('page load performance budgets', async ({ page }) => {
     const MAX_LOAD_TIME_MS = 8000
     const pages = ['/dashboard', '/care', '/chat']

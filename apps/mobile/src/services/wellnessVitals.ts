@@ -18,13 +18,13 @@ const SIX_HOURS_SEC = 6 * 60 * 60
 const WELLNESS_QUEUE_KEY = 'cc-wellness-retry-queue'
 const WELLNESS_LAST_SYNCED_KEY = 'cc-wellness-last-synced'
 
-export type WellnessSnapshot = {
+type WellnessSnapshot = {
   steps: number
   heartRate: number | null
   sleepHours: number | null
 }
 
-export type WellnessSyncState =
+type WellnessSyncState =
   | { status: 'idle' }
   | { status: 'syncing' }
   | { status: 'success'; at: number }
@@ -32,34 +32,9 @@ export type WellnessSyncState =
   | { status: 'retrying'; at: number; attempt: number; nextAt: number }
 
 let currentState: WellnessSyncState = { status: 'idle' }
-const listeners = new Set<(s: WellnessSyncState) => void>()
 
 function emit(next: WellnessSyncState) {
   currentState = next
-  for (const fn of listeners) {
-    try { fn(next) } catch { /* listener errors must not affect sync */ }
-  }
-}
-
-export function getWellnessSyncState(): WellnessSyncState {
-  return currentState
-}
-
-export function subscribeWellnessSyncState(fn: (s: WellnessSyncState) => void): () => void {
-  listeners.add(fn)
-  fn(currentState)
-  return () => { listeners.delete(fn) }
-}
-
-export async function getWellnessLastSyncedAt(): Promise<number | null> {
-  try {
-    const raw = await AsyncStorage.getItem(WELLNESS_LAST_SYNCED_KEY)
-    if (!raw) return null
-    const n = parseInt(raw, 10)
-    return Number.isFinite(n) ? n : null
-  } catch {
-    return null
-  }
 }
 
 async function setWellnessLastSyncedAt(epochMs: number): Promise<void> {
@@ -190,17 +165,8 @@ interface NativeWellnessVitals {
 const Bridge: NativeWellnessVitals | null =
   Platform.OS === 'ios' ? (NativeModules.WellnessVitals ?? null) : null
 
-export async function requestWellnessPermissions(): Promise<boolean> {
-  if (!Bridge) return false
-  try {
-    return await Bridge.requestAuthorization()
-  } catch {
-    return false
-  }
-}
-
 /** Fetch today's wellness snapshot from HealthKit (no network). */
-export async function readWellnessToday(): Promise<WellnessSnapshot | null> {
+async function readWellnessToday(): Promise<WellnessSnapshot | null> {
   if (!Bridge) return null
   try {
     return await Bridge.today()
@@ -215,7 +181,7 @@ export async function readWellnessToday(): Promise<WellnessSnapshot | null> {
  * queue first, then posts the fresh snapshot. Returns the OS-facing background
  * fetch classification for the calling task handler.
  */
-export async function syncWellness(): Promise<'new-data' | 'no-data' | 'failed'> {
+async function syncWellness(): Promise<'new-data' | 'no-data' | 'failed'> {
   emit({ status: 'syncing' })
 
   // Opportunistic drain on every invocation.
@@ -345,12 +311,3 @@ export async function registerWellnessBackgroundSync(): Promise<boolean> {
   }
 }
 
-export async function unregisterWellnessBackgroundSync(): Promise<void> {
-  const Bg = getBg()
-  if (!Bg) return
-  try {
-    await Bg.unregisterTaskAsync(WELLNESS_TASK)
-  } catch {
-    // ignore
-  }
-}

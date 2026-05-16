@@ -26,15 +26,7 @@ import {
 } from './internal/normalizers'
 import type { HealthKitRecord } from '@carecompanion/types'
 
-// Re-exports for callers that previously imported these from this module.
 export { formatLastSyncedPure as formatLastSynced }
-export type {
-  HealthKitConditionRecord,
-  HealthKitAllergyRecord,
-  HealthKitProcedureRecord,
-  HealthKitVitalSignRecord,
-  HealthKitImmunizationRecord,
-} from './internal/normalizers'
 
 const CONNECTED_KEY = 'cc-healthkit-connected'
 const LAST_SYNCED_KEY = 'cc-healthkit-last-synced'
@@ -78,10 +70,6 @@ function emit(next: SyncState) {
   for (const fn of listeners) {
     try { fn(next) } catch { /* listener errors must not affect sync */ }
   }
-}
-
-export function getSyncState(): SyncState {
-  return currentState
 }
 
 export function subscribeSyncState(fn: (s: SyncState) => void): () => void {
@@ -143,7 +131,7 @@ async function enqueueRetry(records: ExtendedHealthKitRecord[], attempt: number,
  * Drain queue entries whose nextAttemptAt has passed. Called opportunistically
  * on every syncHealthKitData() invocation and from background-sync.
  */
-export async function drainRetryQueue(): Promise<{ retried: number; succeeded: number }> {
+async function drainRetryQueue(): Promise<{ retried: number; succeeded: number }> {
   const q = await readQueue()
   if (q.length === 0) return { retried: 0, succeeded: 0 }
   const now = Date.now()
