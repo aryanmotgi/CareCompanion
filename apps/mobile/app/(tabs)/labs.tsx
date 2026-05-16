@@ -87,11 +87,13 @@ export default function LabsScreen() {
     loadLabs()
   }, [loadLabs])
 
-  // Clear the new-labs counter the moment the user lands here.
+  // Reload labs on focus so data refreshes after HealthKit connect or any
+  // background sync, including when the tab was already mounted.
   useFocusEffect(
     useCallback(() => {
       AsyncStorage.removeItem(NEW_LABS_KEY).catch(() => {})
-    }, []),
+      loadLabs()
+    }, [loadLabs]),
   )
 
   const abnormal = labs.filter((l) => l.isAbnormal)

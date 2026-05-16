@@ -398,7 +398,7 @@ export default function SettingsScreen() {
 
         {/* Connect Health Records */}
         <Animated.View style={stagger[3]}>
-          <Pressable onPress={() => router.push('/health-connect' as any)}>
+          <Pressable onPress={() => router.push('/health-connect?reconnect=1' as any)}>
             <View style={styles.section}>
               <View style={styles.editProfileRow}>
                 <Ionicons name="medkit-outline" size={20} color={theme.accent} />

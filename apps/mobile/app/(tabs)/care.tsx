@@ -1,5 +1,5 @@
 // apps/mobile/app/(tabs)/care.tsx
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -26,7 +26,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as SecureStore from 'expo-secure-store'
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { useTheme } from '../../src/theme'
 import { GlassCard } from '../../src/components/GlassCard'
 import { hapticMedTaken } from '../../src/utils/haptics'
@@ -787,6 +787,7 @@ export default function CareScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
+  const [focusKey, setFocusKey] = useState(0)
   const [takingId, setTakingId] = useState<string | null>(null)
   const [addModalVisible, setAddModalVisible] = useState(false)
   const [addForm, setAddForm] = useState({ name: '', dose: '', frequency: '', prescribingDoctor: '' })
@@ -870,7 +871,15 @@ export default function CareScreen() {
     }
 
     fetchAll()
-  }, [profile?.careProfileId, retryCount])
+  }, [profile?.careProfileId, retryCount, focusKey])
+
+  // Reload when the tab is focused — catches post-HealthKit-connect navigation
+  // and any other scenario where tabs were already mounted.
+  useFocusEffect(
+    useCallback(() => {
+      setFocusKey(k => k + 1)
+    }, []),
+  )
 
   async function markAsTaken(logId: string, medId: string) {
     if (takingId) return

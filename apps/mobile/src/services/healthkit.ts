@@ -302,6 +302,32 @@ const DEV_MOCK_RECORDS: RawClinicalRecord[] = [
       interpretation: [{ coding: [{ code: 'L', display: 'Low' }] }],
     }),
   },
+  {
+    id: 'mock-vital-1',
+    type: 'HKClinicalTypeIdentifierVitalSignRecord',
+    displayName: 'Heart Rate',
+    startDate: '2026-05-08T08:00:00Z',
+    fhirData: JSON.stringify({
+      resourceType: 'Observation',
+      status: 'final',
+      code: { coding: [{ display: 'Heart rate', code: '8867-4', system: 'http://loinc.org' }] },
+      valueQuantity: { value: 72, unit: '/min', system: 'http://unitsofmeasure.org' },
+      effectiveDateTime: '2026-05-08T08:00:00Z',
+    }),
+  },
+  {
+    id: 'mock-vital-2',
+    type: 'HKClinicalTypeIdentifierVitalSignRecord',
+    displayName: 'Body Weight',
+    startDate: '2026-05-08T08:00:00Z',
+    fhirData: JSON.stringify({
+      resourceType: 'Observation',
+      status: 'final',
+      code: { coding: [{ display: 'Body weight', code: '29463-7', system: 'http://loinc.org' }] },
+      valueQuantity: { value: 68.2, unit: 'kg', system: 'http://unitsofmeasure.org' },
+      effectiveDateTime: '2026-05-08T08:00:00Z',
+    }),
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -436,6 +462,11 @@ export async function replaceHealthKitData(): Promise<{
     console.warn('[HealthKit] fetchClinicalRecords failed:', err)
     emit({ status: 'error', at: Date.now(), message, userActionable: false })
     return empty
+  }
+
+  if (__DEV__ && raw.length === 0) {
+    raw = DEV_MOCK_RECORDS
+    console.log('[HealthKit] __DEV__: substituting', raw.length, 'mock clinical records (simulator has no real provider portal)')
   }
 
   const records: ExtendedHealthKitRecord[] = raw.flatMap((r) => {

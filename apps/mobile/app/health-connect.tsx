@@ -7,6 +7,7 @@ import {
   Pressable,
   Dimensions,
   FlatList,
+  Linking,
   type NativeSyntheticEvent,
   type NativeScrollEvent,
 } from 'react-native'
@@ -26,7 +27,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
 import { Ionicons } from '@expo/vector-icons'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   requestHealthKitPermissions,
@@ -373,6 +374,8 @@ const MOCKUP_MAP = {
 
 export default function HealthConnectScreen() {
   const router = useRouter()
+  const { reconnect } = useLocalSearchParams<{ reconnect?: string }>()
+  const isReconnect = reconnect === '1'
   const { refetch } = useProfile()
   const { markOnboarded } = useRecordsContext()
   const insets = useSafeAreaInsets()
@@ -450,8 +453,12 @@ export default function HealthConnectScreen() {
       setPermissionGranted(true)
       successScale.value = withSpring(1, { damping: 10, stiffness: 150 })
       setTimeout(() => {
-        markOnboarded()
-        router.replace('/(tabs)')
+        if (isReconnect) {
+          router.back()
+        } else {
+          markOnboarded()
+          router.replace('/(tabs)')
+        }
       }, 2000)
     } catch (err) {
       console.warn('[HealthKit] connect failed:', err)
@@ -504,8 +511,19 @@ export default function HealthConnectScreen() {
             entering={FadeIn.duration(400).delay(500)}
             style={styles.successSubtitle}
           >
-            Your health records will sync automatically
+            {isReconnect ? 'Your health records have been re-synced' : 'Your health records will sync automatically'}
           </Animated.Text>
+          {isReconnect && (
+            <Animated.View entering={FadeIn.duration(400).delay(700)}>
+              <Pressable
+                onPress={() => Linking.openURL('x-apple-health://')}
+                style={styles.openHealthBtn}
+              >
+                <Ionicons name="heart-circle-outline" size={16} color="#A78BFA" />
+                <Text style={styles.openHealthText}>Open Apple Health to change data sources</Text>
+              </Pressable>
+            </Animated.View>
+          )}
         </View>
       </View>
     )
@@ -1100,5 +1118,22 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     fontSize: 16,
     textAlign: 'center',
+    marginBottom: 20,
+  },
+  openHealthBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(167,139,250,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.25)',
+  },
+  openHealthText: {
+    color: '#A78BFA',
+    fontSize: 13,
+    fontWeight: '500',
   },
 })

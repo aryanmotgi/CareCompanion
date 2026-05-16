@@ -12,11 +12,18 @@ export async function POST(req: Request) {
 
   const { records = [], keepCareProfile = false }: { records: HealthKitRecord[]; keepCareProfile?: boolean } = await req.json()
 
-  const careProfile = await db.query.careProfiles.findFirst({
+  let careProfile = await db.query.careProfiles.findFirst({
     where: eq(careProfiles.userId, user.id),
   })
   if (!careProfile) {
-    return NextResponse.json({ error: 'No care profile found' }, { status: 404 })
+    // First-time HealthKit connect — no care profile exists yet (new user).
+    // Auto-create a blank profile so records can be stored; user fills in
+    // profile details later via setup or the care tab.
+    const [created] = await db.insert(careProfiles).values({
+      userId: user.id,
+      onboardingCompleted: false,
+    }).returning()
+    careProfile = created
   }
 
   // ── Wipe phase: atomic via transaction ─────────────────────────────────────
@@ -88,7 +95,8 @@ export async function POST(req: Request) {
           })
           .onConflictDoUpdate({
             target: medications.healthkitFhirId,
-            set: { name: record.name, dose: record.dose, frequency: record.frequency },
+            // deletedAt: null un-deletes rows soft-deleted during the wipe phase above
+            set: { name: record.name, dose: record.dose, frequency: record.frequency, deletedAt: null },
           })
         counts.medications++
         synced++
@@ -139,6 +147,32 @@ export async function POST(req: Request) {
       } catch (err) {
         errors++
         console.error('[healthkit/replace] insert failed for appointment record:', err instanceof Error ? err.message : err)
+      }
+    } else if (record.type === 'vitalSign') {
+      // Store vitals (BMI, Heart Rate, Body Temperature, etc.) alongside lab results —
+      // same labResults table, source='HealthKit/VitalSign' distinguishes them.
+      try {
+        const dateTaken = record.effectiveDateTime ? record.effectiveDateTime.slice(0, 10) : null
+        await db.insert(labResults)
+          .values({
+            userId: user.id,
+            testName: record.display,
+            value: record.value ?? '',
+            unit: record.unit,
+            referenceRange: null,
+            dateTaken,
+            source: 'HealthKit/VitalSign',
+            healthkitFhirId: record.healthkitFhirId,
+          })
+          .onConflictDoUpdate({
+            target: labResults.healthkitFhirId,
+            set: { value: record.value ?? '', unit: record.unit },
+          })
+        counts.labResults++
+        synced++
+      } catch (err) {
+        errors++
+        console.error('[healthkit/replace] insert failed for vitalSign record:', err instanceof Error ? err.message : err)
       }
     }
   }
