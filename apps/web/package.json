@@ -15,10 +15,13 @@
     "validate": "npm run lint && npm run typecheck && npm run test:run",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "deadcode": "knip"
+    "deadcode": "knip",
+    "eval:memory:seed": "bun scripts/seed-eval-user.ts",
+    "eval:memory": "bun scripts/run-memory-eval.ts --label=current"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.64",
+    "@ai-sdk/google": "^3.0.74",
     "@ai-sdk/react": "^3.0.144",
     "@aws-sdk/client-cognito-identity-provider": "^3.1030.0",
     "@aws-sdk/client-rds-data": "^3.1030.0",

@@ -1,0 +1,343 @@
+{
+  "label": "hybrid",
+  "date": "2026-05-16T05:56:46.249Z",
+  "flagsHybrid": true,
+  "avgRecall": 0.6287878787878788,
+  "tier1Rate": 1,
+  "latencyP95": 1425,
+  "perQuery": [
+    {
+      "id": "Q1",
+      "query": "Can mom take ibuprofen for her headache?",
+      "expected": [
+        "allergy-nsaid",
+        "cond-ckd",
+        "med-metformin"
+      ],
+      "mustTier1": [
+        "allergy-nsaid"
+      ],
+      "retrievedSlugs": [
+        "cond-breast-cancer",
+        "allergy-nsaid",
+        "allergy-pcn",
+        "med-metformin",
+        "med-tamoxifen-active",
+        "pref-no-jargon",
+        "provider-pcp",
+        "allergy-sulfa-neg",
+        "legal-poa",
+        "appt-pcp-old",
+        "lab-cea-45",
+        "cg-burnout-2",
+        "lab-cea-19"
+      ],
+      "recallAt8": 0.6666666666666666,
+      "tier1Hit": true,
+      "latencyMs": 1425
+    },
+    {
+      "id": "Q2",
+      "query": "How is her CEA trending?",
+      "expected": [
+        "lab-cea-45",
+        "lab-cea-28",
+        "lab-cea-19"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "cond-breast-cancer",
+        "allergy-nsaid",
+        "allergy-pcn",
+        "med-metformin",
+        "med-tamoxifen-active",
+        "lab-cea-28",
+        "lab-cea-19",
+        "lab-cea-45",
+        "tx-fatigue-mod",
+        "pt-anxious-mri",
+        "med-chemo-old",
+        "cg-burnout-1",
+        "provider-oncologist"
+      ],
+      "recallAt8": 1,
+      "tier1Hit": null,
+      "latencyMs": 733
+    },
+    {
+      "id": "Q3",
+      "query": "I'm exhausted, what should I do?",
+      "expected": [
+        "cg-burnout-1",
+        "cg-burnout-2",
+        "cg-isolation",
+        "pref-warm-tone"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "cond-breast-cancer",
+        "allergy-nsaid",
+        "allergy-pcn",
+        "med-metformin",
+        "med-tamoxifen-active",
+        "pref-no-jargon",
+        "legal-poa",
+        "provider-pcp",
+        "family-son",
+        "lifestyle-walks",
+        "cg-burnout-1",
+        "provider-oncologist",
+        "lab-hgb-low"
+      ],
+      "recallAt8": 0.25,
+      "tier1Hit": null,
+      "latencyMs": 724
+    },
+    {
+      "id": "Q4",
+      "query": "Hi, good morning",
+      "expected": [],
+      "mustTier1": [
+        "allergy-pcn",
+        "allergy-nsaid",
+        "cond-breast-cancer",
+        "med-tamoxifen-active"
+      ],
+      "retrievedSlugs": [
+        "cond-breast-cancer",
+        "allergy-nsaid",
+        "allergy-pcn",
+        "med-metformin",
+        "med-tamoxifen-active",
+        "lab-cea-45",
+        "lab-hgb-low",
+        "appt-onco-next",
+        "lab-cea-19",
+        "lab-cea-28",
+        "tx-fatigue-mod",
+        "cg-burnout-1",
+        "provider-oncologist"
+      ],
+      "recallAt8": null,
+      "tier1Hit": true,
+      "latencyMs": 670
+    },
+    {
+      "id": "Q5",
+      "query": "My mom is allergic to penicillin right?",
+      "expected": [
+        "allergy-pcn"
+      ],
+      "mustTier1": [
+        "allergy-pcn"
+      ],
+      "retrievedSlugs": [
+        "cond-breast-cancer",
+        "allergy-nsaid",
+        "allergy-pcn",
+        "med-metformin",
+        "med-tamoxifen-active",
+        "lab-cea-45",
+        "lab-hgb-low",
+        "lab-cea-28",
+        "lab-cea-19",
+        "appt-onco-next",
+        "med-statin-denied",
+        "cg-burnout-1",
+        "tx-fatigue-mod"
+      ],
+      "recallAt8": 1,
+      "tier1Hit": true,
+      "latencyMs": 635
+    },
+    {
+      "id": "Q6",
+      "query": "Who is her oncologist?",
+      "expected": [
+        "provider-oncologist",
+        "appt-onco-next"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "cond-breast-cancer",
+        "allergy-nsaid",
+        "allergy-pcn",
+        "med-metformin",
+        "med-tamoxifen-active",
+        "lab-cea-45",
+        "provider-oncologist",
+        "appt-onco-next",
+        "lab-cea-28",
+        "lab-cea-19",
+        "lab-hgb-low",
+        "med-chemo-old",
+        "cg-burnout-1"
+      ],
+      "recallAt8": 1,
+      "tier1Hit": null,
+      "latencyMs": 712
+    },
+    {
+      "id": "Q7",
+      "query": "What meds did she used to take?",
+      "expected": [
+        "med-tamoxifen-old",
+        "med-chemo-old"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "cond-breast-cancer",
+        "allergy-nsaid",
+        "allergy-pcn",
+        "med-metformin",
+        "med-tamoxifen-active",
+        "lab-cea-45",
+        "lab-hgb-low",
+        "lab-cea-19",
+        "appt-onco-next",
+        "lab-cea-28",
+        "med-statin-denied",
+        "tx-fatigue-mod",
+        "ins-claim-denied"
+      ],
+      "recallAt8": 0,
+      "tier1Hit": null,
+      "latencyMs": 643
+    },
+    {
+      "id": "Q8",
+      "query": "Why did the insurance claim get denied?",
+      "expected": [
+        "ins-claim-denied",
+        "med-tamoxifen-active"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "cond-breast-cancer",
+        "allergy-nsaid",
+        "allergy-pcn",
+        "med-metformin",
+        "med-tamoxifen-active",
+        "lab-cea-45",
+        "lab-hgb-low",
+        "appt-onco-next",
+        "lab-cea-19",
+        "lab-cea-28",
+        "ins-claim-denied",
+        "med-statin-denied",
+        "cg-burnout-1"
+      ],
+      "recallAt8": 1,
+      "tier1Hit": null,
+      "latencyMs": 629
+    },
+    {
+      "id": "Q9",
+      "query": "Tell me about her chemo regimen",
+      "expected": [
+        "med-chemo-old",
+        "tx-fatigue-mod"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "cond-breast-cancer",
+        "allergy-nsaid",
+        "allergy-pcn",
+        "med-metformin",
+        "med-tamoxifen-active",
+        "lab-cea-45",
+        "appt-onco-next",
+        "lab-cea-28",
+        "lab-cea-19",
+        "lab-hgb-low",
+        "med-chemo-old",
+        "tx-fatigue-mod",
+        "cg-burnout-1"
+      ],
+      "recallAt8": 1,
+      "tier1Hit": null,
+      "latencyMs": 638
+    },
+    {
+      "id": "Q10",
+      "query": "Did she ever have diabetes?",
+      "expected": [
+        "pt-no-diabetes"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "cond-breast-cancer",
+        "allergy-nsaid",
+        "allergy-pcn",
+        "med-metformin",
+        "med-tamoxifen-active",
+        "lab-cea-45",
+        "lab-hgb-low",
+        "lab-cea-28",
+        "lab-cea-19",
+        "med-statin-denied",
+        "tx-fatigue-mod",
+        "ins-claim-denied",
+        "provider-oncologist"
+      ],
+      "recallAt8": 0,
+      "tier1Hit": null,
+      "latencyMs": 614
+    },
+    {
+      "id": "Q11",
+      "query": "What lab results are abnormal?",
+      "expected": [
+        "lab-cea-45",
+        "lab-hgb-low"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "cond-breast-cancer",
+        "allergy-nsaid",
+        "allergy-pcn",
+        "med-metformin",
+        "med-tamoxifen-active",
+        "lab-cea-45",
+        "lab-hgb-low",
+        "lab-cea-28",
+        "lab-cea-19",
+        "appt-onco-next",
+        "tx-fatigue-mod",
+        "med-statin-denied",
+        "ins-claim-denied"
+      ],
+      "recallAt8": 1,
+      "tier1Hit": null,
+      "latencyMs": 603
+    },
+    {
+      "id": "Q12",
+      "query": "How is her mood lately?",
+      "expected": [
+        "pt-good-mood",
+        "pt-anxious-mri",
+        "cg-burnout-2"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "cond-breast-cancer",
+        "allergy-nsaid",
+        "allergy-pcn",
+        "med-metformin",
+        "med-tamoxifen-active",
+        "lab-cea-45",
+        "lab-hgb-low",
+        "lab-cea-19",
+        "lab-cea-28",
+        "appt-onco-next",
+        "tx-fatigue-mod",
+        "cg-burnout-1",
+        "provider-oncologist"
+      ],
+      "recallAt8": 0,
+      "tier1Hit": null,
+      "latencyMs": 629
+    }
+  ]
+}

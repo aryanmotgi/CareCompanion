@@ -3,6 +3,7 @@ export interface CareProfile {
   userId: string;
   patientName: string | null;
   patientAge: number | null;
+  dateOfBirth?: string | null;
   relationship: string | null;
   emergencyContactName?: string | null;
   emergencyContactPhone?: string | null;
@@ -13,6 +14,9 @@ export interface CareProfile {
   allergies?: string | null;
   onboardingPriorities?: string[] | null;
   onboardingCompleted?: boolean | null;
+  primaryConcern?: string | null;
+  caregivingExperience?: string | null;
+  caregiverRelationship?: string | null;
   role: string;
   caregiverForName?: string | null;
   createdAt: Date | null;
@@ -131,6 +135,22 @@ export interface Memory {
   confidence: string;
   createdAt: Date | null;
   lastReferenced: Date | null;
+  validFrom?: Date | null;
+  validTo?: Date | null;
+  polarity?: string;
+  status?: string;
+  subject?: string;
+  importance?: string;
+  seenCount?: number;
+  tier?: number;
+  trust?: string;
+  decayAt?: Date | null;
+  cycleNumber?: number | null;
+  labValueNumeric?: string | null;
+  labValueUnit?: string | null;
+  measuredAt?: Date | null;
+  severity?: number | null;
+  slug?: string | null;
 }
 
 export interface ConversationSummary {

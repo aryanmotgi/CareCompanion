@@ -1,18 +1,21 @@
 import { anthropic } from '@ai-sdk/anthropic';
-import { streamText, stepCountIs, type UIMessage } from 'ai';
+import { streamText, stepCountIs, type UIMessage, type SystemModelMessage } from 'ai';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { db } from '@/lib/db';
 import { careProfiles, medications, doctors, appointments, labResults, notifications, claims, priorAuths, fsaHsa, symptomEntries, insurance, messages, treatmentCycles } from '@/lib/db/schema';
 import { eq, desc, and, isNull, sql } from 'drizzle-orm';
-import { buildSystemPrompt, buildRoleContext } from '@/lib/system-prompt';
+import { buildSystemPromptBlocks, buildRoleContext } from '@/lib/system-prompt';
 import { buildTools } from '@/lib/tools';
 import { extractAndSaveMemories, loadMemories, loadRelevantMemories, loadConversationSummaries, touchReferencedMemories, summarizeConversation } from '@/lib/memory';
+import { hybridEnabledForUser } from '@/lib/memory/gate';
 import { orchestrate } from '@/lib/agents/orchestrator';
+import { isSimpleMessage } from '@/lib/agents/router';
 import { rateLimit } from '@/lib/rate-limit';
 import { ApiErrors } from '@/lib/api-response';
 import { withMetrics } from '@/lib/api-metrics';
 import { logAudit } from '@/lib/audit';
 import { validateCsrf } from '@/lib/csrf';
+import { reserveBudget, recordUsage, estimateTokens } from '@/lib/budget';
 
 const ipLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 30 });
 const userLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 10 });
@@ -80,6 +83,16 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     });
   }
 
+  // Atomic daily budget reservation (rolled back if cap exceeded)
+  const estimate = estimateTokens(JSON.stringify(msgs));
+  const reservation = await reserveBudget(dbUser!.id, estimate);
+  if (!reservation.ok) {
+    return new Response(JSON.stringify({ error: reservation.reason }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   // Pre-screen for dangerous account-management intents (Bug #6)
   const lastMsg = msgs[msgs.length - 1];
   const userMessageText = lastMsg?.role === 'user'
@@ -136,7 +149,10 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     db.select().from(claims).where(and(eq(claims.userId, dbUser!.id), eq(claims.status, 'denied'))).limit(5).catch(() => []),
     db.select().from(priorAuths).where(eq(priorAuths.userId, dbUser!.id)).limit(50).catch(() => []),
     db.select().from(fsaHsa).where(eq(fsaHsa.userId, dbUser!.id)).limit(50).catch(() => []),
-    (userMessageText ? loadRelevantMemories(dbUser!.id, userMessageText) : loadMemories(dbUser!.id, 50)).catch(() => []),
+    (userMessageText
+      ? loadRelevantMemories(dbUser!.id, userMessageText, 8, { hybrid: hybridEnabledForUser(dbUser!.id) })
+      : loadMemories(dbUser!.id, 50)
+    ).catch(() => []),
     loadConversationSummaries(dbUser!.id).catch(() => []),
     db.select().from(symptomEntries).where(eq(symptomEntries.userId, dbUser!.id)).orderBy(desc(symptomEntries.date)).limit(14).catch(() => []),
     db.select().from(insurance).where(eq(insurance.userId, dbUser!.id)).limit(1).catch(() => []),
@@ -189,39 +205,97 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     caregivingExperience: profile?.caregivingExperience ?? null,
   })
 
-  const [orchestratorResult, baseSystemPrompt] = await Promise.all([
-    userMessageText
-      ? orchestrate(userMessageText, conversationHistory, {
-          profile,
-          medications: meds as Record<string, unknown>[],
-          doctors: docs as Record<string, unknown>[],
-          appointments: appts as Record<string, unknown>[],
-          labResults: labs as Record<string, unknown>[],
-          insurance: (ins || null) as Record<string, unknown> | null,
-          claims: claimsData as Record<string, unknown>[],
-          priorAuths: priorAuthsData as Record<string, unknown>[],
-          fsaHsa: fsaHsaData as Record<string, unknown>[],
-          memories: memoriesData as unknown as Record<string, unknown>[],
-          symptoms: symptoms as Record<string, unknown>[],
-        }, dbUser!.id)
-      : Promise.resolve({ specialistsUsed: [], agentOutputs: {}, synthesizedContext: '', isMultiAgent: false }),
-    Promise.resolve(buildSystemPrompt(
-      profile,
-      meds,
-      docs,
-      appts,
-      { labResults: labs, notifications: notifs, claims: claimsData, priorAuths: priorAuthsData, fsaHsa: fsaHsaData, memories: memoriesData, conversationSummaries: conversationSummariesData, symptoms, treatmentCycle: activeCycle || null }
-    )),
-  ]);
+  const promptBlocks = buildSystemPromptBlocks(
+    profile,
+    meds,
+    docs,
+    appts,
+    {
+      labResults: labs,
+      notifications: notifs,
+      claims: claimsData,
+      priorAuths: priorAuthsData,
+      fsaHsa: fsaHsaData,
+      memories: memoriesData,
+      conversationSummaries: conversationSummariesData,
+      symptoms,
+      treatmentCycle: activeCycle || null,
+      roleContext,
+    },
+  );
 
-  const systemPrompt = roleContext
-    ? `${roleContext}\n\n${baseSystemPrompt}`
-    : baseSystemPrompt
+  // Cache control for system blocks (used by both simple + full paths)
+  const enableCache = process.env.ENABLE_PROMPT_CACHE === 'true';
+  const cacheAttr = enableCache
+    ? { providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' as const } } } }
+    : {};
 
-  // Append specialist context to system prompt if multi-agent was used
-  const fullSystemPrompt = orchestratorResult.synthesizedContext
-    ? systemPrompt + orchestratorResult.synthesizedContext
-    : systemPrompt;
+  // Smart-routing fast path for trivial messages (greetings, ack).
+  // STILL preserves: tier-1 memory injection, audit log (via load), conversation
+  // save, usage record. Only the orchestrator + tool-heavy main stream are skipped.
+  if (userMessageText && isSimpleMessage(userMessageText)) {
+    const simpleSystem: SystemModelMessage[] = [];
+    if (promptBlocks.base) simpleSystem.push({ role: 'system', content: promptBlocks.base, ...cacheAttr });
+    if (promptBlocks.userStable) simpleSystem.push({ role: 'system', content: promptBlocks.userStable, ...cacheAttr });
+    if (promptBlocks.retrieved) simpleSystem.push({ role: 'system', content: promptBlocks.retrieved });
+
+    const simple = streamText({
+      model: anthropic('claude-haiku-4-5-20251001'),
+      maxOutputTokens: 512,
+      system: simpleSystem,
+      messages: conversationMessages,
+      onFinish: async ({ text, usage }) => {
+        if (text) {
+          await db.insert(messages).values({
+            userId: dbUser!.id,
+            role: 'assistant',
+            content: text,
+          });
+        }
+        await recordUsage(dbUser!.id, estimate, {
+          inputTokens: usage?.inputTokens ?? 0,
+          outputTokens: usage?.outputTokens ?? 0,
+          cacheRead: usage?.cachedInputTokens ?? 0,
+          cacheCreate: 0,
+        });
+      },
+    });
+    return simple.toUIMessageStreamResponse();
+  }
+
+  const orchestratorResult = userMessageText
+    ? await orchestrate(userMessageText, conversationHistory, {
+        profile,
+        medications: meds as Record<string, unknown>[],
+        doctors: docs as Record<string, unknown>[],
+        appointments: appts as Record<string, unknown>[],
+        labResults: labs as Record<string, unknown>[],
+        insurance: (ins || null) as Record<string, unknown> | null,
+        claims: claimsData as Record<string, unknown>[],
+        priorAuths: priorAuthsData as Record<string, unknown>[],
+        fsaHsa: fsaHsaData as Record<string, unknown>[],
+        memories: memoriesData as unknown as Record<string, unknown>[],
+        symptoms: symptoms as Record<string, unknown>[],
+      }, dbUser!.id)
+    : { specialistsUsed: [], agentOutputs: {}, synthesizedContext: '', isMultiAgent: false };
+
+  // 4-block system: L1+L2 marked cacheable (stable); L3 (per-turn) + L4
+  // (retrieved) + specialist context unmarked. Cache control only attached when
+  // ENABLE_PROMPT_CACHE=true (enableCache + cacheAttr defined above).
+  const systemMessages: SystemModelMessage[] = [];
+  if (promptBlocks.base) {
+    systemMessages.push({ role: 'system', content: promptBlocks.base, ...cacheAttr });
+  }
+  if (promptBlocks.userStable) {
+    systemMessages.push({ role: 'system', content: promptBlocks.userStable, ...cacheAttr });
+  }
+  if (promptBlocks.userDynamic) {
+    systemMessages.push({ role: 'system', content: promptBlocks.userDynamic });
+  }
+  const tailBlock = (promptBlocks.retrieved ?? '') + (orchestratorResult.synthesizedContext ?? '');
+  if (tailBlock) {
+    systemMessages.push({ role: 'system', content: tailBlock });
+  }
 
   // Build tools for this user session
   const tools = buildTools(dbUser!.id, profile?.id || null);
@@ -229,11 +303,20 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
   const result = streamText({
     model: anthropic('claude-sonnet-4-6'),
     maxOutputTokens: 4096,
-    system: fullSystemPrompt,
+    system: systemMessages,
     messages: conversationMessages,
     tools,
     stopWhen: stepCountIs(10),
-    onFinish: async ({ text, steps }) => {
+    onFinish: async ({ text, steps, usage }) => {
+      // Cache telemetry — AI SDK v6 reports cache reads via `cachedInputTokens`.
+      // No separate creation-token field; first call seeds the cache implicitly.
+      console.log('[chat-cache]', JSON.stringify({
+        userId: dbUser!.id,
+        cachedInputTokens: usage?.cachedInputTokens ?? 0,
+        inputTokens: usage?.inputTokens ?? 0,
+        outputTokens: usage?.outputTokens ?? 0,
+        cacheEnabled: enableCache,
+      }));
       // Fallback message if model used all tool steps but produced no text
       const finalText = (!text || text.length < 20) && steps && steps.length >= 10
         ? "I ran into a complexity limit on that request. Could you try breaking it into smaller questions?"
@@ -264,6 +347,14 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
         summarizeConversation(dbUser!.id, conversationMessages)
           .catch((err) => console.error('[memory] background summarization error:', err));
       }
+
+      // Reconcile budget reservation with actual usage
+      await recordUsage(dbUser!.id, estimate, {
+        inputTokens: usage?.inputTokens ?? 0,
+        outputTokens: usage?.outputTokens ?? 0,
+        cacheRead: usage?.cachedInputTokens ?? 0,
+        cacheCreate: 0,
+      }).catch((err) => console.error('[budget] recordUsage failed:', err));
     },
   });
 

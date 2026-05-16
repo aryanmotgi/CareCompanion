@@ -1,3 +1,7 @@
 .vercel
 .env*.local
+.env.local.save
 .gstack/
+
+# Timestamped eval snapshots (only canonical {label}.json is tracked)
+eval/snapshots/*-[0-9]*.json

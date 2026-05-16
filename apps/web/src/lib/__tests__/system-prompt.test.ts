@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { buildSystemPrompt, buildRoleContext } from '@/lib/system-prompt'
+import { buildSystemPrompt, buildSystemPromptBlocks, buildRoleContext } from '@/lib/system-prompt'
+import { mockProfile, mockProfileWithDOB } from './fixtures/profiles'
 import type { CareProfile, Medication, Doctor, Appointment } from '@/lib/types'
 
 const baseProfile: CareProfile = {
@@ -22,7 +23,9 @@ describe('buildSystemPrompt', () => {
   it('includes patient info from profile', () => {
     const result = buildSystemPrompt(baseProfile, null, null, null)
     expect(result).toContain('Sarah Johnson')
-    expect(result).toContain('Age: 72')
+    // Age line removed per memory-upgrade-v2: cache-stability requires no
+    // computed age. Use dateOfBirth → Born: <year> instead.
+    expect(result).not.toMatch(/Age:\s*\d+/)
     expect(result).toContain('mother')
   })
 
@@ -180,6 +183,41 @@ describe('buildSystemPrompt', () => {
     expect(result).toContain('NEVER diagnose conditions')
     expect(result).toContain('Call 911')
     expect(result).toContain('MEDICATION INTERACTION CHECKING')
+  })
+})
+
+describe('buildSystemPromptBlocks', () => {
+  it('L2 contains no date-dependent strings', () => {
+    const blocks = buildSystemPromptBlocks(mockProfile as CareProfile, [], [], [])
+    expect(blocks.userStable).not.toMatch(/\d{4}-\d{2}-\d{2}/)
+    expect(blocks.userStable).not.toMatch(/Day \d+ of Cycle/)
+    expect(blocks.userStable).not.toMatch(/days ago|days remaining/)
+    expect(blocks.userStable).not.toMatch(/Age:\s*\d+/)
+  })
+
+  it('L2 is byte-identical across calls with same profile', () => {
+    const a = buildSystemPromptBlocks(mockProfile as CareProfile, [], [], [])
+    const b = buildSystemPromptBlocks(mockProfile as CareProfile, [], [], [])
+    expect(a.userStable).toBe(b.userStable)
+  })
+
+  it('L2 emits Born: <year> when dateOfBirth set', () => {
+    const blocks = buildSystemPromptBlocks(mockProfileWithDOB as CareProfile, [], [], [])
+    expect(blocks.userStable).toMatch(/Born:\s*1958/)
+  })
+
+  it('L1 base is identical across profiles', () => {
+    const a = buildSystemPromptBlocks(mockProfile as CareProfile, [], [], [])
+    const b = buildSystemPromptBlocks(mockProfileWithDOB as CareProfile, [], [], [])
+    expect(a.base).toBe(b.base)
+  })
+
+  it('L1 is empty-profile-safe (returns BASE_PROMPT)', () => {
+    const blocks = buildSystemPromptBlocks(null, null, null, null)
+    expect(blocks.base).toContain('You are CareCompanion')
+    expect(blocks.userStable).toBe('')
+    expect(blocks.userDynamic).toBe('')
+    expect(blocks.retrieved).toBe('')
   })
 })
 

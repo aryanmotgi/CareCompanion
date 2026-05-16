@@ -1,5 +1,30 @@
 import type { CareProfile, Medication, Doctor, Appointment, LabResult, Claim, Notification, PriorAuth, FsaHsa, Memory, ConversationSummary, SymptomEntry, TreatmentCycle } from './types';
 
+export type SystemBlocks = {
+  /** L1: BASE_PROMPT constant — identical across all users + sessions */
+  base: string;
+  /** L2: stable per-user — no dates, no daysSince, no Date.now */
+  userStable: string;
+  /** L3: per-turn dynamic — treatment cycle day, recent labs, today's appts */
+  userDynamic: string;
+  /** L4: retrieved memories + summaries — changes per query */
+  retrieved: string;
+};
+
+export type BuildSystemPromptExtras = {
+  labResults?: LabResult[] | null;
+  notifications?: Notification[] | null;
+  claims?: Claim[] | null;
+  priorAuths?: PriorAuth[] | null;
+  fsaHsa?: FsaHsa[] | null;
+  memories?: Memory[] | null;
+  conversationSummaries?: ConversationSummary[] | null;
+  symptoms?: SymptomEntry[] | null;
+  treatmentCycle?: TreatmentCycle | null;
+  /** Pre-computed by caller. Concatenated into L2 ahead of profile section. */
+  roleContext?: string | null;
+};
+
 // Patterns that indicate a user-crafted AI behavioral directive rather than a
 // genuine patient/caregiver fact. These must not be injected into the system prompt.
 const AI_DIRECTIVE_PATTERNS: RegExp[] = [
@@ -160,34 +185,47 @@ When a user uploads a document (lab report, EOB, medical bill, discharge summary
 - Proactively mention what to expect: "You're entering the nadir period — watch for fever or signs of infection"
 - Understand treatment breaks, dose reductions, and delays — these are normal and not failure`;
 
-export function buildSystemPrompt(
+/**
+ * Build the 4-block system prompt structure for prompt caching.
+ *
+ * L1 (base): BASE_PROMPT constant. Identical across all users.
+ * L2 (userStable): per-user but stable — care profile, role context, onboarding
+ *   priorities, personalized greeting. NEVER contains computed dates, day-of-cycle,
+ *   "X days ago" strings, or Age (use dateOfBirth → Born: year for cache stability).
+ * L3 (userDynamic): per-turn. Treatment cycle day-of-cycle math, recent labs,
+ *   upcoming appointments, symptoms, alerts, denied claims, expiring priorAuths.
+ * L4 (retrieved): retrieved memories + recent conversation summaries.
+ *
+ * Mark L1 + L2 with Anthropic cacheControl in the caller for cache hits.
+ */
+export function buildSystemPromptBlocks(
   profile: CareProfile | null,
   medications: Medication[] | null,
   doctors: Doctor[] | null,
   appointments: Appointment[] | null,
-  extras?: {
-    labResults?: LabResult[] | null;
-    notifications?: Notification[] | null;
-    claims?: Claim[] | null;
-    priorAuths?: PriorAuth[] | null;
-    fsaHsa?: FsaHsa[] | null;
-    memories?: Memory[] | null;
-    conversationSummaries?: ConversationSummary[] | null;
-    symptoms?: SymptomEntry[] | null;
-    treatmentCycle?: TreatmentCycle | null;
-  }
-): string {
+  extras?: BuildSystemPromptExtras,
+): SystemBlocks {
+  const base = BASE_PROMPT;
+
   if (!profile) {
-    return BASE_PROMPT;
+    return { base, userStable: '', userDynamic: '', retrieved: '' };
   }
 
-  let context = `\n\n=== CARE PROFILE ===\n`;
-  context += `Patient: ${profile.patientName || 'Not provided'}`;
-  if (profile.patientAge) context += `, Age: ${profile.patientAge}`;
-  context += `\n`;
-  if (profile.relationship) context += `Relationship: ${profile.relationship}\n`;
-  if (profile.cancerType) context += `Cancer Type: ${profile.cancerType}\n`;
-  if (profile.cancerStage) context += `Cancer Stage: ${profile.cancerStage}\n`;
+  let userStable = '';
+  if (extras?.roleContext) {
+    userStable += `${extras.roleContext}\n\n`;
+  }
+
+  userStable += `=== CARE PROFILE ===\n`;
+  userStable += `Patient: ${profile.patientName || 'Not provided'}`;
+  if (profile.dateOfBirth) {
+    const year = new Date(profile.dateOfBirth).getUTCFullYear();
+    if (Number.isFinite(year)) userStable += `, Born: ${year}`;
+  }
+  userStable += `\n`;
+  if (profile.relationship) userStable += `Relationship: ${profile.relationship}\n`;
+  if (profile.cancerType) userStable += `Cancer Type: ${profile.cancerType}\n`;
+  if (profile.cancerStage) userStable += `Cancer Stage: ${profile.cancerStage}\n`;
   if (profile.treatmentPhase) {
     const phaseLabels: Record<string, string> = {
       just_diagnosed: 'Just diagnosed — learning about options',
@@ -196,19 +234,18 @@ export function buildSystemPrompt(
       remission: 'In remission — monitoring and follow-ups',
       unsure: 'Treatment phase not yet determined',
     };
-    context += `Treatment Phase: ${phaseLabels[profile.treatmentPhase] || profile.treatmentPhase}\n`;
+    userStable += `Treatment Phase: ${phaseLabels[profile.treatmentPhase] || profile.treatmentPhase}\n`;
   }
-  if (profile.conditions) context += `Conditions: ${profile.conditions}\n`;
-  if (profile.allergies) context += `Allergies: ${profile.allergies}\n`;
+  if (profile.conditions) userStable += `Conditions: ${profile.conditions}\n`;
+  if (profile.allergies) userStable += `Allergies: ${profile.allergies}\n`;
 
-  // Caregiver mode context
   if (profile.role === 'caregiver' && profile.caregiverForName) {
-    context += `\n=== CAREGIVER MODE ===\n`;
-    context += `The user is a caregiver for ${profile.caregiverForName}. Adapt your tone to address caregiver concerns.\n`;
-    context += `- Address the user as a caregiver, not the patient\n`;
-    context += `- When discussing symptoms, medications, or treatments, refer to "${profile.caregiverForName}" as the patient\n`;
-    context += `- Proactively check in on the caregiver's wellbeing — caregiving is exhausting\n`;
-    context += `- Offer practical tips for managing care responsibilities\n`;
+    userStable += `\n=== CAREGIVER MODE ===\n`;
+    userStable += `The user is a caregiver for ${profile.caregiverForName}. Adapt your tone to address caregiver concerns.\n`;
+    userStable += `- Address the user as a caregiver, not the patient\n`;
+    userStable += `- When discussing symptoms, medications, or treatments, refer to "${profile.caregiverForName}" as the patient\n`;
+    userStable += `- Proactively check in on the caregiver's wellbeing — caregiving is exhausting\n`;
+    userStable += `- Offer practical tips for managing care responsibilities\n`;
   }
 
   if (profile.onboardingPriorities && profile.onboardingPriorities.length > 0) {
@@ -220,28 +257,28 @@ export function buildSystemPrompt(
       insurance: 'insurance & billing',
       emotional: 'emotional support',
     };
-    context += `User priorities: ${profile.onboardingPriorities.map(p => priorityLabels[p] || p).join(', ')}\n`;
-    context += `Focus extra attention on these areas in your responses.\n`;
+    userStable += `User priorities: ${profile.onboardingPriorities.map(p => priorityLabels[p] || p).join(', ')}\n`;
+    userStable += `Focus extra attention on these areas in your responses.\n`;
   }
 
-  // Dynamic personalized greeting based on cancer type and treatment phase
-  context += `\n=== PERSONALIZED GREETING ===\n`;
-  context += `When the user first messages you with no prior history, use this greeting instead of the default:\n`;
+  userStable += `\n=== PERSONALIZED GREETING ===\n`;
+  userStable += `When the user first messages you with no prior history, use this greeting instead of the default:\n`;
   if (profile.cancerType && profile.treatmentPhase === 'active_treatment') {
-    context += `"I see you're going through active treatment for ${profile.cancerType}. How are you feeling today? I'm here to help with side effects, medications, appointments, or anything else on your mind."\n`;
+    userStable += `"I see you're going through active treatment for ${profile.cancerType}. How are you feeling today? I'm here to help with side effects, medications, appointments, or anything else on your mind."\n`;
   } else if (profile.cancerType && profile.treatmentPhase === 'just_diagnosed') {
-    context += `"I understand you've been recently diagnosed with ${profile.cancerType}. That's a lot to process. I'm here to help you navigate your care — from understanding your diagnosis to preparing for appointments."\n`;
+    userStable += `"I understand you've been recently diagnosed with ${profile.cancerType}. That's a lot to process. I'm here to help you navigate your care — from understanding your diagnosis to preparing for appointments."\n`;
   } else if (profile.cancerType && profile.treatmentPhase === 'between_treatments') {
-    context += `"I see you're between treatment cycles for ${profile.cancerType}. How are you recovering? I can help you track symptoms, prepare for your next cycle, or answer any questions."\n`;
+    userStable += `"I see you're between treatment cycles for ${profile.cancerType}. How are you recovering? I can help you track symptoms, prepare for your next cycle, or answer any questions."\n`;
   } else if (profile.cancerType && profile.treatmentPhase === 'remission') {
-    context += `"Great to see you're in remission from ${profile.cancerType}. How are you doing? I'm here to help with follow-up care, monitoring, and anything on your mind."\n`;
+    userStable += `"Great to see you're in remission from ${profile.cancerType}. How are you doing? I'm here to help with follow-up care, monitoring, and anything on your mind."\n`;
   } else if (profile.cancerType) {
-    context += `"I see you're managing ${profile.cancerType}. How are you doing today? I'm here to help with anything related to your care."\n`;
+    userStable += `"I see you're managing ${profile.cancerType}. How are you doing today? I'm here to help with anything related to your care."\n`;
   } else {
-    context += `"How are you doing today? Tell me about yourself or the person you're caring for — what type of cancer, where you are in treatment, and how things have been going."\n`;
+    userStable += `"How are you doing today? Tell me about yourself or the person you're caring for — what type of cancer, where you are in treatment, and how things have been going."\n`;
   }
 
-  // Treatment cycle context — injected when an active cycle exists
+  let userDynamic = '';
+
   if (extras?.treatmentCycle) {
     const tc = extras.treatmentCycle;
     const startDate = new Date(tc.startDate + 'T00:00:00');
@@ -251,20 +288,19 @@ export function buildSystemPrompt(
     const dayOfCycle = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
     const daysRemaining = Math.max(0, tc.cycleLengthDays - dayOfCycle);
 
-    context += `\n=== ACTIVE TREATMENT CYCLE ===\n`;
-    context += `Patient is on Day ${dayOfCycle} of Cycle ${tc.cycleNumber}`;
-    if (tc.regimenName) context += ` (${tc.regimenName})`;
-    context += `. Cycle started ${tc.startDate}, ${tc.cycleLengthDays}-day cycle.\n`;
-    context += `Days remaining in cycle: ${daysRemaining}\n`;
-    context += `\nCycle-aware guidance:\n`;
-    context += `- Days 1-2: Infusion/treatment day and immediate aftermath. Watch for acute reactions.\n`;
-    context += `- Days 3-5: Nausea and fatigue typically peak. Anti-nausea meds are critical.\n`;
-    context += `- Days 7-14: Nadir period — blood counts at their lowest. Watch for fever (>100.4°F), signs of infection, unusual bleeding, or severe fatigue.\n`;
-    context += `- Days 14-21: Recovery phase — counts rebounding, energy returning.\n`;
-    context += `Reference the patient's current cycle day when discussing symptoms, side effects, or what to expect next.\n`;
+    userDynamic += `\n=== ACTIVE TREATMENT CYCLE ===\n`;
+    userDynamic += `Patient is on Day ${dayOfCycle} of Cycle ${tc.cycleNumber}`;
+    if (tc.regimenName) userDynamic += ` (${tc.regimenName})`;
+    userDynamic += `. Cycle started ${tc.startDate}, ${tc.cycleLengthDays}-day cycle.\n`;
+    userDynamic += `Days remaining in cycle: ${daysRemaining}\n`;
+    userDynamic += `\nCycle-aware guidance:\n`;
+    userDynamic += `- Days 1-2: Infusion/treatment day and immediate aftermath. Watch for acute reactions.\n`;
+    userDynamic += `- Days 3-5: Nausea and fatigue typically peak. Anti-nausea meds are critical.\n`;
+    userDynamic += `- Days 7-14: Nadir period — blood counts at their lowest. Watch for fever (>100.4°F), signs of infection, unusual bleeding, or severe fatigue.\n`;
+    userDynamic += `- Days 14-21: Recovery phase — counts rebounding, energy returning.\n`;
+    userDynamic += `Reference the patient's current cycle day when discussing symptoms, side effects, or what to expect next.\n`;
   }
 
-  // Pre-compute relevant appointments (future + last 7 days) and active doctors
   const _now = new Date();
   const _sevenDaysAgo = new Date(_now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const relevantAppointments = (appointments ?? []).filter((appt) => {
@@ -282,42 +318,43 @@ export function buildSystemPrompt(
   const doctorsToShow = _activeDoctors.length > 0 ? _activeDoctors : (doctors ?? []);
 
   if (medications && medications.length > 0) {
-    context += `\n=== MEDICATIONS ===\n`;
-    context += `⚠️ CHECK ALL NEW MEDICATIONS AGAINST THIS LIST FOR INTERACTIONS:\n`;
+    userDynamic += `\n=== MEDICATIONS ===\n`;
+    userDynamic += `⚠️ CHECK ALL NEW MEDICATIONS AGAINST THIS LIST FOR INTERACTIONS:\n`;
     medications.forEach((med) => {
-      context += `- ${med.name}`;
-      if (med.dose) context += `, ${med.dose}`;
-      if (med.frequency) context += `, ${med.frequency}`;
-      if (med.prescribingDoctor) context += ` (prescribed by ${med.prescribingDoctor})`;
-      if (med.refillDate) context += ` [refill: ${med.refillDate}]`;
-      context += `\n`;
+      userDynamic += `- ${med.name}`;
+      if (med.dose) userDynamic += `, ${med.dose}`;
+      if (med.frequency) userDynamic += `, ${med.frequency}`;
+      if (med.prescribingDoctor) userDynamic += ` (prescribed by ${med.prescribingDoctor})`;
+      if (med.refillDate) userDynamic += ` [refill: ${med.refillDate}]`;
+      userDynamic += `\n`;
     });
   } else {
-    context += `\n=== MEDICATIONS ===\nNo medications recorded yet.\n`;
+    userDynamic += `\n=== MEDICATIONS ===\nNo medications recorded yet.\n`;
   }
 
   if (doctorsToShow.length > 0) {
-    context += `\n=== DOCTORS ===\n`;
+    userDynamic += `\n=== DOCTORS ===\n`;
     doctorsToShow.forEach((doc) => {
-      context += `- ${doc.name}`;
-      if (doc.specialty) context += ` (${doc.specialty})`;
-      if (doc.phone) context += `, ${doc.phone}`;
-      context += `\n`;
+      userDynamic += `- ${doc.name}`;
+      if (doc.specialty) userDynamic += ` (${doc.specialty})`;
+      if (doc.phone) userDynamic += `, ${doc.phone}`;
+      userDynamic += `\n`;
     });
   }
 
   if (relevantAppointments.length > 0) {
-    context += `\n=== UPCOMING APPOINTMENTS ===\n`;
+    userDynamic += `\n=== UPCOMING APPOINTMENTS ===\n`;
     relevantAppointments.forEach((appt) => {
-      context += `- `;
-      if (appt.doctorName) context += `${appt.doctorName}`;
-      if (appt.dateTime) context += ` on ${new Date(appt.dateTime).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
-      if (appt.purpose) context += ` — ${appt.purpose}`;
-      context += `\n`;
+      userDynamic += `- `;
+      if (appt.doctorName) userDynamic += `${appt.doctorName}`;
+      if (appt.dateTime) userDynamic += ` on ${new Date(appt.dateTime).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
+      if (appt.purpose) userDynamic += ` — ${appt.purpose}`;
+      userDynamic += `\n`;
     });
   }
 
-  // Synced data context
+  let retrieved = '';
+
   if (extras) {
     const { labResults, notifications, claims, priorAuths, fsaHsa, memories, conversationSummaries, symptoms } = extras;
 
@@ -325,23 +362,23 @@ export function buildSystemPrompt(
       const abnormalLabs = labResults.filter((l) => l.isAbnormal);
       const normalLabs = labResults.filter((l) => !l.isAbnormal);
       const cappedLabs = [...abnormalLabs, ...normalLabs].slice(0, 10);
-      context += `\n=== RECENT LAB RESULTS ===\n`;
+      userDynamic += `\n=== RECENT LAB RESULTS ===\n`;
       if (abnormalLabs.length > 0) {
-        context += `⚠️ ${abnormalLabs.length} ABNORMAL result(s):\n`;
+        userDynamic += `⚠️ ${abnormalLabs.length} ABNORMAL result(s):\n`;
       }
       cappedLabs.forEach((lab) => {
-        context += `- ${lab.testName}: ${lab.value} ${lab.unit || ''}`;
-        if (lab.referenceRange) context += ` (range: ${lab.referenceRange})`;
-        if (lab.isAbnormal) context += ` ⚠️ ABNORMAL`;
-        if (lab.dateTaken) context += ` [${lab.dateTaken}]`;
-        context += `\n`;
+        userDynamic += `- ${lab.testName}: ${lab.value} ${lab.unit || ''}`;
+        if (lab.referenceRange) userDynamic += ` (range: ${lab.referenceRange})`;
+        if (lab.isAbnormal) userDynamic += ` ⚠️ ABNORMAL`;
+        if (lab.dateTaken) userDynamic += ` [${lab.dateTaken}]`;
+        userDynamic += `\n`;
       });
     }
 
     if (symptoms && symptoms.length > 0) {
       const cappedSymptoms = symptoms.slice(0, 14);
-      context += `\n=== RECENT SYMPTOMS (last 14 days) ===\n`;
-      context += `Use these to understand how the patient has been feeling. Look for patterns and trends.\n`;
+      userDynamic += `\n=== RECENT SYMPTOMS (last 14 days) ===\n`;
+      userDynamic += `Use these to understand how the patient has been feeling. Look for patterns and trends.\n`;
       cappedSymptoms.forEach((s) => {
         const parts: string[] = [];
         if (s.painLevel !== null && s.painLevel !== undefined) parts.push(`pain ${s.painLevel}/10`);
@@ -351,32 +388,32 @@ export function buildSystemPrompt(
         if (s.sleepHours !== null && s.sleepHours !== undefined) parts.push(`${s.sleepHours}h sleep`);
         if (s.appetite !== null && s.appetite !== undefined) parts.push(`appetite ${s.appetite}/10`);
         if (s.symptoms && s.symptoms.length > 0) parts.push(`symptoms: ${s.symptoms.join(', ')}`);
-        context += `- [${s.date}] ${parts.join(', ')}\n`;
+        userDynamic += `- [${s.date}] ${parts.join(', ')}\n`;
       });
     }
 
     if (notifications && notifications.length > 0) {
       const cappedNotifications = notifications.slice(0, 5);
       const notifOverflow = notifications.length - cappedNotifications.length;
-      context += `\n=== UNREAD ALERTS ===\n`;
-      context += `Proactively mention these to the user:\n`;
+      userDynamic += `\n=== UNREAD ALERTS ===\n`;
+      userDynamic += `Proactively mention these to the user:\n`;
       cappedNotifications.forEach((n) => {
-        context += `- [${n.type}] ${n.title}`;
-        if (n.message) context += `: ${n.message}`;
-        context += `\n`;
+        userDynamic += `- [${n.type}] ${n.title}`;
+        if (n.message) userDynamic += `: ${n.message}`;
+        userDynamic += `\n`;
       });
-      if (notifOverflow > 0) context += `(+${notifOverflow} more unread)\n`;
+      if (notifOverflow > 0) userDynamic += `(+${notifOverflow} more unread)\n`;
     }
 
     if (claims && claims.length > 0) {
       const denied = claims.filter((c) => c.status === 'denied');
       if (denied.length > 0) {
-        context += `\n=== DENIED CLAIMS ===\n`;
-        context += `Explain these denials in plain English and offer to help appeal:\n`;
+        userDynamic += `\n=== DENIED CLAIMS ===\n`;
+        userDynamic += `Explain these denials in plain English and offer to help appeal:\n`;
         denied.forEach((c) => {
-          context += `- ${c.providerName || 'Unknown'}: ${c.denialReason || 'Reason not provided'}`;
-          if (c.billedAmount) context += ` ($${c.billedAmount})`;
-          context += `\n`;
+          userDynamic += `- ${c.providerName || 'Unknown'}: ${c.denialReason || 'Reason not provided'}`;
+          if (c.billedAmount) userDynamic += ` ($${c.billedAmount})`;
+          userDynamic += `\n`;
         });
       }
     }
@@ -384,11 +421,11 @@ export function buildSystemPrompt(
     if (priorAuths && priorAuths.length > 0) {
       const expiring = priorAuths.filter((a) => a.expiryDate && new Date(a.expiryDate) <= new Date(Date.now() + 14 * 24 * 60 * 60 * 1000));
       if (expiring.length > 0) {
-        context += `\n=== EXPIRING PRIOR AUTHORIZATIONS ===\n`;
+        userDynamic += `\n=== EXPIRING PRIOR AUTHORIZATIONS ===\n`;
         expiring.forEach((a) => {
-          context += `- ${a.service}: expires ${a.expiryDate}`;
-          if (a.sessionsApproved) context += ` (${a.sessionsUsed}/${a.sessionsApproved} sessions used)`;
-          context += `\n`;
+          userDynamic += `- ${a.service}: expires ${a.expiryDate}`;
+          if (a.sessionsApproved) userDynamic += ` (${a.sessionsUsed}/${a.sessionsApproved} sessions used)`;
+          userDynamic += `\n`;
         });
       }
     }
@@ -396,14 +433,13 @@ export function buildSystemPrompt(
     if (fsaHsa && fsaHsa.length > 0) {
       const lowBalance = fsaHsa.filter((a) => a.contributionLimit && a.balance && parseFloat(a.balance) < parseFloat(a.contributionLimit) * 0.1);
       if (lowBalance.length > 0) {
-        context += `\n=== LOW FSA/HSA BALANCE ===\n`;
+        userDynamic += `\n=== LOW FSA/HSA BALANCE ===\n`;
         lowBalance.forEach((a) => {
-          context += `- ${a.provider} (${(a.accountType ?? '').toUpperCase()}): $${a.balance} remaining\n`;
+          userDynamic += `- ${a.provider} (${(a.accountType ?? '').toUpperCase()}): $${a.balance} remaining\n`;
         });
       }
     }
 
-    // Long-term memories — high/medium confidence only; low-confidence excluded.
     const safeMemories = (memories ?? []).filter((m) => m.confidence !== 'low');
     if (safeMemories.length > 0) {
       const categoryLabels: Record<string, string> = {
@@ -422,7 +458,6 @@ export function buildSystemPrompt(
         other: 'Other',
       };
 
-      // Dedup: skip memories that repeat data already present in structured sections
       const medNames = new Set((medications ?? []).map((m) => m.name.toLowerCase()));
       const labNames = new Set((labResults ?? []).map((l) => l.testName.toLowerCase()));
       const cancerType = (profile.cancerType ?? '').toLowerCase();
@@ -452,31 +487,49 @@ export function buildSystemPrompt(
       }
 
       if (memoryLines.length > 0) {
-        context += `\n=== LONG-TERM MEMORY ===\n`;
-        context += `Facts from past conversations — know these like a trusted friend would:\n`;
-        context += memoryLines.join('\n') + '\n';
+        retrieved += `\n=== LONG-TERM MEMORY ===\n`;
+        retrieved += `Facts from past conversations — know these like a trusted friend would:\n`;
+        retrieved += memoryLines.join('\n') + '\n';
       }
     }
 
-    // Recent conversation summaries — what was discussed recently
     if (conversationSummaries && conversationSummaries.length > 0) {
       const recentSummaries = conversationSummaries.slice(0, 3);
-      context += `=== RECENT CONVERSATIONS ===\n`;
-      context += `Summary of past sessions (most recent first):\n`;
+      retrieved += `=== RECENT CONVERSATIONS ===\n`;
+      retrieved += `Summary of past sessions (most recent first):\n`;
       for (const summary of recentSummaries) {
         const date = summary.createdAt ? new Date(summary.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
         const text = summary.summary.length > 800 ? summary.summary.slice(0, 800) + '...' : summary.summary;
-        context += `- [${date}] ${text}`;
-        if (summary.topics && summary.topics.length > 0) context += ` (topics: ${summary.topics.join(', ')})`;
-        context += `\n`;
+        retrieved += `- [${date}] ${text}`;
+        if (summary.topics && summary.topics.length > 0) retrieved += ` (topics: ${summary.topics.join(', ')})`;
+        retrieved += `\n`;
       }
-      context += `\n`;
+      retrieved += `\n`;
     }
   }
 
-  return BASE_PROMPT + context;
+  return {
+    base,
+    userStable: userStable ? `\n\n${userStable}` : '',
+    userDynamic,
+    retrieved,
+  };
 }
 
+/**
+ * Backward-compatible shim — concatenates all 4 blocks into one string.
+ * Use buildSystemPromptBlocks + Anthropic cacheControl for cache hits.
+ */
+export function buildSystemPrompt(
+  profile: CareProfile | null,
+  medications: Medication[] | null,
+  doctors: Doctor[] | null,
+  appointments: Appointment[] | null,
+  extras?: BuildSystemPromptExtras,
+): string {
+  const b = buildSystemPromptBlocks(profile, medications, doctors, appointments, extras);
+  return b.base + b.userStable + b.userDynamic + b.retrieved;
+}
 function daysSince(dateStr: string): number {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
 }

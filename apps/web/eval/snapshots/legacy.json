@@ -1,0 +1,289 @@
+{
+  "label": "legacy",
+  "date": "2026-05-16T05:54:43.864Z",
+  "flagsHybrid": false,
+  "avgRecall": 0.46969696969696967,
+  "tier1Rate": 0.6666666666666666,
+  "latencyP95": 592,
+  "perQuery": [
+    {
+      "id": "Q1",
+      "query": "Can mom take ibuprofen for her headache?",
+      "expected": [
+        "allergy-nsaid",
+        "cond-ckd",
+        "med-metformin"
+      ],
+      "mustTier1": [
+        "allergy-nsaid"
+      ],
+      "retrievedSlugs": [
+        "pt-no-diabetes",
+        "family-son",
+        "family-husband",
+        "cg-isolation",
+        "cond-ckd",
+        "cond-htn",
+        "cond-breast-cancer",
+        "allergy-sulfa-neg",
+        "allergy-nsaid",
+        "allergy-pcn"
+      ],
+      "recallAt8": 0.6666666666666666,
+      "tier1Hit": true,
+      "latencyMs": 592
+    },
+    {
+      "id": "Q2",
+      "query": "How is her CEA trending?",
+      "expected": [
+        "lab-cea-45",
+        "lab-cea-28",
+        "lab-cea-19"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "tx-fatigue-mod",
+        "pt-no-diabetes",
+        "cond-ckd",
+        "cond-htn",
+        "cond-breast-cancer",
+        "allergy-sulfa-neg",
+        "allergy-nsaid",
+        "allergy-pcn"
+      ],
+      "recallAt8": 0,
+      "tier1Hit": null,
+      "latencyMs": 98
+    },
+    {
+      "id": "Q3",
+      "query": "I'm exhausted, what should I do?",
+      "expected": [
+        "cg-burnout-1",
+        "cg-burnout-2",
+        "cg-isolation",
+        "pref-warm-tone"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "pt-no-diabetes",
+        "pt-good-mood",
+        "pt-anxious-mri",
+        "cg-burnout-2",
+        "cg-burnout-1",
+        "cond-ckd",
+        "cond-htn",
+        "cond-breast-cancer",
+        "allergy-sulfa-neg",
+        "allergy-nsaid",
+        "allergy-pcn"
+      ],
+      "recallAt8": 0.5,
+      "tier1Hit": null,
+      "latencyMs": 103
+    },
+    {
+      "id": "Q4",
+      "query": "Hi, good morning",
+      "expected": [],
+      "mustTier1": [
+        "allergy-pcn",
+        "allergy-nsaid",
+        "cond-breast-cancer",
+        "med-tamoxifen-active"
+      ],
+      "retrievedSlugs": [
+        "pt-no-diabetes",
+        "cond-ckd",
+        "cond-htn",
+        "cond-breast-cancer",
+        "allergy-sulfa-neg",
+        "allergy-nsaid",
+        "allergy-pcn"
+      ],
+      "recallAt8": null,
+      "tier1Hit": false,
+      "latencyMs": 96
+    },
+    {
+      "id": "Q5",
+      "query": "My mom is allergic to penicillin right?",
+      "expected": [
+        "allergy-pcn"
+      ],
+      "mustTier1": [
+        "allergy-pcn"
+      ],
+      "retrievedSlugs": [
+        "pt-no-diabetes",
+        "family-son",
+        "family-husband",
+        "cg-isolation",
+        "cond-ckd",
+        "cond-htn",
+        "cond-breast-cancer",
+        "allergy-sulfa-neg",
+        "allergy-nsaid",
+        "allergy-pcn"
+      ],
+      "recallAt8": 1,
+      "tier1Hit": true,
+      "latencyMs": 98
+    },
+    {
+      "id": "Q6",
+      "query": "Who is her oncologist?",
+      "expected": [
+        "provider-oncologist",
+        "appt-onco-next"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "pt-no-diabetes",
+        "cond-ckd",
+        "cond-htn",
+        "cond-breast-cancer",
+        "allergy-sulfa-neg",
+        "allergy-nsaid",
+        "allergy-pcn"
+      ],
+      "recallAt8": 0,
+      "tier1Hit": null,
+      "latencyMs": 88
+    },
+    {
+      "id": "Q7",
+      "query": "What meds did she used to take?",
+      "expected": [
+        "med-tamoxifen-old",
+        "med-chemo-old"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "pt-no-diabetes",
+        "cond-ckd",
+        "cond-htn",
+        "cond-breast-cancer",
+        "allergy-sulfa-neg",
+        "allergy-nsaid",
+        "allergy-pcn"
+      ],
+      "recallAt8": 0,
+      "tier1Hit": null,
+      "latencyMs": 94
+    },
+    {
+      "id": "Q8",
+      "query": "Why did the insurance claim get denied?",
+      "expected": [
+        "ins-claim-denied",
+        "med-tamoxifen-active"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "pt-no-diabetes",
+        "ins-priorauth-onco",
+        "ins-claim-denied",
+        "cond-ckd",
+        "cond-htn",
+        "cond-breast-cancer",
+        "allergy-sulfa-neg",
+        "allergy-nsaid",
+        "allergy-pcn"
+      ],
+      "recallAt8": 0.5,
+      "tier1Hit": null,
+      "latencyMs": 96
+    },
+    {
+      "id": "Q9",
+      "query": "Tell me about her chemo regimen",
+      "expected": [
+        "med-chemo-old",
+        "tx-fatigue-mod"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "tx-fatigue-mod",
+        "pt-no-diabetes",
+        "cond-ckd",
+        "cond-htn",
+        "cond-breast-cancer",
+        "allergy-sulfa-neg",
+        "allergy-nsaid",
+        "allergy-pcn"
+      ],
+      "recallAt8": 0.5,
+      "tier1Hit": null,
+      "latencyMs": 95
+    },
+    {
+      "id": "Q10",
+      "query": "Did she ever have diabetes?",
+      "expected": [
+        "pt-no-diabetes"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "pt-no-diabetes",
+        "cond-ckd",
+        "cond-htn",
+        "cond-breast-cancer",
+        "allergy-sulfa-neg",
+        "allergy-nsaid",
+        "allergy-pcn"
+      ],
+      "recallAt8": 1,
+      "tier1Hit": null,
+      "latencyMs": 92
+    },
+    {
+      "id": "Q11",
+      "query": "What lab results are abnormal?",
+      "expected": [
+        "lab-cea-45",
+        "lab-hgb-low"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "pt-no-diabetes",
+        "lab-hgb-low",
+        "lab-cea-45",
+        "lab-cea-28",
+        "lab-cea-19",
+        "cond-ckd",
+        "cond-htn",
+        "cond-breast-cancer",
+        "allergy-sulfa-neg",
+        "allergy-nsaid",
+        "allergy-pcn"
+      ],
+      "recallAt8": 1,
+      "tier1Hit": null,
+      "latencyMs": 99
+    },
+    {
+      "id": "Q12",
+      "query": "How is her mood lately?",
+      "expected": [
+        "pt-good-mood",
+        "pt-anxious-mri",
+        "cg-burnout-2"
+      ],
+      "mustTier1": [],
+      "retrievedSlugs": [
+        "pt-no-diabetes",
+        "cond-ckd",
+        "cond-htn",
+        "cond-breast-cancer",
+        "allergy-sulfa-neg",
+        "allergy-nsaid",
+        "allergy-pcn"
+      ],
+      "recallAt8": 0,
+      "tier1Hit": null,
+      "latencyMs": 92
+    }
+  ]
+}
