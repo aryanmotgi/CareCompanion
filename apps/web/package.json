@@ -17,7 +17,8 @@
     "db:studio": "drizzle-kit studio",
     "deadcode": "knip",
     "eval:memory:seed": "bun scripts/seed-eval-user.ts",
-    "eval:memory": "bun scripts/run-memory-eval.ts --label=current"
+    "eval:memory": "bun scripts/run-memory-eval.ts --label=current",
+    "monitor:canary": "bun scripts/canary-monitor.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.64",
