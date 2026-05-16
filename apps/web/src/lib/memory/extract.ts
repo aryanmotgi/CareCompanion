@@ -226,7 +226,7 @@ export async function summarizeConversation(
       .join('\n');
 
     const { output } = await generateText({
-      model: anthropic('claude-sonnet-4-6'),
+      model: anthropic('claude-haiku-4-5-20251001'),
       output: Output.object({ schema: summarySchema }),
       prompt: `You are summarizing a caregiver AI conversation for long-term memory. This summary will be read by an AI assistant in future sessions to recall what was discussed.
 

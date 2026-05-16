@@ -8,11 +8,13 @@ import { buildSystemPromptBlocks, buildRoleContext } from '@/lib/system-prompt';
 import { buildTools } from '@/lib/tools';
 import { extractAndSaveMemories, loadMemories, loadRelevantMemories, loadConversationSummaries, touchReferencedMemories, summarizeConversation } from '@/lib/memory';
 import { orchestrate } from '@/lib/agents/orchestrator';
+import { isSimpleMessage } from '@/lib/agents/router';
 import { rateLimit } from '@/lib/rate-limit';
 import { ApiErrors } from '@/lib/api-response';
 import { withMetrics } from '@/lib/api-metrics';
 import { logAudit } from '@/lib/audit';
 import { validateCsrf } from '@/lib/csrf';
+import { reserveBudget, recordUsage, estimateTokens } from '@/lib/budget';
 
 const ipLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 30 });
 const userLimiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 10 });
@@ -76,6 +78,16 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), {
       status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Atomic daily budget reservation (rolled back if cap exceeded)
+  const estimate = estimateTokens(JSON.stringify(msgs));
+  const reservation = await reserveBudget(dbUser!.id, estimate);
+  if (!reservation.ok) {
+    return new Response(JSON.stringify({ error: reservation.reason }), {
+      status: 429,
       headers: { 'Content-Type': 'application/json' },
     });
   }
@@ -189,51 +201,83 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     caregivingExperience: profile?.caregivingExperience ?? null,
   })
 
-  const [orchestratorResult, promptBlocks] = await Promise.all([
-    userMessageText
-      ? orchestrate(userMessageText, conversationHistory, {
-          profile,
-          medications: meds as Record<string, unknown>[],
-          doctors: docs as Record<string, unknown>[],
-          appointments: appts as Record<string, unknown>[],
-          labResults: labs as Record<string, unknown>[],
-          insurance: (ins || null) as Record<string, unknown> | null,
-          claims: claimsData as Record<string, unknown>[],
-          priorAuths: priorAuthsData as Record<string, unknown>[],
-          fsaHsa: fsaHsaData as Record<string, unknown>[],
-          memories: memoriesData as unknown as Record<string, unknown>[],
-          symptoms: symptoms as Record<string, unknown>[],
-        }, dbUser!.id)
-      : Promise.resolve({ specialistsUsed: [], agentOutputs: {}, synthesizedContext: '', isMultiAgent: false }),
-    Promise.resolve(buildSystemPromptBlocks(
-      profile,
-      meds,
-      docs,
-      appts,
-      {
-        labResults: labs,
-        notifications: notifs,
-        claims: claimsData,
-        priorAuths: priorAuthsData,
-        fsaHsa: fsaHsaData,
-        memories: memoriesData,
-        conversationSummaries: conversationSummariesData,
-        symptoms,
-        treatmentCycle: activeCycle || null,
-        roleContext,
-      },
-    )),
-  ]);
+  const promptBlocks = buildSystemPromptBlocks(
+    profile,
+    meds,
+    docs,
+    appts,
+    {
+      labResults: labs,
+      notifications: notifs,
+      claims: claimsData,
+      priorAuths: priorAuthsData,
+      fsaHsa: fsaHsaData,
+      memories: memoriesData,
+      conversationSummaries: conversationSummariesData,
+      symptoms,
+      treatmentCycle: activeCycle || null,
+      roleContext,
+    },
+  );
 
-  // 4-block system: L1+L2 marked cacheable (stable); L3 (per-turn) + L4
-  // (retrieved) + specialist context unmarked. Cache control only attached when
-  // ENABLE_PROMPT_CACHE=true. AI SDK v6 SystemModelMessage shape:
-  // { role: 'system', content: string, providerOptions? }
+  // Cache control for system blocks (used by both simple + full paths)
   const enableCache = process.env.ENABLE_PROMPT_CACHE === 'true';
   const cacheAttr = enableCache
     ? { providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' as const } } } }
     : {};
 
+  // Smart-routing fast path for trivial messages (greetings, ack).
+  // STILL preserves: tier-1 memory injection, audit log (via load), conversation
+  // save, usage record. Only the orchestrator + tool-heavy main stream are skipped.
+  if (userMessageText && isSimpleMessage(userMessageText)) {
+    const simpleSystem: SystemModelMessage[] = [];
+    if (promptBlocks.base) simpleSystem.push({ role: 'system', content: promptBlocks.base, ...cacheAttr });
+    if (promptBlocks.userStable) simpleSystem.push({ role: 'system', content: promptBlocks.userStable, ...cacheAttr });
+    if (promptBlocks.retrieved) simpleSystem.push({ role: 'system', content: promptBlocks.retrieved });
+
+    const simple = streamText({
+      model: anthropic('claude-haiku-4-5-20251001'),
+      maxOutputTokens: 512,
+      system: simpleSystem,
+      messages: conversationMessages,
+      onFinish: async ({ text, usage }) => {
+        if (text) {
+          await db.insert(messages).values({
+            userId: dbUser!.id,
+            role: 'assistant',
+            content: text,
+          });
+        }
+        await recordUsage(dbUser!.id, estimate, {
+          inputTokens: usage?.inputTokens ?? 0,
+          outputTokens: usage?.outputTokens ?? 0,
+          cacheRead: usage?.cachedInputTokens ?? 0,
+          cacheCreate: 0,
+        });
+      },
+    });
+    return simple.toUIMessageStreamResponse();
+  }
+
+  const orchestratorResult = userMessageText
+    ? await orchestrate(userMessageText, conversationHistory, {
+        profile,
+        medications: meds as Record<string, unknown>[],
+        doctors: docs as Record<string, unknown>[],
+        appointments: appts as Record<string, unknown>[],
+        labResults: labs as Record<string, unknown>[],
+        insurance: (ins || null) as Record<string, unknown> | null,
+        claims: claimsData as Record<string, unknown>[],
+        priorAuths: priorAuthsData as Record<string, unknown>[],
+        fsaHsa: fsaHsaData as Record<string, unknown>[],
+        memories: memoriesData as unknown as Record<string, unknown>[],
+        symptoms: symptoms as Record<string, unknown>[],
+      }, dbUser!.id)
+    : { specialistsUsed: [], agentOutputs: {}, synthesizedContext: '', isMultiAgent: false };
+
+  // 4-block system: L1+L2 marked cacheable (stable); L3 (per-turn) + L4
+  // (retrieved) + specialist context unmarked. Cache control only attached when
+  // ENABLE_PROMPT_CACHE=true (enableCache + cacheAttr defined above).
   const systemMessages: SystemModelMessage[] = [];
   if (promptBlocks.base) {
     systemMessages.push({ role: 'system', content: promptBlocks.base, ...cacheAttr });
@@ -299,6 +343,14 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
         summarizeConversation(dbUser!.id, conversationMessages)
           .catch((err) => console.error('[memory] background summarization error:', err));
       }
+
+      // Reconcile budget reservation with actual usage
+      await recordUsage(dbUser!.id, estimate, {
+        inputTokens: usage?.inputTokens ?? 0,
+        outputTokens: usage?.outputTokens ?? 0,
+        cacheRead: usage?.cachedInputTokens ?? 0,
+        cacheCreate: 0,
+      }).catch((err) => console.error('[budget] recordUsage failed:', err));
     },
   });
 

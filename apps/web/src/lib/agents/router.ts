@@ -14,7 +14,7 @@ type RoutingOutput = z.infer<typeof routingSchema>;
 
 const SIMPLE_PATTERN = /^(hi|hello|hey|thanks|thank you|thx|yes|no|yeah|nope|ok|okay|sure|great|good|sounds good|got it|👍|❤️|🙏|✅)[\s!.]*$/i;
 
-function isSimpleMessage(message: string): boolean {
+export function isSimpleMessage(message: string): boolean {
   const wordCount = message.trim().split(/\s+/).length;
   return wordCount < 15 && SIMPLE_PATTERN.test(message.trim());
 }
