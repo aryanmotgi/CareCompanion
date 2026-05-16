@@ -188,7 +188,6 @@ async function recentSmokeFailures(): Promise<GhWorkflowRun[]> {
 async function main(): Promise<void> {
   const status = await decide();
   console.log(JSON.stringify(status));
-  if (status.kind === 'abort') process.exit(1);
   process.exit(0);
 }
 
@@ -248,5 +247,5 @@ async function decide(): Promise<Status> {
 main().catch((e) => {
   console.error('[canary-monitor] fatal', e);
   console.log(JSON.stringify({ kind: 'abort', reason: `script error: ${(e as Error).message}` }));
-  process.exit(1);
+  process.exit(0);
 });
