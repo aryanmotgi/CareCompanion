@@ -135,6 +135,22 @@ export interface Memory {
   confidence: string;
   createdAt: Date | null;
   lastReferenced: Date | null;
+  validFrom?: Date | null;
+  validTo?: Date | null;
+  polarity?: string;
+  status?: string;
+  subject?: string;
+  importance?: string;
+  seenCount?: number;
+  tier?: number;
+  trust?: string;
+  decayAt?: Date | null;
+  cycleNumber?: number | null;
+  labValueNumeric?: string | null;
+  labValueUnit?: string | null;
+  measuredAt?: Date | null;
+  severity?: number | null;
+  slug?: string | null;
 }
 
 export interface ConversationSummary {
