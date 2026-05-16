@@ -135,7 +135,7 @@ async function execScalar<T = unknown>(sqlText: string): Promise<T | null> {
     new ExecuteStatementCommand({
       resourceArn: AWS_RESOURCE_ARN,
       secretArn: AWS_SECRET_ARN,
-      database: 'postgres',
+      database: process.env.DATABASE_NAME ?? 'carecompanion',
       sql: sqlText,
       includeResultMetadata: false,
     }),
