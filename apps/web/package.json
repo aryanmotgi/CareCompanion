@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.64",
+    "@ai-sdk/google": "^3.0.74",
     "@ai-sdk/react": "^3.0.144",
     "@aws-sdk/client-cognito-identity-provider": "^3.1030.0",
     "@aws-sdk/client-rds-data": "^3.1030.0",

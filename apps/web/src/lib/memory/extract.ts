@@ -2,8 +2,8 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import { db } from '@/lib/db';
-import { memories, conversationSummaries } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { conversationSummaries } from '@/lib/db/schema';
+import { eq, desc, sql } from 'drizzle-orm';
 import { resolveConflicts } from '@/lib/memory-conflict';
 import type { Memory } from './types';
 import {
@@ -12,6 +12,7 @@ import {
   trustForSource,
   tierForCategory,
 } from './validators';
+import { embedTextBatch, toHalfvecLiteral } from './embed';
 
 const MEMORY_CATEGORIES = [
   'medication', 'condition', 'allergy', 'insurance', 'financial',
@@ -166,22 +167,28 @@ export async function extractAndSaveMemories(
     }
     if (factsToInsert.length === 0) return;
 
-    const rows = factsToInsert.map((f) => ({
-      userId,
-      careProfileId,
-      category: f.category,
-      fact: f.fact,
-      polarity: f.polarity,
-      status: f.status,
-      subject: f.subject,
-      importance: String(f.importance ?? defaultImportance(f.category)),
-      tier: tierForCategory(f.category, f.status, f.polarity),
-      trust: String(trustForSource('conversation')),
-      source: 'conversation' as const,
-      confidence: f.confidence,
-    }));
+    const embeddings = await embedTextBatch(factsToInsert.map((f) => f.fact));
 
-    await db.insert(memories).values(rows);
+    for (let i = 0; i < factsToInsert.length; i++) {
+      const f = factsToInsert[i];
+      const importance = String(f.importance ?? defaultImportance(f.category));
+      const tier = tierForCategory(f.category, f.status, f.polarity);
+      const trust = String(trustForSource('conversation'));
+      const embeddingLit = toHalfvecLiteral(embeddings[i]);
+
+      await db.execute(sql`
+        INSERT INTO memories (
+          user_id, care_profile_id, category, fact, polarity, status, subject,
+          importance, tier, trust, confidence, source, embedding
+        ) VALUES (
+          ${userId}, ${careProfileId}, ${f.category},
+          ${f.fact}, ${f.polarity}, ${f.status}, ${f.subject},
+          ${importance}, ${tier}, ${trust},
+          ${f.confidence}, ${'conversation'},
+          ${embeddingLit}::halfvec
+        )
+      `);
+    }
   } catch (error) {
     console.error('[memory] extraction failed:', error);
   }
