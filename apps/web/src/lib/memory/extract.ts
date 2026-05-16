@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { conversationSummaries } from '@/lib/db/schema';
 import { eq, desc, sql } from 'drizzle-orm';
-import { resolveConflicts } from '@/lib/memory-conflict';
+import { resolveConflicts, findCosineDuplicate, bumpSeenCount } from '@/lib/memory-conflict';
 import type { Memory } from './types';
 import {
   isInstructionShaped,
@@ -160,21 +160,28 @@ export async function extractAndSaveMemories(
     const sanitized = extracted.filter((m) => !isInstructionShaped(m.fact));
     if (sanitized.length === 0) return;
 
-    const factsToInsert: ExtractedFact[] = [];
+    const factsAfterWordOverlap: ExtractedFact[] = [];
     for (const fact of sanitized) {
       const { isDuplicate } = await resolveConflicts(userId, fact.fact, fact.category, existingMemories);
-      if (!isDuplicate) factsToInsert.push(fact);
+      if (!isDuplicate) factsAfterWordOverlap.push(fact);
     }
-    if (factsToInsert.length === 0) return;
+    if (factsAfterWordOverlap.length === 0) return;
 
-    const embeddings = await embedTextBatch(factsToInsert.map((f) => f.fact));
+    const embeddings = await embedTextBatch(factsAfterWordOverlap.map((f) => f.fact));
 
-    for (let i = 0; i < factsToInsert.length; i++) {
-      const f = factsToInsert[i];
+    for (let i = 0; i < factsAfterWordOverlap.length; i++) {
+      const f = factsAfterWordOverlap[i];
+      const embeddingLit = toHalfvecLiteral(embeddings[i]);
+
+      const { duplicateId } = await findCosineDuplicate(userId, f.category, embeddingLit);
+      if (duplicateId) {
+        await bumpSeenCount(duplicateId);
+        continue;
+      }
+
       const importance = String(f.importance ?? defaultImportance(f.category));
       const tier = tierForCategory(f.category, f.status, f.polarity);
       const trust = String(trustForSource('conversation'));
-      const embeddingLit = toHalfvecLiteral(embeddings[i]);
 
       await db.execute(sql`
         INSERT INTO memories (

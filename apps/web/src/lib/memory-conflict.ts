@@ -4,10 +4,62 @@
  */
 import { db } from '@/lib/db'
 import { memories } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import type { Memory } from './types'
 
 type FactRelationship = 'conflict' | 'duplicate' | 'none'
+
+const COSINE_DUP_THRESHOLD = 0.88
+
+/**
+ * Cosine-similarity dedup. Returns the id of the nearest existing memory for
+ * the same (user_id, category) when cosine similarity > 0.88; otherwise null.
+ *
+ * Strict `>` at threshold so an exact tie does not collapse a borderline fact
+ * into an existing row. Mandatory user-id + category scoping prevents
+ * cross-patient and cross-category collisions.
+ */
+export async function findCosineDuplicate(
+  userId: string,
+  category: string,
+  embeddingLit: string,
+): Promise<{ duplicateId: string | null }> {
+  if (!embeddingLit) return { duplicateId: null }
+
+  const result = await db.execute(sql`
+    SELECT id, 1 - (embedding <=> ${embeddingLit}::halfvec) AS similarity
+    FROM memories
+    WHERE user_id = ${userId}
+      AND category = ${category}
+      AND valid_to IS NULL
+      AND embedding IS NOT NULL
+    ORDER BY embedding <=> ${embeddingLit}::halfvec
+    LIMIT 1
+  `)
+
+  const rows = (result as unknown as { rows: Array<{ id: string; similarity: number }> }).rows
+  if (rows.length === 0) return { duplicateId: null }
+
+  const top = rows[0]
+  if (Number(top.similarity) > COSINE_DUP_THRESHOLD) {
+    return { duplicateId: top.id }
+  }
+  return { duplicateId: null }
+}
+
+/**
+ * Bump `seen_count` and refresh `last_referenced` on an existing memory.
+ * Called when a cosine-duplicate is detected on the write path so retrieval
+ * ranking naturally surfaces repeatedly-mentioned facts.
+ */
+export async function bumpSeenCount(memoryId: string): Promise<void> {
+  await db.execute(sql`
+    UPDATE memories
+    SET seen_count = seen_count + 1,
+        last_referenced = NOW()
+    WHERE id = ${memoryId}
+  `)
+}
 
 /**
  * Find and supersede conflicting memories when a correction is detected.
