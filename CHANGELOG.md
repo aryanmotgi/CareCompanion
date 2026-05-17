@@ -2,15 +2,34 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
-## [0.5.0.1] - 2026-05-16
+## [0.5.1.0] - 2026-05-16
 
-Memory v2 hybrid retrieval now active in the mobile chat endpoint.
+Mobile HealthKit reliability fixes, care profile auto-creation, and home/care/labs UI consolidation.
+
+### Added
+- **DiagnosisPill** component — compact pill showing parsed conditions from the care profile on the home screen
+- **HealthKit DEV mock records** — simulator-safe medication and lab records for testing without real HealthKit data
+- **Auto-create care profile** — `/api/healthkit/replace` and `/api/healthkit/sync` now bootstrap a blank care profile for new users who skipped web onboarding, eliminating 404 errors on first sync
 
 ### Changed
-- **Mobile chat** now uses `loadRelevantMemories` (hybrid semantic) instead of full-load `loadMemories` — ConvoMem users get hybrid retrieval; others get query-matched hybrid keyed to the user's message
+- **Home screen** — replaced HomeTabPills/MyCarePanel/HealthDataPanel tab system with inline DiagnosisPill chips and a simplified layout
+- **Care tab** — removed old check-in orb, insights, and activity helpers (dead code after panel refactor); appointment and lab loading preserved
+- **Labs tab** — updated for the panel consolidation; `useFocusEffect` now reloads data when the tab is focused so newly-synced records appear without a restart
+- **HealthKit auth** — `requestAuthorization()` return value no longer blocks the connect flow (iOS never reveals deny; some bridge implementations return `false` on already-authorized)
+- **`normalizers.ts`** — uses shared `HealthKitVitalSignRecord` from `@carecompanion/types` instead of a local interface
+- **Mobile chat** now uses `loadRelevantMemories` (hybrid semantic) instead of full-load `loadMemories`
 - **Conversation summaries** skipped for ConvoMem users in mobile chat (matches web behavior)
 - **Memory recency scores** updated via `touchReferencedMemories` after each user message in mobile chat
 - Model aliases updated to dot notation (`claude-haiku-4.5`, `claude-sonnet-4.6`)
+
+### Removed
+- **`care-hub.tsx`** (770 lines) — replaced by inline `MyCarePanel` rendered directly in the Care tab
+
+### Fixed
+- **HealthKit meds/labs not appearing** — root cause was 404 from `/api/healthkit/replace` for new users with no care profile; fixed with auto-create on first connect
+- **Scanner crash** — guard `TurboModuleRegistry.get()` before requiring `DocumentScanner`; prevents Hermes LogBox crash when the native module is not compiled
+- **Guided tour Labs tab missing** — `TAB_COUNT` bumped from 4 to 5; also removed DEV reset line that was clearing the tour key on every launch
+- **Notification init** — `expo-notifications` eagerly initialized on module load to avoid native module cold-start delays
 
 ## [0.5.0.0] - 2026-05-13
 
@@ -41,6 +60,17 @@ Web onboarding port from mobile — cinematic welcome carousel, role picker, hea
 
 ### Removed
 - Inline `@keyframes wizardStepIn` in `PatientWizard.tsx` body styles; moved canonical keyframes into `globals.css` plus reduced-motion override
+
+### Fixed (Mobile App)
+- **Auth persistence for self-care users** — `UserTypeProvider` now recognizes `'self'` as a valid stored value; previously fell through to `'unset'`, causing onboarding funnel restart on every cold launch
+- **Post-signup care-type navigation glitch** — moved `markSignedIn()` inside the 950ms timeout after `router.replace('/care-type')` so AuthGate no longer races the explicit navigation with its own redirect, eliminating the double-navigate flash
+- **Double password bullet dots** — iOS native UIKit renders `secureTextEntry` bullets at a system layer that ignores `color:'transparent'`; set `secureTextEntry={false}` on the TextInput and manage display entirely in JS so only the custom overlay dots show
+- **"Try Again" pill too narrow** — added `paddingHorizontal: 32` to `RippleButton` gradient style; button now fits multi-word labels without clipping
+- **Insurance screen** — replaced WIP placeholder with minimal Coming Soon screen (shield icon + centered heading); no broken or partial UI
+- **Health-connect carousel mockups** — rewrote `mockStyles` to cover all 6 panels (Share Empty, Get Started, Search Institution, Share Added, Permissions, Auto Share) with correct dark/light theming
+- **HealthKit authorization race** — `requestAuthorization()` return value ignored; iOS never reveals denial (privacy by design) and some bridge implementations return `false` on already-authorized, which blocked the connect flow
+- **DocumentScanner LogBox crash** — `TurboModuleRegistry.get()` check before `require()` prevents Hermes from throwing through the native error channel when the scanner binary isn't compiled in
+- **Guided tour Labs tab alignment** — added Labs tab step (TAB_COUNT 4→5) to match the updated tab bar
 
 ### Notes
 - Caregivers skip consent, records, and health-connect intentionally — they observe the patient's data via care-group membership and don't connect their own health records

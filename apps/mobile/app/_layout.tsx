@@ -215,7 +215,7 @@ function UserTypeProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.getItem(USER_TYPE_KEY)
       .then((v) => {
         if (cancelled) return
-        if (v === 'patient' || v === 'caregiver') setState(v)
+        if (v === 'patient' || v === 'caregiver' || v === 'self') setState(v as UserType)
         else setState('unset')
       })
       .catch(() => { if (!cancelled) setState('unset') })
@@ -545,11 +545,15 @@ export default function RootLayout() {
   // Listener stays alive for app lifetime.
   useEffect(() => {
     void (async () => {
-      await registerNotificationCategories()
-      // Schedule the 8pm check-in if the user has already granted permission.
-      // scheduleDailyCheckin no-ops when permission is missing — so first-run
-      // users won't get a prompt here.
-      await scheduleDailyCheckin()
+      try {
+        await registerNotificationCategories()
+        // Schedule the 8pm check-in if the user has already granted permission.
+        // scheduleDailyCheckin no-ops when permission is missing — so first-run
+        // users won't get a prompt here.
+        await scheduleDailyCheckin()
+      } catch {
+        // expo-notifications native module unavailable (simulator) — skip silently
+      }
     })()
     const unsub = onNotificationResponse(async (resp) => {
       const actionId = resp.actionId
@@ -563,7 +567,7 @@ export default function RootLayout() {
       }
       // Other action handlers (dose / appointment) — left as TODO until
       // the corresponding endpoints land.
-      console.log('[notif-action]', resp.actionId, resp.data)
+      if (__DEV__) console.log('[notif-action]', resp.actionId)
     })
     return unsub
   }, [])

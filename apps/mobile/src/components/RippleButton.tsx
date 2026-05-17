@@ -89,7 +89,7 @@ export function RippleButton({ children, onPress, disabled, colors, style }: Rip
 
 const styles = StyleSheet.create({
   clipContainer: { borderRadius: 14, overflow: 'hidden' },
-  gradient: { paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
+  gradient: { paddingVertical: 16, paddingHorizontal: 32, alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.6 },
   ripple: {
     position: 'absolute',

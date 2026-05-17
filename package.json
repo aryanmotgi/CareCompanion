@@ -27,5 +27,5 @@
       "bash -c 'cd apps/web && ./node_modules/.bin/next lint --fix --file \"$@\"' --"
     ]
   },
-  "version": "0.5.0.1"
+  "version": "0.5.1.0"
 }
