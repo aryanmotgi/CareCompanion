@@ -45,7 +45,7 @@ import {
   scorePassword,
 } from '../src/components/auth/AuthAtoms'
 
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanion.app'
+const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
 
 export default function SignupScreen() {
   const router = useRouter()

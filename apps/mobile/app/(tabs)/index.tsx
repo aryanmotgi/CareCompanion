@@ -184,12 +184,14 @@ export default function HomeScreen() {
       }
       return
     }
+    let cancelled = false
     setDataLoading(true)
     Promise.all([
       apiClient.medications.list(profile.careProfileId),
       apiClient.appointments.list(profile.careProfileId),
       apiClient.labResults.list(profile.careProfileId).catch(() => [] as any),
     ]).then(([medsRaw, apptsRaw, labsRaw]) => {
+      if (cancelled) return
       const medsData = Array.isArray(medsRaw) ? medsRaw : ((medsRaw as any)?.data ?? [])
       const apptsData = Array.isArray(apptsRaw) ? apptsRaw : ((apptsRaw as any)?.data ?? [])
       const labsData = Array.isArray(labsRaw) ? labsRaw : ((labsRaw as any)?.labs ?? (labsRaw as any)?.data ?? [])
@@ -198,10 +200,10 @@ export default function HomeScreen() {
       setLabs(labsData)
     }).catch(() => {
       // API may not be deployed yet or user not authenticated — fail silently
-      // Data stays empty, empty states will render
     }).finally(() => {
-      setDataLoading(false)
+      if (!cancelled) setDataLoading(false)
     })
+    return () => { cancelled = true }
   }, [profile?.careProfileId, recordsVersion])
 
   const handleRecordsSynced = React.useCallback(() => {

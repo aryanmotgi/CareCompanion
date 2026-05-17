@@ -450,7 +450,6 @@ export async function syncHealthKitData(): Promise<{ synced: number; queued: boo
 
   if (__DEV__ && raw.length === 0) {
     raw = DEV_MOCK_RECORDS
-    console.log('[HealthKit] __DEV__: substituting', raw.length, 'mock clinical records (simulator has no real provider portal)')
   }
 
   const records: ExtendedHealthKitRecord[] = raw.flatMap((r) => {
@@ -536,7 +535,6 @@ export async function replaceHealthKitData(): Promise<{
 
   if (__DEV__ && raw.length === 0) {
     raw = DEV_MOCK_RECORDS
-    console.log('[HealthKit] __DEV__: substituting', raw.length, 'mock clinical records (simulator has no real provider portal)')
   }
 
   const records: ExtendedHealthKitRecord[] = raw.flatMap((r) => {

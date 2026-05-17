@@ -104,8 +104,8 @@ async function enqueueRetry(payload: WellnessPayload, attempt: number, lastError
 async function postWellness(payload: WellnessPayload): Promise<{ ok: true } | { ok: false; status: number | null; message: string }> {
   try {
     const token = await SecureStore.getItemAsync('cc-session-token').catch(() => null)
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (token) headers['Authorization'] = `Bearer ${token}`
+    if (!token) return { ok: false, status: 401, message: 'Not authenticated' }
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
 
     const res = await fetch(`${API_BASE}/api/healthkit/wellness`, {
       method: 'POST',

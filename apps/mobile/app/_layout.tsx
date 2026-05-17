@@ -38,6 +38,8 @@ import { WELCOME_SEEN_KEY } from './welcome'
 // registered at JS bootstrap time, not lazily in a useEffect.
 defineSyncTask(async () => {
   try {
+    const token = await SecureStore.getItemAsync('cc-session-token').catch(() => null)
+    if (!token) return 'no-data'
     const { synced } = await syncHealthKitData()
     return synced > 0 ? 'new-data' : 'no-data'
   } catch {
