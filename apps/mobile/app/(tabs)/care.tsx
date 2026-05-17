@@ -1,5 +1,5 @@
 // apps/mobile/app/(tabs)/care.tsx
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -25,14 +25,16 @@ import Animated, {
   useReducedMotion,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as SecureStore from 'expo-secure-store'
-import { useRouter } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { useTheme } from '../../src/theme'
 import { GlassCard } from '../../src/components/GlassCard'
 import { hapticMedTaken } from '../../src/utils/haptics'
 import { useStaggerEntrance } from '../../src/hooks/useStaggerEntrance'
 import { TabFadeWrapper } from './_layout'
 import { useProfile } from '../../src/context/ProfileContext'
+import { DEV_STORE_MEDS_KEY, DEV_STORE_LABS_KEY } from '../../src/services/healthkit'
 import { CareGroupTab } from '../../src/components/care/CareGroupTab'
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
@@ -72,47 +74,7 @@ interface Appointment {
   notes?: string | null
 }
 
-interface Checkin {
-  mood: number
-  pain: number
-  energy: string
-  checkedInAt: string
-}
-
-interface Insight {
-  id: string
-  type: string
-  severity: string
-  title: string
-  body: string
-  createdAt: string
-}
-
-interface Activity {
-  id: string
-  userId: string
-  action: string
-  createdAt: string
-  userName: string | null
-}
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const ENERGY_MAP: Record<string, number> = { low: 1, med: 2, medium: 2, high: 3 }
-function energyToNum(e: string): number {
-  return ENERGY_MAP[e?.toLowerCase()] ?? 2
-}
-
-function relativeTime(dateStr: string): string {
-  const diffMs = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diffMs / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return days === 1 ? 'yesterday' : `${days}d ago`
-}
 
 function daysUntil(dateStr: string): number {
   const now = new Date()
@@ -135,48 +97,6 @@ function isNadirPeriod(labs: Lab[]): boolean {
     return (n.includes('wbc') || n.includes('neutrophil') || n === 'anc' || n.startsWith('anc ')) &&
       l.status === 'abnormal'
   })
-}
-
-function getOrbColor(metric: 'pain' | 'energy' | 'mood', value: number): { fill: string; border: string } {
-  let level: 'good' | 'warn' | 'bad'
-  if (metric === 'pain') level = value <= 3 ? 'good' : value <= 6 ? 'warn' : 'bad'
-  else if (metric === 'energy') level = value >= 3 ? 'good' : value >= 2 ? 'warn' : 'bad'
-  else level = value >= 4 ? 'good' : value >= 3 ? 'warn' : 'bad'
-  if (level === 'good') return { fill: '#6EE7B7', border: 'rgba(110,231,183,0.35)' }
-  if (level === 'warn') return { fill: '#FBBF24', border: 'rgba(251,191,36,0.35)' }
-  return { fill: '#FCA5A5', border: 'rgba(252,165,165,0.35)' }
-}
-
-function hasCheckinToday(checkins: Checkin[]): boolean {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return checkins.some(c => {
-    const d = new Date(c.checkedInAt)
-    d.setHours(0, 0, 0, 0)
-    return d.getTime() === today.getTime()
-  })
-}
-
-function lastCheckinLabel(checkins: Checkin[]): string | null {
-  if (checkins.length === 0) return null
-  const sorted = [...checkins].sort((a, b) =>
-    new Date(b.checkedInAt).getTime() - new Date(a.checkedInAt).getTime()
-  )
-  return `Last check-in: ${relativeTime(sorted[0].checkedInAt)}`
-}
-
-function currentWeekNumber(): number {
-  const d = new Date()
-  const jan1 = new Date(d.getFullYear(), 0, 1)
-  return Math.ceil((((d.getTime() - jan1.getTime()) / 86400000) + jan1.getDay() + 1) / 7)
-}
-
-const ACTION_LABELS: Record<string, string> = {
-  logged_meds: 'Logged medications',
-  completed_checkin: 'Completed a check-in',
-  viewed_summary: 'Viewed health summary',
-  shared_link: 'Shared a health link',
-  exported_pdf: 'Exported a PDF',
 }
 
 // ─── ChemoCountdownBanner ─────────────────────────────────────────────────────
@@ -273,129 +193,6 @@ function ClinicalAlertsSection({ labs, meds }: { labs: Lab[]; meds: Med[] }) {
         </View>
       ))}
     </View>
-  )
-}
-
-// ─── SymptomRadarCard ─────────────────────────────────────────────────────────
-
-function MiniBarChart({ data, color }: { data: number[]; color: string }) {
-  if (data.length < 2) return null
-  const max = Math.max(...data, 1)
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 20, gap: 2 }}>
-      {data.slice(-10).map((v, i) => (
-        <View
-          key={i}
-          style={{
-            width: 4,
-            height: Math.max(2, (v / max) * 20),
-            borderRadius: 2,
-            backgroundColor: color,
-            opacity: 0.7 + 0.3 * (i / Math.max(data.length - 1, 1)),
-          }}
-        />
-      ))}
-    </View>
-  )
-}
-
-function SymptomRadarCard({ recentCheckins, patientFirstName, onRemind }: {
-  recentCheckins: Checkin[]
-  patientFirstName: string
-  onRemind: () => void
-}) {
-  const theme = useTheme()
-  const sorted = [...recentCheckins].sort(
-    (a, b) => new Date(a.checkedInAt).getTime() - new Date(b.checkedInAt).getTime()
-  )
-  const last = sorted[sorted.length - 1]
-  const noCheckinToday = !hasCheckinToday(recentCheckins)
-  const lastLabel = lastCheckinLabel(recentCheckins)
-
-  const orbs = [
-    {
-      label: 'Pain',
-      metric: 'pain' as const,
-      value: last?.pain ?? 0,
-      display: `${last?.pain ?? 0}/10`,
-      data: sorted.map(c => c.pain),
-    },
-    {
-      label: 'Energy',
-      metric: 'energy' as const,
-      value: last ? energyToNum(last.energy) : 2,
-      display: !last ? 'Med' : energyToNum(last.energy) === 3 ? 'High' : energyToNum(last.energy) === 2 ? 'Med' : 'Low',
-      data: sorted.map(c => energyToNum(c.energy)),
-    },
-    {
-      label: 'Mood',
-      metric: 'mood' as const,
-      value: last?.mood ?? 3,
-      display: `${last?.mood ?? 3}/5`,
-      data: sorted.map(c => c.mood),
-    },
-  ]
-
-  return (
-    <GlassCard style={styles.radarCard}>
-      <View style={styles.radarHeader}>
-        <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>SYMPTOM RADAR</Text>
-        {!!lastLabel && (
-          <Text style={[styles.radarTimestamp, { color: theme.textMuted }]}>{lastLabel}</Text>
-        )}
-      </View>
-
-      {sorted.length === 0 ? (
-        <Text style={[styles.emptyHint, { color: theme.textMuted }]}>No check-in data yet</Text>
-      ) : (
-        <>
-          <View style={styles.orbsRow}>
-            {orbs.map(orb => {
-              const c = getOrbColor(orb.metric, orb.value)
-              return (
-                <View key={orb.label} style={styles.orbContainer}>
-                  <View style={[styles.orb, {
-                    backgroundColor: c.fill + '1A',
-                    borderColor: c.border,
-                    borderWidth: 2,
-                    shadowColor: c.fill,
-                    shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.55,
-                    shadowRadius: 10,
-                  }]}>
-                    <Text style={[styles.orbValue, { color: c.fill }]}>{orb.display}</Text>
-                  </View>
-                  <Text style={[styles.orbLabel, { color: theme.textMuted }]}>{orb.label}</Text>
-                </View>
-              )
-            })}
-          </View>
-
-          {orbs.some(o => o.data.length >= 2) && (
-            <View style={{ gap: 6, marginTop: 10 }}>
-              {orbs.filter(o => o.data.length >= 2).map(orb => (
-                <View key={orb.label} style={styles.sparkRow}>
-                  <Text style={[styles.sparkLabel, { color: theme.textMuted }]}>{orb.label}</Text>
-                  <MiniBarChart data={orb.data} color={getOrbColor(orb.metric, orb.value).fill} />
-                </View>
-              ))}
-            </View>
-          )}
-        </>
-      )}
-
-      {noCheckinToday && (
-        <View style={[styles.noCheckinRow, { borderTopColor: theme.border }]}>
-          <Text style={[styles.noCheckinText, { color: theme.textMuted }]}>No check-in yet today</Text>
-          <Pressable
-            style={[styles.remindBtn, { backgroundColor: 'rgba(99,102,241,0.12)', borderColor: 'rgba(99,102,241,0.28)' }]}
-            onPress={onRemind}
-          >
-            <Text style={[styles.remindBtnText, { color: '#818CF8' }]}>Remind {patientFirstName} →</Text>
-          </Pressable>
-        </View>
-      )}
-    </GlassCard>
   )
 }
 
@@ -631,108 +428,6 @@ function UpcomingSection({ appointments, onPrep }: {
   )
 }
 
-// ─── AIInsightsSection ────────────────────────────────────────────────────────
-
-function AIInsightsSection({ insights }: { insights: Insight[] }) {
-  const theme = useTheme()
-  if (insights.length === 0) return null
-
-  return (
-    <GlassCard style={styles.sectionCard}>
-      <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>AI INSIGHTS</Text>
-      <View style={{ gap: 8 }}>
-        {insights.map(insight => {
-          const dotColor = insight.severity === 'alert' ? '#F87171' : insight.severity === 'watch' ? '#FBBF24' : '#6EE7B7'
-          const bg = insight.severity === 'alert' ? 'rgba(239,68,68,0.06)' : insight.severity === 'watch' ? 'rgba(245,158,11,0.06)' : 'rgba(16,185,129,0.06)'
-          return (
-            <View key={insight.id} style={[styles.insightRow, { backgroundColor: bg }]}>
-              <View style={[styles.insightDot, { backgroundColor: dotColor }]} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.insightTitle, { color: theme.text }]}>{insight.title}</Text>
-                <Text style={[styles.insightBody, { color: theme.textMuted }]} numberOfLines={3}>{insight.body}</Text>
-              </View>
-            </View>
-          )
-        })}
-      </View>
-    </GlassCard>
-  )
-}
-
-// ─── CareTeamActivitySection ──────────────────────────────────────────────────
-
-function CareTeamActivitySection({ activity }: { activity: Activity[] }) {
-  const theme = useTheme()
-  if (activity.length === 0) return null
-
-  return (
-    <GlassCard style={styles.sectionCard}>
-      <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>CARE TEAM ACTIVITY</Text>
-      <View style={{ gap: 10 }}>
-        {activity.slice(0, 5).map(item => (
-          <View key={item.id} style={styles.activityRow}>
-            <View style={styles.activityAvatar}>
-              <Text style={styles.activityAvatarText}>{(item.userName || 'U')[0].toUpperCase()}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.activityText, { color: theme.text }]} numberOfLines={2}>
-                <Text style={{ fontWeight: '600' }}>{item.userName || 'Team member'}</Text>
-                {' '}
-                <Text style={{ color: theme.textMuted }}>{ACTION_LABELS[item.action] || item.action}</Text>
-              </Text>
-              <Text style={[styles.activityTime, { color: theme.textMuted }]}>
-                {item.createdAt ? relativeTime(item.createdAt) : ''}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
-    </GlassCard>
-  )
-}
-
-// ─── WellbeingStrip ───────────────────────────────────────────────────────────
-
-function WellbeingStrip({ patientFirstName, checkinStreak }: {
-  patientFirstName: string
-  checkinStreak: number
-}) {
-  const theme = useTheme()
-  const [show, setShow] = useState(false)
-
-  useEffect(() => {
-    const key = 'cc-wellbeing-week'
-    SecureStore.getItemAsync(key).then(val => {
-      const week = currentWeekNumber()
-      if (val !== String(week)) {
-        setShow(true)
-        SecureStore.setItemAsync(key, String(week)).catch(() => null)
-      }
-    }).catch(() => null)
-  }, [])
-
-  if (!show) return null
-
-  return (
-    <GlassCard style={{ ...styles.sectionCard, borderColor: 'rgba(139,92,246,0.18)' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-        <Text style={{ fontSize: 26, marginRight: 12 }}>🌿</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.wellbeingTitle, { color: theme.text }]}>How are you holding up?</Text>
-          <Text style={[styles.wellbeingBody, { color: theme.textMuted }]}>
-            Caregiving is hard too. What you're doing for {patientFirstName} matters.
-          </Text>
-          {checkinStreak > 0 && (
-            <Text style={[styles.wellbeingStreak, { color: '#A78BFA' }]}>
-              {`You've been caring for ${patientFirstName} for ${checkinStreak} days 💙`}
-            </Text>
-          )}
-        </View>
-      </View>
-    </GlassCard>
-  )
-}
-
 // ─── InviteFamilyBanner ───────────────────────────────────────────────────────
 
 function InviteFamilyBanner({ onPress }: { onPress: () => void }) {
@@ -779,14 +474,11 @@ export default function CareScreen() {
   const [meds, setMeds] = useState<Med[]>([])
   const [labs, setLabs] = useState<Lab[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [recentCheckins, setRecentCheckins] = useState<Checkin[]>([])
-  const [insights, setInsights] = useState<Insight[]>([])
-  const [activity, setActivity] = useState<Activity[]>([])
-  const [checkinStreak, setCheckinStreak] = useState(0)
   const [hasGroup, setHasGroup] = useState<boolean>(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
+  const [focusKey, setFocusKey] = useState(0)
   const [takingId, setTakingId] = useState<string | null>(null)
   const [addModalVisible, setAddModalVisible] = useState(false)
   const [addForm, setAddForm] = useState({ name: '', dose: '', frequency: '', prescribingDoctor: '' })
@@ -803,21 +495,49 @@ export default function CareScreen() {
   const stagger = useStaggerEntrance(3)
 
   useEffect(() => {
-    if (!profile?.careProfileId) { setLoading(false); return }
+    if (!profile?.careProfileId) {
+      if (__DEV__) {
+        Promise.all([
+          AsyncStorage.getItem(DEV_STORE_MEDS_KEY).then((v) => (v ? JSON.parse(v) : [])).catch(() => []),
+          AsyncStorage.getItem(DEV_STORE_LABS_KEY).then((v) => (v ? JSON.parse(v) : [])).catch(() => []),
+        ]).then(([devMeds, devLabs]) => {
+          setMeds((devMeds as any[]).map((m) => ({
+            id: m.id,
+            logId: undefined,
+            name: m.name,
+            dose: m.dose || '',
+            time: m.frequency || '',
+            status: 'upcoming' as MedStatus,
+            isAsNeeded: false,
+            refillDueInDays: undefined,
+          })))
+          setLabs((devLabs as any[]).map((l) => ({
+            id: l.id,
+            name: l.testName,
+            value: String(l.value ?? ''),
+            range: l.referenceRange || '',
+            date: l.dateTaken
+              ? new Date(l.dateTaken).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              : '',
+            status: (l.isAbnormal ? 'abnormal' : 'normal') as 'normal' | 'abnormal',
+          })))
+        }).catch(() => {}).finally(() => setLoading(false))
+      } else {
+        setLoading(false)
+      }
+      return
+    }
     const careProfileId = profile.careProfileId
     setLoading(true)
 
     const fetchAll = async () => {
       try {
         const token = await SecureStore.getItemAsync('cc-session-token')
-        const [medsRaw, labsRaw, apptsRaw, teamRaw, hubJson] = await Promise.all([
+        const [medsRaw, labsRaw, apptsRaw, teamRaw] = await Promise.all([
           apiClient.medications.list(careProfileId).catch(() => []),
           apiClient.labResults.list(careProfileId).catch(() => ({ labs: [] })),
           apiClient.appointments.list(careProfileId).catch(() => []),
           apiClient.careTeam.list().catch(() => ({ members: [], invites: [], role: null })),
-          fetch(`${API_BASE}/api/care-hub?careProfileId=${encodeURIComponent(careProfileId)}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }).then(r => r.ok ? r.json() : { ok: false }).catch(() => ({ ok: false })),
         ])
 
         const medsData: any[] = Array.isArray(medsRaw) ? medsRaw : ((medsRaw as any)?.data ?? [])
@@ -853,14 +573,6 @@ export default function CareScreen() {
         const members: any[] = (teamRaw as any)?.members ?? []
         setHasGroup(members.filter((m: any) => m.role !== 'owner').length > 0)
 
-        if (hubJson?.ok && hubJson?.data) {
-          const hub = hubJson.data
-          setRecentCheckins(hub.recentCheckins ?? [])
-          setInsights(hub.insights ?? [])
-          setActivity(hub.activity ?? [])
-          setCheckinStreak(hub.profile?.checkinStreak ?? 0)
-        }
-
         setError(null)
       } catch (err: any) {
         setError(`Failed to load: ${err?.message || 'Unknown error'}`)
@@ -870,13 +582,22 @@ export default function CareScreen() {
     }
 
     fetchAll()
-  }, [profile?.careProfileId, retryCount])
+  }, [profile?.careProfileId, retryCount, focusKey])
+
+  // Reload when the tab is focused — catches post-HealthKit-connect navigation
+  // and any other scenario where tabs were already mounted.
+  useFocusEffect(
+    useCallback(() => {
+      setFocusKey(k => k + 1)
+    }, []),
+  )
 
   async function markAsTaken(logId: string, medId: string) {
     if (takingId) return
     setTakingId(medId)
     try {
       const token = await SecureStore.getItemAsync('cc-session-token')
+      if (!token) return
       const res = await fetch(`${API_BASE}/api/reminders/respond`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -891,14 +612,6 @@ export default function CareScreen() {
     } finally {
       setTakingId(null)
     }
-  }
-
-  function handleRemind() {
-    Alert.alert(
-      'Remind sent',
-      `A gentle check-in reminder will be sent to ${patientFirstName}.`,
-      [{ text: 'OK' }],
-    )
   }
 
   async function handleAddMed() {
@@ -1023,12 +736,6 @@ export default function CareScreen() {
 
                 <ClinicalAlertsSection labs={labs} meds={meds} />
 
-                <SymptomRadarCard
-                  recentCheckins={recentCheckins}
-                  patientFirstName={patientFirstName}
-                  onRemind={handleRemind}
-                />
-
                 <TodayMedsSection
                   meds={meds}
                   onTake={markAsTaken}
@@ -1040,15 +747,6 @@ export default function CareScreen() {
                 <UpcomingSection
                   appointments={appointments}
                   onPrep={() => router.push('/visit-prep')}
-                />
-
-                <AIInsightsSection insights={insights} />
-
-                <CareTeamActivitySection activity={activity} />
-
-                <WellbeingStrip
-                  patientFirstName={patientFirstName}
-                  checkinStreak={checkinStreak}
                 />
 
                 <InviteFamilyBanner onPress={() => {

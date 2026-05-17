@@ -1121,7 +1121,7 @@ const styles = StyleSheet.create({
   scanLabel: { color: '#FFFFFFAA', fontSize: 11, fontWeight: '700', letterSpacing: 2 },
   scanLabelFound: { position: 'absolute', bottom: 0, fontSize: 11, fontWeight: '800', letterSpacing: 2 },
 
-  trialsList: { gap: 8, marginTop: 6 },
+  trialsList: { gap: 8, marginTop: 6, paddingBottom: 16 },
   trialCard: {
     flexDirection: 'row',
     alignItems: 'center',

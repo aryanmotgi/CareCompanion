@@ -51,7 +51,18 @@ export type HealthKitAppointmentRecord = {
   location: string | null
 }
 
+export type HealthKitVitalSignRecord = {
+  type: 'vitalSign'
+  healthkitFhirId: string
+  code: string | null
+  display: string
+  value: string | null
+  unit: string | null
+  effectiveDateTime: string | null  // ISO timestamp — sliced to YYYY-MM-DD for dateTaken
+}
+
 export type HealthKitRecord =
   | HealthKitMedicationRecord
   | HealthKitLabRecord
   | HealthKitAppointmentRecord
+  | HealthKitVitalSignRecord

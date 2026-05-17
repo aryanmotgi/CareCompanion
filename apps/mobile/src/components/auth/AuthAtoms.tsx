@@ -301,6 +301,26 @@ const pwStyles = StyleSheet.create({
 })
 
 // ──────────────────────────────────────────────────────────────
+// 5b. CONFIRM PASSWORD MATCH BAR
+// ──────────────────────────────────────────────────────────────
+
+export function ConfirmMatch({ matched }: { matched: boolean }) {
+  if (!matched) return null
+  return (
+    <View style={cmStyles.wrap}>
+      <View style={cmStyles.bar} />
+      <Text style={cmStyles.label}>Passwords match</Text>
+    </View>
+  )
+}
+
+const cmStyles = StyleSheet.create({
+  wrap: { gap: 4, marginTop: 4 },
+  bar: { height: 3, borderRadius: 2, backgroundColor: '#34D399' },
+  label: { fontSize: 11, fontWeight: '700', color: '#34D399' },
+})
+
+// ──────────────────────────────────────────────────────────────
 // 6. CAPS LOCK HEURISTIC — naive: prev char vs current
 // ──────────────────────────────────────────────────────────────
 
@@ -445,30 +465,34 @@ export function FloatingInput(props: FloatingInputProps) {
         ]}
       >
         <Ionicons name={icon} size={16} color="rgba(167,139,250,0.7)" style={fiStyles.icon} />
-        <TextInput
-          ref={inputRef as unknown as React.RefObject<TextInput>}
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor="rgba(255,255,255,0.4)"
-          secureTextEntry={secureTextEntry && !revealed}
-          keyboardType={keyboardType}
-          autoCapitalize={autoCapitalize}
-          autoCorrect={autoCorrect}
-          autoComplete={autoComplete}
-          textContentType={textContentType}
-          returnKeyType={returnKeyType}
-          onSubmitEditing={onSubmitEditing}
-          onFocus={() => { setFocused(true); onFocus?.() }}
-          onBlur={() => { setFocused(false); onBlur?.() }}
-          style={fiStyles.input}
-        />
+        <View style={fiStyles.inputWrap}>
+          <TextInput
+            ref={inputRef as unknown as React.RefObject<TextInput>}
+            value={value}
+            onChangeText={onChangeText}
+            placeholder={placeholder}
+            placeholderTextColor="rgba(255,255,255,0.4)"
+            secureTextEntry={secureTextEntry && !revealed}
+            keyboardType={keyboardType}
+            autoCapitalize={secureTextEntry ? 'none' : autoCapitalize}
+            autoCorrect={secureTextEntry ? false : autoCorrect}
+            spellCheck={secureTextEntry ? false : undefined}
+            autoComplete={autoComplete}
+            textContentType={textContentType}
+            returnKeyType={returnKeyType}
+            onSubmitEditing={onSubmitEditing}
+            onFocus={() => { setFocused(true); onFocus?.() }}
+            onBlur={() => { setFocused(false); onBlur?.() }}
+            style={fiStyles.input}
+            cursorColor="rgba(167,139,250,0.7)"
+            allowFontScaling={false}
+          />
+        </View>
         {showSecureToggle && (
           <Pressable onPress={() => setRevealed((v) => !v)} hitSlop={8} style={fiStyles.eye}>
             <Ionicons name={revealed ? 'eye-off-outline' : 'eye-outline'} size={18} color="rgba(255,255,255,0.5)" />
           </Pressable>
         )}
-        {valid && <Ionicons name="checkmark-circle" size={18} color="#6EE7B7" style={{ marginLeft: 4 }} />}
         {rightSlot}
       </View>
       {error && <Text style={fiStyles.error}>{error}</Text>}
@@ -511,6 +535,7 @@ const fiStyles = StyleSheet.create({
     borderColor: 'rgba(252,165,165,0.7)',
   },
   icon: { width: 18 },
+  inputWrap: { flex: 1 },
   input: {
     flex: 1,
     paddingVertical: 13,

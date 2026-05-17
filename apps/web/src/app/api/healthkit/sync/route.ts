@@ -12,11 +12,15 @@ export async function POST(req: Request) {
 
   const { records = [] }: { records: HealthKitRecord[] } = await req.json()
 
-  const careProfile = await db.query.careProfiles.findFirst({
+  let careProfile = await db.query.careProfiles.findFirst({
     where: eq(careProfiles.userId, user.id),
   })
   if (!careProfile) {
-    return NextResponse.json({ error: 'No care profile found' }, { status: 404 })
+    const [created] = await db.insert(careProfiles).values({
+      userId: user.id,
+      onboardingCompleted: false,
+    }).returning()
+    careProfile = created
   }
 
   let synced = 0
@@ -41,7 +45,8 @@ export async function POST(req: Request) {
           })
           .onConflictDoUpdate({
             target: medications.healthkitFhirId,
-            set: { name: record.name, dose: record.dose, frequency: record.frequency },
+            // deletedAt: null un-deletes rows that were soft-deleted by a prior replace
+            set: { name: record.name, dose: record.dose, frequency: record.frequency, deletedAt: null },
           })
         counts.medications++
         synced++
@@ -92,6 +97,30 @@ export async function POST(req: Request) {
       } catch (err) {
         errors++
         console.error('[healthkit/sync] insert failed for appointment record:', err instanceof Error ? err.message : err)
+      }
+    } else if (record.type === 'vitalSign') {
+      try {
+        const dateTaken = record.effectiveDateTime ? record.effectiveDateTime.slice(0, 10) : null
+        await db.insert(labResults)
+          .values({
+            userId: user.id,
+            testName: record.display,
+            value: record.value ?? '',
+            unit: record.unit,
+            referenceRange: null,
+            dateTaken,
+            source: 'HealthKit/VitalSign',
+            healthkitFhirId: record.healthkitFhirId,
+          })
+          .onConflictDoUpdate({
+            target: labResults.healthkitFhirId,
+            set: { value: record.value ?? '', unit: record.unit },
+          })
+        counts.labResults++
+        synced++
+      } catch (err) {
+        errors++
+        console.error('[healthkit/sync] insert failed for vitalSign record:', err instanceof Error ? err.message : err)
       }
     }
   }

@@ -191,7 +191,6 @@
 				LastUpgradeCheck = 1130;
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
-						DevelopmentTeam = GMYH45T96K;
 						LastSwiftMigration = 1250;
 						ProvisioningStyle = Automatic;
 					};
@@ -391,7 +390,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = GMYH45T96K;
+				DEVELOPMENT_TEAM = XYNVSVCZHG;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -410,7 +409,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.aryanmotgi.carecompanion;
+				PRODUCT_BUNDLE_IDENTIFIER = com.somanishreyash.carecompanion;
 				PRODUCT_NAME = CareCompanion;
 				SWIFT_OBJC_BRIDGING_HEADER = "CareCompanion/CareCompanion-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -430,7 +429,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = GMYH45T96K;
+				DEVELOPMENT_TEAM = XYNVSVCZHG;
 				INFOPLIST_FILE = CareCompanion/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -444,7 +443,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.aryanmotgi.carecompanion;
+				PRODUCT_BUNDLE_IDENTIFIER = com.somanishreyash.carecompanion;
 				PRODUCT_NAME = CareCompanion;
 				SWIFT_OBJC_BRIDGING_HEADER = "CareCompanion/CareCompanion-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;

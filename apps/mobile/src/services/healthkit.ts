@@ -32,6 +32,11 @@ const CONNECTED_KEY = 'cc-healthkit-connected'
 const LAST_SYNCED_KEY = 'cc-healthkit-last-synced'
 const RETRY_QUEUE_KEY = 'cc-healthkit-retry-queue'
 
+// DEV-only local data store so the UI works on a simulator without a
+// production care profile. Written by sync/replace; read by tab screens.
+export const DEV_STORE_MEDS_KEY = 'cc-dev-meds'
+export const DEV_STORE_LABS_KEY = 'cc-dev-labs'
+
 // ---------------------------------------------------------------------------
 // Native module type declaration
 // ---------------------------------------------------------------------------
@@ -211,6 +216,35 @@ export async function fetchHealthKitBaseline(): Promise<BaselineCharacteristics>
   }
 }
 
+async function saveDevMockData(records: ExtendedHealthKitRecord[]): Promise<void> {
+  const meds = records
+    .filter((r) => r.type === 'medication')
+    .map((r, i) => ({
+      id: `dev-med-${i}`,
+      name: (r as any).name ?? 'Unknown',
+      dose: (r as any).dose ?? null,
+      frequency: (r as any).frequency ?? null,
+      prescribingDoctor: (r as any).prescribingDoctor ?? null,
+    }))
+  const labs = records
+    .filter((r) => r.type === 'labResult' || r.type === 'vitalSign')
+    .map((r, i) => ({
+      id: `dev-lab-${i}`,
+      testName: r.type === 'labResult' ? (r as any).testName : (r as any).display,
+      value: (r as any).value ?? null,
+      unit: (r as any).unit ?? null,
+      referenceRange: r.type === 'labResult' ? ((r as any).referenceRange ?? null) : null,
+      isAbnormal: false,
+      directionIsGood: null,
+      dateTaken: r.type === 'labResult'
+        ? ((r as any).dateTaken ?? null)
+        : ((r as any).effectiveDateTime ?? '').slice(0, 10) || null,
+      source: r.type === 'labResult' ? 'HealthKit' : 'HealthKit/VitalSign',
+    }))
+  await AsyncStorage.setItem(DEV_STORE_MEDS_KEY, JSON.stringify(meds))
+  await AsyncStorage.setItem(DEV_STORE_LABS_KEY, JSON.stringify(labs))
+}
+
 const Bridge: NativeHealthKitBridge | null =
   Platform.OS === 'ios' ? (NativeModules.HealthKitBridge ?? null) : null
 
@@ -302,6 +336,32 @@ const DEV_MOCK_RECORDS: RawClinicalRecord[] = [
       interpretation: [{ coding: [{ code: 'L', display: 'Low' }] }],
     }),
   },
+  {
+    id: 'mock-vital-1',
+    type: 'HKClinicalTypeIdentifierVitalSignRecord',
+    displayName: 'Heart Rate',
+    startDate: '2026-05-08T08:00:00Z',
+    fhirData: JSON.stringify({
+      resourceType: 'Observation',
+      status: 'final',
+      code: { coding: [{ display: 'Heart rate', code: '8867-4', system: 'http://loinc.org' }] },
+      valueQuantity: { value: 72, unit: '/min', system: 'http://unitsofmeasure.org' },
+      effectiveDateTime: '2026-05-08T08:00:00Z',
+    }),
+  },
+  {
+    id: 'mock-vital-2',
+    type: 'HKClinicalTypeIdentifierVitalSignRecord',
+    displayName: 'Body Weight',
+    startDate: '2026-05-08T08:00:00Z',
+    fhirData: JSON.stringify({
+      resourceType: 'Observation',
+      status: 'final',
+      code: { coding: [{ display: 'Body weight', code: '29463-7', system: 'http://loinc.org' }] },
+      valueQuantity: { value: 68.2, unit: 'kg', system: 'http://unitsofmeasure.org' },
+      effectiveDateTime: '2026-05-08T08:00:00Z',
+    }),
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -310,12 +370,23 @@ const DEV_MOCK_RECORDS: RawClinicalRecord[] = [
 
 /**
  * Request HealthKit authorization for all clinical record types.
- * Returns false (not throws) when HealthKit is unavailable or the user denies.
+ *
+ * iOS authorization is intentionally opaque: HK never reveals whether the user
+ * denied (privacy by design). The native callback's `success` flag means only
+ * "the authorization process completed without a system error" — it is true
+ * even when all types were already authorized and no UI was shown. Some native
+ * bridge implementations incorrectly forward `false` in the already-authorized
+ * case, which would block the connect flow. We therefore ignore the return
+ * value and treat any non-throwing call as success.
+ *
+ * Returns false only when HealthKit is genuinely unavailable (no Bridge) or
+ * when the native call throws a real system error.
  */
 export async function requestHealthKitPermissions(): Promise<boolean> {
   if (!Bridge) return false
   try {
-    return await Bridge.requestAuthorization()
+    await Bridge.requestAuthorization()
+    return true
   } catch {
     return false
   }
@@ -347,7 +418,20 @@ export async function isHealthKitConnected(): Promise<boolean> {
  * objects, and POST them to the backend sync endpoint.
  */
 export async function syncHealthKitData(): Promise<{ synced: number; queued: boolean; error?: string }> {
-  if (!Bridge) return { synced: 0, queued: false }
+  if (!Bridge) {
+    // Native module not loaded — in DEV mode still process mock data locally.
+    if (__DEV__) {
+      const records = DEV_MOCK_RECORDS.flatMap((r) => { const p = normalise(r); return p ? [p] : [] })
+      if (records.length > 0) {
+        await saveDevMockData(records)
+        const now = Date.now()
+        await setLastSyncedAt(now)
+        emit({ status: 'success', at: now, synced: records.length })
+        return { synced: records.length, queued: false }
+      }
+    }
+    return { synced: 0, queued: false }
+  }
 
   emit({ status: 'syncing' })
 
@@ -377,6 +461,17 @@ export async function syncHealthKitData(): Promise<{ synced: number; queued: boo
   if (records.length === 0) {
     emit({ status: 'success', at: Date.now(), synced: 0 })
     return { synced: 0, queued: false }
+  }
+
+  // DEV mode: store records locally so the UI can display without a production
+  // care profile, then skip the backend call — prevents the 404 that fires for
+  // simulator users who have no care profile yet.
+  if (__DEV__) {
+    await saveDevMockData(records)
+    const now = Date.now()
+    await setLastSyncedAt(now)
+    emit({ status: 'success', at: now, synced: records.length })
+    return { synced: records.length, queued: false }
   }
 
   try {
@@ -413,7 +508,19 @@ export async function replaceHealthKitData(): Promise<{
   deleted: { medications: number; appointments: number; labResults: number }
 }> {
   const empty = { synced: 0, errors: 0, deleted: { medications: 0, appointments: 0, labResults: 0 } }
-  if (!Bridge) return empty
+  if (!Bridge) {
+    if (__DEV__) {
+      const records = DEV_MOCK_RECORDS.flatMap((r) => { const p = normalise(r); return p ? [p] : [] })
+      if (records.length > 0) {
+        await saveDevMockData(records)
+        const now = Date.now()
+        await setLastSyncedAt(now)
+        emit({ status: 'success', at: now, synced: records.length })
+        return { synced: records.length, errors: 0, deleted: { medications: 0, appointments: 0, labResults: 0 } }
+      }
+    }
+    return empty
+  }
 
   emit({ status: 'syncing' })
 
@@ -427,10 +534,24 @@ export async function replaceHealthKitData(): Promise<{
     return empty
   }
 
+  if (__DEV__ && raw.length === 0) {
+    raw = DEV_MOCK_RECORDS
+    console.log('[HealthKit] __DEV__: substituting', raw.length, 'mock clinical records (simulator has no real provider portal)')
+  }
+
   const records: ExtendedHealthKitRecord[] = raw.flatMap((r) => {
     const parsed = normalise(r)
     return parsed ? [parsed] : []
   })
+
+  // DEV mode: store locally and skip the backend replace call.
+  if (__DEV__) {
+    await saveDevMockData(records)
+    const now = Date.now()
+    await setLastSyncedAt(now)
+    emit({ status: 'success', at: now, synced: records.length })
+    return { synced: records.length, errors: 0, deleted: { medications: 0, appointments: 0, labResults: 0 } }
+  }
 
   try {
     const result = await apiClient.healthkit.replace(records as HealthKitRecord[], { keepCareProfile: true })

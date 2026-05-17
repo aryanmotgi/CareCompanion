@@ -206,7 +206,11 @@ function getModule(): NotificationsModule {
   if (cached !== undefined) return cached
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    cached = require('expo-notifications') as NotificationsModule
+    const mod = require('expo-notifications') as NotificationsModule
+    // Probe a lightweight property to trigger any deferred native-module init
+    // now, inside this try-catch, rather than on first real API call.
+    void mod?.getPermissionsAsync
+    cached = mod
   } catch {
     cached = null
   }

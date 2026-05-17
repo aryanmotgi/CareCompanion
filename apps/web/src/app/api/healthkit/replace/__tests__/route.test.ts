@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextResponse } from 'next/server'
 
 vi.mock('@/lib/api-helpers', () => ({ getAuthenticatedUser: vi.fn() }))
@@ -25,7 +25,10 @@ vi.mock('@/lib/db', () => {
     db: {
       transaction: vi.fn(async (fn: (tx: typeof txStub) => Promise<void>) => fn(txStub)),
       insert: vi.fn(() => ({
-        values: vi.fn(() => ({ onConflictDoUpdate: vi.fn().mockResolvedValue([]) })),
+        values: vi.fn(() => ({
+          onConflictDoUpdate: vi.fn().mockResolvedValue([]),
+          returning: vi.fn().mockResolvedValue([{ id: 'auto-profile-1' }]),
+        })),
       })),
       query: { careProfiles: { findFirst: vi.fn() } },
     },
@@ -34,6 +37,8 @@ vi.mock('@/lib/db', () => {
 vi.mock('@/lib/audit', () => ({ logAudit: vi.fn() }))
 
 describe('POST /api/healthkit/replace', () => {
+  beforeEach(() => vi.clearAllMocks())
+
   it('returns 401 when not authenticated', async () => {
     const { getAuthenticatedUser } = await import('@/lib/api-helpers')
     vi.mocked(getAuthenticatedUser).mockResolvedValueOnce({
@@ -48,7 +53,7 @@ describe('POST /api/healthkit/replace', () => {
     expect(res.status).toBe(401)
   })
 
-  it('returns 404 when no care profile', async () => {
+  it('auto-creates care profile and returns 200 when no profile exists (new user)', async () => {
     const { getAuthenticatedUser } = await import('@/lib/api-helpers')
     vi.mocked(getAuthenticatedUser).mockResolvedValueOnce({ user: { id: 'user-1' }, error: null } as never)
     const { db } = await import('@/lib/db')
@@ -58,7 +63,9 @@ describe('POST /api/healthkit/replace', () => {
       method: 'POST',
       body: JSON.stringify({ records: [] }),
     }))
-    expect(res.status).toBe(404)
+    expect(res.status).toBe(200)
+    // Verify insert was called to create the profile
+    expect(db.insert).toHaveBeenCalled()
   })
 
   it('runs wipe in transaction and inserts records, returns counts', async () => {
@@ -116,6 +123,7 @@ describe('POST /api/healthkit/replace', () => {
 // ────────────────────────────────────────────────────────────────────────────
 
 describe('POST /api/healthkit/replace — integration behavior', () => {
+  beforeEach(() => vi.clearAllMocks())
   // Helpers to build a tx mock that returns fake row IDs from .returning()
   function makeTxMock(returningRows: {
     medications: Array<{ id: string }>
@@ -262,6 +270,53 @@ describe('POST /api/healthkit/replace — integration behavior', () => {
     expect(insertCalls[0]!.values).toMatchObject({ name: 'Tamoxifen', dose: '20mg', healthkitFhirId: 'fhir-m', careProfileId: 'profile-1' })
     expect(insertCalls[1]!.values).toMatchObject({ testName: 'CBC', value: '5.2', healthkitFhirId: 'fhir-l', userId: 'user-1', source: 'HealthKit' })
     expect(insertCalls[2]!.values).toMatchObject({ doctorName: 'Dr. Patel', specialty: 'Oncology', healthkitFhirId: 'fhir-a', careProfileId: 'profile-1' })
+  })
+
+  it('stores vitalSign records in labResults with source HealthKit/VitalSign', async () => {
+    const { getAuthenticatedUser } = await import('@/lib/api-helpers')
+    vi.mocked(getAuthenticatedUser).mockResolvedValueOnce({ user: { id: 'user-1' }, error: null } as never)
+    const { db } = await import('@/lib/db')
+    vi.mocked(db.query.careProfiles.findFirst).mockResolvedValueOnce({ id: 'profile-1' } as never)
+
+    const insertCalls: Array<{ values: Record<string, unknown> }> = []
+    vi.mocked(db.insert).mockImplementation(() => ({
+      values: vi.fn((v: Record<string, unknown>) => {
+        insertCalls.push({ values: v })
+        return { onConflictDoUpdate: vi.fn().mockResolvedValue([]) }
+      }),
+    }) as never)
+
+    const { POST } = await import('../route')
+    const res = await POST(new Request('http://localhost/api/healthkit/replace', {
+      method: 'POST',
+      body: JSON.stringify({
+        records: [
+          {
+            type: 'vitalSign',
+            healthkitFhirId: 'fhir-v-1',
+            code: '39156-5',
+            display: 'Body Mass Index',
+            value: '26.2',
+            unit: 'kg/m2',
+            effectiveDateTime: '2023-11-24T00:00:00Z',
+          },
+        ],
+      }),
+    }))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.synced).toBe(1)
+    expect(insertCalls).toHaveLength(1)
+    expect(insertCalls[0]!.values).toMatchObject({
+      testName: 'Body Mass Index',
+      value: '26.2',
+      unit: 'kg/m2',
+      dateTaken: '2023-11-24',
+      source: 'HealthKit/VitalSign',
+      healthkitFhirId: 'fhir-v-1',
+      userId: 'user-1',
+    })
   })
 
   it('individual insert failures do not stop the loop and count toward errors', async () => {

@@ -8,11 +8,12 @@
 import type {
   HealthKitMedicationRecord,
   HealthKitLabRecord,
+  HealthKitVitalSignRecord,
 } from '@carecompanion/types'
 
 // ---------------------------------------------------------------------------
-// Mirror of mobile-local extended record types from healthkit.ts. Kept in sync
-// manually — when the shared @carecompanion/types union grows, drop these.
+// Mobile-local extended record types not yet promoted to @carecompanion/types.
+// When the shared union grows to include these, import and drop the local copy.
 // ---------------------------------------------------------------------------
 
 export type HealthKitConditionRecord = {
@@ -39,16 +40,6 @@ export type HealthKitProcedureRecord = {
   code: string | null
   display: string
   performedDateTime: string | null
-}
-
-export type HealthKitVitalSignRecord = {
-  type: 'vitalSign'
-  healthkitFhirId: string
-  code: string | null
-  display: string
-  value: string | null
-  unit: string | null
-  effectiveDateTime: string | null
 }
 
 export type HealthKitImmunizationRecord = {

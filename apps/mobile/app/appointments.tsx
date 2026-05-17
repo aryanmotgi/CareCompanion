@@ -157,7 +157,7 @@ export default function AppointmentsScreen() {
   const router = useRouter()
   const { profile, csrfToken, apiClient } = useProfile()
 
-  const [demoList, setDemoList] = useState<AppointmentRow[]>(() => makeDemoAppointments())
+  const [demoList, setDemoList] = useState<AppointmentRow[]>(() => (__DEV__ ? makeDemoAppointments() : []))
   const [realList, setRealList] = useState<AppointmentRow[]>([])
   const [loading, setLoading] = useState(true)
 

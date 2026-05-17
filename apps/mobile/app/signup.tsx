@@ -38,6 +38,7 @@ import {
   LogoBeam,
   FloatingInput,
   PasswordStrength,
+  ConfirmMatch,
   SuccessOverlay,
   useDeviceTilt,
   useCapsHint,
@@ -76,6 +77,7 @@ export default function SignupScreen() {
   const passwordValid = pwScore >= 1
   const confirmValid = confirmPassword.length > 0 && password === confirmPassword
   const nameValid = displayName.trim().length > 0
+  const formValid = nameValid && emailValid && !emailExists && passwordValid && confirmValid && consent
   const capsHint = useCapsHint(password)
 
   const { tx, ty } = useDeviceTilt()
@@ -268,15 +270,20 @@ export default function SignupScreen() {
 
       try {
         await signInWithCredentials(email.trim().toLowerCase(), password)
-        markSignedIn()
+        // Don't markSignedIn() yet — doing it before navigation triggers AuthGate's
+        // needsCareTypePick redirect immediately, which races with the explicit
+        // router.replace below and causes a double-navigate glitch on care-type.
       } catch {
         // Auto-login best effort
       }
 
-      // Success overlay before redirect
+      // Success overlay before redirect — markSignedIn() fires with the navigate
+      // so that when AuthGate re-renders with tokenState='present' we're already
+      // on /care-type (where needsCareTypePick has its !onCareType guard).
       setShowSuccess(true)
       setTimeout(() => {
         router.replace('/care-type' as any)
+        markSignedIn()
       }, 950)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Sign-up failed'
@@ -427,7 +434,7 @@ export default function SignupScreen() {
           <Animated.View style={f3}>
             <FloatingInput
               label="Confirm Password"
-              icon="shield-checkmark-outline"
+              icon="lock-closed-outline"
               placeholder="Re-enter password"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
@@ -438,10 +445,10 @@ export default function SignupScreen() {
               autoCorrect={false}
               returnKeyType="done"
               onSubmitEditing={handleSignup}
-              valid={confirmValid}
               error={confirmPassword.length > 0 && !confirmValid && password.length > 0 ? "Passwords don't match" : null}
               inputRef={confirmRef as React.MutableRefObject<unknown>}
             />
+            <ConfirmMatch matched={confirmValid} />
           </Animated.View>
 
           <Pressable style={styles.consentRow} onPress={() => setConsent(!consent)}>
@@ -461,7 +468,7 @@ export default function SignupScreen() {
           </Pressable>
 
           <View style={styles.ctaWrap}>
-            <RippleButton onPress={handleSignup} disabled={loading}>
+            <RippleButton onPress={handleSignup} disabled={loading || !formValid}>
               <Text style={styles.signInText}>
                 {loading ? 'Creating account…' : 'Create Account'}
               </Text>
