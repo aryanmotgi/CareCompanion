@@ -42,6 +42,7 @@ Memory v2 — pgvector hybrid memory, Anthropic prompt caching, safety extractio
 - **Budget caps** — per-user daily token budgets enforced at the API layer; graceful degradation message shown when cap is approached
 - **Canary rollout** — Memory v2 gated at 10 % of users via feature flag; GitHub Actions cron auto-promotes to 100 % if error rate stays clean through 2026-05-18
 
+
 ## [0.5.0.0] - 2026-05-13
 
 Web onboarding port from mobile — cinematic welcome carousel, role picker, health consent, share-invite code, caregiver code-join, live presence, iOS app nudge. Full visual + motion parity with the iPhone flow.
