@@ -2,6 +2,31 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.5.1.0] - 2026-05-16
+
+Mobile HealthKit reliability fixes, care profile auto-creation, and home/care/labs UI consolidation.
+
+### Added
+- **DiagnosisPill** component — compact pill showing parsed conditions from the care profile on the home screen
+- **HealthKit DEV mock records** — simulator-safe medication and lab records for testing without real HealthKit data
+- **Auto-create care profile** — `/api/healthkit/replace` and `/api/healthkit/sync` now bootstrap a blank care profile for new users who skipped web onboarding, eliminating 404 errors on first sync
+
+### Changed
+- **Home screen** — replaced HomeTabPills/MyCarePanel/HealthDataPanel tab system with inline DiagnosisPill chips and a simplified layout
+- **Care tab** — removed old check-in orb, insights, and activity helpers (dead code after panel refactor); appointment and lab loading preserved
+- **Labs tab** — updated for the panel consolidation; `useFocusEffect` now reloads data when the tab is focused so newly-synced records appear without a restart
+- **HealthKit auth** — `requestAuthorization()` return value no longer blocks the connect flow (iOS never reveals deny; some bridge implementations return `false` on already-authorized)
+- **`normalizers.ts`** — uses shared `HealthKitVitalSignRecord` from `@carecompanion/types` instead of a local interface
+
+### Removed
+- **`care-hub.tsx`** (770 lines) — replaced by inline `MyCarePanel` rendered directly in the Care tab
+
+### Fixed
+- **HealthKit meds/labs not appearing** — root cause was 404 from `/api/healthkit/replace` for new users with no care profile; fixed with auto-create on first connect
+- **Scanner crash** — guard `TurboModuleRegistry.get()` before requiring `DocumentScanner`; prevents Hermes LogBox crash when the native module is not compiled
+- **Guided tour Labs tab missing** — `TAB_COUNT` bumped from 4 to 5; also removed DEV reset line that was clearing the tour key on every launch
+- **Notification init** — `expo-notifications` eagerly initialized on module load to avoid native module cold-start delays
+
 ## [0.5.0.0] - 2026-05-13
 
 Web onboarding port from mobile — cinematic welcome carousel, role picker, health consent, share-invite code, caregiver code-join, live presence, iOS app nudge. Full visual + motion parity with the iPhone flow.
