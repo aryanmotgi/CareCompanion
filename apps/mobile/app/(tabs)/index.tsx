@@ -1,5 +1,5 @@
 // apps/mobile/app/(tabs)/index.tsx
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   AppState,
   View,
@@ -40,10 +40,8 @@ import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { ShimmerSkeleton } from '../../src/components/ShimmerSkeleton'
 import { DailyAlertsCard } from '../../src/components/DailyAlertsCard'
 import { TodaysMedicationsCard } from '../../src/components/TodaysMedicationsCard'
-import { HomeTabPills, type HomeTab } from '../../src/components/home/HomeTabPills'
-import { MyCarePanel } from '../../src/components/home/MyCarePanel'
-import { HealthDataPanel } from '../../src/components/home/HealthDataPanel'
 import { CheckInModal } from '../../src/components/home/CheckInModal'
+import { DiagnosisPill } from '../../src/components/DiagnosisPill'
 import { TabFadeWrapper } from './_layout'
 import { useProfile } from '../../src/context/ProfileContext'
 import { apiClient } from '../../src/services/api'
@@ -144,8 +142,6 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<HomeTab>('today')
-
   // --- Real data from API ---
   const { profile, loading: profileLoading, refetch } = useProfile()
   const [refreshing, setRefreshing] = useState(false)
@@ -165,6 +161,11 @@ export default function HomeScreen() {
   const [activeNudge, setActiveNudge] = useState<Nudge | null>(null)
   const [hkConnected, setHkConnected] = useState<boolean | null>(null)
   const [inviteBannerVisible, setInviteBannerVisible] = useState(false)
+
+  const conditions = useMemo(() => {
+    try { return JSON.parse(profile?.conditions ?? '[]') as { display: string }[] }
+    catch { return [] }
+  }, [profile?.conditions])
 
   useEffect(() => {
     if (!profile?.careProfileId) {
@@ -216,21 +217,6 @@ export default function HomeScreen() {
       })
       .catch(() => {})
   }, [recordsVersion])
-
-  // Count of real items due today: meds scheduled today + appointments today.
-  const todayCount = React.useMemo(() => {
-    const today = new Date()
-    const y = today.getFullYear()
-    const m = today.getMonth()
-    const d = today.getDate()
-    const apptsToday = appointments.filter((a: any) => {
-      const dt = a?.dateTime || a?.date || a?.scheduledFor
-      if (!dt) return false
-      const ad = new Date(dt)
-      return ad.getFullYear() === y && ad.getMonth() === m && ad.getDate() === d
-    }).length
-    return meds.length + apptsToday
-  }, [meds, appointments])
 
   const [localDisplayName, setLocalDisplayName] = useState<string | null>(null)
   useEffect(() => {
@@ -575,6 +561,14 @@ export default function HomeScreen() {
               </Text>
               <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
               <RoleBadge style={{ marginTop: 4 }} />
+              {conditions.length > 0 && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                  {conditions.slice(0, 2).map((c) => (
+                    <DiagnosisPill key={c.display} label={c.display} />
+                  ))}
+                  {conditions.length > 2 && <DiagnosisPill label={`+${conditions.length - 2}`} />}
+                </View>
+              )}
             </View>
             <View style={styles.headerRight}>
               <Pressable onPress={() => router.push('/search')} hitSlop={8} style={styles.bellButton}>
@@ -728,14 +722,7 @@ export default function HomeScreen() {
             </Pressable>
           )}
 
-          {/* Today / My Care / Health Data segmented control */}
-          <HomeTabPills active={activeTab} onChange={setActiveTab} todayCount={todayCount} />
-
-          {activeTab === 'myCare' && <MyCarePanel />}
-          {activeTab === 'healthData' && <HealthDataPanel />}
-
-          {/* Today panel — existing home content at 0.6x parallax */}
-          {activeTab === 'today' && (
+          {/* Today panel */}
           <Animated.View style={cardParallaxStyle}>
             <Animated.View style={card1Style}>
               <DailyAlertsCard careProfileId={profile?.careProfileId} />
@@ -820,42 +807,6 @@ export default function HomeScreen() {
               })()}
             </Animated.View>
 
-            {/* Timeline shortcut */}
-            <Animated.View style={card3Style}>
-              <GlassCard style={styles.card} onPress={() => router.push('/timeline' as any)}>
-                <View style={styles.timelineRow}>
-                  <View style={[styles.timelineIcon, { backgroundColor: 'rgba(99,102,241,0.15)' }]}>
-                    <Ionicons name="time-outline" size={20} color="#A78BFA" />
-                  </View>
-                  <View style={styles.timelineText}>
-                    <Text style={[styles.ctaTitle, { color: theme.text, fontSize: 14 }]}>Care Timeline</Text>
-                    <Text style={[styles.ctaSub, { color: theme.textMuted, fontSize: 12 }]}>
-                      Medications, appointments & milestones
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
-                </View>
-              </GlassCard>
-            </Animated.View>
-
-            {/* Care Hub Radar shortcut */}
-            <Animated.View style={card3Style}>
-              <GlassCard style={styles.card} onPress={() => router.push('/care-hub' as any)}>
-                <View style={styles.timelineRow}>
-                  <View style={[styles.timelineIcon, { backgroundColor: 'rgba(16,185,129,0.12)' }]}>
-                    <Ionicons name="pulse-outline" size={20} color="#6EE7B7" />
-                  </View>
-                  <View style={styles.timelineText}>
-                    <Text style={[styles.ctaTitle, { color: theme.text, fontSize: 14 }]}>Care Hub Radar</Text>
-                    <Text style={[styles.ctaSub, { color: theme.textMuted, fontSize: 12 }]}>
-                      Symptom trends, insights & activity
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
-                </View>
-              </GlassCard>
-            </Animated.View>
-
             {/* AI CTA card */}
             <View style={theme.shadowGlowViolet}>
               <Animated.View style={card3Style}>
@@ -875,7 +826,6 @@ export default function HomeScreen() {
               </Animated.View>
             </View>
           </Animated.View>
-          )}
         </ScrollView>
 
         <Drawer

@@ -272,6 +272,78 @@ function Section({
   )
 }
 
+function parseRange(ref: string | null): { low: number; high: number } | null {
+  if (!ref) return null
+  const parts = ref.split(/[–\-]/).map((s) => parseFloat(s.trim()))
+  if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) return null
+  return { low: parts[0], high: parts[1] }
+}
+
+function FhirRangeBar({
+  value,
+  referenceRange,
+  theme,
+}: {
+  value: string | null
+  referenceRange: string | null
+  theme: ReturnType<typeof useTheme>
+}) {
+  const parsed = parseRange(referenceRange)
+  const num = value ? parseFloat(value) : NaN
+  if (!parsed || isNaN(num)) return null
+
+  const { low, high } = parsed
+  const displayMin = Math.min(0, low * 0.5)
+  const displayMax = high * 1.5
+  const range = displayMax - displayMin
+
+  const lowPct = ((low - displayMin) / range) * 100
+  const highPct = ((high - displayMin) / range) * 100
+  const valuePct = Math.max(0, Math.min(100, ((num - displayMin) / range) * 100))
+
+  const status = num < low ? 'LOW' : num > high ? 'HIGH' : 'IN RANGE'
+  const statusColor = status === 'IN RANGE' ? '#34d399' : status === 'LOW' ? '#fbbf24' : '#f87171'
+
+  return (
+    <View style={{ marginTop: 8, gap: 4 }}>
+      <Text style={{ color: statusColor, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>
+        {status}
+      </Text>
+      <View style={{ height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.1)', position: 'relative' }}>
+        {/* normal zone highlight */}
+        <View
+          style={{
+            position: 'absolute',
+            left: `${lowPct}%`,
+            width: `${highPct - lowPct}%`,
+            top: 0,
+            bottom: 0,
+            borderRadius: 3,
+            backgroundColor: 'rgba(99,174,255,0.4)',
+          }}
+        />
+        {/* value marker */}
+        <View
+          style={{
+            position: 'absolute',
+            left: `${valuePct}%`,
+            top: -3,
+            width: 12,
+            height: 12,
+            borderRadius: 6,
+            backgroundColor: statusColor,
+            marginLeft: -6,
+          }}
+        />
+      </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={{ color: theme.textMuted, fontSize: 9 }}>{low}</Text>
+        <Text style={{ color: theme.textMuted, fontSize: 9 }}>{high}</Text>
+      </View>
+    </View>
+  )
+}
+
 function LabRow({
   lab,
   theme,
@@ -286,44 +358,44 @@ function LabRow({
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
         padding: 12,
         borderRadius: 12,
         borderWidth: 1,
         borderColor: abnormal ? 'rgba(244,114,114,0.4)' : theme.border,
         backgroundColor: abnormal ? 'rgba(244,114,114,0.08)' : 'rgba(255,255,255,0.03)',
         opacity: pressed ? 0.7 : 1,
+        gap: 4,
       })}
     >
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: theme.text, fontSize: 14, fontWeight: '700' }} numberOfLines={1}>
-          {lab.testName}
-        </Text>
-        <Text style={{ color: theme.textMuted, fontSize: 12, marginTop: 2 }}>
-          {fmtDate(lab.dateTaken)}
-          {lab.referenceRange ? ` · normal ${lab.referenceRange}` : ''}
-        </Text>
-      </View>
-      <View style={{ alignItems: 'flex-end' }}>
-        <Text
-          style={{
-            color: abnormal ? theme.rose : theme.text,
-            fontSize: 16,
-            fontWeight: '800',
-          }}
-        >
-          {lab.value ?? '—'}
-          {lab.unit ? <Text style={{ fontSize: 10, fontWeight: '500', color: theme.textMuted }}> {lab.unit}</Text> : null}
-        </Text>
-        {abnormal && (
-          <Text style={{ color: theme.rose, fontSize: 9, fontWeight: '800', letterSpacing: 0.5, marginTop: 2 }}>
-            ABNORMAL
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: theme.text, fontSize: 14, fontWeight: '700' }} numberOfLines={1}>
+            {lab.testName}
           </Text>
-        )}
+          <Text style={{ color: theme.textMuted, fontSize: 12, marginTop: 2 }}>
+            {fmtDate(lab.dateTaken)}
+          </Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text
+            style={{
+              color: abnormal ? theme.rose : theme.text,
+              fontSize: 16,
+              fontWeight: '800',
+            }}
+          >
+            {lab.value ?? '—'}
+            {lab.unit ? <Text style={{ fontSize: 10, fontWeight: '500', color: theme.textMuted }}> {lab.unit}</Text> : null}
+          </Text>
+          {abnormal && !parseRange(lab.referenceRange) && (
+            <Text style={{ color: theme.rose, fontSize: 9, fontWeight: '800', letterSpacing: 0.5, marginTop: 2 }}>
+              ABNORMAL
+            </Text>
+          )}
+        </View>
+        {onPress && <Ionicons name="sparkles-outline" size={14} color={theme.accent} />}
       </View>
-      {onPress && <Ionicons name="sparkles-outline" size={14} color={theme.accent} />}
+      <FhirRangeBar value={lab.value} referenceRange={lab.referenceRange} theme={theme} />
     </Pressable>
   )
 }

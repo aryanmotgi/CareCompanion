@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { View, Text, Pressable, ScrollView } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
 import { useTheme } from '../../theme'
 import { GlassCard } from '../GlassCard'
 import { CheckInModal } from './CheckInModal'
@@ -13,12 +14,58 @@ function todayKey(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+function fmtShortDate(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso.length === 10 ? iso + 'T00:00:00' : iso)
+  if (isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 type Filter = 'all' | 'medications' | 'appointments' | 'labs' | 'checkins' | 'insights'
 
-export function MyCarePanel() {
+interface Props {
+  medications?: any[]
+  labs?: any[]
+  appointments?: any[]
+}
+
+export function MyCarePanel({ medications = [], labs = [], appointments = [] }: Props) {
   const theme = useTheme()
+  const router = useRouter()
   const [filter, setFilter] = useState<Filter>('all')
   const [checkInOpen, setCheckInOpen] = useState(false)
+
+  const timelineItems = useMemo(() => {
+    const items: { label: string; date: string | null; type: 'medication' | 'lab' | 'appointment' }[] = [
+      ...medications.map((m: any) => ({
+        label: m.medicationName ?? m.medication_name ?? 'Medication',
+        date: m.startDate ?? m.start_date ?? m.createdAt ?? null,
+        type: 'medication' as const,
+      })),
+      ...labs.map((l: any) => ({
+        label: l.testName ?? l.test_name ?? 'Lab Result',
+        date: l.dateTaken ?? l.date_taken ?? null,
+        type: 'lab' as const,
+      })),
+      ...appointments.map((a: any) => ({
+        label: a.title ?? a.providerName ?? a.provider_name ?? 'Appointment',
+        date: a.dateTime ?? a.date_time ?? null,
+        type: 'appointment' as const,
+      })),
+    ]
+    return items
+      .filter((i) => i.date)
+      .sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime())
+      .slice(0, 3)
+  }, [medications, labs, appointments])
+
+  const hasData = timelineItems.length > 0
+
+  const DOT_COLOR: Record<string, string> = {
+    medication: '#6c63ff',
+    lab: '#63aeff',
+    appointment: '#63ff88',
+  }
 
   const filters: { key: Filter; label: string }[] = [
     { key: 'all', label: 'All' },
@@ -131,7 +178,7 @@ export function MyCarePanel() {
         })}
       </ScrollView>
 
-      {/* Timeline empty-state — ports the web "Your treatment journey will appear here" placeholder */}
+      {/* Treatment journey card — shows real timeline items when data is available */}
       <View
         style={{
           borderRadius: 16,
@@ -143,40 +190,64 @@ export function MyCarePanel() {
           backgroundColor: 'rgba(255,255,255,0.02)',
         }}
       >
-        <TimelineSkeleton theme={theme} />
-        <Text
-          style={{
-            color: theme.text,
-            fontSize: 14,
-            fontWeight: '600',
-            textAlign: 'center',
-            marginTop: 8,
-          }}
-        >
-          Your treatment journey will appear here
-        </Text>
-        <Text
-          style={{
-            color: theme.textMuted,
-            fontSize: 12,
-            lineHeight: 17,
-            textAlign: 'center',
-            marginTop: 6,
-            paddingHorizontal: 16,
-          }}
-        >
-          As you add medications, appointments, and check-ins, CareCompanion will build your timeline.
-        </Text>
-        <Pressable
-          style={{ alignSelf: 'center', marginTop: 10, paddingVertical: 4 }}
-          onPress={() => {
-            /* Could route to chat; deferred */
-          }}
-        >
-          <Text style={{ color: theme.accent, fontSize: 13, fontWeight: '600' }}>
-            Start a conversation
-          </Text>
-        </Pressable>
+        {hasData ? (
+          <>
+            {timelineItems.map((item, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: i < timelineItems.length - 1 ? 12 : 0 }}>
+                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: DOT_COLOR[item.type] }} />
+                <Text style={{ color: theme.text, fontSize: 13, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+                  {item.label}
+                </Text>
+                <Text style={{ color: theme.textMuted, fontSize: 11 }}>
+                  {fmtShortDate(item.date)}
+                </Text>
+              </View>
+            ))}
+            <Pressable
+              style={{ marginTop: 14, alignSelf: 'flex-start' }}
+              onPress={() => router.push('/timeline' as any)}
+            >
+              <Text style={{ color: theme.accent, fontSize: 13, fontWeight: '600' }}>
+                View full timeline →
+              </Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <TimelineSkeleton theme={theme} />
+            <Text
+              style={{
+                color: theme.text,
+                fontSize: 14,
+                fontWeight: '600',
+                textAlign: 'center',
+                marginTop: 8,
+              }}
+            >
+              Your treatment journey will appear here
+            </Text>
+            <Text
+              style={{
+                color: theme.textMuted,
+                fontSize: 12,
+                lineHeight: 17,
+                textAlign: 'center',
+                marginTop: 6,
+                paddingHorizontal: 16,
+              }}
+            >
+              As you add medications, appointments, and check-ins, CareCompanion will build your timeline.
+            </Text>
+            <Pressable
+              style={{ alignSelf: 'center', marginTop: 10, paddingVertical: 4 }}
+              onPress={() => router.push('/(tabs)/chat' as any)}
+            >
+              <Text style={{ color: theme.accent, fontSize: 13, fontWeight: '600' }}>
+                Start a conversation
+              </Text>
+            </Pressable>
+          </>
+        )}
       </View>
 
       {/* Care Team summary */}

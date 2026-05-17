@@ -905,7 +905,7 @@ export default function ChatScreen() {
               opacity: pressed ? 0.5 : 1,
             })}
           >
-            <Ionicons name="scan-outline" size={20} color={theme.accent} />
+            <Ionicons name="camera-outline" size={20} color={theme.accent} />
           </Pressable>
           <TextInput
             style={[styles.input, { backgroundColor: theme.bgCard, borderColor: theme.bgCardBorder, color: theme.text }]}

@@ -2,7 +2,7 @@ import React from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { useTheme } from '../../theme'
 
-export type HomeTab = 'today' | 'myCare' | 'healthData'
+export type HomeTab = 'today' | 'myCare'
 
 interface Props {
   active: HomeTab
@@ -16,7 +16,6 @@ export function HomeTabPills({ active, onChange, todayCount }: Props) {
   const tabs: { key: HomeTab; label: string; count?: number }[] = [
     { key: 'today', label: 'Today', count: todayCount },
     { key: 'myCare', label: 'My Care' },
-    { key: 'healthData', label: 'Health Data' },
   ]
 
   return (
