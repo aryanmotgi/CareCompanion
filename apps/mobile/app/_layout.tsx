@@ -567,7 +567,7 @@ export default function RootLayout() {
       }
       // Other action handlers (dose / appointment) — left as TODO until
       // the corresponding endpoints land.
-      console.log('[notif-action]', resp.actionId, resp.data)
+      if (__DEV__) console.log('[notif-action]', resp.actionId)
     })
     return unsub
   }, [])

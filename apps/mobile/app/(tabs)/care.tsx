@@ -597,6 +597,7 @@ export default function CareScreen() {
     setTakingId(medId)
     try {
       const token = await SecureStore.getItemAsync('cc-session-token')
+      if (!token) return
       const res = await fetch(`${API_BASE}/api/reminders/respond`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

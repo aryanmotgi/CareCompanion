@@ -54,7 +54,9 @@ export default function LabsScreen() {
     if (!profile?.careProfileId) {
       if (__DEV__) {
         const raw = await AsyncStorage.getItem(DEV_STORE_LABS_KEY).catch(() => null)
-        const arr: any[] = raw ? JSON.parse(raw) : []
+        let parsed: any[] = []
+        try { parsed = raw ? JSON.parse(raw) : [] } catch { parsed = [] }
+        const arr: any[] = parsed
         const normalised: Lab[] = arr.map((l) => ({
           id: l.id,
           testName: l.testName ?? 'Unknown',
