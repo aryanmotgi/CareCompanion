@@ -131,7 +131,9 @@ export const messages = pgTable('messages', {
   role: text('role').notNull(),
   content: text('content').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-})
+}, (t) => ({
+  userCreatedIdx: index('messages_user_created_idx').on(t.userId, t.createdAt),
+}))
 
 // ── Medications ───────────────────────────────────────────────────────────────
 export const medications = pgTable('medications', {
@@ -395,7 +397,9 @@ export const careTeamMembers = pgTable('care_team_members', {
   lastGratitudeNudgeAt: timestamp('last_gratitude_nudge_at', { withTimezone: true }),
   joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-})
+}, (t) => ({
+  profileIdx: index('care_team_members_profile_idx').on(t.careProfileId),
+}))
 
 // ── Care Team Invites ─────────────────────────────────────────────────────────
 export const careTeamInvites = pgTable('care_team_invites', {
@@ -446,7 +450,9 @@ export const reminderLogs = pgTable('reminder_logs', {
   status: text('status').notNull().default('pending'),
   respondedAt: timestamp('responded_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-})
+}, (t) => ({
+  userTimeIdx: index('reminder_logs_user_time_idx').on(t.userId, t.scheduledTime),
+}))
 
 // ── Symptom Entries ───────────────────────────────────────────────────────────
 export const symptomEntries = pgTable('symptom_entries', {
@@ -463,7 +469,9 @@ export const symptomEntries = pgTable('symptom_entries', {
   symptoms: text('symptoms').array().default(sql`'{}'`),
   notes: text('notes'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-})
+}, (t) => ({
+  userDateIdx: index('symptom_entries_user_date_idx').on(t.userId, t.date),
+}))
 
 // ── Audit Logs ────────────────────────────────────────────────────────────────
 export const auditLogs = pgTable('audit_logs', {
@@ -479,7 +487,9 @@ export const auditLogs = pgTable('audit_logs', {
   durationMs: integer('duration_ms').notNull().default(0),
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-})
+}, (t) => ({
+  userCreatedIdx: index('audit_logs_user_created_idx').on(t.userId, t.createdAt),
+}))
 
 // ── Shared Links ──────────────────────────────────────────────────────────────
 export const sharedLinks = pgTable('shared_links', {
@@ -601,7 +611,9 @@ export const wellnessCheckins = pgTable('wellness_checkins', {
   checkedInAt: timestamp('checked_in_at', { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-})
+}, (t) => ({
+  profileTimeIdx: index('wellness_checkins_profile_time_idx').on(t.careProfileId, t.checkedInAt),
+}))
 
 // ── Symptom Insights ──────────────────────────────────────────────────────────
 export const symptomInsights = pgTable('symptom_insights', {
@@ -616,7 +628,9 @@ export const symptomInsights = pgTable('symptom_insights', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   expiresAt: timestamp('expires_at', { withTimezone: true }),
-})
+}, (t) => ({
+  profileTimeIdx: index('symptom_insights_profile_time_idx').on(t.careProfileId, t.createdAt),
+}))
 
 // ── Notification Deliveries ───────────────────────────────────────────────────
 export const notificationDeliveries = pgTable('notification_deliveries', {
