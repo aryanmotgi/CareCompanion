@@ -47,7 +47,7 @@ export async function POST(req: Request) {
         Username: cognitoUsername,
       }));
     } catch (cognitoErr) {
-      console.error(`[delete-account] Cognito deletion failed for username "${cognitoUsername}" (DB record already deleted):`, cognitoErr);
+      console.error('[delete-account] Cognito deletion failed (DB record already deleted):', cognitoErr instanceof Error ? cognitoErr.message : String(cognitoErr));
       // Non-blocking — DB record is gone, user cannot log back in via DB lookup
     }
 
