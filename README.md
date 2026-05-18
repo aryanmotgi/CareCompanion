@@ -2,7 +2,7 @@
 
 An AI-powered assistant for family caregivers managing medications, appointments, insurance, lab results, and health records for their loved ones.
 
-Built with Next.js, Supabase, and Claude — designed to remember everything, coordinate care across providers, and support the caregiver as much as the patient.
+Built with Next.js, Aurora Postgres, and Claude — designed to remember everything, coordinate care across providers, and support the caregiver as much as the patient.
 
 ## The Problem
 
@@ -24,11 +24,14 @@ The core of CareCompanion is an intelligent chat interface powered by a multi-ag
   - **General Companion** — profile management, document analysis
 - **16 Tools** Claude can call directly from chat (save medications, schedule appointments, log symptoms, estimate costs, etc.)
 
-### Long-Term Memory
-- Extracts facts from every conversation and saves them permanently
+### Long-Term Memory (Memory v2)
+- **Hybrid pgvector retrieval** — semantic vector search (cosine similarity) over the `memories` table alongside keyword recall; shipped 2026-05-15 via PR #48/#49
+- **Anthropic prompt caching** — system prompts and memory context use `cache_control: ephemeral` to cut latency and API cost on repeated turns
+- **Safety extraction** — dedicated Haiku pass after each turn extracts safety signals (fall risk, medication non-adherence, emotional distress) into structured memory categories
+- **Budget caps** — per-user daily token budgets enforced at the API layer with graceful degradation
 - Categorized memory: medications, conditions, allergies, insurance, preferences, family, providers
 - Conversation summaries generated every 20 messages
-- Memory referenced and prioritized by recency — the agent remembers what matters most
+- Canary at 10 % rollout; GH Actions cron auto-promotes if error rate stays clean
 
 ### Proactive Notifications
 Cron-driven alerts every 15 minutes:
@@ -90,11 +93,11 @@ Browser-native speech-to-text in the chat. Tap the mic, speak, see words appear 
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS |
+| Frontend | Next.js 16 (App Router), React 18, TypeScript, Tailwind CSS |
 | Backend | Next.js API Routes, Vercel AI SDK v6 |
-| Database | Supabase (PostgreSQL) with Row-Level Security |
+| Database | Aurora Postgres (AWS RDS Data API) with Row-Level Security + pgvector |
 | AI | Claude Sonnet 4.6 (chat), Claude Haiku 4.5 (routing, extraction, memory) |
-| Auth | Supabase Auth (email/password, OAuth) |
+| Auth | AWS Cognito (email/password, OAuth) |
 | Health Data | FHIR R4 via 1upHealth (Epic, Sutter, Kaiser, Stanford, UCSF) |
 | Cron | Vercel Cron (notifications, reminders, sync every 15 min) |
 | Dev Coordination | CCSquad (multi-instance Claude Code coordination) |
@@ -121,7 +124,7 @@ All tables enforce Row-Level Security — users can only access their own data.
 
 ### Prerequisites
 - Node.js 18+
-- Supabase project
+- AWS account (Aurora Serverless cluster + Cognito user pool)
 - Anthropic API key
 
 ### Setup
@@ -209,13 +212,13 @@ Copy `.env.local.example` to `.env.local` and fill in all required values.
 | `OAUTH_STATE_SECRET` | Optional | Secret for signing OAuth state parameters |
 | `LOG_LEVEL` | Optional | Logging level (`debug`, `info`, `warn`, `error`). Defaults to `info` |
 
-### Supabase (Legacy)
+### Supabase (Legacy — not required for new deployments)
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | No | Supabase project URL (used by some legacy paths) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | No | Supabase anonymous key |
-| `SUPABASE_SERVICE_ROLE_KEY` | No | Supabase service role key |
+| `NEXT_PUBLIC_SUPABASE_URL` | No | Legacy Supabase URL (unused in Aurora deployments) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | No | Legacy Supabase anonymous key |
+| `SUPABASE_SERVICE_ROLE_KEY` | No | Legacy Supabase service role key |
 
 Create `.env.local`:
 ```
@@ -234,13 +237,12 @@ ANTHROPIC_API_KEY=your-anthropic-key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-Run database migrations in the Supabase SQL Editor (in order):
-1. `supabase/migrations/rls_policies.sql`
-2. `supabase/migrations/integrations_tables.sql`
-3. `supabase/migrations/memories_table.sql`
-4. `supabase/migrations/care_team_tables.sql`
-5. `supabase/migrations/medication_reminders_table.sql`
-6. `supabase/migrations/multi_patient_support.sql`
+Run Aurora schema migrations (Drizzle + RDS Data API):
+```bash
+# Apply all pending migrations against your Aurora cluster
+npx drizzle-kit push
+```
+Migration SQL files live under `apps/web/src/lib/db/migrations/`. Each file must be committed there before running against production per team rules.
 
 Start the dev server:
 ```bash
@@ -276,7 +278,10 @@ User Message
 [Main Agent - Sonnet + Tools]
     |
     v
-[Stream Response + Memory Extraction + Tool Execution]
+[Stream Response + Memory v2 Extraction + Tool Execution]
+    |
+    v
+[pgvector Hybrid Memory Store (Aurora Postgres)]
 ```
 
 ## Safety & Disclaimers

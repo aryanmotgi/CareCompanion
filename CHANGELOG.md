@@ -31,6 +31,17 @@ Mobile HealthKit reliability fixes, care profile auto-creation, and home/care/la
 - **Guided tour Labs tab missing** — `TAB_COUNT` bumped from 4 to 5; also removed DEV reset line that was clearing the tour key on every launch
 - **Notification init** — `expo-notifications` eagerly initialized on module load to avoid native module cold-start delays
 
+## [0.5.0.9] - 2026-05-15
+
+Memory v2 — pgvector hybrid memory, Anthropic prompt caching, safety extraction, and budget caps. Shipped via PR #48 + #49.
+
+### Added
+- **pgvector hybrid memory** — semantic vector search (cosine similarity) over the `memories` table alongside keyword recall; `memories` table gains an `embedding` column (`vector(1536)`) in Aurora Postgres
+- **Anthropic prompt caching** — system prompts and memory context blocks marked with `cache_control: ephemeral`; reduces latency and API cost on repeated turns in the same session
+- **Safety extraction pipeline** — dedicated Haiku pass after each conversation turn extracts safety signals (fall risk, medication non-adherence, emotional distress) into structured `emotional_state` and `treatment_response` memory categories
+- **Budget caps** — per-user daily token budgets enforced at the API layer; graceful degradation message shown when cap is approached
+- **Canary rollout** — Memory v2 gated at 10 % of users via feature flag; GitHub Actions cron auto-promotes to 100 % if error rate stays clean through 2026-05-18
+
 ## [0.5.0.0] - 2026-05-13
 
 Web onboarding port from mobile — cinematic welcome carousel, role picker, health consent, share-invite code, caregiver code-join, live presence, iOS app nudge. Full visual + motion parity with the iPhone flow.

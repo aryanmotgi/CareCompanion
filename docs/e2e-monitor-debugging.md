@@ -245,7 +245,7 @@ A passing run looks like:
 | `apps/web/src/app/api/e2e/signin/route.ts` | Mints the session cookie for the E2E account |
 | `apps/web/src/lib/auth.ts` | Defines JWT/session shape — **must match the signin endpoint** |
 | `apps/web/src/app/(app)/layout.tsx` | Reads `session.user.id`; redirects to `/login` if missing |
-| `apps/web/src/middleware.ts` | Must include `/api/e2e` in `PUBLIC_PATHS` |
+| `apps/web/src/proxy.ts` | Must include `/api/e2e` in `PUBLIC_PATHS` |
 | `apps/web/e2e/production-monitor.spec.ts` | The 4 Playwright tests |
 | `.github/workflows/production-monitor.yml` | Cron schedule, deployment wait, email alerts |
 
