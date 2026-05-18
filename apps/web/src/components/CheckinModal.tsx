@@ -179,6 +179,7 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
                 max={10}
                 value={pain}
                 onChange={(e) => setPain(Number(e.target.value))}
+                aria-label="Pain level, 0 to 10"
                 className="w-full h-2 rounded-full appearance-none cursor-pointer checkin-pain-slider"
                 style={{
                   background: `linear-gradient(to right, #22c55e ${(pain / 10) * 100}%, #64748b33 ${(pain / 10) * 100}%)`,

@@ -215,6 +215,7 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
                 type="range" min="0" max="10" value={painLevel}
                 onChange={(e) => setPainLevel(parseInt(e.target.value))}
                 className="flex-1 accent-blue-500"
+                aria-label="Pain Level, 0 to 10"
               />
               <span className="text-xs text-[var(--text-muted)] w-6">10</span>
               <span className={`text-sm font-bold ml-2 ${painLevel <= 3 ? 'text-emerald-400' : painLevel <= 6 ? 'text-amber-400' : 'text-red-400'}`}>{painLevel}</span>
@@ -230,6 +231,7 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
                 type="range" min="0" max="10" value={nauseaLevel}
                 onChange={(e) => setNauseaLevel(parseInt(e.target.value))}
                 className="flex-1 accent-purple-500"
+                aria-label="Nausea Level, 0 to 10"
               />
               <span className="text-xs text-[var(--text-muted)] w-6">10</span>
               <span className={`text-sm font-bold ml-2 ${nauseaLevel <= 3 ? 'text-emerald-400' : nauseaLevel <= 6 ? 'text-amber-400' : 'text-red-400'}`}>{nauseaLevel}</span>
@@ -245,6 +247,7 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
                 type="range" min="0" max="10" value={fatigueLevel}
                 onChange={(e) => setFatigueLevel(parseInt(e.target.value))}
                 className="flex-1 accent-indigo-500"
+                aria-label="Fatigue Level, 0 to 10"
               />
               <span className="text-xs text-[var(--text-muted)] w-6">10</span>
               <span className={`text-sm font-bold ml-2 ${fatigueLevel <= 3 ? 'text-emerald-400' : fatigueLevel <= 6 ? 'text-amber-400' : 'text-red-400'}`}>{fatigueLevel}</span>
@@ -281,6 +284,7 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
               <input type="number" step="0.5" min="0" max="24" value={sleepHours}
                 onChange={(e) => setSleepHours(e.target.value)}
                 placeholder="7.5"
+                aria-label="Hours Slept"
                 className="w-full mt-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] py-2 px-3 text-white text-sm focus:outline-none focus:border-blue-600"
               />
             </div>
@@ -351,6 +355,7 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}
             placeholder="Search symptoms, notes..."
+            aria-label="Search journal entries"
             className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] py-2 px-3 text-white text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-blue-600"
           />
           <div className="flex gap-2">
@@ -360,6 +365,7 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
               onChange={(e) => setDateFrom(e.target.value)}
               className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] py-1.5 px-2 text-white text-xs focus:outline-none focus:border-blue-600"
               placeholder="From"
+              aria-label="Filter from date"
             />
             <input
               type="date"
@@ -367,6 +373,7 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
               onChange={(e) => setDateTo(e.target.value)}
               className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] py-1.5 px-2 text-white text-xs focus:outline-none focus:border-blue-600"
               placeholder="To"
+              aria-label="Filter to date"
             />
             {(searchFilter || dateFrom || dateTo) && (
               <button

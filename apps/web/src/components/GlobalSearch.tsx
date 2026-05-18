@@ -215,6 +215,7 @@ export function GlobalSearch() {
                   onChange={e => { setQuery(e.target.value); setActiveIndex(-1) }}
                   onKeyDown={handleKeyNav}
                   placeholder="Search medications, appointments, labs, documents..."
+                  aria-label="Search health data"
                   style={{
                     flex: 1,
                     background: 'transparent',

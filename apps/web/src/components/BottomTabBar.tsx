@@ -167,7 +167,7 @@ export function BottomTabBar() {
                 minWidth: 56,
               }}
             >
-              <div style={{
+              <div aria-hidden="true" style={{
                 position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
