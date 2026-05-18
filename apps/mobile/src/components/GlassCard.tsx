@@ -1,6 +1,6 @@
 // apps/mobile/src/components/GlassCard.tsx
 import React from 'react'
-import { Pressable, StyleSheet, ViewStyle } from 'react-native'
+import { Pressable, StyleProp, StyleSheet, ViewStyle } from 'react-native'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -13,7 +13,7 @@ import { useTheme } from '../theme'
 interface GlassCardProps {
   children: React.ReactNode
   onPress?: () => void
-  style?: ViewStyle
+  style?: StyleProp<ViewStyle>
 }
 
 export function GlassCard({ children, onPress, style }: GlassCardProps) {
