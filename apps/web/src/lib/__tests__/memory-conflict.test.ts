@@ -128,6 +128,18 @@ describe('findCosineDuplicate', () => {
     const sqlText = extractSqlText(dbMock.execute.mock.calls[0]?.[0]);
     expect(sqlText).toContain('embedding is not null');
   });
+
+  it('applies ::uuid cast to user_id and binds value as SQL parameter (prevents Aurora type-mismatch crash)', async () => {
+    dbMock.execute.mockResolvedValueOnce({ rows: [] });
+
+    await findCosineDuplicate(USER_A, 'medication', EMB_LIT);
+
+    const call = dbMock.execute.mock.calls[0]?.[0];
+    // ::uuid must appear in SQL text (not as a bound parameter) so Aurora can cast the UUID column type
+    expect(extractSqlText(call)).toContain('::uuid');
+    // user_id must still travel as a bound parameter, never concatenated into the SQL string
+    expect(extractParams(call)).toContain(USER_A);
+  });
 });
 
 function makeMemory(overrides: Partial<Memory> = {}): Memory {
