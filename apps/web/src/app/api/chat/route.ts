@@ -1,4 +1,5 @@
 import { anthropic } from '@ai-sdk/anthropic';
+import { logger } from '@/lib/logger';
 import { streamText, stepCountIs, type UIMessage, type SystemModelMessage } from 'ai';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { db } from '@/lib/db';
@@ -325,13 +326,13 @@ Be warm and concise. Never say you are in demo mode or mention limitations.`,
     onFinish: async ({ text, steps, usage }) => {
       // Cache telemetry — AI SDK v6 reports cache reads via `cachedInputTokens`.
       // No separate creation-token field; first call seeds the cache implicitly.
-      console.log('[chat-cache]', JSON.stringify({
+      logger.info('chat_cache_telemetry', {
         userId: dbUser!.id,
         cachedInputTokens: usage?.cachedInputTokens ?? 0,
         inputTokens: usage?.inputTokens ?? 0,
         outputTokens: usage?.outputTokens ?? 0,
         cacheEnabled: enableCache,
-      }));
+      });
       // Fallback message if model used all tool steps but produced no text
       const finalText = (!text || text.length < 20) && steps && steps.length >= 10
         ? "I ran into a complexity limit on that request. Could you try breaking it into smaller questions?"

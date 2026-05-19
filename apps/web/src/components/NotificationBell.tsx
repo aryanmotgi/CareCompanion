@@ -145,6 +145,7 @@ export function NotificationBell({ initialNotifications, initialCount }: Notific
             <h3 className="font-display font-semibold text-white text-sm">Notifications</h3>
             {count > 0 && (
               <button
+                type="button"
                 onClick={markAllRead}
                 className="text-xs text-[#A78BFA] hover:text-[#C4B5FD] font-medium transition-colors"
               >
@@ -184,6 +185,7 @@ export function NotificationBell({ initialNotifications, initialCount }: Notific
                           Ask AI
                         </Link>
                         <button
+                          type="button"
                           onClick={() => dismiss(n.id)}
                           className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
                         >

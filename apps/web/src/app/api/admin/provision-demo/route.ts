@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
       }));
     } catch (err) {
       const e = err as { name?: string; message?: string };
-      console.error('[provision-demo] Cognito create failed:', err);
+      console.error('[provision-demo] Cognito create failed:', err instanceof Error ? err.message : String(err));
       return NextResponse.json({ error: 'Failed to create demo account in Cognito', detail: e.message, code: e.name }, { status: 500 });
     }
   }

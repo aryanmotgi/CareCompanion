@@ -100,8 +100,13 @@ export default auth((req) => {
     if (!errorParam && !isPrefetch) {
       const url = req.nextUrl.clone()
       const cb = req.nextUrl.searchParams.get('callbackUrl')
+      const userRole = (req.auth.user as { role?: string | null }).role
       url.search = ''
-      url.pathname = (cb && cb.startsWith('/') && !cb.startsWith('//')) ? cb : '/dashboard'
+      if (!userRole) {
+        url.pathname = '/onboarding'
+      } else {
+        url.pathname = (cb && cb.startsWith('/') && !cb.startsWith('//')) ? cb : '/dashboard'
+      }
       return NextResponse.redirect(url)
     }
   }

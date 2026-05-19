@@ -26,7 +26,7 @@ Browser                Middleware (Edge)           App Layout (Node)       API R
 ```
 
 **Two auth layers:**
-1. **Middleware** (`middleware.ts`) — Edge runtime, reads JWT cookie, checks session + role
+1. **Middleware** (`proxy.ts`) — Edge runtime, reads JWT cookie, checks session + role
 2. **App Layout** (`(app)/layout.tsx`) — Node runtime, DB queries, checks HIPAA consent + onboarding completion
 
 ---
@@ -196,7 +196,7 @@ Browser                Middleware (Edge)           App Layout (Node)       API R
 
 ## Middleware Detail
 
-**File:** `middleware.ts`  
+**File:** `proxy.ts`  
 **Runtime:** Edge (NextAuth Edge-safe config from `auth.config.ts`)
 
 **Execution order:**
@@ -267,7 +267,7 @@ See `TODO.md` for tracking. Issues found in this audit:
 
 | File | Purpose |
 |------|---------|
-| `middleware.ts` | Edge auth gate — session + role checks |
+| `proxy.ts` | Edge auth gate — session + role checks |
 | `lib/auth.config.ts` | Edge-safe NextAuth config (no Node imports) |
 | `lib/auth.ts` | Full NextAuth config — Credentials, Apple, Google providers + JWT/session callbacks |
 | `lib/csrf.ts` | CSRF double-submit cookie validation |

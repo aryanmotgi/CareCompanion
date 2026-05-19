@@ -182,11 +182,8 @@ export const { handlers, auth } = NextAuth({
       const e = error as Error & { cause?: unknown }
       console.error('[auth][error]', error.name, e.message)
       if (e.cause) {
-        try {
-          console.error('[auth][error][cause]', JSON.stringify(e.cause, null, 2))
-        } catch {
-          console.error('[auth][error][cause]', String(e.cause))
-        }
+        const cause = e.cause as { code?: unknown; statusCode?: unknown }
+        console.error('[auth][error][cause]', { type: typeof e.cause, code: cause?.code, statusCode: cause?.statusCode })
       }
     },
   },

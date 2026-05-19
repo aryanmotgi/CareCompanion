@@ -362,7 +362,7 @@ COMPUTED TRENDS:
           insights = JSON.parse(jsonMatch[0]) as Insight[];
         }
       } catch {
-        logger.error('radar_parse_failed', { userId: profile.userId, text: text.slice(0, 200) });
+        logger.error('radar_parse_failed', { userId: profile.userId });
         insights = [];
       }
 

@@ -114,7 +114,7 @@ export default function OnboardingRecordsScreen() {
       <FloatingGlyphs />
 
       <Pressable
-        onPress={() => { if (router.canGoBack()) router.back(); else router.replace('/care-type' as any) }}
+        onPress={() => { if (router.canGoBack()) router.back(); else router.replace('/(tabs)') }}
         hitSlop={16}
         style={[styles.backBtn, { top: insets.top + 8 }]}
       >

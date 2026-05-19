@@ -443,14 +443,13 @@ export async function syncHealthKitData(): Promise<{ synced: number; queued: boo
     raw = await Bridge.fetchClinicalRecords()
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.warn('[HealthKit] fetchClinicalRecords failed:', err)
+    console.warn('[HealthKit] fetchClinicalRecords failed:', message)
     emit({ status: 'error', at: Date.now(), message, userActionable: false })
     return { synced: 0, queued: false, error: message }
   }
 
   if (__DEV__ && raw.length === 0) {
     raw = DEV_MOCK_RECORDS
-    console.log('[HealthKit] __DEV__: substituting', raw.length, 'mock clinical records (simulator has no real provider portal)')
   }
 
   const records: ExtendedHealthKitRecord[] = raw.flatMap((r) => {
@@ -529,14 +528,13 @@ export async function replaceHealthKitData(): Promise<{
     raw = await Bridge.fetchClinicalRecords()
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.warn('[HealthKit] fetchClinicalRecords failed:', err)
+    console.warn('[HealthKit] fetchClinicalRecords failed:', message)
     emit({ status: 'error', at: Date.now(), message, userActionable: false })
     return empty
   }
 
   if (__DEV__ && raw.length === 0) {
     raw = DEV_MOCK_RECORDS
-    console.log('[HealthKit] __DEV__: substituting', raw.length, 'mock clinical records (simulator has no real provider portal)')
   }
 
   const records: ExtendedHealthKitRecord[] = raw.flatMap((r) => {

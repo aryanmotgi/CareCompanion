@@ -32,7 +32,7 @@ export function BottomSheet({ isOpen, onClose, title, children }: BottomSheetPro
 
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/60 animate-fade-overlay" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60 animate-fade-overlay" onClick={onClose} aria-hidden="true" />
       <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] bg-[#1e293b] rounded-t-2xl animate-slide-up overflow-hidden">
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-white/20" />

@@ -206,7 +206,7 @@ apps/web/
 │   │   └── [utilities]              # 65+ utility modules
 │   ├── hooks/                        # Custom React hooks
 │   ├── types/                        # Local type definitions
-│   ├── middleware.ts                 # Auth + CSRF middleware
+│   ├── proxy.ts                      # Auth + CSRF middleware (Next 16)
 │   └── __tests__/                   # Unit test files
 ├── drizzle/                          # ORM config + migrations
 ├── e2e/                              # Playwright E2E tests
@@ -652,7 +652,7 @@ Memory categories: medication, condition, allergy, insurance, financial, appoint
 
 ### Middleware
 
-**File:** `src/middleware.ts`
+**File:** `src/proxy.ts`
 
 The middleware runs on every request at the edge:
 
@@ -1767,13 +1767,13 @@ Generates conversation summaries for users who have had significant chat activit
 | `OAUTH_STATE_SECRET` | OAuth state parameter encryption |
 | `LOG_LEVEL` | Logging level (debug/info/warn/error) |
 
-## Supabase (Legacy)
+## Supabase (Legacy — not required for Aurora deployments)
 
 | Variable | Description |
 |----------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase admin key |
+| `NEXT_PUBLIC_SUPABASE_URL` | Legacy Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Legacy Supabase anonymous key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Legacy Supabase admin key |
 
 ---
 

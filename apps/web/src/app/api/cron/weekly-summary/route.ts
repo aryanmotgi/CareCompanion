@@ -230,7 +230,7 @@ Keep it to 3 paragraphs max. Warm, real, human.`,
       }
 
       generated++;
-      logger.info('weekly_summary_generated', { userId: profile.userId, token });
+      logger.info('weekly_summary_generated', { userId: profile.userId });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(`${profile.userId}: ${msg}`);

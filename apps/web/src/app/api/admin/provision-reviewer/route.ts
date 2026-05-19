@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
         Permanent: true,
       }));
     } catch (err) {
-      console.error('[provision-reviewer] Create Cognito user failed:', err);
+      console.error('[provision-reviewer] Create Cognito user failed:', err instanceof Error ? err.message : String(err));
       return NextResponse.json({ error: 'Failed to create reviewer account' }, { status: 500 });
     }
   }

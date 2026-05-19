@@ -47,7 +47,7 @@ export function MilestoneCelebration({ milestone, onClose }: MilestoneCelebratio
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       {/* Backdrop click to close */}
-      <div className="absolute inset-0" onClick={onClose} />
+      <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
 
       {/* Modal */}
       <div className="relative w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--bg-warm)] p-6 shadow-[var(--shadow-md)] text-center">

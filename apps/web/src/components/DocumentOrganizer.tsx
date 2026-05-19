@@ -233,6 +233,7 @@ export function DocumentOrganizer({ documents, onScanNew, onDocumentsChanged }: 
           placeholder="Search by filename or type..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search documents"
           className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-10 pr-4 py-2.5 text-sm text-[#f1f5f9] placeholder:text-[#64748b] focus:outline-none focus:ring-1 focus:ring-[#6366F1]/40 focus:border-[#6366F1]/40 transition-all"
         />
         {search && (
@@ -293,7 +294,7 @@ export function DocumentOrganizer({ documents, onScanNew, onDocumentsChanged }: 
           </button>
           {showSortMenu && (
             <>
-              <div className="fixed inset-0 z-10" onClick={() => setShowSortMenu(false)} />
+              <div className="fixed inset-0 z-10" onClick={() => setShowSortMenu(false)} aria-hidden="true" />
               <div className="absolute left-0 top-full mt-1 z-20 bg-[#1e293b] border border-white/[0.08] rounded-xl shadow-xl shadow-black/40 py-1 min-w-[150px]">
                 {SORT_OPTIONS.map((opt) => (
                   <button
@@ -364,7 +365,7 @@ export function DocumentOrganizer({ documents, onScanNew, onDocumentsChanged }: 
             </button>
             {showRecategorize && (
               <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowRecategorize(false)} />
+                <div className="fixed inset-0 z-10" onClick={() => setShowRecategorize(false)} aria-hidden="true" />
                 <div className="absolute right-0 top-full mt-1 z-20 bg-[#1e293b] border border-white/[0.08] rounded-xl shadow-xl shadow-black/40 py-1 min-w-[160px]">
                   {(Object.keys(CATEGORY_CONFIG) as Array<Exclude<DocCategory, 'all'>>).filter(
                     (catId) => activeTab === 'all' || catId !== activeTab

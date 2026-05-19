@@ -67,12 +67,12 @@ The reviewer walkthrough page at `/demo-walkthrough` includes this info with a c
 
 While CareCompanion is not currently a HIPAA-covered entity, we follow HIPAA-aligned practices throughout:
 
-- **Database:** Supabase (PostgreSQL) with SOC 2 Type II certification
+- **Database:** Aurora Postgres on AWS (HIPAA-eligible, SOC 2 Type II)
 - **Encryption in transit:** TLS 1.2+
 - **Encryption at rest:** AES-256
 - **Row-Level Security (RLS):** cryptographically enforced on every table
 - **Access control:** users can only access their own data, plus data explicitly shared with them via care team invitations
-- **Authentication:** Supabase Auth with email/password and Google OAuth
+- **Authentication:** AWS Cognito with email/password and OAuth
 - **OAuth tokens:** encrypted and scoped to read-only access
 - **Passwords:** we never see or store hospital login passwords
 
@@ -129,7 +129,7 @@ Before the OAuth flow begins, users see a data consent modal (`DataConsentModal`
 - `src/app/api/fhir/authorize/route.ts` — OAuth entry point
 - `src/app/api/fhir/callback/route.ts` — OAuth callback handler
 - `src/components/DataConsentModal.tsx` — User consent UI
-- `supabase/migrations/` — Database schema with RLS policies
+- `apps/web/src/lib/db/migrations/` — Aurora schema migrations (Drizzle)
 
 ---
 
@@ -140,7 +140,7 @@ Before the OAuth flow begins, users see a data consent modal (`DataConsentModal`
 - **Privacy Policy:** https://carecompanionai.org/privacy
   - Section 2: What data we collect
   - Section 3: How we use data (with "never" commitments)
-  - Section 4: Storage and protection (Supabase SOC 2, RLS, encryption)
+  - Section 4: Storage and protection (Aurora Postgres / AWS HIPAA-eligible, RLS, encryption)
   - Section 5: Health system integrations (1upHealth disclosure)
   - Section 7: Data retention and deletion
   - Section 12: Security practices (TLS, AES-256, RLS, OWASP)
@@ -162,14 +162,14 @@ Before submitting, verify each of these is still true:
 - [ ] Demo walkthrough loads: `curl -I https://carecompanionai.org/demo-walkthrough` returns 200
 - [ ] Privacy policy loads: `curl -I https://carecompanionai.org/privacy` returns 200
 - [ ] Terms loads: `curl -I https://carecompanionai.org/terms` returns 200
-- [ ] Reviewer test account has been created in Supabase
+- [ ] Reviewer test account has been created in the production database
 - [ ] Reviewer account can log in and see dashboard
 - [ ] Reviewer account has demo data pre-loaded
 - [ ] Data consent modal shows before OAuth flow
 - [ ] Privacy email `privacy@carecompanionai.org` receives mail
 - [ ] 1upHealth redirect URI matches production URL
 - [ ] Client ID and secret are set in Vercel env vars (production)
-- [ ] Care team RLS migration has been run on production Supabase
+- [ ] Care team RLS migration has been run on Aurora production database
 - [ ] No console errors on any public page
 - [ ] Mobile responsive check on landing, demo, login, dashboard
 - [ ] CORS error on OAuth link fixed (uses `<a>` not `<Link>`)

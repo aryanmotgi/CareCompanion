@@ -69,7 +69,7 @@ export async function POST(req: Request) {
 
     return apiSuccess({ success: true, entry });
   } catch (err) {
-    console.error('[journal] POST error:', err);
+    console.error('[journal] POST error:', err instanceof Error ? err.message : String(err));
     return apiError('Internal server error', 500);
   }
 }
@@ -92,7 +92,7 @@ export async function GET(req: Request) {
 
     return apiSuccess({ entries });
   } catch (err) {
-    console.error('[journal] GET error:', err);
+    console.error('[journal] GET error:', err instanceof Error ? err.message : String(err));
     return apiError('Internal server error', 500);
   }
 }
@@ -126,7 +126,7 @@ export async function DELETE(req: Request) {
 
     return apiSuccess({ success: true });
   } catch (err) {
-    console.error('[journal] DELETE error:', err);
+    console.error('[journal] DELETE error:', err instanceof Error ? err.message : String(err));
     return apiError('Internal server error', 500);
   }
 }
