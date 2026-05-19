@@ -489,6 +489,48 @@ export function createApiClient(config: ApiClientConfig) {
       delete: (id: string) =>
         apiFetch(config, `/api/conversations/${id}`, { method: 'DELETE' }) as Promise<{ ok: boolean; data: { deleted: boolean } }>,
     },
+    careHub: {
+      get: (careProfileId: string) =>
+        apiFetch(config, `/api/care-hub?careProfileId=${encodeURIComponent(careProfileId)}`, { method: 'GET' }) as Promise<{
+          ok: boolean
+          data: {
+            profile: Record<string, unknown> | null
+            todayCheckin: {
+              mood: number
+              pain: number
+              energy: string
+              sleep: string
+              checkedInAt: string
+            } | null
+            recentCheckins: Array<{
+              mood: number
+              pain: number
+              energy: string
+              sleep: string
+              checkedInAt: string
+            }>
+            insights: Array<{
+              id: string
+              type: string
+              severity: string
+              title: string
+              body: string
+              data: {
+                source?: string
+                checkinCount?: number
+                adherenceRate?: number | null
+                cycleDay?: number | null
+                cycleNumber?: number | null
+                targetUserId?: string
+              } | null
+              createdAt: string
+            }>
+            medications: Array<Record<string, unknown>>
+            activity: Array<Record<string, unknown>>
+            upcoming: Array<Record<string, unknown>>
+          }
+        }>,
+    },
     chat: {
       send: async (
         messages: Array<{ role: 'user' | 'assistant'; content: string }>,
