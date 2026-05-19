@@ -31,7 +31,7 @@ export async function findCosineDuplicate(
   const result = await db.execute(sql`
     SELECT id, 1 - (embedding <=> ${embeddingLit}::halfvec) AS similarity
     FROM memories
-    WHERE user_id = ${userId}
+    WHERE user_id = ${userId}::uuid
       AND category = ${category}
       AND valid_to IS NULL
       AND embedding IS NOT NULL
