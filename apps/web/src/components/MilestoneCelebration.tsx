@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 export interface Milestone {
   type: 'cycle' | 'streak' | 'personal_best'
@@ -23,8 +23,48 @@ const EMOJI_MAP: Record<Milestone['type'], string> = {
 export function MilestoneCelebration({ milestone, onClose }: MilestoneCelebrationProps) {
   const [sharing, setSharing] = useState(false)
   const [shared, setShared] = useState(false)
+  const modalRef = useRef<HTMLDivElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    if (!milestone) return
+    previousFocusRef.current = document.activeElement as HTMLElement
+    const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+    focusable?.[0]?.focus()
+    return () => {
+      previousFocusRef.current?.focus()
+    }
+  }, [milestone])
 
   if (!milestone) return null
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Escape') {
+      onClose()
+      return
+    }
+    if (e.key === 'Tab') {
+      const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+      if (!focusable || focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+  }
 
   const emoji = EMOJI_MAP[milestone.type]
 
@@ -50,12 +90,20 @@ export function MilestoneCelebration({ milestone, onClose }: MilestoneCelebratio
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
 
       {/* Modal */}
-      <div className="relative w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--bg-warm)] p-6 shadow-[var(--shadow-md)] text-center">
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="milestone-title"
+        onKeyDown={handleKeyDown}
+        tabIndex={-1}
+        className="relative w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--bg-warm)] p-6 shadow-[var(--shadow-md)] text-center outline-none"
+      >
         {/* Emoji */}
         <div className="success-pulse text-5xl mb-4">{emoji}</div>
 
         {/* Title */}
-        <h3 className="text-lg font-bold text-[var(--text)] mb-2">{milestone.title}</h3>
+        <h3 id="milestone-title" className="text-lg font-bold text-[var(--text)] mb-2">{milestone.title}</h3>
 
         {/* Message */}
         <p className="text-sm text-[var(--text-secondary)] mb-4">{milestone.message}</p>

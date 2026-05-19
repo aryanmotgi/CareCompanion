@@ -85,7 +85,7 @@ function DayDetail({
   })
 
   return (
-    <div className="absolute z-20 left-1/2 -translate-x-1/2 top-full mt-2 w-48 sm:w-56 rounded-xl bg-[#1e293b] border border-white/[0.12] shadow-xl shadow-black/40 p-3" role="dialog" aria-label={`Details for ${formatted}`}>
+    <div className="absolute z-20 left-1/2 -translate-x-1/2 top-full mt-2 w-48 sm:w-56 rounded-xl bg-[#1e293b] border border-white/[0.12] shadow-xl shadow-black/40 p-3" role="dialog" aria-label={`Details for ${formatted}`} aria-describedby="cal-popup-content">
       {/* Close on outside tap */}
       <div className="fixed inset-0 z-[-1]" onClick={onClose} aria-hidden="true" />
 
@@ -105,7 +105,7 @@ function DayDetail({
       {!day || day.total === 0 ? (
         <p className="text-[11px] text-[#94a3b8]">No medication data for this day.</p>
       ) : (
-        <div className="space-y-1.5">
+        <div id="cal-popup-content" className="space-y-1.5">
           {day.medications.map((med, i) => (
             <div key={i} className="flex items-center gap-2">
               <span
