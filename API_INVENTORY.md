@@ -142,8 +142,8 @@
 | /api/records/settings | GET, PATCH | getAuthedUser | ❌ | ZOD | MED |
 | /api/refills/status | GET | getAuthedUser | ❌ | NONE | HIGH |
 | /api/reminders | GET, POST | getAuthedUser | ✅ | ZOD | MED |
-| /api/reminders/check | GET | PUBLIC | ❌ | NONE | HIGH |
-| /api/reminders/respond | POST | PUBLIC | ✅ | MANUAL | MED |
+| /api/reminders/check | GET | bearerToken (CRON_SECRET) | ❌ | NONE | HIGH |
+| /api/reminders/respond | POST | getAuthedUser | ✅ | ZOD | MED |
 | /api/save-scan-results | POST | getAuthedUser | ✅ | MANUAL | HIGH |
 | /api/scan-document | POST | getAuthedUser | ✅ | MANUAL | HIGH |
 | /api/search | GET | getAuthedUser | ❌ | NONE | HIGH |
@@ -167,7 +167,7 @@
 | /api/upload/allergies | POST | getAuthedUser | ✅ | MANUAL | HIGH |
 | /api/upload/insurance | POST | getAuthedUser | ✅ | MANUAL | MED |
 | /api/visit-prep | GET | getAuthedUser | ❌ | NONE | HIGH |
-| /api/welcome-email | POST | PUBLIC | ✅ | MANUAL | LOW |
+| /api/welcome-email | POST | getAuthedUser | ✅ | MANUAL | LOW |
 
 ---
 
@@ -185,7 +185,7 @@ Routes that are expected to be reachable without a session (listed in `middlewar
 | /api/share/* | Token-based shared views | Token in URL |
 | /api/cron/* | Scheduled jobs | CRON_SECRET |
 | /api/notifications/generate | Notification cron | Rate limit |
-| /api/reminders/check | Reminder cron | ⚠️ No internal gate — see Critical Findings |
+| /api/reminders/check | Reminder cron | CRON_SECRET (`verifyCronRequest`) |
 | /api/e2e/signin | E2E smoke tests | E2E_AUTH_SECRET |
 | /api/test/reset | Test data reset | env + isDemo guard |
 
@@ -195,17 +195,14 @@ Routes that are expected to be reachable without a session (listed in `middlewar
 
 ### 🔴 P0 — Fix Immediately
 
-**1. `/api/reminders/check` — PUBLIC + No rate limit + PHI HIGH**  
-Listed in `PUBLIC_PATHS` as a cron endpoint but has no internal CRON_SECRET check and no rate limiting. Any unauthenticated party can repeatedly hit this endpoint, triggering reminder processing over patient data. Every other cron route uses `verifyCronRequest()` / CRON_SECRET. This one doesn't.  
-→ **Fix**: Add `verifyCronRequest()` / CRON_SECRET check identical to the other `/api/cron/*` routes.
+**1. `/api/reminders/check` — ✅ FIXED**  
+`verifyCronRequest()` (CRON_SECRET Bearer check) is in place. Inventory entry was stale.
 
-**2. `/api/reminders/respond` — Handler PUBLIC, NOT in PUBLIC_PATHS (Bearer bypass)**  
-The middleware lets through any request with `Authorization: Bearer <anything>`, relying on the handler to verify the token. This handler has no auth check. A mobile client (or attacker) can call this endpoint with an arbitrary Bearer token and receive a 2xx response.  
-→ **Fix**: Add `getAuthenticatedUser()` auth check, or add to PUBLIC_PATHS with a signed-token parameter in the body (for SMS-link flows).
+**2. `/api/reminders/respond` — ✅ FIXED**  
+`validateCsrf()` + `getAuthenticatedUser()` + Zod schema (`RespondSchema`) are all in place.
 
-**3. `/api/welcome-email` — Handler PUBLIC, NOT in PUBLIC_PATHS (Bearer bypass)**  
-Same Bearer-bypass issue: no session required and no handler auth check. Allows unauthenticated triggering of emails to arbitrary users (potential spam/phishing vector). Rate-limited, which blunts bulk abuse, but a determined caller can still send emails.  
-→ **Fix**: Add `getAuthenticatedUser()` check, or move to a server-action/cron pattern.
+**3. `/api/welcome-email` — ✅ FIXED**  
+`getAuthenticatedUser()` gate is in place. Rate-limited (3 req/min per IP).
 
 ---
 
@@ -288,8 +285,8 @@ High-PHI write routes with only MANUAL (typeof/truthy) validation:
 
 | Priority | Action | Routes |
 |----------|--------|--------|
-| P0 | Add CRON_SECRET check | /api/reminders/check |
-| P0 | Add getAuthenticatedUser() | /api/reminders/respond, /api/welcome-email |
+| P0 | ✅ DONE — CRON_SECRET check present | /api/reminders/check |
+| P0 | ✅ DONE — getAuthenticatedUser() present | /api/reminders/respond, /api/welcome-email |
 | P1 | Add rate limiting to auth endpoints | /api/auth/refresh, /api/auth/reset-password/confirm, /api/auth/social |
 | P1 | Add rate limiting to expensive AI/data routes | 11 routes (see list above) |
 | P1 | Restrict share revoke to authenticated owner | /api/share/[token]/revoke |
