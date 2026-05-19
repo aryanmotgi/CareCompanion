@@ -261,8 +261,12 @@ export function ChatInterface({ initialMessages, patientName, recentConversation
         onClose={() => setShowSearch(false)}
         onScrollToMessage={handleScrollToMessage}
       />
+      {/* SR-only status region: announces when streaming completes without reading every token */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {isStreaming ? '' : messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' ? 'Response received' : ''}
+      </div>
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto chat-scroll px-4 sm:px-6 lg:px-8 py-6" role="log" aria-label="Conversation" aria-live="polite">
+      <div className="flex-1 overflow-y-auto chat-scroll px-4 sm:px-6 lg:px-8 py-6" role="log" aria-label="Conversation" aria-live="off">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             {/* Sparkle icon */}

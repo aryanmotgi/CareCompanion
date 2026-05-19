@@ -144,15 +144,18 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
         <p className="text-xs text-[var(--text-muted)] mb-5">Quick daily check-in &middot; under 60 seconds</p>
 
         {/* Mood */}
-        <div className={`mb-5 ${voiceHighlight.mood ? 'rounded-xl ring-2 ring-amber-400/50 p-2 -m-2' : ''}`}>
-          <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 block">
+        <fieldset className={`mb-5 ${voiceHighlight.mood ? 'rounded-xl ring-2 ring-amber-400/50 p-2 -m-2' : ''}`}>
+          <legend className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 block">
             Mood {voiceHighlight.mood && <span className="text-amber-400 normal-case">(needs input)</span>}
-          </label>
+          </legend>
           <div className="flex gap-2 justify-between">
             {MOOD_EMOJIS.map(({ value, emoji }) => (
               <button
                 key={value}
+                type="button"
                 onClick={() => setMood(value)}
+                aria-pressed={mood === value}
+                aria-label={`Mood: ${value}`}
                 className={`w-12 h-12 rounded-xl text-xl flex items-center justify-center transition-all btn-press ${
                   mood === value
                     ? 'border-2 border-white bg-[#6c63ff]/40 scale-110 shadow-[0_0_0_3px_rgba(108,99,255,0.35)]'
@@ -163,7 +166,7 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
               </button>
             ))}
           </div>
-        </div>
+        </fieldset>
 
         {/* Pain slider */}
         <div className={`mb-5 ${voiceHighlight.pain ? 'rounded-xl ring-2 ring-amber-400/50 p-2 -m-2' : ''}`}>
@@ -194,15 +197,18 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
         </div>
 
         {/* Energy */}
-        <div className={`mb-5 ${voiceHighlight.energy ? 'rounded-xl ring-2 ring-amber-400/50 p-2 -m-2' : ''}`}>
-          <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 block">
+        <fieldset className={`mb-5 ${voiceHighlight.energy ? 'rounded-xl ring-2 ring-amber-400/50 p-2 -m-2' : ''}`}>
+          <legend className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 block">
             Energy {voiceHighlight.energy && <span className="text-amber-400 normal-case">(needs input)</span>}
-          </label>
+          </legend>
           <div className="flex gap-2">
             {ENERGY_OPTIONS.map((opt) => (
               <button
                 key={opt}
+                type="button"
                 onClick={() => setEnergy(opt)}
+                aria-pressed={energy === opt}
+                aria-label={`Energy: ${opt}`}
                 className={`flex-1 py-2 rounded-xl text-sm font-medium capitalize transition-all btn-press ${
                   energy === opt
                     ? 'border-2 border-[var(--accent)] bg-[var(--accent-light)] text-[var(--text)]'
@@ -213,18 +219,21 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
               </button>
             ))}
           </div>
-        </div>
+        </fieldset>
 
         {/* Sleep */}
-        <div className={`mb-5 ${voiceHighlight.sleep ? 'rounded-xl ring-2 ring-amber-400/50 p-2 -m-2' : ''}`}>
-          <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 block">
+        <fieldset className={`mb-5 ${voiceHighlight.sleep ? 'rounded-xl ring-2 ring-amber-400/50 p-2 -m-2' : ''}`}>
+          <legend className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2 block">
             Sleep {voiceHighlight.sleep && <span className="text-amber-400 normal-case">(needs input)</span>}
-          </label>
+          </legend>
           <div className="flex gap-2">
             {SLEEP_OPTIONS.map((opt) => (
               <button
                 key={opt}
+                type="button"
                 onClick={() => setSleep(opt)}
+                aria-pressed={sleep === opt}
+                aria-label={`Sleep quality: ${opt}`}
                 className={`flex-1 py-2 rounded-xl text-sm font-medium capitalize transition-all btn-press ${
                   sleep === opt
                     ? 'border-2 border-[var(--accent)] bg-[var(--accent-light)] text-[var(--text)]'
@@ -235,7 +244,7 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
               </button>
             ))}
           </div>
-        </div>
+        </fieldset>
 
         {/* Notes */}
         <div className="mb-5">
