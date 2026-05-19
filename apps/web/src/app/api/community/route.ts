@@ -69,7 +69,7 @@ export async function GET(request: Request) {
       }))
     );
   } catch (err) {
-    console.error('[community] GET error:', err);
+    console.error('[community] GET error:', err instanceof Error ? err.message : String(err));
     return apiError('Internal server error', 500);
   }
 }
@@ -133,7 +133,7 @@ export async function POST(request: Request) {
 
     return apiSuccess({ ...post, authorLabel: anonymousLabel(post.cancerType, post.authorRole) });
   } catch (err) {
-    console.error('[community] POST error:', err);
+    console.error('[community] POST error:', err instanceof Error ? err.message : String(err));
     return apiError('Internal server error', 500);
   }
 }

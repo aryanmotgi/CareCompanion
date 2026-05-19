@@ -443,7 +443,7 @@ export async function syncHealthKitData(): Promise<{ synced: number; queued: boo
     raw = await Bridge.fetchClinicalRecords()
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.warn('[HealthKit] fetchClinicalRecords failed:', err)
+    console.warn('[HealthKit] fetchClinicalRecords failed:', message)
     emit({ status: 'error', at: Date.now(), message, userActionable: false })
     return { synced: 0, queued: false, error: message }
   }
@@ -528,7 +528,7 @@ export async function replaceHealthKitData(): Promise<{
     raw = await Bridge.fetchClinicalRecords()
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.warn('[HealthKit] fetchClinicalRecords failed:', err)
+    console.warn('[HealthKit] fetchClinicalRecords failed:', message)
     emit({ status: 'error', at: Date.now(), message, userActionable: false })
     return empty
   }

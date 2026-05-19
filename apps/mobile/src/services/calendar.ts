@@ -64,7 +64,7 @@ export async function syncMedicalCalendarEvents(
   try {
     events = await Bridge.fetchEvents(daysBack, daysAhead, maxEvents)
   } catch (err) {
-    console.warn('[Calendar] fetchEvents failed:', err)
+    console.warn('[Calendar] fetchEvents failed:', err instanceof Error ? err.message : String(err))
     return { scanned: 0, matched: 0, created: 0, errors: 1 }
   }
 
@@ -91,7 +91,7 @@ export async function syncMedicalCalendarEvents(
       created += 1
     } catch (err) {
       errors += 1
-      console.warn('[Calendar] appointments.create failed for', ev.id, err)
+      console.warn('[Calendar] appointments.create failed for', ev.id, err instanceof Error ? err.message : String(err))
     }
   }
 

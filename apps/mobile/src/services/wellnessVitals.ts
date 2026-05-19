@@ -171,7 +171,7 @@ async function readWellnessToday(): Promise<WellnessSnapshot | null> {
   try {
     return await Bridge.today()
   } catch (err) {
-    console.warn('[WellnessVitals] today() failed:', err)
+    console.warn('[WellnessVitals] today() failed:', err instanceof Error ? err.message : String(err))
     return null
   }
 }

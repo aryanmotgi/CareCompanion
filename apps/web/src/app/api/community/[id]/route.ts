@@ -74,7 +74,7 @@ export async function GET(request: Request, { params }: Props) {
       hasMoreReplies: totalReplies > replies.length,
     });
   } catch (err) {
-    console.error('[community/id] GET error:', err);
+    console.error('[community/id] GET error:', err instanceof Error ? err.message : String(err));
     return apiError('Internal server error', 500);
   }
 }
@@ -142,7 +142,7 @@ export async function POST(request: Request, { params }: Props) {
 
     return apiSuccess({ ...reply, authorLabel: anonymousLabel(reply.cancerType, reply.authorRole) });
   } catch (err) {
-    console.error('[community/id] POST error:', err);
+    console.error('[community/id] POST error:', err instanceof Error ? err.message : String(err));
     return apiError('Internal server error', 500);
   }
 }
@@ -170,7 +170,7 @@ export async function DELETE(request: Request, { params }: Props) {
     await db.delete(communityPosts).where(eq(communityPosts.id, id));
     return apiSuccess({ deleted: true });
   } catch (err) {
-    console.error('[community/id] DELETE error:', err);
+    console.error('[community/id] DELETE error:', err instanceof Error ? err.message : String(err));
     return apiError('Internal server error', 500);
   }
 }
