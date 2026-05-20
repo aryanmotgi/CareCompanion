@@ -33,18 +33,10 @@ describe('hybridEnabledForUser', () => {
     expect(hybridEnabledForUser(USER_A)).toBe(false);
   });
 
-  describe('10pct mode', () => {
-    it('returns a boolean (not undefined/null)', () => {
+  describe('10pct legacy value (promoted to 100% on 2026-05-20)', () => {
+    it('returns true for any user when env is still set to "10pct"', () => {
       vi.stubEnv('ENABLE_MEMORY_HYBRID', '10pct');
-      const result = hybridEnabledForUser(USER_A);
-      expect(typeof result).toBe('boolean');
-    });
-
-    it('is deterministic — same user always gets same result', () => {
-      vi.stubEnv('ENABLE_MEMORY_HYBRID', '10pct');
-      const r1 = hybridEnabledForUser(USER_A);
-      const r2 = hybridEnabledForUser(USER_A);
-      expect(r1).toBe(r2);
+      expect(hybridEnabledForUser(USER_A)).toBe(true);
     });
 
     it('does not throw for various userId shapes', () => {
@@ -52,13 +44,6 @@ describe('hybridEnabledForUser', () => {
       expect(() => hybridEnabledForUser('')).not.toThrow();
       expect(() => hybridEnabledForUser('short')).not.toThrow();
       expect(() => hybridEnabledForUser('00000000-0000-0000-0000-000000000002')).not.toThrow();
-    });
-
-    it('uses deterministic bucket — result in [0, 99] range check', () => {
-      vi.stubEnv('ENABLE_MEMORY_HYBRID', '10pct');
-      // Verify the bucket is consistent: if true, user is in lowest 10% of sha256 bucket
-      const result = hybridEnabledForUser(USER_A);
-      expect(result === true || result === false).toBe(true);
     });
   });
 });
