@@ -25,16 +25,16 @@ function formatLog(level: LogLevel, message: string, context?: LogContext) {
 }
 
 export const logger = {
-  debug(message: string, context?: LogContext) {
+  debug(message: string, context?: LogContext): void {
     if (shouldLog('debug')) console.debug(formatLog('debug', message, context))
   },
-  info(message: string, context?: LogContext) {
+  info(message: string, context?: LogContext): void {
     if (shouldLog('info')) console.log(formatLog('info', message, context))
   },
-  warn(message: string, context?: LogContext) {
+  warn(message: string, context?: LogContext): void {
     if (shouldLog('warn')) console.warn(formatLog('warn', message, context))
   },
-  error(message: string, context?: LogContext) {
+  error(message: string, context?: LogContext): void {
     if (shouldLog('error')) console.error(formatLog('error', message, context))
   },
 }

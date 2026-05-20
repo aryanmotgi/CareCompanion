@@ -16,7 +16,10 @@ import { jwtVerify } from 'jose'
  * Authenticate the current request and return the local DB user.
  * Accepts NextAuth session cookies (web) or Authorization: Bearer <jwt> (mobile).
  */
-export async function getAuthenticatedUser() {
+export async function getAuthenticatedUser(): Promise<
+  { user: typeof users.$inferSelect; error: null } |
+  { user: null; error: NextResponse }
+> {
   // Try NextAuth session cookie first (web app)
   const session = await auth()
   if (session?.user?.id) {
