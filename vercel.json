@@ -39,6 +39,10 @@
     {
       "path": "/api/cron/memory-eval",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/nadir-alert",
+      "schedule": "0 12 * * *"
     }
   ]
 }
