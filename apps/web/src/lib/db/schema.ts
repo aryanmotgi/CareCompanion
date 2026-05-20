@@ -63,7 +63,7 @@ export const users = pgTable('users', {
 export const userIdentities = pgTable('user_identities', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  provider: text('provider').notNull(),       // 'password' | 'apple' | 'google' | 'cognito'
+  provider: text('provider').notNull(),       // 'password' | 'apple' | 'google'
   providerSub: text('provider_sub'),          // null for password rows
   email: text('email'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),

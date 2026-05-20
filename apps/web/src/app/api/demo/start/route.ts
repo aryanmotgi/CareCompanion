@@ -2,7 +2,7 @@
  * Start Demo Session
  *
  * Creates an ephemeral demo account pre-loaded with realistic HER2+ Breast
- * Cancer care data. Mints a session JWT directly — no Cognito required.
+ * Cancer care data. Mints a session JWT directly via next-auth/jwt.
  * Demo accounts have `isDemo = true` so the DemoBanner shows across the app
  * and a cleanup job can purge them later.
  */
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'AUTH_SECRET not configured' }, { status: 500 });
   }
 
-  // 1. Insert demo user directly — no Cognito needed
+  // 1. Insert demo user directly
   let newUser: { id: string };
   try {
     const [inserted] = await db.insert(users).values({

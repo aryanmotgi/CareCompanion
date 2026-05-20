@@ -9,9 +9,9 @@ export function DemoBanner() {
   const handleLeave = async () => {
     setLeaving(true);
     try {
-      await signOut({ callbackUrl: '/api/auth/cognito-logout' });
+      await signOut({ callbackUrl: '/' });
     } catch {
-      window.location.href = '/api/auth/cognito-logout';
+      window.location.href = '/';
     }
   };
 

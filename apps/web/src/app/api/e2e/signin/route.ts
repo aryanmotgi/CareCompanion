@@ -109,7 +109,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'missing fields' }, { status: 400 })
   }
 
-  // Look up the user in the database to get their DB UUID and cognitoSub.
+  // Look up the user in the database to get their DB UUID and providerSub.
   // The test user must have logged in at least once via normal OAuth so that
   // their record exists in the users table.
   //
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
   // pause will fail while the cluster resumes (typically < 30 s). Retry up to
   // 4 times with a 10 s delay so the scheduled monitor survives a cold start.
   let dbUserId!: string
-  let cognitoSub!: string
+  let providerSub!: string
   let displayName!: string
   const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
   const MAX_ATTEMPTS = 4
@@ -133,7 +133,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'user not found in database' }, { status: 404 })
       }
       dbUserId = user.id
-      cognitoSub = user.providerSub ?? ''
+      providerSub = user.providerSub ?? ''
       displayName = user.displayName ?? email
 
       // Ensure HIPAA consent is set so the app layout doesn't redirect to /consent.
@@ -203,7 +203,7 @@ export async function POST(req: Request) {
       // and session callback sets session.user.id = token.dbUserId.
       // Without it, session.user.id is undefined → redirect('/login?error=session') → redirect loop.
       dbUserId,
-      providerSub: cognitoSub,
+      providerSub,
       email,
       name: displayName,
       displayName,

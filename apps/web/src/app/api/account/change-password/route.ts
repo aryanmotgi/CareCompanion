@@ -1,9 +1,5 @@
 import { NextResponse } from 'next/server';
-import {
-  CognitoIdentityProviderClient,
-  AdminSetUserPasswordCommand,
-  AdminInitiateAuthCommand,
-} from '@aws-sdk/client-cognito-identity-provider';
+import bcrypt from 'bcryptjs';
 import { getAuthenticatedUser, parseBody } from '@/lib/api-helpers';
 import { rateLimit } from '@/lib/rate-limit';
 import { validateCsrf } from '@/lib/csrf';
@@ -11,13 +7,6 @@ import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
-const cognito = new CognitoIdentityProviderClient({
-  region: process.env.COGNITO_REGION || 'us-east-1',
-});
-const USER_POOL_ID = process.env.COGNITO_USER_POOL_ID!;
-const CLIENT_ID = process.env.COGNITO_CLIENT_ID!;
-
-// 5 attempts per 15 minutes, keyed per user so VPNs can't bypass it
 const limiter = rateLimit({ interval: 15 * 60 * 1000, maxRequests: 5 });
 
 export async function POST(req: Request) {
@@ -45,41 +34,22 @@ export async function POST(req: Request) {
   }
 
   const [user] = await db
-    .select({ providerSub: users.providerSub, email: users.email })
+    .select({ id: users.id, passwordHash: users.passwordHash })
     .from(users)
     .where(eq(users.id, dbUser!.id))
     .limit(1);
 
-  if (!user?.providerSub) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+  if (!user?.passwordHash) {
+    return NextResponse.json({ error: 'No password set for this account' }, { status: 400 });
   }
 
-  // Verify current password before allowing change
-  try {
-    await cognito.send(new AdminInitiateAuthCommand({
-      UserPoolId: USER_POOL_ID,
-      ClientId: CLIENT_ID,
-      AuthFlow: 'USER_PASSWORD_AUTH',
-      AuthParameters: {
-        USERNAME: user.email!,
-        PASSWORD: currentPassword,
-      },
-    }));
-  } catch {
+  const valid_pw = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid_pw) {
     return NextResponse.json({ error: 'Current password is incorrect' }, { status: 401 });
   }
 
-  try {
-    await cognito.send(new AdminSetUserPasswordCommand({
-      UserPoolId: USER_POOL_ID,
-      Username: user.providerSub,
-      Password: password,
-      Permanent: true,
-    }));
+  const passwordHash = await bcrypt.hash(password, 12);
+  await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
 
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error('Change password error:', err);
-    return NextResponse.json({ error: 'Failed to update password' }, { status: 500 });
-  }
+  return NextResponse.json({ success: true });
 }
