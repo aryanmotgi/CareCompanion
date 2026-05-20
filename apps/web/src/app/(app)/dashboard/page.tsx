@@ -63,10 +63,11 @@ async function DashboardContent() {
     db.select({ value: count() }).from(scannedDocuments).where(eq(scannedDocuments.userId, dbUser.id)).catch(() => [] as { value: number }[]),
     db.select({ value: count() }).from(doctors).where(eq(doctors.careProfileId, profile.id)).catch(() => [] as { value: number }[]),
     db.select({
+      cycleId: treatmentCycles.id,
       cycleNumber: treatmentCycles.cycleNumber,
       startDate: treatmentCycles.startDate,
       cycleLengthDays: treatmentCycles.cycleLengthDays,
-    }).from(treatmentCycles).where(and(eq(treatmentCycles.careProfileId, profile.id), eq(treatmentCycles.isActive, true))).limit(1).catch(() => [] as { cycleNumber: number; startDate: string; cycleLengthDays: number }[]),
+    }).from(treatmentCycles).where(and(eq(treatmentCycles.careProfileId, profile.id), eq(treatmentCycles.isActive, true))).limit(1).catch(() => [] as { cycleId: string; cycleNumber: number; startDate: string; cycleLengthDays: number }[]),
   ]);
 
   const [scannedDocCount] = scannedDocRows;
@@ -74,14 +75,14 @@ async function DashboardContent() {
 
   // Compute current day of active treatment cycle for the nadir banner.
   // Day 1 is the start date itself. Banner self-gates to days 7–14.
-  let nadirCycle: { dayOfCycle: number; cycleNumber: number } | null = null;
+  let nadirCycle: { dayOfCycle: number; cycleNumber: number; cycleId: string } | null = null;
   const [activeCycle] = activeCycleRows;
   if (activeCycle) {
     const startMs = new Date(activeCycle.startDate + 'T00:00:00').getTime();
     const todayMs = new Date(new Date().setHours(0, 0, 0, 0)).getTime();
     const dayOfCycle = Math.floor((todayMs - startMs) / 86400000) + 1;
     if (dayOfCycle >= 7 && dayOfCycle <= 14 && dayOfCycle <= activeCycle.cycleLengthDays) {
-      nadirCycle = { dayOfCycle, cycleNumber: activeCycle.cycleNumber };
+      nadirCycle = { dayOfCycle, cycleNumber: activeCycle.cycleNumber, cycleId: activeCycle.cycleId };
     }
   }
 
@@ -93,7 +94,7 @@ async function DashboardContent() {
   if (role === 'caregiver') {
     return (
       <>
-        {nadirCycle && <NadirBanner dayOfCycle={nadirCycle.dayOfCycle} cycleNumber={nadirCycle.cycleNumber} />}
+        {nadirCycle && <NadirBanner dayOfCycle={nadirCycle.dayOfCycle} cycleNumber={nadirCycle.cycleNumber} cycleId={nadirCycle.cycleId} />}
         <OnboardingWelcomeBanner />
         <CaregiverDashboardView
           patientName={patientName}
@@ -115,7 +116,7 @@ async function DashboardContent() {
   if (role === 'self') {
     return (
       <>
-        {nadirCycle && <NadirBanner dayOfCycle={nadirCycle.dayOfCycle} cycleNumber={nadirCycle.cycleNumber} />}
+        {nadirCycle && <NadirBanner dayOfCycle={nadirCycle.dayOfCycle} cycleNumber={nadirCycle.cycleNumber} cycleId={nadirCycle.cycleId} />}
         <OnboardingWelcomeBanner />
         {reminderLogsData.length > 0 && (
           <div className="px-4 sm:px-5 pt-5 sm:pt-6">
@@ -163,7 +164,7 @@ async function DashboardContent() {
 
   return (
     <>
-      {nadirCycle && <NadirBanner dayOfCycle={nadirCycle.dayOfCycle} cycleNumber={nadirCycle.cycleNumber} />}
+      {nadirCycle && <NadirBanner dayOfCycle={nadirCycle.dayOfCycle} cycleNumber={nadirCycle.cycleNumber} cycleId={nadirCycle.cycleId} />}
       <OnboardingWelcomeBanner />
       {reminderLogsData.length > 0 && (
         <div className="px-4 sm:px-5 pt-5 sm:pt-6">

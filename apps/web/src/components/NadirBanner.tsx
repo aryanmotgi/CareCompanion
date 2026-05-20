@@ -7,9 +7,10 @@
 interface NadirBannerProps {
   dayOfCycle: number;
   cycleNumber: number;
+  cycleId?: string;
 }
 
-export function NadirBanner({ dayOfCycle, cycleNumber }: NadirBannerProps) {
+export function NadirBanner({ dayOfCycle, cycleNumber, cycleId }: NadirBannerProps) {
   if (dayOfCycle < 7 || dayOfCycle > 14) return null;
 
   return (
@@ -70,6 +71,25 @@ export function NadirBanner({ dayOfCycle, cycleNumber }: NadirBannerProps) {
             <strong style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>100.4&deg;F (38&deg;C)</strong>{' '}
             is a medical emergency &mdash; call the on-call oncologist or go to the ER immediately.
           </div>
+          {cycleId && (
+            <a
+              href={`/er-card/${cycleId}`}
+              style={{
+                display: 'inline-block',
+                marginTop: 8,
+                padding: '6px 12px',
+                fontSize: 12,
+                fontWeight: 700,
+                color: '#fffbeb',
+                background: '#b45309',
+                borderRadius: 6,
+                textDecoration: 'none',
+                letterSpacing: '0.02em',
+              }}
+            >
+              Open ER Protocol Card &rarr;
+            </a>
+          )}
         </div>
       </div>
     </div>
