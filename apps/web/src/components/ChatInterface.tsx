@@ -22,6 +22,7 @@ interface ChatInterfaceProps {
   initialMessages: UIMessage[];
   patientName?: string;
   recentConversations?: RecentConversation[];
+  nadirCycle?: { dayOfCycle: number; cycleNumber: number } | null;
 }
 
 function getGreeting(): string {
@@ -51,7 +52,7 @@ function getMessageText(msg: UIMessage): string {
   return '';
 }
 
-export function ChatInterface({ initialMessages, patientName, recentConversations = [] }: ChatInterfaceProps) {
+export function ChatInterface({ initialMessages, patientName, recentConversations = [], nadirCycle = null }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -261,6 +262,34 @@ export function ChatInterface({ initialMessages, patientName, recentConversation
         onClose={() => setShowSearch(false)}
         onScrollToMessage={handleScrollToMessage}
       />
+      {/* Nadir context card — gated to days 7-14 server-side */}
+      {nadirCycle && (
+        <div
+          role="note"
+          aria-live="polite"
+          className="mx-4 sm:mx-6 lg:mx-8 mt-2 mb-1"
+          style={{
+            padding: '10px 14px',
+            borderRadius: 12,
+            background: 'linear-gradient(180deg, rgba(254,243,199,0.08) 0%, rgba(180,83,9,0.10) 100%)',
+            border: '1px solid rgba(180, 83, 9, 0.32)',
+            boxShadow: '0 1px 8px rgba(120, 53, 15, 0.12), inset 0 1px 0 rgba(255,255,255,0.04)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 10,
+          }}
+        >
+          <span style={{ fontSize: 18, lineHeight: 1.2, flexShrink: 0 }} aria-hidden="true">🌡️</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24', letterSpacing: '-0.01em', marginBottom: 2 }}>
+              {patientName ? `${patientName} is in nadir` : 'In nadir'} — Day {nadirCycle.dayOfCycle} of cycle
+            </div>
+            <div style={{ fontSize: 12.5, lineHeight: 1.45, color: 'rgba(252,211,77,0.85)' }}>
+              Immune system is at its lowest. Mention any fever, chills, or unusual symptoms right away.
+            </div>
+          </div>
+        </div>
+      )}
       {/* Messages */}
       <div className="flex-1 overflow-y-auto chat-scroll px-4 sm:px-6 lg:px-8 py-6" role="log" aria-label="Conversation" aria-live="polite">
         {messages.length === 0 ? (
