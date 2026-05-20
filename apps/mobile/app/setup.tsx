@@ -36,6 +36,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useProfile } from '../src/context/ProfileContext'
 import { fetchHealthKitBaseline } from '../src/services/healthkit'
 import { useUserTypeContext } from './_layout'
+import { OnboardingStepIndicator } from '../src/components/OnboardingStepIndicator'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -702,6 +703,10 @@ export default function SetupScreen() {
       <View style={styles.glowOrb1} />
       <View style={styles.glowOrb2} />
 
+      <View style={styles.macroStepWrap}>
+        <OnboardingStepIndicator step={4} total={5} />
+      </View>
+
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={16} style={styles.closeButton}>
@@ -885,6 +890,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 12,
+  },
+  macroStepWrap: {
+    alignItems: 'center',
+    paddingTop: 8,
   },
   closeButton: { width: 36, height: 36 },
   closeBlur: {
