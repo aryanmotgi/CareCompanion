@@ -177,6 +177,55 @@ export const appointments = pgTable('appointments', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
+// ── Clinical History (HealthKit FHIR ingestion) ───────────────────────────────
+// Mirrors medications/appointments pattern: care_profile_id + healthkit_fhir_id UNIQUE
+// for idempotent upsert from /api/healthkit/sync.
+export const conditions = pgTable('conditions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  careProfileId: uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
+  code: text('code'),
+  display: text('display').notNull(),
+  clinicalStatus: text('clinical_status'),
+  onsetDateTime: timestamp('onset_date_time', { withTimezone: true }),
+  healthkitFhirId: text('healthkit_fhir_id').unique(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+export const allergies = pgTable('allergies', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  careProfileId: uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
+  code: text('code'),
+  display: text('display').notNull(),
+  reaction: text('reaction'),
+  criticality: text('criticality'),
+  healthkitFhirId: text('healthkit_fhir_id').unique(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+export const procedures = pgTable('procedures', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  careProfileId: uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
+  code: text('code'),
+  display: text('display').notNull(),
+  performedDateTime: timestamp('performed_date_time', { withTimezone: true }),
+  healthkitFhirId: text('healthkit_fhir_id').unique(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
+export const immunizations = pgTable('immunizations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  careProfileId: uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
+  code: text('code'),
+  display: text('display').notNull(),
+  occurrenceDateTime: timestamp('occurrence_date_time', { withTimezone: true }),
+  healthkitFhirId: text('healthkit_fhir_id').unique(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
 // ── Documents ─────────────────────────────────────────────────────────────────
 export const documents = pgTable('documents', {
   id: uuid('id').primaryKey().defaultRandom(),

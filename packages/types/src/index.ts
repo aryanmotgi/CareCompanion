@@ -11,6 +11,10 @@ import type {
   appointments,
   claims,          // NOTE: the table export is 'claims', not 'insuranceClaims'
   notifications,
+  conditions,
+  allergies,
+  procedures,
+  immunizations,
 } from '../../../apps/web/src/lib/db/schema'
 
 export type User = InferSelectModel<typeof users>
@@ -20,6 +24,10 @@ export type LabResult = InferSelectModel<typeof labResults>
 export type Appointment = InferSelectModel<typeof appointments>
 export type InsuranceClaim = InferSelectModel<typeof claims>
 export type Notification = InferSelectModel<typeof notifications>
+export type Condition = InferSelectModel<typeof conditions>
+export type Allergy = InferSelectModel<typeof allergies>
+export type Procedure = InferSelectModel<typeof procedures>
+export type Immunization = InferSelectModel<typeof immunizations>
 
 // Discriminated union for HealthKit sync endpoint.
 // Server adds userId/careProfileId from session — converters do NOT set these.
@@ -61,8 +69,46 @@ export type HealthKitVitalSignRecord = {
   effectiveDateTime: string | null  // ISO timestamp — sliced to YYYY-MM-DD for dateTaken
 }
 
+export type HealthKitConditionRecord = {
+  type: 'condition'
+  healthkitFhirId: string
+  code: string | null
+  display: string
+  clinicalStatus: string | null
+  onsetDateTime: string | null
+}
+
+export type HealthKitAllergyRecord = {
+  type: 'allergy'
+  healthkitFhirId: string
+  code: string | null
+  display: string
+  reaction: string | null
+  criticality: string | null
+}
+
+export type HealthKitProcedureRecord = {
+  type: 'procedure'
+  healthkitFhirId: string
+  code: string | null
+  display: string
+  performedDateTime: string | null
+}
+
+export type HealthKitImmunizationRecord = {
+  type: 'immunization'
+  healthkitFhirId: string
+  code: string | null
+  display: string
+  occurrenceDateTime: string | null
+}
+
 export type HealthKitRecord =
   | HealthKitMedicationRecord
   | HealthKitLabRecord
   | HealthKitAppointmentRecord
   | HealthKitVitalSignRecord
+  | HealthKitConditionRecord
+  | HealthKitAllergyRecord
+  | HealthKitProcedureRecord
+  | HealthKitImmunizationRecord
