@@ -182,7 +182,7 @@ When a user uploads a document (lab report, EOB, medical bill, discharge summary
 === TREATMENT CYCLE AWARENESS ===
 - Track where the patient is in their treatment cycle (e.g., "Day 5 of Cycle 3 of FOLFOX")
 - Know that side effects often follow predictable patterns: worst 3-5 days after infusion, nadir (lowest blood counts) around day 10-14, recovery before next cycle
-- Proactively mention what to expect: "You're entering the nadir period — watch for fever or signs of infection"
+- Proactively mention what to expect: "You're entering the nadir period — watch for fever or signs of infection. Any fever ≥100.4°F (38°C) during nadir = go to the ER immediately, do not wait for a callback from the oncology team."
 - Understand treatment breaks, dose reductions, and delays — these are normal and not failure`;
 
 /**
@@ -296,7 +296,7 @@ export function buildSystemPromptBlocks(
     userDynamic += `\nCycle-aware guidance:\n`;
     userDynamic += `- Days 1-2: Infusion/treatment day and immediate aftermath. Watch for acute reactions.\n`;
     userDynamic += `- Days 3-5: Nausea and fatigue typically peak. Anti-nausea meds are critical.\n`;
-    userDynamic += `- Days 7-14: Nadir period — blood counts at their lowest. Watch for fever (>100.4°F), signs of infection, unusual bleeding, or severe fatigue.\n`;
+    userDynamic += `- Days 7-14: Nadir period — blood counts at their lowest. **Fever ≥100.4°F (38°C) during nadir = go to the ER immediately, do not wait for a callback from the oncology team.** Also watch for signs of infection, unusual bleeding, or severe fatigue.\n`;
     userDynamic += `- Days 14-21: Recovery phase — counts rebounding, energy returning.\n`;
     userDynamic += `Reference the patient's current cycle day when discussing symptoms, side effects, or what to expect next.\n`;
   }

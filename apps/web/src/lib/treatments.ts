@@ -45,14 +45,14 @@ export const treatments: Treatment[] = [
     criticalDays: [
       { day: 1, label: 'Infusion Day', watchFor: ['Allergic reaction to oxaliplatin (flushing, hives, difficulty breathing)'], whenToCall: 'Any signs of allergic reaction during infusion — tell nursing staff immediately.' },
       { day: 7, label: 'Nadir Approaching', watchFor: ['Increased fatigue', 'Fever', 'Signs of infection'], whenToCall: 'Fever over 100.4°F (38°C) — this is a medical emergency with low counts.' },
-      { day: 10, label: 'Nadir (Lowest Blood Counts)', watchFor: ['Fever', 'Chills', 'Unusual bruising or bleeding', 'Extreme fatigue'], whenToCall: 'Any fever over 100.4°F, bleeding that won\'t stop, or feeling very unwell.' },
+      { day: 10, label: 'Nadir (Lowest Blood Counts)', watchFor: ['Fever', 'Chills', 'Unusual bruising or bleeding', 'Extreme fatigue'], whenToCall: 'Any fever ≥100.4°F — go to the ER immediately, do not wait for a callback. Bleeding that won\'t stop or feeling very unwell — call the oncology team.' },
       { day: 14, label: 'Recovery / Next Cycle', watchFor: ['Counts recovering', 'Energy returning'], whenToCall: 'If you feel worse instead of better approaching cycle day.' },
     ],
     faqs: [
       { question: 'Is nausea normal on day 3 of FOLFOX?', answer: 'Yes. Days 2–4 are typically when nausea peaks after FOLFOX infusion. Make sure to take prescribed anti-nausea medications proactively, not just when nausea hits. Small frequent meals and ginger tea can also help.' },
       { question: 'Why does cold feel painful after FOLFOX?', answer: 'Oxaliplatin causes cold sensitivity — a tingling or burning sensation when touching cold objects or drinking cold liquids. This is one of FOLFOX\'s most common side effects. Avoid cold drinks, use gloves to handle refrigerator items, and protect your face in cold weather.' },
       { question: 'What blood counts should I watch?', answer: 'The most important are ANC (absolute neutrophil count) for infection risk, platelets for bleeding risk, and hemoglobin for anemia/fatigue. Your oncologist will tell you target ranges. Generally, ANC below 1.0 means high infection risk.' },
-      { question: 'When should I call the oncology team?', answer: 'Call immediately for: fever over 100.4°F (38°C), severe vomiting (can\'t keep fluids down for 24 hours), signs of allergic reaction, severe diarrhea (more than 6 episodes per day), or any bleeding that won\'t stop.' },
+      { question: 'When should I call the oncology team?', answer: 'For fever ≥100.4°F (38°C) during nadir — go to the ER immediately, do not wait for a callback. Call the team immediately for: severe vomiting (can\'t keep fluids down for 24 hours), signs of allergic reaction, severe diarrhea (more than 6 episodes per day), or any bleeding that won\'t stop.' },
       { question: 'How long does FOLFOX fatigue last?', answer: 'Fatigue typically peaks around days 4–6 of each cycle and gradually improves toward cycle day 10–12. Cumulative fatigue may build over multiple cycles. It usually improves significantly after completing treatment.' },
     ],
   },
@@ -75,13 +75,13 @@ export const treatments: Treatment[] = [
     criticalDays: [
       { day: 1, label: 'Infusion Day', watchFor: ['Early diarrhea (cholinergic reaction)', 'Cramping during infusion'], whenToCall: 'Diarrhea or sweating during infusion — nursing staff can give atropine.' },
       { day: 3, label: 'Late Diarrhea Watch', watchFor: ['Loose stools beginning', 'Cramping', 'Dehydration signs'], whenToCall: 'More than 4 loose stools per day — start loperamide and call the team.' },
-      { day: 8, label: 'Nadir (Low Counts)', watchFor: ['Fever', 'Chills', 'Signs of infection'], whenToCall: 'Fever over 100.4°F — this can be life-threatening with low neutrophil counts.' },
+      { day: 8, label: 'Nadir (Low Counts)', watchFor: ['Fever', 'Chills', 'Signs of infection'], whenToCall: 'Fever ≥100.4°F — go to the ER immediately, do not wait for a callback. Neutropenic fever can be life-threatening with low counts.' },
     ],
     faqs: [
       { question: 'What\'s the difference between FOLFIRI and FOLFOX?', answer: 'FOLFIRI uses irinotecan instead of oxaliplatin. FOLFOX causes more neuropathy (nerve tingling), while FOLFIRI causes more diarrhea and hair loss. Your oncologist chooses based on your health profile and prior treatments.' },
       { question: 'How do I manage the diarrhea from FOLFIRI?', answer: 'There are two phases. Early diarrhea (during/within hours of infusion): the nursing team can treat with atropine. Late diarrhea (day 3+): take loperamide (Imodium) at the first loose stool — don\'t wait. Call the team if you have more than 4 episodes per day.' },
       { question: 'Will my hair grow back after FOLFIRI?', answer: 'Yes. Hair loss from FOLFIRI is temporary. Hair typically begins growing back 2–3 months after completing chemotherapy.' },
-      { question: 'When should I call the oncology team?', answer: 'Call immediately for: fever over 100.4°F (38°C), severe diarrhea (more than 6 episodes per day or unable to keep fluids down), signs of dehydration (extreme thirst, dark urine, dizziness), or severe abdominal cramping.' },
+      { question: 'When should I call the oncology team?', answer: 'For fever ≥100.4°F (38°C) during nadir — go to the ER immediately, do not wait for a callback. Call the team immediately for: severe diarrhea (more than 6 episodes per day or unable to keep fluids down), signs of dehydration (extreme thirst, dark urine, dizziness), or severe abdominal cramping.' },
     ],
   },
   {
@@ -103,12 +103,12 @@ export const treatments: Treatment[] = [
     criticalDays: [
       { day: 1, label: 'Infusion (46-hour pump)', watchFor: ['Nausea', 'Reaction to oxaliplatin or irinotecan', 'Pump site issues'], whenToCall: 'Any reaction during infusion, pump malfunction, or disconnection site problems.' },
       { day: 3, label: 'Pump Disconnect + Diarrhea Watch', watchFor: ['Late diarrhea onset', 'Dehydration'], whenToCall: 'More than 3 loose stools per day — start loperamide immediately and call team.' },
-      { day: 8, label: 'Nadir', watchFor: ['Fever', 'Infection signs', 'Severe fatigue'], whenToCall: 'Any fever over 100.4°F. FOLFIRINOX nadir is often severe — don\'t wait to call.' },
+      { day: 8, label: 'Nadir', watchFor: ['Fever', 'Infection signs', 'Severe fatigue'], whenToCall: 'Any fever ≥100.4°F — go to the ER immediately, do not wait for a callback. FOLFIRINOX nadir is often severe.' },
     ],
     faqs: [
       { question: 'Is FOLFIRINOX the most intense chemo regimen?', answer: 'It\'s among the most intensive outpatient regimens. It uses four drugs and requires a 46-hour take-home pump. Patients generally need more support at home during FOLFIRINOX than other regimens.' },
       { question: 'How do I handle the at-home pump?', answer: 'The pump delivers fluorouracil for 46 hours after the infusion center visit. The nursing team will show you how to handle it, what to do if the tube comes out, and when to return for disconnection. Keep the disconnect instructions on your fridge.' },
-      { question: 'When should I call the oncology team during FOLFIRINOX?', answer: 'Call immediately for: fever over 100.4°F, severe vomiting (unable to keep any fluids down for 12 hours), more than 4 loose stools per day, pump problems, or any new severe symptoms.' },
+      { question: 'When should I call the oncology team during FOLFIRINOX?', answer: 'For fever ≥100.4°F during nadir — go to the ER immediately, do not wait for a callback. Call the team immediately for: severe vomiting (unable to keep any fluids down for 12 hours), more than 4 loose stools per day, pump problems, or any new severe symptoms.' },
     ],
   },
   {
@@ -129,12 +129,12 @@ export const treatments: Treatment[] = [
     ],
     criticalDays: [
       { day: 1, label: 'Infusion Day 1 & Day 15', watchFor: ['Reaction to bleomycin or dacarbazine', 'Infusion site pain'], whenToCall: 'Any unusual symptoms during infusion — tell nursing staff immediately.' },
-      { day: 10, label: 'Nadir', watchFor: ['Fever', 'Chills', 'Shortness of breath'], whenToCall: 'Fever over 100.4°F or any new breathing difficulty — call immediately.' },
+      { day: 10, label: 'Nadir', watchFor: ['Fever', 'Chills', 'Shortness of breath'], whenToCall: 'Fever ≥100.4°F during nadir — go to the ER immediately, do not wait for a callback. Any new breathing difficulty — call immediately.' },
     ],
     faqs: [
       { question: 'Why is shortness of breath so important to report with ABVD?', answer: 'Bleomycin (the "B" in ABVD) can cause pulmonary toxicity — lung damage — in some patients. Even mild new shortness of breath or a new cough should be reported to your oncology team promptly. They monitor lung function throughout treatment.' },
       { question: 'Is ABVD curative for Hodgkin lymphoma?', answer: 'ABVD has a high cure rate for Hodgkin lymphoma — over 80% for early-stage disease. This is one of the most treatable cancers with modern chemotherapy.' },
-      { question: 'When should I call the oncology team?', answer: 'Call for: fever over 100.4°F, any new shortness of breath or cough (report same day), severe vomiting, or unusual bruising/bleeding.' },
+      { question: 'When should I call the oncology team?', answer: 'For fever ≥100.4°F during nadir — go to the ER immediately, do not wait for a callback. Call the team for: any new shortness of breath or cough (report same day), severe vomiting, or unusual bruising/bleeding.' },
     ],
   },
   {
@@ -155,14 +155,14 @@ export const treatments: Treatment[] = [
     ],
     criticalDays: [
       { day: 1, label: 'Infusion Day', watchFor: ['Rituximab reaction (fever, chills, flushing, difficulty breathing)'], whenToCall: 'Any reaction during infusion — nursing staff will manage.' },
-      { day: 8, label: 'Nadir Approaching', watchFor: ['Rising temperature', 'Fatigue worsening', 'Chills'], whenToCall: 'Fever over 100.4°F — neutropenic fever is an emergency.' },
-      { day: 11, label: 'Nadir', watchFor: ['Fever', 'Infection signs', 'Bleeding'], whenToCall: 'Any fever over 100.4°F or signs of serious bleeding.' },
+      { day: 8, label: 'Nadir Approaching', watchFor: ['Rising temperature', 'Fatigue worsening', 'Chills'], whenToCall: 'Fever ≥100.4°F — go to the ER immediately, do not wait for a callback. Neutropenic fever is an emergency.' },
+      { day: 11, label: 'Nadir', watchFor: ['Fever', 'Infection signs', 'Bleeding'], whenToCall: 'Any fever ≥100.4°F — go to the ER immediately, do not wait for a callback. Signs of serious bleeding — call oncology team.' },
     ],
     faqs: [
       { question: 'What is rituximab and why is it in R-CHOP?', answer: 'Rituximab is a monoclonal antibody — a targeted therapy that specifically attacks B-cells bearing the CD20 protein. Adding it to standard CHOP chemotherapy significantly improved outcomes for B-cell lymphomas. It\'s now standard of care.' },
       { question: 'Will my hair grow back after R-CHOP?', answer: 'Yes — hair loss from R-CHOP is temporary. Hair typically begins growing back 2–3 months after completing treatment, though texture may be different initially.' },
       { question: 'What do the prednisone days feel like?', answer: 'The 5 days of prednisone often cause increased energy, insomnia, mood changes, and increased appetite. Blood sugar may rise, especially in diabetic patients. After stopping prednisone, fatigue often increases for a few days.' },
-      { question: 'When should I call the oncology team?', answer: 'Call for: fever over 100.4°F (especially days 7–14), severe vomiting, signs of infection, unusual bleeding, or any chest pain or difficulty breathing.' },
+      { question: 'When should I call the oncology team?', answer: 'For fever ≥100.4°F (especially days 7–14, nadir window) — go to the ER immediately, do not wait for a callback. Call the team for: severe vomiting, signs of infection, unusual bleeding, or any chest pain or difficulty breathing.' },
     ],
   },
   {
@@ -184,12 +184,12 @@ export const treatments: Treatment[] = [
     criticalDays: [
       { day: 1, label: 'Infusion Day', watchFor: ['Reaction to Taxol (flushing, chest tightness, back pain)'], whenToCall: 'Any reaction during Taxol infusion — tell staff immediately, it is manageable if caught early.' },
       { day: 3, label: 'Bone Pain (Taxol cycles)', watchFor: ['Joint aches', 'Bone pain from Neulasta'], whenToCall: 'Severe unmanageable pain — call for guidance on pain management.' },
-      { day: 8, label: 'Nadir', watchFor: ['Fever', 'Infection signs'], whenToCall: 'Fever over 100.4°F — neutropenic fever emergency.' },
+      { day: 8, label: 'Nadir', watchFor: ['Fever', 'Infection signs'], whenToCall: 'Fever ≥100.4°F — go to the ER immediately, do not wait for a callback. Neutropenic fever emergency.' },
     ],
     faqs: [
       { question: 'What\'s the difference between the AC and Taxol phases?', answer: 'AC (Adriamycin + Cyclophosphamide) causes more nausea and hair loss. The Taxol phase causes more neuropathy, muscle aches, and fatigue but less nausea. Most patients find the AC phase harder at the time, but the Taxol phase\'s fatigue is cumulative.' },
       { question: 'Why does Claritin help with bone pain after Taxol?', answer: 'Loratadine (Claritin) appears to reduce the bone pain caused by Neulasta (G-CSF), which stimulates bone marrow to produce white blood cells. Taking Claritin starting the day before infusion and continuing for 5–7 days can significantly reduce this side effect.' },
-      { question: 'When should I call the oncology team?', answer: 'Always for: fever over 100.4°F. Also call for: severe vomiting (can\'t keep fluids down), Taxol infusion reaction, severe neuropathy (new numbness affecting walking), or severe bone pain not controlled with prescribed medications.' },
+      { question: 'When should I call the oncology team?', answer: 'For fever ≥100.4°F during nadir — go to the ER immediately, do not wait for a callback. Call the team for: severe vomiting (can\'t keep fluids down), Taxol infusion reaction, severe neuropathy (new numbness affecting walking), or severe bone pain not controlled with prescribed medications.' },
     ],
   },
   {
@@ -210,11 +210,11 @@ export const treatments: Treatment[] = [
     ],
     criticalDays: [
       { day: 1, label: 'Infusion Day', watchFor: ['Taxol reaction (back pain, chest tightness)', 'Carboplatin reaction in later cycles'], whenToCall: 'Any reaction during infusion.' },
-      { day: 12, label: 'Nadir', watchFor: ['Fever', 'Chills', 'Unusual fatigue'], whenToCall: 'Fever over 100.4°F.' },
+      { day: 12, label: 'Nadir', watchFor: ['Fever', 'Chills', 'Unusual fatigue'], whenToCall: 'Fever ≥100.4°F — go to the ER immediately, do not wait for a callback.' },
     ],
     faqs: [
       { question: 'When does carboplatin allergy risk increase?', answer: 'Carboplatin allergy (hypersensitivity) becomes more likely after exposure — typically risk rises from cycle 6 or 7 onward. Your team will premedicate with antihistamines and steroids and monitor closely. Report any flushing, itching, back pain, or difficulty breathing during infusion.' },
-      { question: 'When should I call the oncology team?', answer: 'Call for: fever over 100.4°F, any reaction during infusion, worsening neuropathy (new numbness affecting hands/feet function), or inability to keep fluids down for 24 hours.' },
+      { question: 'When should I call the oncology team?', answer: 'For fever ≥100.4°F during nadir — go to the ER immediately, do not wait for a callback. Call the team for: any reaction during infusion, worsening neuropathy (new numbness affecting hands/feet function), or inability to keep fluids down for 24 hours.' },
     ],
   },
   {
@@ -235,11 +235,11 @@ export const treatments: Treatment[] = [
     criticalDays: [
       { day: 1, label: 'Cisplatin Day (with heavy hydration)', watchFor: ['Nausea', 'Reaction'], whenToCall: 'Any severe reaction during infusion.' },
       { day: 3, label: 'Delayed Nausea', watchFor: ['Vomiting', 'Inability to eat or drink'], whenToCall: 'Unable to keep fluids down — risk of dehydration and kidney stress.' },
-      { day: 12, label: 'Nadir', watchFor: ['Fever', 'Signs of infection'], whenToCall: 'Fever over 100.4°F.' },
+      { day: 12, label: 'Nadir', watchFor: ['Fever', 'Signs of infection'], whenToCall: 'Fever ≥100.4°F — go to the ER immediately, do not wait for a callback.' },
     ],
     faqs: [
       { question: 'Why is hydration so important with cisplatin?', answer: 'Cisplatin is processed through the kidneys and can cause permanent kidney damage without adequate hydration. You\'ll receive IV fluids during treatment. At home, drinking 2+ liters of water daily is important, especially the first few days after infusion.' },
-      { question: 'When should I call the oncology team?', answer: 'Call for: fever over 100.4°F, severe vomiting (can\'t keep any fluids down for 12 hours), ringing in ears or hearing changes, reduced urination, or any severe symptoms.' },
+      { question: 'When should I call the oncology team?', answer: 'For fever ≥100.4°F during nadir — go to the ER immediately, do not wait for a callback. Call the team for: severe vomiting (can\'t keep any fluids down for 12 hours), ringing in ears or hearing changes, reduced urination, or any severe symptoms.' },
     ],
   },
   {
@@ -259,12 +259,12 @@ export const treatments: Treatment[] = [
       { name: 'Fertility effects', timing: 'during treatment', severity: 'severe', tip: 'BEACOPP carries a higher risk of infertility than ABVD. Discuss fertility preservation with your team before starting if relevant.' },
     ],
     criticalDays: [
-      { day: 7, label: 'Nadir Approaching', watchFor: ['Rising temperature', 'Fatigue increase'], whenToCall: 'Any fever over 100.4°F — go to the ER.' },
-      { day: 10, label: 'Nadir', watchFor: ['Fever', 'Infection', 'Bleeding'], whenToCall: 'Fever over 100.4°F is a medical emergency.' },
+      { day: 7, label: 'Nadir Approaching', watchFor: ['Rising temperature', 'Fatigue increase'], whenToCall: 'Any fever ≥100.4°F — go to the ER immediately, do not wait for a callback.' },
+      { day: 10, label: 'Nadir', watchFor: ['Fever', 'Infection', 'Bleeding'], whenToCall: 'Fever ≥100.4°F — go to the ER immediately, do not wait for a callback. Neutropenic fever is a medical emergency.' },
     ],
     faqs: [
       { question: 'Why is BEACOPP used instead of ABVD for some patients?', answer: 'BEACOPP has a higher cure rate for advanced-stage Hodgkin lymphoma, but with more severe side effects. Oncologists weigh the benefit of better cancer control against the higher toxicity for each patient.' },
-      { question: 'When should I call the oncology team?', answer: 'Call for: fever over 100.4°F (go to ER), any new shortness of breath, severe vomiting, or unusual bleeding.' },
+      { question: 'When should I call the oncology team?', answer: 'For fever ≥100.4°F — go to the ER immediately, do not wait for a callback. Call the team for: any new shortness of breath, severe vomiting, or unusual bleeding.' },
     ],
   },
   {
@@ -283,11 +283,11 @@ export const treatments: Treatment[] = [
       { name: 'Hair thinning', timing: 'weeks 3–4 of treatment', severity: 'mild', tip: 'Hair thinning (not usually complete loss) is common. Hair returns to normal after treatment.' },
     ],
     criticalDays: [
-      { day: 10, label: 'Nadir', watchFor: ['Fever', 'Signs of infection'], whenToCall: 'Fever over 100.4°F.' },
+      { day: 10, label: 'Nadir', watchFor: ['Fever', 'Signs of infection'], whenToCall: 'Fever ≥100.4°F — go to the ER immediately, do not wait for a callback.' },
     ],
     faqs: [
       { question: 'Is CMF easier than other breast cancer regimens?', answer: 'Generally yes — CMF has a milder side effect profile than AC or AC-T, particularly for nausea and hair loss. It is often chosen for patients who are older, have other health conditions, or when the benefit of more intensive treatment doesn\'t outweigh the risks.' },
-      { question: 'When should I call the oncology team?', answer: 'Call for: fever over 100.4°F, severe mouth sores making eating impossible, blood in urine (bladder irritation from cyclophosphamide), or any unexpected symptoms.' },
+      { question: 'When should I call the oncology team?', answer: 'For fever ≥100.4°F during nadir — go to the ER immediately, do not wait for a callback. Call the team for: severe mouth sores making eating impossible, blood in urine (bladder irritation from cyclophosphamide), or any unexpected symptoms.' },
     ],
   },
 ];
