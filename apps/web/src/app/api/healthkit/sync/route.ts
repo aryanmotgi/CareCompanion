@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { medications, labResults, appointments, careProfiles, conditions, allergies, procedures, immunizations } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import type { HealthKitRecord } from '@carecompanion/types'
+import { fhirEncounterToAppointment } from '@carecompanion/utils'
 import { logAudit } from '@/lib/audit'
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
 
   let synced = 0
   let errors = 0
-  const counts = { medications: 0, labResults: 0, appointments: 0, conditions: 0, allergies: 0, procedures: 0, immunizations: 0, skipped: 0 }
+  const counts = { medications: 0, labResults: 0, appointments: 0, encounters: 0, conditions: 0, allergies: 0, procedures: 0, immunizations: 0, skipped: 0 }
 
   for (const record of records) {
     // Guard: skip records with no FHIR ID — NULL healthkitFhirId bypasses unique dedup
@@ -225,6 +226,28 @@ export async function POST(req: Request) {
       } catch (err) {
         errors++
         console.error('[healthkit/sync] insert failed for immunization record:', err instanceof Error ? err.message : err)
+      }
+    } else if (record.type === 'encounter') {
+      try {
+        const appt = fhirEncounterToAppointment(record as Record<string, unknown>)
+        await db.insert(appointments)
+          .values({
+            careProfileId: careProfile.id,
+            doctorName: appt.doctorName,
+            specialty: appt.specialty,
+            dateTime: appt.dateTime ? new Date(appt.dateTime) : null,
+            location: appt.location,
+            healthkitFhirId: appt.healthkitFhirId,
+          })
+          .onConflictDoUpdate({
+            target: appointments.healthkitFhirId,
+            set: { dateTime: appt.dateTime ? new Date(appt.dateTime) : null, location: appt.location },
+          })
+        counts.encounters++
+        synced++
+      } catch (err) {
+        errors++
+        console.error('[healthkit/sync] insert failed for encounter record:', err instanceof Error ? err.message : err)
       }
     }
   }
