@@ -172,19 +172,19 @@ export async function POST(req: NextRequest) {
   if (parsed.pain >= 7) {
     alerts.push({
       title: 'High Pain Alert',
-      body: `${profile.patientName ?? 'Patient'} reported pain level ${parsed.pain}/10.`,
+      body: `A high pain level has been reported. Tap to check in with your care team.`,
     });
   }
   if (parsed.mood === 1) {
     alerts.push({
       title: 'Low Mood Alert',
-      body: `${profile.patientName ?? 'Patient'} reported very low mood (1/5).`,
+      body: `A very low mood has been reported. Consider reaching out.`,
     });
   }
   if (parsed.energy === 'low' && parsed.pain >= 5) {
     alerts.push({
       title: 'Low Energy + Pain Alert',
-      body: `${profile.patientName ?? 'Patient'} reported low energy with pain level ${parsed.pain}/10.`,
+      body: `Low energy and elevated pain have been reported. Tap to check in.`,
     });
   }
 

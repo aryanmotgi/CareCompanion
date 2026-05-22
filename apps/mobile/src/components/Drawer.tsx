@@ -126,7 +126,12 @@ export function Drawer({ visible, onClose, userName, userRole }: DrawerProps) {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}>
       <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close menu"
+        />
       </Animated.View>
 
       <Animated.View
@@ -248,6 +253,8 @@ export function Drawer({ visible, onClose, userName, userRole }: DrawerProps) {
           <Pressable
             onPress={confirmSignOut}
             disabled={signingOut}
+            accessibilityRole="button"
+            accessibilityLabel="Sign out"
             style={({ pressed }) => [
               styles.signOutBtn,
               {
@@ -288,6 +295,8 @@ function DrawerItem({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="menuitem"
+      accessibilityLabel={label}
       style={({ pressed }) => [
         styles.item,
         { opacity: pressed ? 0.6 : 1 },

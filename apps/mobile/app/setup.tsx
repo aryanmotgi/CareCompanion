@@ -35,6 +35,7 @@ import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useProfile } from '../src/context/ProfileContext'
 import { fetchHealthKitBaseline } from '../src/services/healthkit'
+import { requestPermissions } from '../src/services/notifications'
 import { useUserTypeContext } from './_layout'
 import { OnboardingStepIndicator } from '../src/components/OnboardingStepIndicator'
 
@@ -438,7 +439,7 @@ export default function SetupScreen() {
         }
         await refetch()
       } catch (e) {
-        console.error('[Setup] Error:', e)
+        console.error('[Setup] patch error')
       } finally {
         setSaving(false)
       }
@@ -470,8 +471,11 @@ export default function SetupScreen() {
             return
           }
           await refetch()
+          try {
+            await requestPermissions()
+          } catch {}
         } catch (e) {
-          console.error('[Setup] onboarding/complete failed:', e)
+          console.error('[Setup] onboarding/complete failed')
           Alert.alert(
             "Couldn't finish setup",
             "We couldn't reach the server. Check your connection and try again.",

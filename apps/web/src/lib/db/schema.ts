@@ -867,6 +867,16 @@ export const cronState = pgTable('cron_state', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })
 
+// ── App Version Config (migration 022) ───────────────────────────────────────
+// Key/value store for mobile force-update + kill-switch gating.
+// Keys: min_ios_build, min_android_build, latest_build, kill_switch, kill_reason, message
+// Env vars (APP_MIN_IOS_BUILD, etc.) override these values when set.
+export const appVersionConfig = pgTable('app_version_config', {
+  key:       text('key').primaryKey(),
+  value:     text('value').notNull().default(''),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 // ── Medication Observations (migration 016) ────────────────────────────────────
 // Caregiver-reported dose events. Neither source overwrites the other — both
 // the EHR prescription (medications.dose) and the caregiver report persist.

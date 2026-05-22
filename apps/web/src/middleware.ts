@@ -19,6 +19,7 @@ const PUBLIC_PATHS = [
   '/api/chat/guest', // Guest chat API
   '/api/e2e',        // E2E production monitor auth (gated by E2E_AUTH_SECRET, not session)
   '/api/health',     // Health check — no session required; route gates detail behind CRON_SECRET
+  '/api/version',    // Mobile force-update / kill-switch — called at launch before login
   '/about',
   '/privacy',
   '/terms',

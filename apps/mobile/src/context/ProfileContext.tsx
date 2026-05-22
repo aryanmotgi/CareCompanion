@@ -92,7 +92,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       // sources of truth can't drift after sign-in on a fresh device.
       const role = (profileData as { role?: string } | null)?.role
       if (role === 'patient' || role === 'caregiver' || role === 'self') {
-        await AsyncStorage.setItem('cc-user-type', role).catch(() => {})
+        await SecureStore.setItemAsync('cc-user-type', role, {
+          keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+        }).catch(() => {})
       }
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to load profile')

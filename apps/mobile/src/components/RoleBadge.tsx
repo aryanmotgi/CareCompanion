@@ -7,7 +7,7 @@
  */
 import React, { useEffect, useState } from 'react'
 import { Text, StyleSheet, View } from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import * as SecureStore from 'expo-secure-store'
 
 type UserType = 'patient' | 'caregiver' | 'self'
 
@@ -27,7 +27,7 @@ export function RoleBadge({ refreshKey, style }: Props) {
 
   useEffect(() => {
     let cancelled = false
-    AsyncStorage.getItem('cc-user-type')
+    SecureStore.getItemAsync('cc-user-type')
       .then((v) => {
         if (cancelled) return
         if (v === 'patient' || v === 'caregiver' || v === 'self') setRole(v)

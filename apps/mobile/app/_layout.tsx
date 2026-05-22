@@ -2,6 +2,13 @@
 import { initSentry } from '../src/lib/sentry'
 import { initAnalytics } from '../src/lib/analytics'
 import { useEffect, useState, useCallback, useRef, createContext, useContext } from 'react'
+import { PHIPrivacyGuard } from '../src/components/PHIPrivacyGuard'
+import { JailbreakWarning } from '../src/components/JailbreakWarning'
+import { OfflineBanner } from '../src/components/OfflineBanner'
+import { useJailbreakCheck } from '../src/hooks/useJailbreakCheck'
+import { useVersionCheck } from '../src/hooks/useVersionCheck'
+import { UpdateScreen } from '../src/components/UpdateScreen'
+import { MaintenanceScreen } from '../src/components/MaintenanceScreen'
 
 initSentry()
 import { Stack, Redirect, useSegments, useRouter } from 'expo-router'
@@ -18,6 +25,7 @@ import { ProfileProvider, useProfile } from '../src/context/ProfileContext'
 import { refreshTokenIfNeeded } from '../src/services/token-refresh'
 import {
   registerNotificationCategories,
+  setupAndroidChannels,
   onNotificationResponse,
   scheduleDailyCheckin,
   getLastNotificationResponse,
@@ -36,6 +44,11 @@ import {
   drainWellnessRetryQueue,
 } from '../src/services/wellnessVitals'
 import { WELCOME_SEEN_KEY } from './welcome'
+import { migratePhiToSecureStore } from '../scripts/migrate-to-secure-store'
+
+const SECURE_OPTS: SecureStore.SecureStoreOptions = {
+  keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+}
 
 // Module-load: declare the JS handler the OS will invoke when iOS wakes us up.
 // Must run before any RootLayout render — TaskManager requires the task to be
@@ -218,7 +231,8 @@ function UserTypeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (Platform.OS === 'web') return
     let cancelled = false
-    AsyncStorage.getItem(USER_TYPE_KEY)
+    migratePhiToSecureStore()
+      .then(() => SecureStore.getItemAsync(USER_TYPE_KEY))
       .then((v) => {
         if (cancelled) return
         if (v === 'patient' || v === 'caregiver' || v === 'self') setState(v as UserType)
@@ -230,12 +244,12 @@ function UserTypeProvider({ children }: { children: React.ReactNode }) {
 
   const setUserType = useCallback((t: UserType) => {
     setState(t)
-    AsyncStorage.setItem(USER_TYPE_KEY, t).catch(() => {})
+    SecureStore.setItemAsync(USER_TYPE_KEY, t, SECURE_OPTS).catch(() => {})
   }, [])
 
   const reset = useCallback(() => {
     setState('unset')
-    AsyncStorage.removeItem(USER_TYPE_KEY).catch(() => {})
+    SecureStore.deleteItemAsync(USER_TYPE_KEY).catch(() => {})
   }, [])
 
   return (
@@ -538,6 +552,12 @@ export default function RootLayout() {
   const router = useRouter()
   const [bugReportVisible, setBugReportVisible] = useState(false)
   const currentScreen = segments.join('/')
+  const isJailbroken = useJailbreakCheck()
+  const [jailbreakDismissed, setJailbreakDismissed] = useState(false)
+  const version = useVersionCheck()
+
+  if (version.killSwitch) return <MaintenanceScreen reason={version.killReason} />
+  if (version.forceUpdate) return <UpdateScreen />
 
   // Deep-link a notification response to the right screen based on
   // `data.kind`. Two kind vocabularies share this dispatcher:
@@ -614,6 +634,7 @@ export default function RootLayout() {
   useEffect(() => {
     void (async () => {
       try {
+        await setupAndroidChannels()
         await registerNotificationCategories()
         // Schedule the 8pm check-in if the user has already granted permission.
         // scheduleDailyCheckin no-ops when permission is missing — so first-run
@@ -700,48 +721,55 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider style={{ backgroundColor: theme.bg }}>
-      <ThemedStatusBar />
-      <TestModeBanner />
-      <WelcomeProvider>
-        <TokenProvider>
-          <RecordsProvider>
-            <UserTypeProvider>
-              <CaregiverJoinedProvider>
-                <AuthGate>
-                  <ProfileProvider>
-                    <OnboardingGate>
-                      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }}>
-                        {/* Logged-in tabs root: block iOS swipe-back to /welcome.
-                            Exit only via explicit Sign out. */}
-                        <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
-                        <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
-                        {/* Onboarding lane — swipe-back would let the user
-                            escape AuthGate/OnboardingGate guards and end up
-                            on an inconsistent route. Disable the gesture so
-                            every back step is a deliberate button press. */}
-                        <Stack.Screen name="care-type" options={{ gestureEnabled: false }} />
-                        <Stack.Screen name="onboarding-records" options={{ gestureEnabled: false }} />
-                        <Stack.Screen name="health-consent" options={{ gestureEnabled: false }} />
-                        <Stack.Screen name="health-connect" options={{ gestureEnabled: false }} />
-                        <Stack.Screen name="care-group-join" options={{ gestureEnabled: false }} />
-                        <Stack.Screen name="care-relationship" options={{ gestureEnabled: false }} />
-                        <Stack.Screen name="setup" options={{ gestureEnabled: false }} />
-                        <Stack.Screen name="share-invite" options={{ gestureEnabled: false }} />
-                      </Stack>
-                    </OnboardingGate>
-                  </ProfileProvider>
-                </AuthGate>
-              </CaregiverJoinedProvider>
-            </UserTypeProvider>
-          </RecordsProvider>
-        </TokenProvider>
-      </WelcomeProvider>
-      <BugReportSheet
-        visible={bugReportVisible}
-        currentScreen={currentScreen}
-        onClose={() => setBugReportVisible(false)}
-      />
-      <DisclaimerModal />
+      <PHIPrivacyGuard>
+        <ThemedStatusBar />
+        <OfflineBanner />
+        <TestModeBanner />
+        <WelcomeProvider>
+          <TokenProvider>
+            <RecordsProvider>
+              <UserTypeProvider>
+                <CaregiverJoinedProvider>
+                  <AuthGate>
+                    <ProfileProvider>
+                      <OnboardingGate>
+                        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }}>
+                          {/* Logged-in tabs root: block iOS swipe-back to /welcome.
+                              Exit only via explicit Sign out. */}
+                          <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
+                          <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
+                          {/* Onboarding lane — swipe-back would let the user
+                              escape AuthGate/OnboardingGate guards and end up
+                              on an inconsistent route. Disable the gesture so
+                              every back step is a deliberate button press. */}
+                          <Stack.Screen name="care-type" options={{ gestureEnabled: false }} />
+                          <Stack.Screen name="onboarding-records" options={{ gestureEnabled: false }} />
+                          <Stack.Screen name="health-consent" options={{ gestureEnabled: false }} />
+                          <Stack.Screen name="health-connect" options={{ gestureEnabled: false }} />
+                          <Stack.Screen name="care-group-join" options={{ gestureEnabled: false }} />
+                          <Stack.Screen name="care-relationship" options={{ gestureEnabled: false }} />
+                          <Stack.Screen name="setup" options={{ gestureEnabled: false }} />
+                          <Stack.Screen name="share-invite" options={{ gestureEnabled: false }} />
+                        </Stack>
+                      </OnboardingGate>
+                    </ProfileProvider>
+                  </AuthGate>
+                </CaregiverJoinedProvider>
+              </UserTypeProvider>
+            </RecordsProvider>
+          </TokenProvider>
+        </WelcomeProvider>
+        <BugReportSheet
+          visible={bugReportVisible}
+          currentScreen={currentScreen}
+          onClose={() => setBugReportVisible(false)}
+        />
+        <DisclaimerModal />
+        <JailbreakWarning
+          visible={isJailbroken && !jailbreakDismissed}
+          onDismiss={() => setJailbreakDismissed(true)}
+        />
+      </PHIPrivacyGuard>
     </SafeAreaProvider>
   )
 }

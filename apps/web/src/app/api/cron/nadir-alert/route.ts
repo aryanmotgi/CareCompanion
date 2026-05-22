@@ -119,8 +119,7 @@ export async function GET(req: Request) {
           subsByUser.set(sub.userId, arr);
         }
 
-        const patientLabel = cycle.patientName?.trim() || 'Your loved one';
-        const title = `⚠️ ${patientLabel} enters nadir week today`;
+        const title = `⚠️ Nadir week begins today`;
         const body = `Immune system at lowest point. Fever over 100.4°F means ER immediately.`;
 
         for (const userId of recipientIds) {

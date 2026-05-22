@@ -71,7 +71,7 @@ export async function signOut(): Promise<void> {
   // wiping it sends them back to the marketing flow on next launch.
   await Promise.all([
     AsyncStorage.removeItem('cc-welcome-seen'),
-    AsyncStorage.removeItem('cc-user-type'),
+    SecureStore.deleteItemAsync('cc-user-type'),
     AsyncStorage.removeItem('cc-caregiver-joined'),
     AsyncStorage.removeItem('cc-records-onboarded'),
     AsyncStorage.removeItem('cc-setup-skipped'),

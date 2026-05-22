@@ -12,6 +12,7 @@ import {
   RefreshControl,
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import * as SecureStore from 'expo-secure-store'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -222,7 +223,7 @@ export default function HomeScreen() {
 
   const [localDisplayName, setLocalDisplayName] = useState<string | null>(null)
   useEffect(() => {
-    AsyncStorage.getItem('cc-display-name')
+    SecureStore.getItemAsync('cc-display-name')
       .then((v) => { if (v) setLocalDisplayName(v) })
       .catch(() => {})
   }, [])
@@ -383,8 +384,8 @@ export default function HomeScreen() {
 
       try {
         await syncHealthKitData()
-      } catch (err) {
-        console.error(err)
+      } catch {
+        console.error('[Home] healthkit sync failed')
         return
       }
 

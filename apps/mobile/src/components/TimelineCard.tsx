@@ -106,7 +106,14 @@ function TimelineCard({ item, onTakeMedication }: TimelineCardProps) {
   }))
 
   return (
-    <Pressable onPress={handlePress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
+    <Pressable
+      onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.title} timeline card`}
+      accessibilityHint="Toggles detail view"
+    >
       <Animated.View
         style={[
           styles.card,
@@ -165,6 +172,8 @@ function TimelineCard({ item, onTakeMedication }: TimelineCardProps) {
                   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
                   onTakeMedication?.(item)
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Mark medication as taken"
               >
                 <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
                 <Text style={styles.actionButtonText}>Take</Text>
@@ -218,7 +227,11 @@ function TimelineCard({ item, onTakeMedication }: TimelineCardProps) {
                   </Text>
                 </View>
               ) : null}
-              <Pressable style={[styles.actionButton, { backgroundColor: theme.amber }]}>
+              <Pressable
+                style={[styles.actionButton, { backgroundColor: theme.amber }]}
+                accessibilityRole="button"
+                accessibilityLabel="Request prescription refill"
+              >
                 <Ionicons name="reload-outline" size={16} color="#000" />
                 <Text style={[styles.actionButtonText, { color: '#000' }]}>Request Refill</Text>
               </Pressable>

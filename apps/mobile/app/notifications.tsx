@@ -78,6 +78,7 @@ export default function NotificationsScreen() {
           },
         })
         if (!res.ok) {
+          setError(true)
           setLoading(false)
           return
         }

@@ -191,7 +191,7 @@ export function OnboardingShell({
   }, [state.careProfileId]);
 
   // Onboarding completion: clear draft, fire analytics, refresh JWT, redirect
-  const { update: updateSession } = useSession();
+  const { data: session, update: updateSession } = useSession();
   const onboardingStart = useRef<number>(Date.now());
   useEffect(() => {
     if (state.phase.kind !== 'complete') return;
@@ -333,6 +333,7 @@ export function OnboardingShell({
           careProfileId={state.careProfileId}
           userRole={state.role}
           careGroupId={state.careGroupId ?? undefined}
+          isAppReview={session?.user?.email === 'appreview@carecompanionai.org'}
           onComplete={() => dispatch({ type: 'COMPLETE_WIZARD' })}
         />
       )}

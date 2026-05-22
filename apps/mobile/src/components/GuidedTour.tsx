@@ -238,10 +238,22 @@ export function GuidedTour() {
 
         {/* Buttons */}
         <View style={styles.btns} pointerEvents="box-none">
-          <Pressable onPress={handleSkip} style={styles.skipBtn} hitSlop={8}>
+          <Pressable
+            onPress={handleSkip}
+            style={styles.skipBtn}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Skip guided tour"
+          >
             <Text style={[styles.skipText, { color: theme.textMuted }]}>Skip</Text>
           </Pressable>
-          <Pressable onPress={handleNext} style={[styles.nextBtn, { backgroundColor: theme.accent }]} hitSlop={8}>
+          <Pressable
+            onPress={handleNext}
+            style={[styles.nextBtn, { backgroundColor: theme.accent }]}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={isLast ? 'Finish tour' : 'Next tour step'}
+          >
             <Text style={styles.nextText}>{isLast ? 'Done ✓' : 'Next →'}</Text>
           </Pressable>
         </View>

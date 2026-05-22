@@ -27,7 +27,6 @@ import {
   pushSubscriptions,
   careTeamActivityLog,
   treatmentCycles,
-  users,
 } from '@/lib/db/schema';
 import { eq, and, gte, lt, sql, desc, inArray, isNull, or } from 'drizzle-orm';
 import { sendPushNotification } from '@/lib/push';
@@ -451,10 +450,8 @@ COMPUTED TRENDS:
         }
       }
 
-      // Build notifications with specific values + cycle context
+      // Build notifications
       const pendingNotifications: NotificationPayload[] = [];
-      const patientName = profile.patientName || 'Your patient';
-      const cycleTag = cycle ? ` Day ${cycleDay}/Cycle ${cycle.cycleNumber}` : '';
 
       // Pain trending up — specific values
       if (recentAvgPain - priorAvgPain >= 1.5 && recentAvgPain >= 5) {
@@ -462,8 +459,8 @@ COMPUTED TRENDS:
           userId: profile.userId,
           careProfileId: profile.id,
           category: 'clinical',
-          title: truncate(`${patientName}: pain ${recentAvgPain.toFixed(1)}/10 avg (↑ 3 days)`, 120),
-          body: truncate(`Pain averaged ${recentAvgPain.toFixed(1)}/10 last 3 days, up from ${priorAvgPain.toFixed(1)}/10.${cycleTag ? ' ' + cycleTag + '.' : ''} Reach out to the care team.`, 120),
+          title: truncate(`Pain trending up — check in with your care team`, 120),
+          body: truncate(`Pain levels have been rising over the last few days. Tap to review and reach out to the care team.`, 120),
         });
       }
 
@@ -473,7 +470,7 @@ COMPUTED TRENDS:
           userId: profile.userId,
           careProfileId: profile.id,
           category: 'clinical',
-          title: truncate(`Nadir window — Day ${cycleDay} of Cycle ${cycle.cycleNumber}`, 120),
+          title: truncate(`Nadir window active — blood counts at their lowest`, 120),
           body: truncate(`Blood counts at lowest. Fever >38°C = ER. Talk to care team if anything feels off.`, 120),
         });
       }
@@ -503,8 +500,8 @@ COMPUTED TRENDS:
           userId: profile.userId,
           careProfileId: profile.id,
           category: 'clinical',
-          title: truncate(`Medication adherence: ${adherenceRate}% this week`, 120),
-          body: truncate(`${takenReminders} of ${totalReminders} doses taken. If something's making it hard, the care team can help.`, 120),
+          title: truncate(`Medication check-in: your care routine needs attention`, 120),
+          body: truncate(`Medication adherence has been lower this week. Tap to review and connect with the care team.`, 120),
         });
       }
 
@@ -514,22 +511,20 @@ COMPUTED TRENDS:
           userId: profile.userId,
           careProfileId: profile.id,
           category: 'emotional',
-          title: truncate(`${patientName}'s mood is looking brighter`, 120),
-          body: truncate(`Mood up to ${recentAvgMood.toFixed(1)}/5 from ${priorAvgMood.toFixed(1)}/5 earlier this week. Whatever's working, keep it up.`, 120),
+          title: truncate(`Mood improving — great progress this week`, 120),
+          body: truncate(`Things are looking up this week. Tap to see the latest check-in summary.`, 120),
         });
       }
 
       // Caregiver awareness + burnout notifications
       for (const member of teamMembers) {
         if (!recentActivitySet.has(`${member.userId}:${profile.id}`)) {
-          const avgPainStr = (checkins.reduce((s, c) => s + c.pain, 0) / checkins.length).toFixed(1);
-          const avgMoodStr = (checkins.reduce((s, c) => s + c.mood, 0) / checkins.length).toFixed(1);
           pendingNotifications.push({
             userId: member.userId,
             careProfileId: profile.id,
             category: 'caregiver_awareness',
-            title: truncate(`${patientName}'s weekly snapshot`, 120),
-            body: truncate(`${checkins.length} check-ins, avg pain ${avgPainStr}/10, mood ${avgMoodStr}/5.${cycleTag}`, 120),
+            title: truncate(`Weekly care snapshot ready`, 120),
+            body: truncate(`This week's check-in summary is ready. Tap to review.`, 120),
           });
         }
 
@@ -648,22 +643,13 @@ COMPUTED TRENDS:
 
         if (activityDays.length < 30) continue;
 
-        const [caregiverUser] = await db
-          .select({ displayName: users.displayName, email: users.email })
-          .from(users)
-          .where(eq(users.id, member.userId))
-          .limit(1)
-          .catch(() => []);
-
-        const caregiverName = caregiverUser?.displayName || caregiverUser?.email || 'Your caregiver';
-
         const patientSubs = (pushSubsByUser.get(profile.userId) || []).slice(0, 3);
         for (const sub of patientSubs) {
           sendPushNotification(
             { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
             {
-              title: `${caregiverName} has been checking in every day`,
-              body: `${caregiverName} has been checking in on you every day for a month. Want to send them a note?`,
+              title: `Your care team has been showing up for you`,
+              body: `Someone on your care team has been checking in every day for a month. Want to send them a note?`,
               url: '/care-team',
             },
           ).catch(() => { /* expired subscription */ });

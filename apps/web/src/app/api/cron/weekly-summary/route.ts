@@ -223,7 +223,7 @@ Keep it to 3 paragraphs max. Warm, real, human.`,
           { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
           {
             title: 'Weekly update ready to share',
-            body: `This week's update for ${profile.patientName || 'your loved one'} is ready. Tap to preview and share with family.`,
+            body: `Your weekly care update is ready. Tap to preview and share with family.`,
             url: shareUrl,
           },
         ).catch(() => { /* expired subscriptions are fine */ });

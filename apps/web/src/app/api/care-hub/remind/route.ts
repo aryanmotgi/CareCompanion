@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   const { user, error } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { careProfileId, patientFirstName } = await req.json()
+  const { careProfileId } = await req.json()
   if (!careProfileId) {
     return NextResponse.json({ error: 'careProfileId required' }, { status: 400 })
   }
@@ -49,14 +49,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ sent: 0, message: 'No push subscriptions for this patient' })
   }
 
-  const name = patientFirstName?.trim() || 'you'
   const results = await Promise.allSettled(
     subs.map((sub) =>
       sendPushNotification(
         { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
         {
           title: 'Check-in reminder 💙',
-          body: `Your care team is thinking of ${name}. How are you feeling today?`,
+          body: `Your care team is thinking of you. How are you feeling today?`,
           url: '/check-in',
         },
       ),

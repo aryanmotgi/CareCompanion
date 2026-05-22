@@ -76,6 +76,44 @@ export const DOSE_REMINDER_KIND = 'dose-reminder'
 export const APPOINTMENT_REMINDER_KIND = 'appointment-reminder'
 export const DAILY_CHECKIN_KIND = 'daily-checkin'
 
+/**
+ * Android 8+ requires notification channels to control sound/importance per
+ * category. Idempotent — safe to call every launch. iOS no-ops.
+ */
+export async function setupAndroidChannels(): Promise<void> {
+  const Notifications = getModule() as any
+  if (!Notifications?.setNotificationChannelAsync) return
+  try {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'CareCompanion Alerts',
+      importance: Notifications.AndroidImportance?.HIGH ?? 4,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#A78BFA',
+      sound: 'default',
+      enableVibrate: true,
+    })
+    await Notifications.setNotificationChannelAsync('urgent', {
+      name: 'Urgent Health Alerts',
+      importance: Notifications.AndroidImportance?.MAX ?? 5,
+      vibrationPattern: [0, 500, 200, 500],
+      lightColor: '#DC2626',
+      sound: 'default',
+      enableVibrate: true,
+      bypassDnd: true,
+    })
+    await Notifications.setNotificationChannelAsync('medications', {
+      name: 'Medication Reminders',
+      importance: Notifications.AndroidImportance?.HIGH ?? 4,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#A78BFA',
+      sound: 'default',
+      enableVibrate: true,
+    })
+  } catch {
+    // best-effort
+  }
+}
+
 export async function registerNotificationCategories(): Promise<void> {
   const Notifications = getModule()
   if (!Notifications) return

@@ -165,6 +165,21 @@ interface NativeWellnessVitals {
 const Bridge: NativeWellnessVitals | null =
   Platform.OS === 'ios' ? (NativeModules.WellnessVitals ?? null) : null
 
+/**
+ * Request HealthKit authorization for wellness types (steps, heart rate, sleep).
+ * Must be called before fetchDailyVitals returns real data. Apple does not
+ * expose denial status for quantity types, so any non-throw is treated as
+ * "user went through the dialog".
+ */
+export async function requestWellnessPermissions(): Promise<boolean> {
+  if (!Bridge) return false
+  try {
+    return await Bridge.requestAuthorization()
+  } catch {
+    return false
+  }
+}
+
 /** Fetch today's wellness snapshot from HealthKit (no network). */
 async function readWellnessToday(): Promise<WellnessSnapshot | null> {
   if (!Bridge) return null
