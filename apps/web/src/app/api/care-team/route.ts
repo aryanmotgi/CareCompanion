@@ -1,6 +1,6 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { db } from '@/lib/db';
-import { careTeamMembers, careTeamInvites, careTeamActivity, users } from '@/lib/db/schema';
+import { careTeamMembers, careTeamInvites, careTeamActivity, users, careProfiles } from '@/lib/db/schema';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
 // GET — list team members and pending invites for the user's care profile
@@ -16,7 +16,30 @@ export async function GET() {
     .limit(1);
 
   if (!membership) {
-    return Response.json({ members: [], invites: [], activity: [], role: null });
+    // User may own a care profile without a careTeamMembers row — treat them as owner
+    const [ownedProfile] = await db
+      .select({ id: careProfiles.id })
+      .from(careProfiles)
+      .where(eq(careProfiles.userId, dbUser.id))
+      .limit(1);
+
+    if (!ownedProfile) {
+      return Response.json({ members: [], invites: [], activity: [], role: null });
+    }
+
+    const profileId = ownedProfile.id;
+    const [invites, activity] = await Promise.all([
+      db.select().from(careTeamInvites)
+        .where(and(eq(careTeamInvites.careProfileId, profileId), eq(careTeamInvites.status, 'pending')))
+        .orderBy(desc(careTeamInvites.createdAt))
+        .catch(() => []),
+      db.select().from(careTeamActivity)
+        .where(eq(careTeamActivity.careProfileId, profileId))
+        .orderBy(desc(careTeamActivity.createdAt))
+        .limit(20)
+        .catch(() => []),
+    ]);
+    return Response.json({ members: [], invites, activity, role: 'owner', care_profile_id: profileId });
   }
 
   const profileId = membership.careProfileId;

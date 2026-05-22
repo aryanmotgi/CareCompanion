@@ -452,7 +452,7 @@ export function DashboardView({
               { text: `Ask your doctor what lifestyle changes (diet, exercise, sleep) could help bring this number into range.` },
               { text: `If you're on medication for this, ask whether your dosage needs adjusting based on this result.` },
             ]}
-            chatPrompt={`Explain my ${lab.testName} result of ${lab.value} ${lab.unit} — it's above the normal range of ${lab.referenceRange}. What should I do?`}
+            chatPrompt={`Explain my ${lab.testName} result of ${lab.value} ${lab.unit} — it's ${labDirection.toLowerCase()} the normal range of ${lab.referenceRange}. What should I do?`}
           />
         ),
       })
@@ -1013,9 +1013,18 @@ export function DashboardView({
               <div className="flex gap-2 mt-3">
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(window.location.origin + weeklyUpdate.shareUrl)
-                      .then(() => { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000) })
-                      .catch(() => {})
+                    const url = window.location.origin + weeklyUpdate.shareUrl
+                    const copy = () => { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000) }
+                    navigator.clipboard?.writeText(url).then(copy).catch(() => {
+                      const ta = document.createElement('textarea')
+                      ta.value = url
+                      ta.style.cssText = 'position:fixed;top:-999px;left:-999px'
+                      document.body.appendChild(ta)
+                      ta.focus()
+                      ta.select()
+                      try { document.execCommand('copy'); copy() } catch {}
+                      document.body.removeChild(ta)
+                    })
                   }}
                   className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#6366F1] hover:bg-[#4F46E5] text-xs font-semibold text-white transition-colors"
                 >

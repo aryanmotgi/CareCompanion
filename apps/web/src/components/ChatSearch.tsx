@@ -19,11 +19,29 @@ interface ChatSearchProps {
   onScrollToMessage: (messageId: string) => void;
 }
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/!\[.*?\]\(.*?\)/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/`{3}[\s\S]*?`{3}/g, '')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/#{1,6}\s+/g, '')
+    .replace(/\*{1,2}([^*]+)\*{1,2}/g, '$1')
+    .replace(/_{1,2}([^_]+)_{1,2}/g, '$1')
+    .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/^[\-*+]\s+/gm, '')
+    .replace(/^\d+\.\s+/gm, '')
+    .replace(/^>\s+/gm, '')
+    .replace(/\n{2,}/g, ' ')
+    .replace(/\n/g, ' ')
+    .trim()
+}
+
 function extractText(message: UIMessage): string {
   const textParts = message.parts?.filter(
     (p): p is { type: 'text'; text: string } => p.type === 'text'
   ) || [];
-  return textParts.map((p) => p.text).join('');
+  return stripMarkdown(textParts.map((p) => p.text).join(''));
 }
 
 function highlightMatch(text: string, start: number, end: number) {

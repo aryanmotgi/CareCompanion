@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useToast } from './ToastProvider'
 import { useCsrfToken } from './CsrfProvider'
 import type { Notification } from '@/lib/types'
@@ -75,6 +76,7 @@ export function NotificationsView({ notifications: initial }: NotificationsViewP
   const [activeFilter, setActiveFilter] = useState('all')
   const { showToast } = useToast()
   const csrfToken = useCsrfToken()
+  const router = useRouter()
 
   const filtered = notifications.filter((n) => {
     if (activeFilter === 'all') return true
@@ -109,6 +111,7 @@ export function NotificationsView({ notifications: initial }: NotificationsViewP
       showToast('Failed to mark notifications as read', 'error')
     } else {
       showToast('All notifications marked as read', 'success')
+      router.refresh()
     }
   }
 
