@@ -103,6 +103,17 @@ export type HealthKitImmunizationRecord = {
   occurrenceDateTime: string | null
 }
 
+// Raw FHIR Encounter resource from HealthKit clinical records.
+// Converted server-side via fhirEncounterToAppointment before persisting.
+export type HealthKitEncounterRecord = {
+  type: 'encounter'
+  healthkitFhirId: string
+  id: string  // FHIR resource id — read by fhirEncounterToAppointment
+  participant?: { individual?: { display?: string } }[]
+  period?: { start?: string }
+  location?: { location?: { display?: string } }[]
+}
+
 export type HealthKitRecord =
   | HealthKitMedicationRecord
   | HealthKitLabRecord
@@ -112,3 +123,4 @@ export type HealthKitRecord =
   | HealthKitAllergyRecord
   | HealthKitProcedureRecord
   | HealthKitImmunizationRecord
+  | HealthKitEncounterRecord

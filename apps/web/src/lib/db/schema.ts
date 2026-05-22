@@ -234,6 +234,7 @@ export const wellnessVitals = pgTable('wellness_vitals', {
   steps: integer('steps'),
   heartRate: numeric('heart_rate'),
   sleepHours: numeric('sleep_hours'),
+  bodyMass: numeric('body_mass'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   profileTimeIdx: index('wellness_vitals_profile_time_idx').on(t.careProfileId, t.capturedAt),

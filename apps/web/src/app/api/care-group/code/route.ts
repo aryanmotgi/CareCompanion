@@ -18,7 +18,7 @@ import { careGroupCodes } from '@/lib/db/schema'
 import { and, eq, gt, isNull } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { validateCsrf } from '@/lib/csrf'
-import { generateCode, isGroupPatient } from '@/lib/care-group'
+import { generateCode, isGroupMember } from '@/lib/care-group'
 import { isCaregiverCodeFlowEnabled } from '@/lib/feature-flags'
 
 function flagGate(): NextResponse | null {
@@ -48,8 +48,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'careGroupId required' }, { status: 400 })
     }
 
-    if (!(await isGroupPatient(session.user.id, careGroupId))) {
-      return NextResponse.json({ error: 'Only the patient can generate a care-group code' }, { status: 403 })
+    if (!(await isGroupMember(session.user.id, careGroupId))) {
+      return NextResponse.json({ error: 'Only care group members can generate a care-group code' }, { status: 403 })
     }
 
     const now = new Date()
@@ -127,8 +127,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'careGroupId required' }, { status: 400 })
     }
 
-    if (!(await isGroupPatient(session.user.id, careGroupId))) {
-      return NextResponse.json({ error: 'Only the patient can view care-group codes' }, { status: 403 })
+    if (!(await isGroupMember(session.user.id, careGroupId))) {
+      return NextResponse.json({ error: 'Only care group members can view care-group codes' }, { status: 403 })
     }
 
     const active = await db.query.careGroupCodes.findFirst({
