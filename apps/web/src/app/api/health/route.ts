@@ -29,6 +29,15 @@ const REQUIRED_COLUMNS: { table: string; column: string }[] = [
   // medication observations (migration 016)
   { table: 'medication_observations', column: 'id' },
   { table: 'medication_observations', column: 'discrepancy_flag' },
+  // HealthKit clinical history (migration 018)
+  { table: 'conditions', column: 'id' },
+  { table: 'conditions', column: 'healthkit_fhir_id' },
+  { table: 'allergies', column: 'id' },
+  { table: 'allergies', column: 'healthkit_fhir_id' },
+  { table: 'procedures', column: 'id' },
+  { table: 'procedures', column: 'healthkit_fhir_id' },
+  { table: 'immunizations', column: 'id' },
+  { table: 'immunizations', column: 'healthkit_fhir_id' },
 ]
 
 /**
