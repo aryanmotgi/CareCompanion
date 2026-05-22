@@ -66,12 +66,14 @@ const innerToProgressStep: Record<InnerStep, number> = {
 
 export function PatientWizard({
   careProfileId,
+  isAppReview,
   onComplete,
 }: {
   careProfileId: string
+  isAppReview?: boolean
   onComplete: () => void
 }) {
-  const [inner, setInner] = useState<InnerStep>('healthkit')
+  const [inner, setInner] = useState<InnerStep>(() => (isAppReview ? 'manual' : 'healthkit'))
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [hospitalQuery, setHospitalQuery] = useState('')

@@ -80,3 +80,8 @@ docs/superpowers/plans/2026-05-03-in-app-guidance.md
 .agents/
 .codex/
 AGENTS.md
+
+# App Store review credentials — never commit real passwords
+app-review-creds.txt
+APP_REVIEW_CREDS*
+app_review_creds*

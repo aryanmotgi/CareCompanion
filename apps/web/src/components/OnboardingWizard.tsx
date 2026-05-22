@@ -8,11 +8,13 @@ export function OnboardingWizard({
   careProfileId,
   userRole,
   careGroupId,
+  isAppReview,
   onComplete,
 }: {
   careProfileId: string
   userRole: 'caregiver' | 'patient' | 'self' | null
   careGroupId?: string
+  isAppReview?: boolean
   onComplete: () => void
 }) {
   if (userRole === 'caregiver') {
@@ -21,5 +23,5 @@ export function OnboardingWizard({
   if (userRole === 'self') {
     return <SelfCareWizard careProfileId={careProfileId} onComplete={onComplete} />
   }
-  return <PatientWizard careProfileId={careProfileId} onComplete={onComplete} />
+  return <PatientWizard careProfileId={careProfileId} isAppReview={isAppReview} onComplete={onComplete} />
 }

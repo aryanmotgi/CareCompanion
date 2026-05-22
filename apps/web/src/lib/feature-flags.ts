@@ -21,3 +21,12 @@ function envFlag(name: string, defaultValue: boolean): boolean {
 export function isCaregiverCodeFlowEnabled(): boolean {
   return envFlag('CAREGIVER_CODE_FLOW_ENABLED', true)
 }
+
+/**
+ * App Store review account bypass. Returns true for the dedicated reviewer
+ * email so onboarding skips the HealthKit requirement (synthetic vitals are
+ * pre-seeded instead) and shows all premium features without a real device.
+ */
+export function isAppReviewAccount(email: string | null | undefined): boolean {
+  return email === 'appreview@carecompanionai.org'
+}
