@@ -311,6 +311,7 @@ export default function SetupScreen() {
   const [textValue, setTextValue] = useState('')
   const [saving, setSaving] = useState(false)
   const [showWebNudge, setShowWebNudge] = useState(false)
+  const [stepError, setStepError] = useState<string | null>(null)
   const progressWidth = useSharedValue(0)
 
   // Filter manual steps to skip any field the profile already has a value for.
@@ -339,6 +340,11 @@ export default function SetupScreen() {
       easing: Easing.out(Easing.cubic),
     })
   }, [currentStep, totalSteps, progressWidth])
+
+  // Clear any inline validation error when the step changes.
+  useEffect(() => {
+    setStepError(null)
+  }, [step.key])
 
   // Best-effort HealthKit auto-fill on first entry to the wizard. Pulls DOB +
   // sex at birth from HKCharacteristicType (no clinical-records entitlement
@@ -384,6 +390,18 @@ export default function SetupScreen() {
 
   async function handleNext() {
     const val = currentValue?.trim()
+    setStepError(null)
+
+    // Required-field validation. Zip code is the only step we hard-require for
+    // now (trial-matching needs a location). Other text steps remain Skippable.
+    if (step.key === 'zipCode' && !val) {
+      setStepError('Enter your postal code to continue. Trial matching needs a location.')
+      return
+    }
+    if (step.key === 'zipCode' && val && !/^\d{3,10}$/.test(val)) {
+      setStepError('Enter a valid postal code (digits only, 3–10 characters).')
+      return
+    }
 
     // HealthKit step
     if (step.key === 'healthkit') {
@@ -815,12 +833,16 @@ export default function SetupScreen() {
                 placeholder={step.placeholder}
                 placeholderTextColor="rgba(255,255,255,0.25)"
                 value={textValue}
-                onChangeText={setTextValue}
+                onChangeText={(t) => { setTextValue(t); if (stepError) setStepError(null) }}
                 autoFocus={false}
                 returnKeyType="done"
                 onSubmitEditing={handleNext}
+                keyboardType={step.key === 'zipCode' ? 'number-pad' : 'default'}
               />
             )}
+            {stepError ? (
+              <Text style={styles.stepErrorText}>{stepError}</Text>
+            ) : null}
           </Animated.View>
         </ScrollView>
 
@@ -992,6 +1014,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 17,
     textAlign: 'center',
+  },
+  stepErrorText: {
+    marginTop: 10,
+    fontSize: 13,
+    color: '#F87171',
+    textAlign: 'center',
+    paddingHorizontal: 8,
   },
   bottom: {
     paddingHorizontal: 28,

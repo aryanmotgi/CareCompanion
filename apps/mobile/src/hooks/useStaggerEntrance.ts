@@ -20,14 +20,16 @@ export function useStaggerEntrance(count: number, options?: StaggerOptions) {
   const reduceMotion = useReducedMotion()
   const { delay = 100, initialDelay = 0, damping = 14, stiffness = 150 } = options ?? {}
 
-  const o0 = useSharedValue(reduceMotion ? 1 : 0)
-  const o1 = useSharedValue(reduceMotion ? 1 : 0)
-  const o2 = useSharedValue(reduceMotion ? 1 : 0)
-  const o3 = useSharedValue(reduceMotion ? 1 : 0)
-  const o4 = useSharedValue(reduceMotion ? 1 : 0)
-  const o5 = useSharedValue(reduceMotion ? 1 : 0)
-  const o6 = useSharedValue(reduceMotion ? 1 : 0)
-  const o7 = useSharedValue(reduceMotion ? 1 : 0)
+  // Start at full opacity so content is visible immediately; only translateY
+  // animates in. Avoids the ~1s blank flash when many items stagger from 0.
+  const o0 = useSharedValue(1)
+  const o1 = useSharedValue(1)
+  const o2 = useSharedValue(1)
+  const o3 = useSharedValue(1)
+  const o4 = useSharedValue(1)
+  const o5 = useSharedValue(1)
+  const o6 = useSharedValue(1)
+  const o7 = useSharedValue(1)
   const t0 = useSharedValue(reduceMotion ? 0 : 20)
   const t1 = useSharedValue(reduceMotion ? 0 : 20)
   const t2 = useSharedValue(reduceMotion ? 0 : 20)
@@ -37,14 +39,12 @@ export function useStaggerEntrance(count: number, options?: StaggerOptions) {
   const t6 = useSharedValue(reduceMotion ? 0 : 20)
   const t7 = useSharedValue(reduceMotion ? 0 : 20)
 
-  const opacities = [o0, o1, o2, o3, o4, o5, o6, o7]
   const translateYs = [t0, t1, t2, t3, t4, t5, t6, t7]
 
   useEffect(() => {
     if (reduceMotion) return
     for (let i = 0; i < Math.min(count, MAX_ITEMS); i++) {
       const d = initialDelay + i * delay
-      opacities[i].value = withDelay(d, withSpring(1, { damping, stiffness }))
       translateYs[i].value = withDelay(d, withSpring(0, { damping, stiffness }))
     }
   }, [])

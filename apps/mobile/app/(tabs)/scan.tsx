@@ -30,6 +30,7 @@ import { hapticScanComplete } from '../../src/utils/haptics'
 import { LinearGradient } from 'expo-linear-gradient'
 
 const CATEGORIES = ['All', 'Medical', 'Insurance', 'Lab Reports', 'Rx', 'Other'] as const
+const TAB_BAR_HEIGHT = 60
 
 export default function ScanScreen() {
   const theme = useTheme()
@@ -38,43 +39,59 @@ export default function ScanScreen() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<string>('All')
+  const [opening, setOpening] = useState(false)
 
   const stagger = useStaggerEntrance(5)
 
   async function startScan() {
+    if (opening) return
     if (!ImagePicker) {
       Alert.alert('Camera Not Available', 'A new app build is required to enable camera scanning. Please rebuild with EAS.')
       return
     }
-    const { status } = await ImagePicker.requestCameraPermissionsAsync()
-    if (status !== 'granted') {
-      Alert.alert(
-        'Camera Access Needed',
-        'CareCompanion needs camera access to scan documents. You can enable it in Settings.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Open Settings', onPress: () => Linking.openSettings() },
-        ],
-      )
-      return
-    }
+    setOpening(true)
+    try {
+      // Check current permission state first so we don't double-trip the OS prompt.
+      // First tap previously triggered the OS prompt and then exited without
+      // launching the camera; user had to tap again. Resolve granted state once
+      // then proceed in the same call.
+      const current = await ImagePicker.getCameraPermissionsAsync()
+      let status = current.status
+      if (status !== 'granted') {
+        const requested = await ImagePicker.requestCameraPermissionsAsync()
+        status = requested.status
+      }
+      if (status !== 'granted') {
+        Alert.alert(
+          'Camera Access Needed',
+          'CareCompanion needs camera access to scan documents. You can enable it in Settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ],
+        )
+        return
+      }
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-      allowsEditing: true,
-    })
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+        allowsEditing: true,
+      })
 
-    if (!result.canceled && result.assets[0]) {
-      setCapturedImage(result.assets[0].uri)
-      hapticScanComplete()
-      setBurstActive(true)
+      if (!result.canceled && result.assets[0]) {
+        setCapturedImage(result.assets[0].uri)
+        hapticScanComplete()
+        setBurstActive(true)
+      }
+    } finally {
+      setOpening(false)
     }
   }
 
   return (
     <TabFadeWrapper>
-      <View style={[styles.root, { backgroundColor: theme.bg, paddingTop: insets.top + 16 }]}>
+      <View style={[styles.root, { backgroundColor: theme.bg, paddingTop: insets.top + 16, paddingBottom: insets.bottom + TAB_BAR_HEIGHT }]}>
         {/* Header */}
         <Animated.View style={stagger[0]}>
           <Text style={[styles.title, { color: theme.text }]}>Scan</Text>
@@ -166,8 +183,9 @@ export default function ScanScreen() {
         {/* Floating camera FAB */}
         <TouchableOpacity
           onPress={startScan}
+          disabled={opening}
           activeOpacity={0.85}
-          style={styles.fabTouchable}
+          style={[styles.fabTouchable, opening && { opacity: 0.6 }]}
         >
           <LinearGradient
             colors={['#6366f1', '#4f46e5']}
@@ -175,7 +193,7 @@ export default function ScanScreen() {
             end={{ x: 1, y: 1 }}
             style={styles.fab}
           >
-            <Ionicons name="camera" size={26} color="#fff" />
+            <Ionicons name={opening ? 'hourglass-outline' : 'camera'} size={26} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>
       </View>
