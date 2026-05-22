@@ -70,6 +70,9 @@ export function LabsView({ labResults, patientName = 'your loved one' }: { labRe
         <p className="text-sm text-[var(--text-muted)] mt-1">
           Understand your lab work with plain-language interpretations
         </p>
+        <p className="text-[11px] text-[var(--text-muted)] mt-2 leading-relaxed">
+          Not for medical decisions — always consult your care team.
+        </p>
       </div>
 
       {/* Trends */}

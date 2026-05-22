@@ -595,6 +595,12 @@ export function LabTrends() {
           ))}
         </div>
       )}
+
+      {/* Disclaimer */}
+      <p className="text-[10px] text-[var(--text-muted,#64748b)] text-center leading-relaxed pt-1">
+        Not for medical decisions — consult your care team.{' '}
+        <span className="opacity-60">7-day predictions are estimates, not clinical guidance.</span>
+      </p>
     </section>
   )
 }
