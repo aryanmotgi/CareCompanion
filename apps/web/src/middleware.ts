@@ -96,16 +96,15 @@ export default auth((req) => {
   if (req.auth && pathname === '/login') {
     // Don't redirect if there's an error param — let the login page show the error
     const errorParam = req.nextUrl.searchParams.get('error')
-    if (!errorParam && !isPrefetch) {
+    const userRole = (req.auth.user as { role?: string | null }).role
+    // Only redirect away from /login if the user has a role (onboarding complete).
+    // No-role users may want to sign in with a different account — let them through.
+    // The middleware at lines 83-94 enforces /onboarding on all subsequent protected routes.
+    if (!errorParam && !isPrefetch && userRole) {
       const url = req.nextUrl.clone()
       const cb = req.nextUrl.searchParams.get('callbackUrl')
-      const userRole = (req.auth.user as { role?: string | null }).role
       url.search = ''
-      if (!userRole) {
-        url.pathname = '/onboarding'
-      } else {
-        url.pathname = (cb && cb.startsWith('/') && !cb.startsWith('//')) ? cb : '/dashboard'
-      }
+      url.pathname = (cb && cb.startsWith('/') && !cb.startsWith('//')) ? cb : '/dashboard'
       return NextResponse.redirect(url)
     }
   }
