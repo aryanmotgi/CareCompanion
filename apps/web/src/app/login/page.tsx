@@ -12,6 +12,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     ? `Sign-in didn't work (${error}). Please try again.`
     : undefined
 
+  const appleEnabled = !!(process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET)
+
   return (
     <AuthPageBackground>
       <PublicNav />
@@ -29,7 +31,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <p className="text-sm text-white/40">We&apos;re here whenever you need us.</p>
         </div>
 
-        <LoginForm initialError={errorMsg} callbackUrl={callbackUrl} />
+        <LoginForm initialError={errorMsg} callbackUrl={callbackUrl} appleEnabled={appleEnabled} />
       </div>
     </AuthPageBackground>
   );

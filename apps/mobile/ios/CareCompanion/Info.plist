@@ -53,25 +53,38 @@
       <key>NSAllowsArbitraryLoads</key>
       <false/>
       <key>NSAllowsLocalNetworking</key>
-      <false/>
+      <true/>
     </dict>
-    <key>NSCalendarsUsageDescription</key>
-    <string>CareCompanion reads your calendar to detect upcoming medical appointments and add them to your care timeline.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
     <string>CareCompanion reads your calendar to detect upcoming medical appointments — like clinic visits, doctor follow-ups, and hospital procedures — and adds them to your care timeline.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>CareCompanion reads your calendar to detect upcoming medical appointments and add them to your care timeline.</string>
     <key>NSCameraUsageDescription</key>
     <string>CareCompanion uses the camera to scan prescription bottles and medical documents so we can add medications, lab results, and appointments to your care record.</string>
-    <key>NSHealthShareUsageDescription</key>
-    <string>CareCompanion reads your Apple Health data to support your cancer care: date of birth and sex at birth (to personalize lab reference ranges), and — when you opt in — daily steps, heart rate, and sleep so caregivers can see how you are doing.</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your Face ID biometric data.</string>
     <key>NSHealthClinicalHealthRecordsShareUsageDescription</key>
     <string>CareCompanion reads clinical records from your care team — medications, lab results, conditions, procedures, allergies, vital signs, and immunizations — so it can help you understand and manage your cancer treatment in one place.</string>
+    <key>NSHealthShareUsageDescription</key>
+    <string>CareCompanion reads your Apple Health data to support your cancer care: date of birth and sex at birth (to personalize lab reference ranges), and — when you opt in — daily steps, heart rate, and sleep so caregivers can see how you are doing.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
     <key>NSMotionUsageDescription</key>
     <string>CareCompanion uses device motion to add subtle parallax effects on the home screen. No motion data is stored or sent off device.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>CareCompanion accesses your photo library so you can upload prescription labels and medical documents to your care record.</string>
+    <key>NSSupportsLiveActivities</key>
+    <true/>
+    <key>NSSupportsLiveActivitiesFrequentUpdates</key>
+    <false/>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
+    </array>
+    <key>UIBackgroundModes</key>
+    <array>
+      <string>fetch</string>
+      <string>remote-notification</string>
     </array>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
@@ -99,14 +112,5 @@
     <string>Dark</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
-    <key>NSSupportsLiveActivities</key>
-    <true/>
-    <key>NSSupportsLiveActivitiesFrequentUpdates</key>
-    <true/>
-    <key>UIBackgroundModes</key>
-    <array>
-      <string>fetch</string>
-      <string>remote-notification</string>
-    </array>
   </dict>
 </plist>

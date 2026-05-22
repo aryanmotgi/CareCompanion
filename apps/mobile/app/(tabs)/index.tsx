@@ -110,7 +110,7 @@ function AnimatedBorderCard({ children, style, onPress }: { children: React.Reac
   const pressed = useSharedValue(0)
 
   const glowStyle = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(pressed.value, [0, 1], ['rgba(139,92,246,0.22)', 'rgba(139,92,246,0.8)']),
+    borderColor: interpolateColor(pressed.value, [0, 1], ['rgba(139,92,246,0.38)', 'rgba(139,92,246,0.9)']),
     shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 0 },
     shadowRadius: pressed.value * 14,
@@ -128,7 +128,7 @@ function AnimatedBorderCard({ children, style, onPress }: { children: React.Reac
   return (
     <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
       <Animated.View style={[styles.borderCardOuter, glowStyle, style]}>
-        <View style={[styles.borderCardInner, { backgroundColor: theme.isDark ? '#0C0E1A' : '#FAFAFA' }]}>
+        <View style={[styles.borderCardInner, { backgroundColor: theme.isDark ? '#08091A' : '#FAFAFA' }]}>
           {children}
         </View>
       </Animated.View>
@@ -1049,8 +1049,8 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.45)',
-    backgroundColor: 'rgba(167,139,250,0.10)',
+    borderColor: 'rgba(167,139,250,0.50)',
+    backgroundColor: 'rgba(167,139,250,0.16)',
     marginBottom: 12,
   },
   newLabsIconWrap: {
@@ -1070,8 +1070,8 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.45)',
-    backgroundColor: 'rgba(167,139,250,0.08)',
+    borderColor: 'rgba(167,139,250,0.50)',
+    backgroundColor: 'rgba(167,139,250,0.14)',
     marginBottom: 12,
   },
   hkBannerIconWrap: {
@@ -1098,8 +1098,8 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(192,132,252,0.45)',
-    backgroundColor: 'rgba(192,132,252,0.08)',
+    borderColor: 'rgba(192,132,252,0.50)',
+    backgroundColor: 'rgba(192,132,252,0.14)',
     marginBottom: 12,
   },
   inviteHomeIconWrap: {
@@ -1126,8 +1126,8 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.4)',
-    backgroundColor: 'rgba(99,102,241,0.08)',
+    borderColor: 'rgba(99,102,241,0.50)',
+    backgroundColor: 'rgba(99,102,241,0.14)',
     marginBottom: 12,
   },
   nudgeIconWrap: {

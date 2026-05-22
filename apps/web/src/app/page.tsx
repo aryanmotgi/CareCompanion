@@ -1099,7 +1099,7 @@ export default function LandingPage() {
             <Link href="/privacy" className="hover:text-white/60 transition-colors">Privacy</Link>
             <Link href="/terms" className="hover:text-white/60 transition-colors">Terms</Link>
           </div>
-          <p className="text-white/20 text-xs">© 2025 CareCompanion. Your data stays yours.</p>
+          <p className="text-white/20 text-xs">© 2026 CareCompanion. Your data stays yours.</p>
         </div>
       </footer>
     </main>

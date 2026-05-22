@@ -189,7 +189,10 @@ export function ChatInterface({ initialMessages, patientName, recentConversation
     prompt.startsWith('Explain my ') ||
     prompt.startsWith('Help me understand') ||
     prompt.startsWith('I have a scheduling conflict') ||
-    prompt.startsWith('Help me find local')
+    prompt.startsWith('Help me find local') ||
+    prompt.startsWith('Add my ') ||
+    prompt.startsWith('Update my ') ||
+    prompt.startsWith('Log my ')
 
   // Auto-send prompt from URL (from dashboard or alert cards)
   useEffect(() => {

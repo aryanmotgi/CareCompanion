@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MilestoneCelebration, type Milestone } from './MilestoneCelebration'
 import { VoiceCheckin } from './VoiceCheckin'
 
@@ -33,6 +33,15 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
   const [milestone, setMilestone] = useState<Milestone | null>(null)
   const [voiceHighlight, setVoiceHighlight] = useState<Record<string, boolean>>({})
 
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSubmitting) onClose()
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [isOpen, isSubmitting, onClose])
+
   if (!isOpen) return null
 
   const canSubmit = mood !== null && energy !== null && sleep !== null && !isSubmitting
@@ -45,7 +54,10 @@ export function CheckinModal({ careProfileId, isOpen, onClose, onComplete }: Che
     try {
       const res = await fetch('/api/checkins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': document.cookie.match(/(^| )cc-csrf-token=([^;]+)/)?.[2] ?? '',
+        },
         body: JSON.stringify({ careProfileId, mood, pain, energy, sleep, notes: notes || undefined }),
       })
 

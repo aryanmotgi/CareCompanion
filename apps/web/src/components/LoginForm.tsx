@@ -97,7 +97,7 @@ function PasswordInput({
   )
 }
 
-export function LoginForm({ initialError, callbackUrl }: { initialError?: string; callbackUrl?: string }) {
+export function LoginForm({ initialError, callbackUrl, appleEnabled = true }: { initialError?: string; callbackUrl?: string; appleEnabled?: boolean }) {
   const [tab, setTab] = useState<'email' | 'care-group'>('email')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -191,6 +191,7 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
           {tab === 'email' && (
             <>
               {/* Social sign-in buttons */}
+              {appleEnabled && (
               <button
                 type="button"
                 onClick={() => signIn('apple', { callbackUrl: safeCallback || '/dashboard' })}
@@ -202,6 +203,7 @@ export function LoginForm({ initialError, callbackUrl }: { initialError?: string
                 </svg>
                 Continue with Apple
               </button>
+              )}
 
               <button
                 type="button"

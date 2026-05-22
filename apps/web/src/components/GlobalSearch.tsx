@@ -89,7 +89,7 @@ export function GlobalSearch() {
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
         const data = await res.json()
-        setResults(data.results || [])
+        setResults(data.data?.results || [])
       } catch {
         setResults([])
       } finally {
