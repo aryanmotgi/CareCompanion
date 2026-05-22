@@ -3,7 +3,6 @@ import React, { useState } from 'react'
 import {
   View,
   Text,
-  Image,
   Alert,
   Linking,
   StyleSheet,
@@ -11,6 +10,7 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native'
+import { Image } from 'expo-image'
 import Animated from 'react-native-reanimated'
 // Lazy import — expo-image-picker requires a native build with the module included.
 // Importing at the top level crashes if the native module isn't in the current dev build.
@@ -156,7 +156,7 @@ export default function ScanScreen() {
           {/* Captured image preview card */}
           {capturedImage && (
             <View style={[styles.capturedCard, { backgroundColor: theme.bgElevated, borderColor: theme.border }]}>
-              <Image source={{ uri: capturedImage }} style={styles.capturedImage} />
+              <Image source={{ uri: capturedImage }} style={styles.capturedImage} cachePolicy="disk" contentFit="cover" />
               <Text style={[styles.capturedLabel, { color: theme.textMuted }]}>
                 Document captured
               </Text>

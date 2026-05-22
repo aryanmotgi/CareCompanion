@@ -4,7 +4,11 @@ import { initAnalytics } from '../src/lib/analytics'
 import { useEffect, useState, useCallback, useRef, createContext, useContext } from 'react'
 import { PHIPrivacyGuard } from '../src/components/PHIPrivacyGuard'
 import { JailbreakWarning } from '../src/components/JailbreakWarning'
+import { OfflineBanner } from '../src/components/OfflineBanner'
 import { useJailbreakCheck } from '../src/hooks/useJailbreakCheck'
+import { useVersionCheck } from '../src/hooks/useVersionCheck'
+import { UpdateScreen } from '../src/components/UpdateScreen'
+import { MaintenanceScreen } from '../src/components/MaintenanceScreen'
 
 initSentry()
 import { Stack, Redirect, useSegments, useRouter } from 'expo-router'
@@ -21,6 +25,7 @@ import { ProfileProvider, useProfile } from '../src/context/ProfileContext'
 import { refreshTokenIfNeeded } from '../src/services/token-refresh'
 import {
   registerNotificationCategories,
+  setupAndroidChannels,
   onNotificationResponse,
   scheduleDailyCheckin,
   getLastNotificationResponse,
@@ -39,6 +44,11 @@ import {
   drainWellnessRetryQueue,
 } from '../src/services/wellnessVitals'
 import { WELCOME_SEEN_KEY } from './welcome'
+import { migratePhiToSecureStore } from '../scripts/migrate-to-secure-store'
+
+const SECURE_OPTS: SecureStore.SecureStoreOptions = {
+  keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+}
 
 // Module-load: declare the JS handler the OS will invoke when iOS wakes us up.
 // Must run before any RootLayout render — TaskManager requires the task to be
@@ -221,7 +231,8 @@ function UserTypeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (Platform.OS === 'web') return
     let cancelled = false
-    AsyncStorage.getItem(USER_TYPE_KEY)
+    migratePhiToSecureStore()
+      .then(() => SecureStore.getItemAsync(USER_TYPE_KEY))
       .then((v) => {
         if (cancelled) return
         if (v === 'patient' || v === 'caregiver' || v === 'self') setState(v as UserType)
@@ -233,12 +244,12 @@ function UserTypeProvider({ children }: { children: React.ReactNode }) {
 
   const setUserType = useCallback((t: UserType) => {
     setState(t)
-    AsyncStorage.setItem(USER_TYPE_KEY, t).catch(() => {})
+    SecureStore.setItemAsync(USER_TYPE_KEY, t, SECURE_OPTS).catch(() => {})
   }, [])
 
   const reset = useCallback(() => {
     setState('unset')
-    AsyncStorage.removeItem(USER_TYPE_KEY).catch(() => {})
+    SecureStore.deleteItemAsync(USER_TYPE_KEY).catch(() => {})
   }, [])
 
   return (
@@ -543,6 +554,10 @@ export default function RootLayout() {
   const currentScreen = segments.join('/')
   const isJailbroken = useJailbreakCheck()
   const [jailbreakDismissed, setJailbreakDismissed] = useState(false)
+  const version = useVersionCheck()
+
+  if (version.killSwitch) return <MaintenanceScreen reason={version.killReason} />
+  if (version.forceUpdate) return <UpdateScreen />
 
   // Deep-link a notification response to the right screen based on
   // `data.kind`. Two kind vocabularies share this dispatcher:
@@ -619,6 +634,7 @@ export default function RootLayout() {
   useEffect(() => {
     void (async () => {
       try {
+        await setupAndroidChannels()
         await registerNotificationCategories()
         // Schedule the 8pm check-in if the user has already granted permission.
         // scheduleDailyCheckin no-ops when permission is missing — so first-run
@@ -707,6 +723,7 @@ export default function RootLayout() {
     <SafeAreaProvider style={{ backgroundColor: theme.bg }}>
       <PHIPrivacyGuard>
         <ThemedStatusBar />
+        <OfflineBanner />
         <TestModeBanner />
         <WelcomeProvider>
           <TokenProvider>

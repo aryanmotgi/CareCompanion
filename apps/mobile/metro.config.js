@@ -23,4 +23,14 @@ config.resolver.nodeModulesPaths = [
 // handles fine when watchFolders covers the target directories
 config.resolver.unstable_enablePackageExports = true;
 
+config.transformer = {
+  ...config.transformer,
+  getTransformOptions: async () => ({
+    transform: {
+      experimentalImportSupport: false,
+      inlineRequires: true,
+    },
+  }),
+};
+
 module.exports = config;

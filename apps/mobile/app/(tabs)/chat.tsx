@@ -12,6 +12,7 @@ import {
   Alert,
   Share,
 } from 'react-native'
+import { FlashList } from '@shopify/flash-list'
 import * as Haptics from 'expo-haptics'
 import Animated, {
   useSharedValue,
@@ -813,7 +814,7 @@ export default function ChatScreen() {
               </Pressable>
             </View>
           ) : (
-            <FlatList
+            <FlashList
               data={conversations}
               keyExtractor={c => c.id}
               contentContainerStyle={{ paddingTop: 8, paddingBottom: 120 }}
@@ -869,8 +870,8 @@ export default function ChatScreen() {
         {chatLoading ? (
           <MessagesSkeleton />
         ) : (
-          <FlatList
-            ref={listRef}
+          <FlashList
+            ref={listRef as any}
             data={messages}
             keyExtractor={m => m.id}
             contentContainerStyle={[styles.list, messages.length === 0 && styles.listEmpty]}

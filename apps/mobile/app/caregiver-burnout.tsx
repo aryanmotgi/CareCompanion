@@ -132,8 +132,8 @@ export default function CaregiverBurnoutScreen() {
             {assessment.factors.length > 0 && (
               <GlassCard style={styles.section}>
                 <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>CONTRIBUTING FACTORS</Text>
-                {assessment.factors.map((factor, i) => (
-                  <View key={i} style={styles.bulletRow}>
+                {assessment.factors.map((factor) => (
+                  <View key={factor} style={styles.bulletRow}>
                     <View style={[styles.bullet, { backgroundColor: theme.rose }]} />
                     <Text style={[styles.bulletText, { color: theme.textSub }]}>{factor}</Text>
                   </View>

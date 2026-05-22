@@ -12,6 +12,7 @@ import {
   Linking,
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import * as SecureStore from 'expo-secure-store'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -264,7 +265,9 @@ export default function SignupScreen() {
       }
 
       if (displayName.trim()) {
-        await AsyncStorage.setItem('cc-display-name', displayName.trim()).catch(() => {})
+        await SecureStore.setItemAsync('cc-display-name', displayName.trim(), {
+          keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+        }).catch(() => {})
       }
       await AsyncStorage.setItem('cc-tos-accepted', '1').catch(() => {})
 

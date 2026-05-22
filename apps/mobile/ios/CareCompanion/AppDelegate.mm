@@ -13,7 +13,40 @@
   // They will be passed down to the ViewController used by React Native.
   self.initialProps = @{};
 
+  // HealthKit-derived data persists in AsyncStorage (RCTAsyncLocalStorage_V1)
+  // under NSLibraryDirectory, which is backed up by default. Required by
+  // App Store guideline 5.1.3.
+  [self excludeAsyncStorageFromBackup];
+
   return [super application:application didFinishLaunchingWithOptions:launchOptions];
+}
+
+- (void)excludeAsyncStorageFromBackup
+{
+  NSURL *libURL = [[[NSFileManager defaultManager]
+      URLsForDirectory:NSLibraryDirectory
+             inDomains:NSUserDomainMask] firstObject];
+  if (!libURL) return;
+
+  NSURL *asyncStorageDir = [libURL URLByAppendingPathComponent:@"RCTAsyncLocalStorage_V1"
+                                                   isDirectory:YES];
+
+  NSFileManager *fm = [NSFileManager defaultManager];
+  if (![fm fileExistsAtPath:asyncStorageDir.path]) {
+    [fm createDirectoryAtURL:asyncStorageDir
+ withIntermediateDirectories:YES
+                  attributes:nil
+                       error:nil];
+  }
+
+  NSError *err = nil;
+  BOOL ok = [asyncStorageDir setResourceValue:@YES
+                                       forKey:NSURLIsExcludedFromBackupKey
+                                        error:&err];
+  if (!ok) {
+    NSLog(@"[CareCompanion] Failed to set backup exclusion on AsyncStorage dir: %@",
+          err.localizedDescription);
+  }
 }
 
 - (NSURL *)sourceURLForBridge:(RCTBridge *)bridge

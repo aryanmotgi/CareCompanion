@@ -14,9 +14,11 @@ interface GlassCardProps {
   children: React.ReactNode
   onPress?: () => void
   style?: StyleProp<ViewStyle>
+  accessibilityLabel?: string
+  accessibilityHint?: string
 }
 
-export function GlassCard({ children, onPress, style }: GlassCardProps) {
+export function GlassCard({ children, onPress, style, accessibilityLabel, accessibilityHint }: GlassCardProps) {
   const theme = useTheme()
   const scale = useSharedValue(1)
 
@@ -34,7 +36,14 @@ export function GlassCard({ children, onPress, style }: GlassCardProps) {
   }
 
   return (
-    <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
+    <Pressable
+      onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+    >
       <Animated.View
         style={[
           styles.card,

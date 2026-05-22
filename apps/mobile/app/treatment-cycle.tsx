@@ -63,7 +63,7 @@ function parseCycleInfo(med: Medication): CycleInfo | null {
 
   let phase: CycleInfo['phase'] = 'rest'
   if (dayInCycle <= 3) phase = 'infusion'
-  else if (dayInCycle <= cycleLengthDays - 5) phase = 'recovery'
+  else if (dayInCycle > cycleLengthDays - 5) phase = 'recovery'
 
   return { phase, dayInCycle, cycleLengthDays, currentCycle, totalCycles }
 }
@@ -80,7 +80,7 @@ export default function TreatmentCycleScreen() {
   useEffect(() => {
     async function fetchMeds() {
       try {
-        const token = await SecureStore.getItemAsync('authToken')
+        const token = await SecureStore.getItemAsync('cc-session-token')
         const res = await fetch(`${API_BASE}/api/medications`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         })

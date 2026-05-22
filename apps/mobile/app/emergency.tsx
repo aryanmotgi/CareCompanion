@@ -105,14 +105,19 @@ export default function EmergencyScreen() {
         {
           text: 'Call',
           style: 'destructive',
-          onPress: () => Linking.openURL('tel:911'),
+          onPress: () =>
+            Linking.openURL('tel:911').catch(() =>
+              Alert.alert('Unable to place call', 'Please dial 911 manually.'),
+            ),
         },
       ],
     )
   }
 
   function handleCall988() {
-    Linking.openURL('tel:988')
+    Linking.openURL('tel:988').catch(() =>
+      Alert.alert('Unable to place call', 'Please dial 988 manually.'),
+    )
   }
 
   const isLoading = profileLoading || medsLoading
@@ -267,7 +272,10 @@ export default function EmergencyScreen() {
                   </View>
                   {emergencyContactPhone && (
                     <Pressable
-                      onPress={() => Linking.openURL(`tel:${emergencyContactPhone}`)}
+                      onPress={() => {
+                        const digits = emergencyContactPhone.replace(/\D/g, '')
+                        Linking.openURL(`tel:${digits}`).catch(() => Alert.alert('Unable to place call'))
+                      }}
                       style={[s.callContactBtn, { backgroundColor: t.isDark ? 'rgba(110,231,183,0.15)' : 'rgba(5,150,105,0.1)' }]}
                       accessibilityLabel={`Call emergency contact ${emergencyContactName}`}
                       accessibilityRole="button"
