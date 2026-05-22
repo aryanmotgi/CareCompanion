@@ -459,7 +459,7 @@ export default function HealthConnectScreen() {
       try {
         await withTimeout(requestHealthKitPermissions(), 4000, 'requestAuthorization')
       } catch (err) {
-        console.warn('[HealthKit] permission request timed out / failed:', err)
+        console.warn('[HealthKit] permission request timed out / failed')
         // Proceed in __DEV__ so success screen + nav still work.
         if (!__DEV__) {
           clearTimeout(hardTimeout)
@@ -471,7 +471,7 @@ export default function HealthConnectScreen() {
       try {
         await withTimeout(requestWellnessPermissions(), 4000, 'requestWellnessAuthorization')
       } catch (err) {
-        console.warn('[HealthKit] wellness permission timed out / failed:', err)
+        console.warn('[HealthKit] wellness permission timed out / failed')
       }
 
       await markHealthKitConnected()
@@ -479,7 +479,7 @@ export default function HealthConnectScreen() {
       try {
         await withTimeout(replaceHealthKitData(), 4000, 'replaceHealthKitData')
       } catch (err) {
-        console.warn('[HealthKit] replace timed out / failed:', err)
+        console.warn('[HealthKit] replace timed out / failed')
       }
 
       void refetch().catch(() => {})
@@ -498,7 +498,7 @@ export default function HealthConnectScreen() {
       }, 2000)
     } catch (err) {
       clearTimeout(hardTimeout)
-      console.warn('[HealthKit] connect failed:', err)
+      console.warn('[HealthKit] connect failed')
       setRequesting(false)
     }
   }
@@ -510,7 +510,7 @@ export default function HealthConnectScreen() {
       const { csrfToken } = await apiClient.csrfToken()
       await syncMedicalCalendarEvents(csrfToken)
     } catch (err) {
-      console.warn('[Calendar] sync failed:', err)
+      console.warn('[Calendar] sync failed')
     }
   }
 

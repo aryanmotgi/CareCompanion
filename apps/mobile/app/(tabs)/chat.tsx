@@ -35,6 +35,7 @@ import { hapticAIMessage } from '../../src/utils/haptics'
 import { useGyroParallax } from '../../src/hooks/useGyroParallax'
 import { TabFadeWrapper } from './_layout'
 import { useProfile } from '../../src/context/ProfileContext'
+import { AIConsentModal, useAIConsentGate } from '../../src/components/AIConsentModal'
 
 const CHAT_INTRO_KEY = 'cc-chat-intro-seen'
 
@@ -395,6 +396,7 @@ export default function ChatScreen() {
   const { apiClient, profile } = useProfile()
   const router = useRouter()
   const params = useLocalSearchParams<{ prefill?: string }>()
+  const aiConsent = useAIConsentGate()
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -704,6 +706,11 @@ export default function ChatScreen() {
   if (activeConversationId === null) {
     return (
       <TabFadeWrapper>
+        <AIConsentModal
+          visible={aiConsent.visible}
+          onAccept={aiConsent.accept}
+          onDecline={() => router.replace('/(tabs)' as never)}
+        />
         <View style={[styles.root, { backgroundColor: theme.bg }]}>
           <Animated.View style={headerAnim}>
             <View style={[styles.header, { paddingTop: insets.top + 16, borderBottomColor: theme.border }]}>
