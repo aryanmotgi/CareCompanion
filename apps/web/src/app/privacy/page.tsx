@@ -82,7 +82,7 @@ export default function PrivacyPolicy() {
             {
               num: 4, title: 'HOW WE STORE AND PROTECT YOUR DATA',
               content: <div className="grid gap-2">{[
-                'All data stored in Supabase (PostgreSQL), a SOC 2 Type II certified cloud database',
+                'All data stored in AWS Aurora (PostgreSQL), a SOC 2 Type II certified cloud database',
                 'Row-level security ensures no user can access another user\'s data',
                 'All data encrypted in transit (HTTPS/TLS) and at rest',
                 'API keys and credentials are never stored in code',
@@ -138,7 +138,7 @@ export default function PrivacyPolicy() {
             {
               num: 11, title: 'SECURITY PRACTICES',
               content: <div className="p-5 rounded-xl bg-gradient-to-br from-[#6366F1]/[0.06] to-transparent border border-[#6366F1]/15">
-                <p>CareCompanion AI encrypts all data in transit using <strong className="text-[var(--text)]">TLS 1.2+</strong> and at rest using <strong className="text-[var(--text)]">AES-256</strong> encryption through our database provider (Supabase, SOC 2 Type II certified). Every database table is protected by <strong className="text-[var(--text)]">row-level security (RLS)</strong> policies that cryptographically enforce user-scoped access, meaning no user can ever query another user&apos;s data, even through direct API calls. All API keys, OAuth tokens, and secrets are stored in environment variables and <strong className="text-[var(--text)]">never committed to source code</strong>. We conduct regular dependency audits and follow OWASP security guidelines. Health portal connections use the <strong className="text-[var(--text)]">SMART on FHIR OAuth 2.0</strong> protocol with PKCE where supported, and we never see or store hospital login passwords.</p>
+                <p>CareCompanion AI encrypts all data in transit using <strong className="text-[var(--text)]">TLS 1.2+</strong> and at rest using <strong className="text-[var(--text)]">AES-256</strong> encryption through our database provider (AWS Aurora, SOC 2 Type II certified). Every database table is protected by <strong className="text-[var(--text)]">row-level security (RLS)</strong> policies that cryptographically enforce user-scoped access, meaning no user can ever query another user&apos;s data, even through direct API calls. All API keys, OAuth tokens, and secrets are stored in environment variables and <strong className="text-[var(--text)]">never committed to source code</strong>. We conduct regular dependency audits and follow OWASP security guidelines. Health portal connections use the <strong className="text-[var(--text)]">SMART on FHIR OAuth 2.0</strong> protocol with PKCE where supported, and we never see or store hospital login passwords.</p>
               </div>
             },
           ].map((section) => (
