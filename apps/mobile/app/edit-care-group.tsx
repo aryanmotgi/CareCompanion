@@ -10,6 +10,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { View, Text, TextInput, Pressable, StyleSheet, Alert, ScrollView } from 'react-native'
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -36,6 +37,28 @@ export default function EditCareGroupScreen() {
   const [caregiverName, setCaregiverName] = useState(profile?.caregiverForName || '')
   const [saving, setSaving] = useState(false)
   const [hydrated, setHydrated] = useState(false)
+  const [toastVisible, setToastVisible] = useState(false)
+  const toastOpacity = useSharedValue(0)
+  const toastY = useSharedValue(20)
+  const toastStyle = useAnimatedStyle(() => ({
+    opacity: toastOpacity.value,
+    transform: [{ translateY: toastY.value }],
+  }))
+
+  function showSavedToast(onDone: () => void) {
+    setToastVisible(true)
+    toastOpacity.value = withTiming(1, { duration: 180 })
+    toastY.value = withTiming(0, { duration: 180 })
+    setTimeout(() => {
+      toastOpacity.value = withTiming(0, { duration: 220 }, (finished) => {
+        if (finished) {
+          runOnJS(setToastVisible)(false)
+          runOnJS(onDone)()
+        }
+      })
+      toastY.value = withTiming(20, { duration: 220 })
+    }, 1400)
+  }
 
   // Hydrate careType from SecureStore on mount
   useEffect(() => {
@@ -108,9 +131,7 @@ export default function EditCareGroupScreen() {
       })
       if (!res.ok) throw new Error('Save failed')
       await refetch()
-      Alert.alert('Saved', 'Your care group has been updated.', [
-        { text: 'OK', onPress: () => router.back() },
-      ])
+      showSavedToast(() => router.back())
     } catch {
       Alert.alert('Error', 'Failed to save. Please try again.')
     } finally {
@@ -243,6 +264,20 @@ export default function EditCareGroupScreen() {
           <Text style={styles.saveBtnText}>{saving ? 'Saving…' : 'Save Changes'}</Text>
         </Pressable>
       </ScrollView>
+
+      {toastVisible && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.toast,
+            { bottom: insets.bottom + 32, backgroundColor: theme.isDark ? 'rgba(16,185,129,0.95)' : '#10B981' },
+            toastStyle,
+          ]}
+        >
+          <Ionicons name="checkmark-circle" size={18} color="#fff" />
+          <Text style={styles.toastText}>Profile saved</Text>
+        </Animated.View>
+      )}
     </View>
   )
 }
@@ -261,4 +296,20 @@ const styles = StyleSheet.create({
   caregiverInput: { borderWidth: 1, borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 16 },
   saveBtn: { paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 8 },
   saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  toast: {
+    position: 'absolute',
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  toastText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 })

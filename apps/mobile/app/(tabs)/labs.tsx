@@ -1,7 +1,6 @@
 // apps/mobile/app/(tabs)/labs.tsx
 import React, { useCallback, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -9,6 +8,13 @@ import {
   Text,
   View,
 } from 'react-native'
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  useReducedMotion,
+} from 'react-native-reanimated'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { DEV_STORE_LABS_KEY } from '../../src/services/healthkit'
 import { Ionicons } from '@expo/vector-icons'
@@ -156,9 +162,7 @@ export default function LabsScreen() {
           }
         >
           {loading ? (
-            <View style={{ paddingTop: 40, alignItems: 'center' }}>
-              <ActivityIndicator color={theme.accent} />
-            </View>
+            <LabsSkeleton theme={theme} />
           ) : error ? (
             <View style={{ paddingTop: 32, alignItems: 'center', gap: 10 }}>
               <Ionicons name="cloud-offline-outline" size={32} color={theme.rose} />
@@ -244,6 +248,49 @@ export default function LabsScreen() {
         </ScrollView>
       </View>
     </TabFadeWrapper>
+  )
+}
+
+function LabsSkeleton({ theme }: { theme: ReturnType<typeof useTheme> }) {
+  const reduceMotion = useReducedMotion()
+  const shimmer = useSharedValue(0.4)
+  useEffect(() => {
+    if (reduceMotion) return
+    shimmer.value = withRepeat(withTiming(0.9, { duration: 900 }), -1, true)
+  }, [shimmer, reduceMotion])
+  const shimmerStyle = useAnimatedStyle(() => ({ opacity: shimmer.value }))
+  const base = theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'
+
+  const Bar = ({ w, h, mb }: { w: number | `${number}%`; h: number; mb?: number }) => (
+    <Animated.View
+      style={[{ width: w, height: h, borderRadius: 6, backgroundColor: base, marginBottom: mb ?? 0 }, shimmerStyle]}
+    />
+  )
+
+  const Card = () => (
+    <View
+      style={{
+        padding: 14,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: theme.border,
+        backgroundColor: 'rgba(255,255,255,0.02)',
+        marginBottom: 8,
+      }}
+    >
+      <Bar w={'55%'} h={14} mb={10} />
+      <Bar w={'80%'} h={10} mb={6} />
+      <Bar w={'40%'} h={10} />
+    </View>
+  )
+
+  return (
+    <View>
+      <Bar w={120} h={11} mb={12} />
+      {[0, 1, 2, 3].map((i) => (
+        <Card key={i} />
+      ))}
+    </View>
   )
 }
 
