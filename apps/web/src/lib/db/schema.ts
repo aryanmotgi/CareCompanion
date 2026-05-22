@@ -226,6 +226,19 @@ export const immunizations = pgTable('immunizations', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
+// ── Wellness Vitals (HealthKit objective snapshots) ──────────────────────────
+export const wellnessVitals = pgTable('wellness_vitals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  careProfileId: uuid('care_profile_id').notNull().references(() => careProfiles.id, { onDelete: 'cascade' }),
+  capturedAt: timestamp('captured_at', { withTimezone: true }).notNull(),
+  steps: integer('steps'),
+  heartRate: numeric('heart_rate'),
+  sleepHours: numeric('sleep_hours'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  profileTimeIdx: index('wellness_vitals_profile_time_idx').on(t.careProfileId, t.capturedAt),
+}))
+
 // ── Documents ─────────────────────────────────────────────────────────────────
 export const documents = pgTable('documents', {
   id: uuid('id').primaryKey().defaultRandom(),

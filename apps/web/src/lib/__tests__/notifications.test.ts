@@ -61,7 +61,16 @@ vi.mock('@/lib/db', () => {
         },
       }),
       insert: () => ({
-        values: mockInsert,
+        values: (rows: Array<Record<string, unknown>>) => {
+          mockInsert(rows)
+          // Mirror the production chain: .values(...).returning(...) → array of inserted rows
+          return {
+            returning: () =>
+              Promise.resolve(
+                rows.map((r, i) => ({ id: `mock-id-${i}`, type: r.type as string })),
+              ),
+          }
+        },
       }),
       delete: () => ({
         where: () => Promise.resolve([]),
