@@ -1,0 +1,100 @@
+CareCompanion — AI Care OS for Cancer Caregivers
+
+When someone you love is fighting cancer, you become their full-time healthcare manager overnight. You're tracking a dozen medications, juggling oncologist appointments, decoding lab reports, fighting insurance denials, and doing it all while managing your own fear and exhaustion. CareCompanion was built for you.
+
+CareCompanion is an AI-powered Care OS — a single command center that remembers everything, answers your hardest questions, and helps you navigate a healthcare system that was never designed with caregivers in mind.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+ASK ANYTHING. GET REAL ANSWERS.
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+At the heart of CareCompanion is a multi-agent AI assistant powered by Claude. Six specialist agents work in parallel to answer every question you throw at it:
+
+• Drug interactions between Carboplatin and Metformin
+• What your WBC count of 2.1 actually means
+• Whether your insurance denial is worth appealing
+• What to bring to tomorrow's oncology appointment
+• Whether those new symptoms warrant a call to the care team
+
+The AI remembers every medication, every lab result, every appointment note — so you never have to repeat yourself. Just ask.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+DAILY CHECK-IN
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+Thirty seconds a day. Log pain level, mood, sleep quality, energy, and appetite with intuitive sliders. Add symptom tags like fatigue, nausea, or brain fog. Over days and weeks, CareCompanion surfaces trends and flags patterns worth discussing with your oncologist — the kind of data doctors actually want at appointments.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+SYMPTOM RADAR
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+See a week of health data in one glance. The Symptom Radar overlays this week's scores against last week's across six dimensions — so a creeping pain elevation or worsening sleep pattern is impossible to miss. AI-generated insights flag concerning trends with specific, actionable guidance: "Pain is 40% above your 30-day baseline — worth raising at Tuesday's visit."
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+CARE HUB
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+Your complete medication dashboard: every drug, every dose, every schedule. Confirm medications taken with a single tap. Get refill reminders three days before you run out. See upcoming appointments and recent lab results side by side. When a WBC comes back flagged, you'll know immediately — with a plain-language explanation and a suggested next step.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+TREATMENT TIMELINE
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+Every infusion, every lab result, every medication change, every provider note — arranged chronologically on a living timeline. Filter by type, share with a new specialist, or use it as the foundation for visit prep. The timeline is a complete, portable record of the treatment journey.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+DOCUMENT SCANNER
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+Point your camera at any health document — an explanation of benefits, a lab report, a prescription bottle, a discharge summary — and CareCompanion reads it, extracts the relevant data, and files it automatically. No more manual data entry. No more lost paperwork.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+CONNECT YOUR HEALTH RECORDS
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+CareCompanion connects directly to Epic, Kaiser, Stanford Health, UCSF, and 100+ health systems via FHIR. Your medications, lab history, and visit notes sync automatically. Your AI assistant already knows what your chart says.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+EMERGENCY INFO CARD
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+One tap puts a complete emergency snapshot on screen: name, age, allergies (highlighted), current medications, diagnoses, insurance, and emergency contact. Designed for paramedics and ER nurses who need the full picture in seconds. Includes quick-call buttons for 911 and the 988 Crisis Line.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+CARE TEAM SHARING
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+Caregiving is rarely a solo job. Invite family members by email with role-based access — Editors can update medications and log symptoms, Viewers can stay informed without changing anything. A shared activity feed keeps everyone aligned: who added what, when, and why.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+BUILT FOR CANCER CAREGIVERS
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+CareCompanion was designed from the ground up for the complexity of cancer care: chemotherapy cycles, neutropenia windows, prior authorizations, FSA tracking, and the emotional weight of supporting someone through treatment. The AI never diagnoses, never recommends changing a prescribed medication, and always defers to your care team for clinical decisions. It is your co-pilot, not your doctor.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+PROACTIVE ALERTS
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+CareCompanion watches your care data around the clock and notifies you before problems become crises:
+• Medication refills due in the next 3 days
+• Appointment reminders with AI-generated prep checklists
+• Prior authorizations expiring this week
+• New abnormal lab results flagged for your attention
+• FSA/HSA balances running low
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+PRIVACY FIRST
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+Your health data belongs to you. CareCompanion uses row-level security so no user can access another user's data. PHI is never logged. Data is encrypted in transit and at rest. We do not sell your data or use it for advertising.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+SUBSCRIPTION
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+CareCompanion is free to download with a 14-day trial. A subscription is required to access AI chat, symptom radar, unlimited document scanning, and care team sharing.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+CareCompanion is not a medical device. It does not provide medical advice, diagnosis, or treatment recommendations. Always consult your healthcare providers for clinical decisions.

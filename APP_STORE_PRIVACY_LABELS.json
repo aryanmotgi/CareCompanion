@@ -1,0 +1,193 @@
+{
+  "_schema": "apple-privacy-nutrition-label-v1",
+  "_notes": "Audit basis: source code review of apps/mobile and apps/web as of 2026-05-22. Only categories actively collected per code are listed. No advertising network or third-party data broker integrations found.",
+
+  "privacyDetails": [
+    {
+      "category": "Health & Fitness",
+      "categoryKey": "HEALTH_AND_FITNESS",
+      "description": "Health and fitness information collected from users about themselves or the person they are caring for.",
+      "dataTypes": [
+        {
+          "dataType": "Health",
+          "dataTypeKey": "HEALTH",
+          "collected": true,
+          "linkedToUser": true,
+          "usedForTracking": false,
+          "purposes": ["APP_FUNCTIONALITY"],
+          "purposeLabels": ["App Functionality"],
+          "examples": [
+            "Symptom check-in scores: pain level, mood, sleep quality/hours, energy, appetite",
+            "Symptom tags: headache, nausea, fatigue, dizziness, brain fog",
+            "Cancer type, cancer stage, treatment phase",
+            "Medical conditions and diagnoses",
+            "Allergies",
+            "Lab results: CBC, metabolic panel, tumor markers",
+            "Medications: name, dose, schedule, adherence logs",
+            "Doctor visit notes and post-visit summaries",
+            "Health records synced via FHIR (Epic, Kaiser, UCSF, Stanford, Sutter)",
+            "HealthKit data when user grants HealthKit permission (iOS)"
+          ]
+        }
+      ]
+    },
+
+    {
+      "category": "Contact Info",
+      "categoryKey": "CONTACT_INFO",
+      "description": "Contact information used for account authentication and care team coordination.",
+      "dataTypes": [
+        {
+          "dataType": "Email Address",
+          "dataTypeKey": "EMAIL_ADDRESS",
+          "collected": true,
+          "linkedToUser": true,
+          "usedForTracking": false,
+          "purposes": ["APP_FUNCTIONALITY"],
+          "purposeLabels": ["App Functionality"],
+          "examples": [
+            "Email address used to create and authenticate the user account (AWS Cognito)",
+            "Email address used to send care team invitations",
+            "Email address used to send medication reminders and proactive alerts"
+          ]
+        },
+        {
+          "dataType": "Name",
+          "dataTypeKey": "NAME",
+          "collected": true,
+          "linkedToUser": true,
+          "usedForTracking": false,
+          "purposes": ["APP_FUNCTIONALITY"],
+          "purposeLabels": ["App Functionality"],
+          "examples": [
+            "User display name stored in care profile",
+            "Patient name stored in care profile",
+            "Emergency contact name stored for emergency info card"
+          ]
+        },
+        {
+          "dataType": "Phone Number",
+          "dataTypeKey": "PHONE_NUMBER",
+          "collected": true,
+          "linkedToUser": true,
+          "usedForTracking": false,
+          "purposes": ["APP_FUNCTIONALITY"],
+          "purposeLabels": ["App Functionality"],
+          "examples": [
+            "Emergency contact phone number stored for emergency info card (user-entered)"
+          ]
+        }
+      ]
+    },
+
+    {
+      "category": "Identifiers",
+      "categoryKey": "IDENTIFIERS",
+      "description": "Identifiers used for account management and push notification delivery.",
+      "dataTypes": [
+        {
+          "dataType": "User ID",
+          "dataTypeKey": "USER_ID",
+          "collected": true,
+          "linkedToUser": true,
+          "usedForTracking": false,
+          "purposes": ["APP_FUNCTIONALITY"],
+          "purposeLabels": ["App Functionality"],
+          "examples": [
+            "AWS Cognito user sub (UUID) assigned at account creation",
+            "Internal care_profile_id used to scope all health data with row-level security"
+          ]
+        },
+        {
+          "dataType": "Device ID",
+          "dataTypeKey": "DEVICE_ID",
+          "collected": true,
+          "linkedToUser": true,
+          "usedForTracking": false,
+          "purposes": ["APP_FUNCTIONALITY"],
+          "purposeLabels": ["App Functionality"],
+          "examples": [
+            "APNs device token stored in push_subscriptions table to deliver medication reminders and health alerts"
+          ]
+        }
+      ]
+    },
+
+    {
+      "category": "Usage Data",
+      "categoryKey": "USAGE_DATA",
+      "description": "Data about how users interact with the app, collected to improve reliability and performance.",
+      "dataTypes": [
+        {
+          "dataType": "Product Interaction",
+          "dataTypeKey": "PRODUCT_INTERACTION",
+          "collected": true,
+          "linkedToUser": false,
+          "usedForTracking": false,
+          "purposes": ["ANALYTICS"],
+          "purposeLabels": ["Analytics"],
+          "examples": [
+            "Feature usage events: which screens are visited, which features are used",
+            "Chat session counts and message counts (aggregate, not content)",
+            "Check-in completion rates"
+          ]
+        },
+        {
+          "dataType": "Crash Data",
+          "dataTypeKey": "CRASH_DATA",
+          "collected": true,
+          "linkedToUser": false,
+          "usedForTracking": false,
+          "purposes": ["APP_FUNCTIONALITY"],
+          "purposeLabels": ["App Functionality"],
+          "examples": [
+            "Stack traces and error reports for app crashes (PHI redacted from all crash reports per security policy)"
+          ]
+        }
+      ]
+    }
+  ],
+
+  "dataNotCollected": [
+    {
+      "category": "Location",
+      "categoryKey": "LOCATION",
+      "reason": "The app does not request or store precise or coarse location. No geolocation APIs are called."
+    },
+    {
+      "category": "Financial Info",
+      "categoryKey": "FINANCIAL_INFO",
+      "reason": "Subscription billing is handled entirely by Apple in-app purchase. The app never collects payment card numbers, bank account details, or billing addresses. Insurance plan information entered by users (plan name, member ID, group number) is stored solely for the user's own reference and cost estimation features."
+    },
+    {
+      "category": "Sensitive Info",
+      "categoryKey": "SENSITIVE_INFO",
+      "reason": "Sexual orientation, biometric data, and racial/ethnic origin are not collected. Health conditions (cancer type, diagnoses) are categorized under Health & Fitness above."
+    },
+    {
+      "category": "Contacts",
+      "categoryKey": "CONTACTS",
+      "reason": "The app does not access the device contacts book. Emergency contact and care team member information is entered manually by the user."
+    },
+    {
+      "category": "Browsing History",
+      "categoryKey": "BROWSING_HISTORY",
+      "reason": "Not collected."
+    },
+    {
+      "category": "Search History",
+      "categoryKey": "SEARCH_HISTORY",
+      "reason": "Not collected."
+    },
+    {
+      "category": "Purchases",
+      "categoryKey": "PURCHASES",
+      "reason": "Not collected."
+    },
+    {
+      "category": "Other Data",
+      "categoryKey": "OTHER_DATA",
+      "reason": "No additional data categories beyond those listed above."
+    }
+  ]
+}
