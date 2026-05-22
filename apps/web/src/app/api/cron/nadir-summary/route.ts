@@ -119,9 +119,8 @@ export async function GET(req: Request) {
           subsByUser.set(sub.userId, arr);
         }
 
-        const patientLabel = cycle.patientName?.trim() || 'Your loved one';
-        const title = `Nadir week recap ready · Cycle ${cycle.cycleNumber}`;
-        const body = `See how ${patientLabel} did during nadir — tap to view and share.`;
+        const title = `Nadir week recap ready`;
+        const body = `Nadir week is over — tap to view the recap and share with your care team.`;
         const url = `/nadir-summary/${cycle.cycleId}`;
 
         for (const userId of recipientIds) {

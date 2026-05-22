@@ -50,10 +50,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // Map mood number (1-5) to emoji
-  const moodEmojis = ['😫', '😕', '😐', '😊', '😄'];
-  const moodEmoji = moodEmojis[checkin.mood - 1] || '😐';
-
   // Get all care team members for this profile
   const caregivers = await db
     .select({ userId: careTeamMembers.userId })
@@ -73,7 +69,7 @@ export async function POST(req: Request) {
 
   // Send push to each subscription
   const title = 'Check-in Update';
-  const body = `${moodEmoji} Mood · Pain ${checkin.pain}/10 · Energy ${checkin.energy} · Sleep ${checkin.sleep}`;
+  const body = `A new check-in update is available. Tap to view details.`;
 
   const results = await Promise.allSettled(
     subs.map((sub) =>
