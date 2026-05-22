@@ -13,6 +13,36 @@ import { logger } from '@/lib/logger';
  * Scans a user's data and generates actionable alerts.
  * Designed to run on a cron schedule (every 15 min via Vercel).
  */
+
+// HIPAA: push notifications are delivered via Apple/Google relays and can be
+// surfaced on lock screens or device notification centers before the user
+// authenticates into the app. Strip all PHI from the push title + body and
+// surface only a non-identifying category. The app fetches the detail via
+// an authenticated API call after the user taps the notification.
+function getRedactedPushPayload(type: string): { title: string; body: string } {
+  switch (type) {
+    case 'refill_overdue':
+    case 'refill_soon':
+      return { title: 'CareCompanion', body: 'You have a refill reminder.' };
+    case 'appointment_prep':
+    case 'appointment_today':
+      return { title: 'CareCompanion', body: 'You have an appointment reminder.' };
+    case 'prior_auth_expiring':
+      return { title: 'CareCompanion', body: 'You have an insurance update.' };
+    case 'abnormal_lab':
+      return { title: 'CareCompanion', body: 'You have a new health update.' };
+    case 'low_balance':
+      return { title: 'CareCompanion', body: 'You have an account update.' };
+    case 'cycle_nadir_warning':
+    case 'cycle_nadir_active':
+    case 'cycle_recovery':
+    case 'cycle_pre_infusion':
+      return { title: 'CareCompanion', body: 'You have a care reminder.' };
+    default:
+      return { title: 'CareCompanion', body: 'You have a new alert.' };
+  }
+}
+
 export async function generateNotificationsForUser(userId: string): Promise<number> {
   let generated = 0;
 
@@ -336,10 +366,18 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
 
     if (subs.length > 0) {
       for (const notification of toInsert) {
+        const redacted = getRedactedPushPayload(notification.type);
         for (const sub of subs) {
           sendPushNotification(
             { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-            { title: notification.title, body: notification.message ?? '', url: '/dashboard' },
+            {
+              title: redacted.title,
+              body: redacted.body,
+              url: '/dashboard',
+              // PHI-free metadata. The app fetches the full notification from
+              // /api/notifications after the user authenticates.
+              data: { type: notification.type },
+            },
           ).catch(async (err: unknown) => {
             // Remove invalid/expired subscriptions (HTTP 410 Gone)
             const status = (err as { statusCode?: number })?.statusCode;

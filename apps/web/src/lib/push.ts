@@ -14,7 +14,7 @@ function ensureVapid() {
 
 export async function sendPushNotification(
   subscription: { endpoint: string; p256dh: string; auth: string },
-  payload: { title: string; body: string; url?: string }
+  payload: { title: string; body: string; url?: string; data?: Record<string, unknown> }
 ): Promise<void> {
   ensureVapid();
   try {
