@@ -1,14 +1,17 @@
--- Migration: 017_performance_indexes.sql
--- Source:     DB_QUERY_REPORT.md (repo root), 2026-05-18
--- Analyst:    Remote agent, static code analysis
+-- Migration: 017_performance_indexes_queryeditor.sql
+-- Source:     017_performance_indexes.sql, adapted for AWS RDS Query Editor
+-- Analyst:    Remote agent, static code analysis (DB_QUERY_REPORT.md, 2026-05-18)
 -- Status:     APPLIED to prod Aurora 2026-05-21
---             Indexes built via 017_performance_indexes_queryeditor.sql in
---             RDS Query Editor (CONCURRENTLY removed). All 13 indexes
---             returned success; pg_indexes confirmed presence.
--- !! REQUIRES psql direct connection — NOT RDS Data API !!
---    CONCURRENTLY cannot run inside an implicit transaction (RDS Data API wraps
---    every statement). Apply via:
---      psql "$DATABASE_URL" -f apps/web/src/lib/db/migrations/017_performance_indexes.sql
+--             All 13 CREATE INDEX statements returned success in Query Editor
+--             (durations 114–1337 ms); pg_indexes verification confirmed
+--             presence. Safe to re-run (IF NOT EXISTS).
+-- !! Query Editor variant — CONCURRENTLY removed !!
+--    RDS Data API / Query Editor wraps every statement in an implicit
+--    transaction. CREATE INDEX CONCURRENTLY cannot run inside a txn.
+--    This file uses plain CREATE INDEX so it executes in Query Editor.
+--    Trade-off: each index build acquires a SHARE lock on its table that
+--    blocks writes (reads remain unaffected) for the duration of the
+--    build. Run during a low-traffic window or per-statement.
 
 -- ---------------------------------------------------------------------------
 -- 1. memories_user_lastref_idx
@@ -17,7 +20,7 @@
 --    Expected latency win: eliminates full-user scan + in-memory sort;
 --              ~10–50 ms saved per chat request for users with >1 k memories.
 -- ---------------------------------------------------------------------------
-CREATE INDEX CONCURRENTLY IF NOT EXISTS memories_user_lastref_idx
+CREATE INDEX IF NOT EXISTS memories_user_lastref_idx
   ON memories(user_id, last_referenced DESC)
   WHERE valid_to IS NULL;
 
@@ -27,7 +30,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS memories_user_lastref_idx
 --    Expected latency win: eliminates full-table sequential scan on append-only
 --              table; both the paginated query and the COUNT(*) use the index.
 -- ---------------------------------------------------------------------------
-CREATE INDEX CONCURRENTLY IF NOT EXISTS audit_logs_user_created_idx
+CREATE INDEX IF NOT EXISTS audit_logs_user_created_idx
   ON audit_logs(user_id, created_at DESC);
 
 -- ---------------------------------------------------------------------------
@@ -37,7 +40,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS audit_logs_user_created_idx
 --    Expected latency win: eliminates growing sequential scan; at 5 k messages
 --              per user this saves tens of ms on cold Aurora instance.
 -- ---------------------------------------------------------------------------
-CREATE INDEX CONCURRENTLY IF NOT EXISTS messages_user_created_idx
+CREATE INDEX IF NOT EXISTS messages_user_created_idx
   ON messages(user_id, created_at DESC);
 
 -- ---------------------------------------------------------------------------
@@ -47,7 +50,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS messages_user_created_idx
 --    Expected latency win: eliminates per-user scan + sort; partial WHERE
 --              excludes soft-deleted rows from the index.
 -- ---------------------------------------------------------------------------
-CREATE INDEX CONCURRENTLY IF NOT EXISTS lab_results_user_date_idx
+CREATE INDEX IF NOT EXISTS lab_results_user_date_idx
   ON lab_results(user_id, date_taken DESC)
   WHERE deleted_at IS NULL;
 
@@ -58,7 +61,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS lab_results_user_date_idx
 --    Expected latency win: eliminates per-user scan + sort on a table with
 --              200–1 k rows per user.
 -- ---------------------------------------------------------------------------
-CREATE INDEX CONCURRENTLY IF NOT EXISTS symptom_entries_user_date_idx
+CREATE INDEX IF NOT EXISTS symptom_entries_user_date_idx
   ON symptom_entries(user_id, date DESC);
 
 -- ---------------------------------------------------------------------------
@@ -68,7 +71,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS symptom_entries_user_date_idx
 --    Expected latency win: replaces full-profile scan; every PDF export hits
 --              this table with a date-range predicate.
 -- ---------------------------------------------------------------------------
-CREATE INDEX CONCURRENTLY IF NOT EXISTS wellness_checkins_profile_time_idx
+CREATE INDEX IF NOT EXISTS wellness_checkins_profile_time_idx
   ON wellness_checkins(care_profile_id, checked_in_at DESC);
 
 -- ---------------------------------------------------------------------------
@@ -78,7 +81,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS wellness_checkins_profile_time_idx
 --    Expected latency win: same pattern as wellness_checkins; sequential scan
 --              replaced by index range scan.
 -- ---------------------------------------------------------------------------
-CREATE INDEX CONCURRENTLY IF NOT EXISTS symptom_insights_profile_time_idx
+CREATE INDEX IF NOT EXISTS symptom_insights_profile_time_idx
   ON symptom_insights(care_profile_id, created_at DESC);
 
 -- ---------------------------------------------------------------------------
@@ -87,7 +90,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS symptom_insights_profile_time_idx
 --              (report §5).
 --    Expected latency win: eliminates full-table scan in PDF export path.
 -- ---------------------------------------------------------------------------
-CREATE INDEX CONCURRENTLY IF NOT EXISTS reminder_logs_user_time_idx
+CREATE INDEX IF NOT EXISTS reminder_logs_user_time_idx
   ON reminder_logs(user_id, scheduled_time DESC);
 
 -- ---------------------------------------------------------------------------
@@ -98,7 +101,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS reminder_logs_user_time_idx
 --              100 k+ rows); reduces nightly cron from multi-second scan to
 --              narrow index range lookup.
 -- ---------------------------------------------------------------------------
-CREATE INDEX CONCURRENTLY IF NOT EXISTS memories_decay_at_idx
+CREATE INDEX IF NOT EXISTS memories_decay_at_idx
   ON memories(decay_at)
   WHERE decay_at IS NOT NULL AND valid_to IS NULL;
 
@@ -109,7 +112,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS memories_decay_at_idx
 --     Expected latency win: eliminates full unmoderated-post scan + sort on
 --               every community page load.
 -- ---------------------------------------------------------------------------
-CREATE INDEX CONCURRENTLY IF NOT EXISTS community_posts_feed_idx
+CREATE INDEX IF NOT EXISTS community_posts_feed_idx
   ON community_posts(cancer_type, created_at DESC)
   WHERE is_moderated = false;
 
@@ -120,7 +123,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS community_posts_feed_idx
 --     Expected latency win: allows pinned-post bubble-up without sort pass
 --               over the full unmoderated set.
 -- ---------------------------------------------------------------------------
-CREATE INDEX CONCURRENTLY IF NOT EXISTS community_posts_pinned_feed_idx
+CREATE INDEX IF NOT EXISTS community_posts_pinned_feed_idx
   ON community_posts(is_pinned DESC, created_at DESC)
   WHERE is_moderated = false;
 
@@ -131,7 +134,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS community_posts_pinned_feed_idx
 --     Expected latency win: eliminates full-table scan when fetching all
 --               members for a care profile.
 -- ---------------------------------------------------------------------------
-CREATE INDEX CONCURRENTLY IF NOT EXISTS care_team_members_profile_idx
+CREATE INDEX IF NOT EXISTS care_team_members_profile_idx
   ON care_team_members(care_profile_id);
 
 -- ---------------------------------------------------------------------------
@@ -142,7 +145,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS care_team_members_profile_idx
 --               non-deleted); eliminates full user-notification scan fired on
 --               every chat request.
 -- ---------------------------------------------------------------------------
-CREATE INDEX CONCURRENTLY IF NOT EXISTS notifications_user_unread_idx
+CREATE INDEX IF NOT EXISTS notifications_user_unread_idx
   ON notifications(user_id, created_at DESC)
   WHERE is_read = false AND deleted_at IS NULL;
 
@@ -150,19 +153,20 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS notifications_user_unread_idx
 -- ===========================================================================
 -- ROLLBACK
 -- Run this section to drop all indexes added above (e.g. if a regression is
--- observed). Each DROP is also CONCURRENTLY to avoid table locks in production.
+-- observed). CONCURRENTLY removed for Query Editor compatibility — each DROP
+-- takes a brief ACCESS EXCLUSIVE lock on its table.
 -- ===========================================================================
 
--- DROP INDEX CONCURRENTLY IF EXISTS memories_user_lastref_idx;
--- DROP INDEX CONCURRENTLY IF EXISTS audit_logs_user_created_idx;
--- DROP INDEX CONCURRENTLY IF EXISTS messages_user_created_idx;
--- DROP INDEX CONCURRENTLY IF EXISTS lab_results_user_date_idx;
--- DROP INDEX CONCURRENTLY IF EXISTS symptom_entries_user_date_idx;
--- DROP INDEX CONCURRENTLY IF EXISTS wellness_checkins_profile_time_idx;
--- DROP INDEX CONCURRENTLY IF EXISTS symptom_insights_profile_time_idx;
--- DROP INDEX CONCURRENTLY IF EXISTS reminder_logs_user_time_idx;
--- DROP INDEX CONCURRENTLY IF EXISTS memories_decay_at_idx;
--- DROP INDEX CONCURRENTLY IF EXISTS community_posts_feed_idx;
--- DROP INDEX CONCURRENTLY IF EXISTS community_posts_pinned_feed_idx;
--- DROP INDEX CONCURRENTLY IF EXISTS care_team_members_profile_idx;
--- DROP INDEX CONCURRENTLY IF EXISTS notifications_user_unread_idx;
+-- DROP INDEX IF EXISTS memories_user_lastref_idx;
+-- DROP INDEX IF EXISTS audit_logs_user_created_idx;
+-- DROP INDEX IF EXISTS messages_user_created_idx;
+-- DROP INDEX IF EXISTS lab_results_user_date_idx;
+-- DROP INDEX IF EXISTS symptom_entries_user_date_idx;
+-- DROP INDEX IF EXISTS wellness_checkins_profile_time_idx;
+-- DROP INDEX IF EXISTS symptom_insights_profile_time_idx;
+-- DROP INDEX IF EXISTS reminder_logs_user_time_idx;
+-- DROP INDEX IF EXISTS memories_decay_at_idx;
+-- DROP INDEX IF EXISTS community_posts_feed_idx;
+-- DROP INDEX IF EXISTS community_posts_pinned_feed_idx;
+-- DROP INDEX IF EXISTS care_team_members_profile_idx;
+-- DROP INDEX IF EXISTS notifications_user_unread_idx;
