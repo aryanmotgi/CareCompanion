@@ -60,22 +60,22 @@ interface Theme {
 }
 
 const dark: Theme = {
-  bg: '#0C0E1A',
-  bgWarm: '#10122B',
-  bgCard: 'rgba(167,139,250,0.03)',
-  bgCardBorder: 'rgba(167,139,250,0.06)',
-  bgElevated: 'rgba(167,139,250,0.10)',
+  bg: '#08091A',
+  bgWarm: '#0D1030',
+  bgCard: 'rgba(167,139,250,0.08)',
+  bgCardBorder: 'rgba(167,139,250,0.20)',
+  bgElevated: 'rgba(167,139,250,0.16)',
   accent: '#6366F1',
   accentHover: '#818CF8',
   lavender: '#A78BFA',
   text: '#EDE9FE',
   textSub: '#A5B4CF',
-  textMuted: 'rgba(255,255,255,0.35)',
+  textMuted: 'rgba(255,255,255,0.55)',
   green: '#6EE7B7',
   amber: '#FCD34D',
   rose: '#FCA5A5',
-  border: 'rgba(167,139,250,0.08)',
-  borderHover: 'rgba(167,139,250,0.10)',
+  border: 'rgba(167,139,250,0.18)',
+  borderHover: 'rgba(167,139,250,0.28)',
   isDark: true,
   shadowCard: {
     shadowColor: '#0F0A28',
@@ -84,8 +84,8 @@ const dark: Theme = {
     shadowRadius: 24,
     elevation: 8,
   },
-  gradientA: ['#0C0E1A', '#0E1025', '#0E1025', '#0C0E1A'],
-  gradientB: ['#0E1025', '#0C0E1A', '#0C0E1A', '#0E1025'],
+  gradientA: ['#08091A', '#0D1038', '#09102C', '#06081A'],
+  gradientB: ['#0D1038', '#06081A', '#0A0C28', '#0D1038'],
   cyan: '#67E8F9',
   violet: '#C4B5FD',
   shadowGlowBlue: { shadowColor: '#6366F1', shadowOffset: { width: 0, height: 0 }, shadowRadius: 16, shadowOpacity: 0.4, elevation: 8 },
@@ -93,8 +93,8 @@ const dark: Theme = {
   shadowGlowViolet: { shadowColor: '#A78BFA', shadowOffset: { width: 0, height: 0 }, shadowRadius: 16, shadowOpacity: 0.35, elevation: 8 },
   shadowGlowEmerald: { shadowColor: '#6EE7B7', shadowOffset: { width: 0, height: 0 }, shadowRadius: 16, shadowOpacity: 0.3, elevation: 8 },
   shadowGlowRose: { shadowColor: '#FCA5A5', shadowOffset: { width: 0, height: 0 }, shadowRadius: 16, shadowOpacity: 0.35, elevation: 8 },
-  gradientAMuted: ['#0C0E1A', '#0E1025', '#0E1025', '#0C0E1A'],
-  gradientBMuted: ['#0E1025', '#0C0E1A', '#0C0E1A', '#0E1025'],
+  gradientAMuted: ['#08091A', '#0D1038', '#09102C', '#06081A'],
+  gradientBMuted: ['#0D1038', '#06081A', '#0A0C28', '#0D1038'],
 }
 
 const light: Theme = {

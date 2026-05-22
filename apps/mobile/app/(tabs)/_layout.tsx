@@ -227,11 +227,18 @@ function CustomTabBar({ state, navigation }: any) {
 
 export function TabFadeWrapper({ children }: { children: React.ReactNode }) {
   const reduceMotion = useReducedMotion()
-  const opacity = useSharedValue(reduceMotion ? 1 : 0.6)
+  // Start at 1 so an initial-mount focus race can never leave the tab dimmed.
+  // Subsequent focuses still get the dip-to-0.6 → spring(1) transition.
+  const opacity = useSharedValue(1)
+  const mountedRef = React.useRef(false)
 
   useFocusEffect(
     React.useCallback(() => {
       if (reduceMotion) return
+      if (!mountedRef.current) {
+        mountedRef.current = true
+        return
+      }
       opacity.value = 0.6
       opacity.value = withSpring(1, { damping: 16, stiffness: 120 })
     }, [opacity, reduceMotion]),

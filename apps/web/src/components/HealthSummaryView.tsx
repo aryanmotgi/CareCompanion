@@ -26,6 +26,8 @@ export function HealthSummaryView({ patientName }: HealthSummaryViewProps) {
       if (data.summary) {
         setSummary(data.summary);
         showToast('Summary generated', 'success');
+      } else {
+        throw new Error('Summary was empty');
       }
     } catch {
       showToast('Failed to generate summary', 'error');

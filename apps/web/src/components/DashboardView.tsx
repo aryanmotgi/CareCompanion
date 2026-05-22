@@ -270,8 +270,8 @@ export function DashboardView({
     timelineFetched.current = true
     setTimelineLoading(true)
     fetch(`/api/timeline?profileId=${encodeURIComponent(profileId)}`)
-      .then(r => r.json())
-      .then(d => { if (Array.isArray(d.data)) setTimelineEvents(d.data) })
+      .then(r => { if (!r.ok) throw new Error('failed'); return r.json(); })
+      .then(d => { setTimelineEvents(Array.isArray(d.data) ? d.data : []) })
       .catch(() => { setTimelineEvents([]) })
       .finally(() => setTimelineLoading(false))
   }, [activeTab, profileId, timelineFetched])
@@ -733,7 +733,7 @@ export function DashboardView({
             <div className="flex flex-wrap items-center gap-2 mb-5">
               {cancerType && (
                 <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#A78BFA]/10 text-[#A78BFA]">
-                  {cancerType}{cancerStage && cancerStage !== 'Unsure' ? ` — Stage ${cancerStage}` : ''}
+                  {cancerType}{cancerStage && cancerStage !== 'Unsure' ? ` — ${cancerStage.startsWith('Stage') ? cancerStage : `Stage ${cancerStage}`}` : ''}
                 </span>
               )}
               {treatmentPhase && PHASE_LABELS[treatmentPhase] && (
