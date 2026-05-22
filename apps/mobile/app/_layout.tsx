@@ -2,6 +2,9 @@
 import { initSentry } from '../src/lib/sentry'
 import { initAnalytics } from '../src/lib/analytics'
 import { useEffect, useState, useCallback, useRef, createContext, useContext } from 'react'
+import { PHIPrivacyGuard } from '../src/components/PHIPrivacyGuard'
+import { JailbreakWarning } from '../src/components/JailbreakWarning'
+import { useJailbreakCheck } from '../src/hooks/useJailbreakCheck'
 
 initSentry()
 import { Stack, Redirect, useSegments, useRouter } from 'expo-router'
@@ -538,6 +541,8 @@ export default function RootLayout() {
   const router = useRouter()
   const [bugReportVisible, setBugReportVisible] = useState(false)
   const currentScreen = segments.join('/')
+  const isJailbroken = useJailbreakCheck()
+  const [jailbreakDismissed, setJailbreakDismissed] = useState(false)
 
   // Deep-link a notification response to the right screen based on
   // `data.kind`. Two kind vocabularies share this dispatcher:
@@ -700,48 +705,54 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider style={{ backgroundColor: theme.bg }}>
-      <ThemedStatusBar />
-      <TestModeBanner />
-      <WelcomeProvider>
-        <TokenProvider>
-          <RecordsProvider>
-            <UserTypeProvider>
-              <CaregiverJoinedProvider>
-                <AuthGate>
-                  <ProfileProvider>
-                    <OnboardingGate>
-                      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }}>
-                        {/* Logged-in tabs root: block iOS swipe-back to /welcome.
-                            Exit only via explicit Sign out. */}
-                        <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
-                        <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
-                        {/* Onboarding lane — swipe-back would let the user
-                            escape AuthGate/OnboardingGate guards and end up
-                            on an inconsistent route. Disable the gesture so
-                            every back step is a deliberate button press. */}
-                        <Stack.Screen name="care-type" options={{ gestureEnabled: false }} />
-                        <Stack.Screen name="onboarding-records" options={{ gestureEnabled: false }} />
-                        <Stack.Screen name="health-consent" options={{ gestureEnabled: false }} />
-                        <Stack.Screen name="health-connect" options={{ gestureEnabled: false }} />
-                        <Stack.Screen name="care-group-join" options={{ gestureEnabled: false }} />
-                        <Stack.Screen name="care-relationship" options={{ gestureEnabled: false }} />
-                        <Stack.Screen name="setup" options={{ gestureEnabled: false }} />
-                        <Stack.Screen name="share-invite" options={{ gestureEnabled: false }} />
-                      </Stack>
-                    </OnboardingGate>
-                  </ProfileProvider>
-                </AuthGate>
-              </CaregiverJoinedProvider>
-            </UserTypeProvider>
-          </RecordsProvider>
-        </TokenProvider>
-      </WelcomeProvider>
-      <BugReportSheet
-        visible={bugReportVisible}
-        currentScreen={currentScreen}
-        onClose={() => setBugReportVisible(false)}
-      />
-      <DisclaimerModal />
+      <PHIPrivacyGuard>
+        <ThemedStatusBar />
+        <TestModeBanner />
+        <WelcomeProvider>
+          <TokenProvider>
+            <RecordsProvider>
+              <UserTypeProvider>
+                <CaregiverJoinedProvider>
+                  <AuthGate>
+                    <ProfileProvider>
+                      <OnboardingGate>
+                        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }}>
+                          {/* Logged-in tabs root: block iOS swipe-back to /welcome.
+                              Exit only via explicit Sign out. */}
+                          <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
+                          <Stack.Screen name="welcome" options={{ gestureEnabled: false }} />
+                          {/* Onboarding lane — swipe-back would let the user
+                              escape AuthGate/OnboardingGate guards and end up
+                              on an inconsistent route. Disable the gesture so
+                              every back step is a deliberate button press. */}
+                          <Stack.Screen name="care-type" options={{ gestureEnabled: false }} />
+                          <Stack.Screen name="onboarding-records" options={{ gestureEnabled: false }} />
+                          <Stack.Screen name="health-consent" options={{ gestureEnabled: false }} />
+                          <Stack.Screen name="health-connect" options={{ gestureEnabled: false }} />
+                          <Stack.Screen name="care-group-join" options={{ gestureEnabled: false }} />
+                          <Stack.Screen name="care-relationship" options={{ gestureEnabled: false }} />
+                          <Stack.Screen name="setup" options={{ gestureEnabled: false }} />
+                          <Stack.Screen name="share-invite" options={{ gestureEnabled: false }} />
+                        </Stack>
+                      </OnboardingGate>
+                    </ProfileProvider>
+                  </AuthGate>
+                </CaregiverJoinedProvider>
+              </UserTypeProvider>
+            </RecordsProvider>
+          </TokenProvider>
+        </WelcomeProvider>
+        <BugReportSheet
+          visible={bugReportVisible}
+          currentScreen={currentScreen}
+          onClose={() => setBugReportVisible(false)}
+        />
+        <DisclaimerModal />
+        <JailbreakWarning
+          visible={isJailbroken && !jailbreakDismissed}
+          onDismiss={() => setJailbreakDismissed(true)}
+        />
+      </PHIPrivacyGuard>
     </SafeAreaProvider>
   )
 }
