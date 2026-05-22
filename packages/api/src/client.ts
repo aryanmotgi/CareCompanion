@@ -464,8 +464,8 @@ export function createApiClient(config: ApiClientConfig) {
     csrfToken: () =>
       apiFetch(config, '/api/csrf-token', { method: 'GET' }) as Promise<{ csrfToken: string }>,
     conversations: {
-      list: () =>
-        apiFetch(config, '/api/conversations', { method: 'GET' }) as Promise<{
+      list: (opts: { signal?: AbortSignal } = {}) =>
+        apiFetch(config, '/api/conversations', { method: 'GET', signal: opts.signal }) as Promise<{
           ok: boolean
           data: Array<{
             id: string
@@ -485,8 +485,8 @@ export function createApiClient(config: ApiClientConfig) {
           createdAt: string
           updatedAt: string
         }>,
-      get: (id: string) =>
-        apiFetch(config, `/api/conversations/${id}`, { method: 'GET' }) as Promise<{
+      get: (id: string, opts: { signal?: AbortSignal } = {}) =>
+        apiFetch(config, `/api/conversations/${id}`, { method: 'GET', signal: opts.signal }) as Promise<{
           ok: boolean
           data: {
             conversation: { id: string; title: string | null; tags: string[] }

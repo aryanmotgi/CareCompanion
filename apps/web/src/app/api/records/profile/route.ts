@@ -4,6 +4,7 @@ import { and, eq } from 'drizzle-orm';
 import { getAuthenticatedUser, parseBody } from '@/lib/api-helpers';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { validateCsrf } from '@/lib/csrf';
+import { invalidateChatCache } from '@/lib/cache';
 
 // GET — fetch the current user's care profile
 export async function GET() {
@@ -105,6 +106,8 @@ export async function PATCH(req: Request) {
     .set(allowed)
     .where(eq(careProfiles.id, profileId))
     .returning();
+
+  void invalidateChatCache(dbUser!.id, profileId);
 
   return apiSuccess(updated);
 }

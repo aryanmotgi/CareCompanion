@@ -160,6 +160,60 @@ function MessageBubble({ message, onRetry }: { message: Message; onRetry?: (text
   )
 }
 
+// ─── Skeleton loaders ─────────────────────────────────────────────────────────
+
+function SkeletonShimmer({ width, height, radius = 8, style }: { width: number | `${number}%`; height: number; radius?: number; style?: any }) {
+  const theme = useTheme()
+  const reduceMotion = useReducedMotion()
+  const shimmer = useSharedValue(0.4)
+  useEffect(() => {
+    if (reduceMotion) return
+    shimmer.value = withRepeat(withTiming(0.9, { duration: 900 }), -1, true)
+  }, [shimmer, reduceMotion])
+  const shimmerStyle = useAnimatedStyle(() => ({ opacity: shimmer.value }))
+  const base = theme.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
+  return (
+    <Animated.View style={[{ width, height, borderRadius: radius, backgroundColor: base }, shimmerStyle, style]} />
+  )
+}
+
+function ConversationListSkeleton() {
+  const theme = useTheme()
+  return (
+    <View style={{ paddingTop: 8 }}>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomColor: theme.border, borderBottomWidth: 1 }}>
+          <SkeletonShimmer width={40} height={40} radius={20} style={{ marginRight: 16 }} />
+          <View style={{ flex: 1 }}>
+            <SkeletonShimmer width={'60%'} height={14} style={{ marginBottom: 8 }} />
+            <SkeletonShimmer width={'85%'} height={11} />
+          </View>
+          <SkeletonShimmer width={36} height={11} style={{ marginLeft: 8 }} />
+        </View>
+      ))}
+    </View>
+  )
+}
+
+function MessagesSkeleton() {
+  return (
+    <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 20 }}>
+      <View style={{ alignSelf: 'flex-start', marginBottom: 14, maxWidth: '78%' }}>
+        <SkeletonShimmer width={220} height={48} radius={18} />
+      </View>
+      <View style={{ alignSelf: 'flex-end', marginBottom: 14, maxWidth: '78%' }}>
+        <SkeletonShimmer width={160} height={36} radius={18} />
+      </View>
+      <View style={{ alignSelf: 'flex-start', marginBottom: 14, maxWidth: '78%' }}>
+        <SkeletonShimmer width={260} height={64} radius={18} />
+      </View>
+      <View style={{ alignSelf: 'flex-end', marginBottom: 14, maxWidth: '78%' }}>
+        <SkeletonShimmer width={120} height={32} radius={18} />
+      </View>
+    </View>
+  )
+}
+
 // ─── Typing dots ──────────────────────────────────────────────────────────────
 
 function AnimatedDot({ value, color }: { value: ReturnType<typeof useSharedValue<number>>; color: string }) {
@@ -418,32 +472,48 @@ export default function ChatScreen() {
   }))
   const { parallaxStyle: emptyParallax } = useGyroParallax(0.5)
 
+  const loadConvosAbortRef = useRef<AbortController | null>(null)
   const loadConversations = useCallback(async () => {
+    loadConvosAbortRef.current?.abort()
+    const controller = new AbortController()
+    loadConvosAbortRef.current = controller
+    const timeoutId = setTimeout(() => controller.abort(), 10_000)
+
     setConvosLoading(true)
     setConvosError(false)
     try {
-      const res = await apiClient.conversations.list()
+      const res = await apiClient.conversations.list({ signal: controller.signal })
       const list = (res as any)?.data ?? (Array.isArray(res) ? res : [])
       setConversations(list)
     } catch {
       setConvosError(true)
       setConversations([])
     } finally {
+      clearTimeout(timeoutId)
+      if (loadConvosAbortRef.current === controller) loadConvosAbortRef.current = null
       setConvosLoading(false)
     }
   }, [apiClient])
+
+  useEffect(() => () => loadConvosAbortRef.current?.abort(), [])
 
   useEffect(() => {
     void loadConversations()
   }, [loadConversations])
 
+  const openConvoAbortRef = useRef<AbortController | null>(null)
   async function openConversation(id: string) {
+    openConvoAbortRef.current?.abort()
+    const controller = new AbortController()
+    openConvoAbortRef.current = controller
+    const timeoutId = setTimeout(() => controller.abort(), 10_000)
+
     setMessages([])
     setChatLoading(true)
     setActiveConversationId(id)
     activeIdRef.current = id
     try {
-      const res = await apiClient.conversations.get(id)
+      const res = await apiClient.conversations.get(id, { signal: controller.signal })
       const data = (res as any)?.data ?? res
       const msgs: Message[] = (data.messages ?? []).map((m: any) => ({
         id: m.id,
@@ -455,6 +525,8 @@ export default function ChatScreen() {
     } catch {
       // leave empty — user can still type
     } finally {
+      clearTimeout(timeoutId)
+      if (openConvoAbortRef.current === controller) openConvoAbortRef.current = null
       setChatLoading(false)
     }
   }
@@ -707,9 +779,7 @@ export default function ChatScreen() {
           )}
 
           {convosLoading ? (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <TypingDots centered />
-            </View>
+            <ConversationListSkeleton />
           ) : convosError ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
               <Ionicons name="cloud-offline-outline" size={40} color={theme.rose} style={{ marginBottom: 12 }} />
@@ -797,9 +867,7 @@ export default function ChatScreen() {
         </Animated.View>
 
         {chatLoading ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <TypingDots centered />
-          </View>
+          <MessagesSkeleton />
         ) : (
           <FlatList
             ref={listRef}

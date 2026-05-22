@@ -3,7 +3,7 @@ import { generateText } from 'ai';
 import { getAuthenticatedUser } from '@/lib/api-helpers';
 import { db } from '@/lib/db';
 import { careProfiles, medications, doctors, appointments, labResults, symptomEntries, messages, conversations, treatmentCycles } from '@/lib/db/schema';
-import { eq, desc, and, isNull } from 'drizzle-orm';
+import { eq, desc, and, isNull, sql } from 'drizzle-orm';
 import { buildSystemPrompt } from '@/lib/system-prompt';
 import { extractAndSaveMemories, loadRelevantMemories, loadConversationSummaries, touchReferencedMemories } from '@/lib/memory';
 import { hybridEnabledForUser } from '@/lib/memory/gate';
@@ -11,7 +11,11 @@ import { convoMemEnabledForUser } from '@/lib/memory/convomem';
 import { validateCsrf } from '@/lib/csrf';
 import { ApiErrors } from '@/lib/api-response';
 import { rateLimit } from '@/lib/rate-limit';
+import { cacheReadThrough, CACHE_TTL, cacheKeys } from '@/lib/cache';
 import { NextResponse } from 'next/server';
+
+type CareProfileRow = typeof careProfiles.$inferSelect;
+type MedicationRow = typeof medications.$inferSelect;
 
 const limiter = rateLimit({ interval: 60000, uniqueTokenPerInterval: 500, maxRequests: 20 });
 
@@ -84,14 +88,32 @@ export async function POST(req: Request) {
   }
 
   try {
-    const [profile] = await db
-      .select()
-      .from(careProfiles)
-      .where(eq(careProfiles.userId, user!.id))
-      .limit(1);
+    const profile = await cacheReadThrough<CareProfileRow | null>(
+      cacheKeys.chatProfile(user!.id),
+      CACHE_TTL.ONE_HOUR,
+      async () => {
+        const [row] = await db
+          .select()
+          .from(careProfiles)
+          .where(eq(careProfiles.userId, user!.id))
+          .limit(1);
+        return row ?? null;
+      },
+    );
 
     const [meds, docs, appts, labs, memoriesData, conversationSummariesData, symptoms, activeCycleRows] = await Promise.all([
-      profile?.id ? db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).limit(30).catch(() => []) : Promise.resolve([]),
+      profile?.id
+        ? cacheReadThrough<MedicationRow[]>(
+            cacheKeys.chatMeds(profile.id),
+            CACHE_TTL.ONE_HOUR,
+            () =>
+              db
+                .select()
+                .from(medications)
+                .where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt)))
+                .limit(30),
+          ).catch(() => [] as MedicationRow[])
+        : Promise.resolve([] as MedicationRow[]),
       profile?.id ? db.select().from(doctors).where(and(eq(doctors.careProfileId, profile.id), isNull(doctors.deletedAt))).limit(20).catch(() => []) : Promise.resolve([]),
       profile?.id ? db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).limit(20).catch(() => []) : Promise.resolve([]),
       db.select().from(labResults).where(eq(labResults.userId, user!.id)).orderBy(desc(labResults.dateTaken)).limit(20).catch(() => []),
@@ -142,11 +164,13 @@ export async function POST(req: Request) {
       content: text,
     });
 
-    // Update conversation timestamp + last message preview
+    // Update conversation timestamp + preview + denormalised message count
+    // (+2 = user message inserted above + assistant message just inserted).
     const preview = text.slice(0, 80).replace(/\n/g, ' ')
     await db.update(conversations).set({
       updatedAt: new Date(),
       lastMessagePreview: preview,
+      messageCount: sql`${conversations.messageCount} + 2`,
     }).where(eq(conversations.id, activeConversationId));
 
     // Background: extract memories + auto-title on first exchange

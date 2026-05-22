@@ -86,6 +86,13 @@ export async function DELETE(req: Request) {
 
     await db.delete(messages).where(eq(messages.userId, user!.id))
 
+    // Reset denormalised counters — every conversation for this user now has
+    // zero messages on disk.
+    await db
+      .update(conversations)
+      .set({ messageCount: 0 })
+      .where(eq(conversations.userId, user!.id))
+
     return apiSuccess({ success: true })
   } catch (err) {
     console.error('[chat/history] DELETE error:', err)

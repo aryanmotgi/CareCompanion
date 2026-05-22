@@ -6,6 +6,7 @@ import { apiError, apiSuccess } from '@/lib/api-response';
 import { validateCsrf } from '@/lib/csrf';
 import { softDelete } from '@/lib/soft-delete';
 import { triggerMatchingRun } from '@/lib/trials/matchingQueue';
+import { invalidateChatCache } from '@/lib/cache';
 
 // POST — add a medication
 export async function POST(req: Request) {
@@ -65,6 +66,7 @@ export async function POST(req: Request) {
   }).returning();
 
   void triggerMatchingRun(profileId, 'new_medication');
+  void invalidateChatCache(dbUser!.id, profileId);
 
   return apiSuccess(med);
 }
@@ -101,6 +103,7 @@ export async function DELETE(req: Request) {
 
   const result = await softDelete('medications', id, dbUser!.id, profile.id);
   void triggerMatchingRun(profile.id, 'profile_update');
+  void invalidateChatCache(dbUser!.id, profile.id);
   return apiSuccess(result);
 }
 
@@ -145,6 +148,8 @@ export async function PATCH(req: Request) {
     .where(eq(medications.id, id))
     .returning();
 
+  void invalidateChatCache(dbUser!.id, med.careProfileId);
+
   return apiSuccess(updated);
 }
 
@@ -187,6 +192,7 @@ export async function PUT(req: Request) {
   const inserted = await db.insert(medications).values(rows).returning();
 
   void triggerMatchingRun(profile.id, 'new_medication');
+  void invalidateChatCache(dbUser!.id, profile.id);
 
   return apiSuccess(inserted);
 }
