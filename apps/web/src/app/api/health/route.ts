@@ -41,6 +41,9 @@ const REQUIRED_COLUMNS: { table: string; column: string }[] = [
   // HealthKit objective wellness snapshots (migration 019)
   { table: 'wellness_vitals', column: 'id' },
   { table: 'wellness_vitals', column: 'captured_at' },
+  // App version gating config (migration 022)
+  { table: 'app_version_config', column: 'key' },
+  { table: 'app_version_config', column: 'value' },
 ]
 
 /**
