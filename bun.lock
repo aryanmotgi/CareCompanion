@@ -47,6 +47,7 @@
         "expo-task-manager": "~12.0.6",
         "expo-updates": "~0.27.5",
         "expo-web-browser": "^55.0.15",
+        "jail-monkey": "^2.7.0",
         "posthog-react-native": "^3.3.3",
         "react": "18.3.1",
         "react-dom": "18.3.1",
@@ -2342,6 +2343,8 @@
     "iterator.prototype": ["iterator.prototype@1.1.5", "", { "dependencies": { "define-data-property": "^1.1.4", "es-object-atoms": "^1.0.0", "get-intrinsic": "^1.2.6", "get-proto": "^1.0.0", "has-symbols": "^1.1.0", "set-function-name": "^2.0.2" } }, "sha512-H0dkQoCa3b2VEeKQBOxFph+JAbcrQdE7KC0UkqwpLmv2EC4P41QXP+rqo9wYodACiG5/WM5s9oDApTU8utwj9g=="],
 
     "jackspeak": ["jackspeak@3.4.3", "", { "dependencies": { "@isaacs/cliui": "^8.0.2" }, "optionalDependencies": { "@pkgjs/parseargs": "^0.11.0" } }, "sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw=="],
+
+    "jail-monkey": ["jail-monkey@2.8.5", "", {}, "sha512-c91Bsfl18VyCRaoJAxB87ZC27lX23BL0EbHajFQu+h5Sa8OU/yeo33Lu8BplHPejdqxBwL31R//N/zYAb1XOSA=="],
 
     "jake": ["jake@10.9.4", "", { "dependencies": { "async": "^3.2.6", "filelist": "^1.0.4", "picocolors": "^1.1.1" }, "bin": { "jake": "bin/cli.js" } }, "sha512-wpHYzhxiVQL+IV05BLE2Xn34zW1S223hvjtqk0+gsPrwd/8JNLXJgZZM/iPFsYc1xyphF+6M6EvdE5E9MBGkDA=="],
 
