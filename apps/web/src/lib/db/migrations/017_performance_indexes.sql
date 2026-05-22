@@ -1,11 +1,14 @@
 -- Migration: 017_performance_indexes.sql
 -- Source:     DB_QUERY_REPORT.md (repo root), 2026-05-18
 -- Analyst:    Remote agent, static code analysis
+-- Status:     APPLIED to prod Aurora 2026-05-21
+--             Indexes built via 017_performance_indexes_queryeditor.sql in
+--             RDS Query Editor (CONCURRENTLY removed). All 13 indexes
+--             returned success; pg_indexes confirmed presence.
 -- !! REQUIRES psql direct connection — NOT RDS Data API !!
 --    CONCURRENTLY cannot run inside an implicit transaction (RDS Data API wraps
 --    every statement). Apply via:
 --      psql "$DATABASE_URL" -f apps/web/src/lib/db/migrations/017_performance_indexes.sql
--- Status:     NOT YET APPLIED
 
 -- ---------------------------------------------------------------------------
 -- 1. memories_user_lastref_idx

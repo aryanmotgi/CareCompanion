@@ -1,6 +1,10 @@
 -- Migration: 017_performance_indexes_queryeditor.sql
 -- Source:     017_performance_indexes.sql, adapted for AWS RDS Query Editor
 -- Analyst:    Remote agent, static code analysis (DB_QUERY_REPORT.md, 2026-05-18)
+-- Status:     APPLIED to prod Aurora 2026-05-21
+--             All 13 CREATE INDEX statements returned success in Query Editor
+--             (durations 114–1337 ms); pg_indexes verification confirmed
+--             presence. Safe to re-run (IF NOT EXISTS).
 -- !! Query Editor variant — CONCURRENTLY removed !!
 --    RDS Data API / Query Editor wraps every statement in an implicit
 --    transaction. CREATE INDEX CONCURRENTLY cannot run inside a txn.
@@ -8,7 +12,6 @@
 --    Trade-off: each index build acquires a SHARE lock on its table that
 --    blocks writes (reads remain unaffected) for the duration of the
 --    build. Run during a low-traffic window or per-statement.
--- Status:     NOT YET APPLIED
 
 -- ---------------------------------------------------------------------------
 -- 1. memories_user_lastref_idx
