@@ -6,6 +6,10 @@
 -- mood/pain/energy/sleep enum values. This table is append-only — each row
 -- is a moment-in-time HK read.
 --
+-- Status: APPLIED to prod Aurora 2026-05-21 via RDS Query Editor.
+--         Both statements returned success; information_schema confirmed
+--         table presence.
+--
 -- Run via psql or RDS Query Editor (no CONCURRENTLY usage).
 
 CREATE TABLE IF NOT EXISTS wellness_vitals (
