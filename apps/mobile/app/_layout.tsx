@@ -20,6 +20,10 @@ import {
   registerNotificationCategories,
   onNotificationResponse,
   scheduleDailyCheckin,
+  getLastNotificationResponse,
+  DOSE_REMINDER_KIND,
+  APPOINTMENT_REMINDER_KIND,
+  DAILY_CHECKIN_KIND,
 } from '../src/services/notifications'
 import {
   defineSyncTask,
@@ -531,8 +535,27 @@ function ThemedStatusBar() {
 
 export default function RootLayout() {
   const segments = useSegments()
+  const router = useRouter()
   const [bugReportVisible, setBugReportVisible] = useState(false)
   const currentScreen = segments.join('/')
+
+  // Deep-link a notification response to the right screen based on
+  // `data.kind`. Body taps and action buttons that open the app both
+  // route through here; foreground-only actions (TAKEN/SNOOZE/SKIP/CONFIRM)
+  // are filtered upstream.
+  const routeForKind = useCallback(
+    (data: Record<string, unknown>) => {
+      const kind = typeof data?.kind === 'string' ? data.kind : null
+      if (kind === DOSE_REMINDER_KIND) {
+        router.push('/(tabs)/care' as never)
+      } else if (kind === APPOINTMENT_REMINDER_KIND) {
+        router.push('/appointments' as never)
+      } else if (kind === DAILY_CHECKIN_KIND) {
+        router.push('/(tabs)' as never)
+      }
+    },
+    [router],
+  )
 
   useEffect(() => {
     void initAnalytics()
@@ -567,12 +590,47 @@ export default function RootLayout() {
         await postCheckinFromNotification(actionId, resp.userText)
         return
       }
-      // Other action handlers (dose / appointment) — left as TODO until
-      // the corresponding endpoints land.
-      if (__DEV__) console.log('[notif-action]', resp.actionId)
+      // Background-only dose / appointment actions don't navigate.
+      // (TAKEN/SNOOZE/SKIP for dose, CONFIRM for appointment all use
+      // opensAppToForeground: false.) Endpoint wiring lands later.
+      if (
+        actionId === 'TAKEN' ||
+        actionId === 'SNOOZE' ||
+        actionId === 'SKIP' ||
+        actionId === 'CONFIRM'
+      ) {
+        if (__DEV__) console.log('[notif-action]', actionId)
+        return
+      }
+      // Body tap, or an action that opens the app (e.g. RESCHEDULE).
+      // Route to the screen the notification refers to.
+      routeForKind(resp.data)
     })
+
+    // Cold-start: if the OS launched the app from a notification tap, the
+    // listener above may register too late to catch it. Recover the last
+    // response on mount and route once.
+    void (async () => {
+      const last = await getLastNotificationResponse()
+      if (!last) return
+      // Skip if it was a background-only action (no app launch implied).
+      const a = last.actionId
+      if (
+        a === 'TAKEN' ||
+        a === 'SNOOZE' ||
+        a === 'SKIP' ||
+        a === 'CONFIRM' ||
+        a === 'CHECKIN_PAIN' ||
+        a === 'CHECKIN_ENERGY' ||
+        a === 'CHECKIN_SLEEP'
+      ) {
+        return
+      }
+      routeForKind(last.data)
+    })()
+
     return unsub
-  }, [])
+  }, [routeForKind])
 
   // Best-effort background HealthKit sync. iOS may invoke the task as often as
   // every ~15 min or as rarely as once a day depending on app usage signal.

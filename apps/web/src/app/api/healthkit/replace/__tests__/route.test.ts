@@ -88,7 +88,7 @@ describe('POST /api/healthkit/replace', () => {
     expect(res.status).toBe(200)
     expect(db.transaction).toHaveBeenCalledTimes(1)
     expect(body.synced).toBe(2)
-    expect(body.deleted).toEqual({ medications: 0, appointments: 0, labResults: 0 })
+    expect(body.deleted).toEqual({ medications: 0, appointments: 0, labResults: 0, conditions: 0, allergies: 0, procedures: 0, immunizations: 0 })
   })
 
   it('logs replace_data audit entry with counts only', async () => {
@@ -132,7 +132,7 @@ describe('POST /api/healthkit/replace — integration behavior', () => {
   }) {
     const updateCalls: Array<{ table: string; setArg: Record<string, unknown> }> = []
     const deleteCalls: Array<{ table: string }> = []
-    let updateIndex = 0 // medications=0, appointments=1, careProfiles=2
+    let updateIndex = 0 // medications=0, appointments=1, conditions=2, allergies=3, procedures=4, immunizations=5, careProfiles=6
 
     const tx = {
       update: vi.fn((table: { _: { name: string } } | unknown) => {
@@ -191,7 +191,7 @@ describe('POST /api/healthkit/replace — integration behavior', () => {
     const body = await res.json()
 
     expect(res.status).toBe(200)
-    expect(body.deleted).toEqual({ medications: 3, appointments: 1, labResults: 2 })
+    expect(body.deleted).toEqual({ medications: 3, appointments: 1, labResults: 2, conditions: 0, allergies: 0, procedures: 0, immunizations: 0 })
   })
 
   it('careProfile reset UPDATE includes all spec-required nulled fields', async () => {
@@ -209,9 +209,9 @@ describe('POST /api/healthkit/replace — integration behavior', () => {
       body: JSON.stringify({ records: [] }),
     }))
 
-    // Three update() calls: medications (deletedAt), appointments (deletedAt), careProfiles (reset)
-    expect(updateCalls).toHaveLength(3)
-    const careProfileReset = updateCalls[2]!.setArg
+    // Seven update() calls: medications, appointments, conditions, allergies, procedures, immunizations (all deletedAt), then careProfiles (reset)
+    expect(updateCalls).toHaveLength(7)
+    const careProfileReset = updateCalls[6]!.setArg
 
     // All fields the spec says should be nulled
     expect(careProfileReset).toMatchObject({

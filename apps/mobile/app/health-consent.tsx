@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as SecureStore from 'expo-secure-store'
+import { OnboardingStepIndicator } from '../src/components/OnboardingStepIndicator'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -126,6 +127,10 @@ export default function HealthConsentScreen() {
           <Text style={styles.headerLabel}>HIPAA Consent</Text>
         </View>
         <View style={{ width: 36 }} />
+      </View>
+
+      <View style={styles.stepIndicatorWrap}>
+        <OnboardingStepIndicator step={2} total={5} />
       </View>
 
       <ScrollView
@@ -301,6 +306,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 12,
+  },
+  stepIndicatorWrap: {
+    alignItems: 'center',
+    paddingBottom: 4,
   },
   closeButton: { width: 36, height: 36 },
   closeBlur: {

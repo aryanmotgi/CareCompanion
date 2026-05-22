@@ -28,6 +28,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { apiClient } from '../src/services/api'
 import { useProfile } from '../src/context/ProfileContext'
 import { requestPermissions, scheduleDailyCheckin } from '../src/services/notifications'
+import { OnboardingStepIndicator } from '../src/components/OnboardingStepIndicator'
 
 const ACCENT = '#818CF8'
 const INVITE_SHOWN_KEY = 'cc-invite-shown'
@@ -149,6 +150,10 @@ export default function ShareInviteScreen() {
         style={StyleSheet.absoluteFillObject}
       />
 
+      <View style={[styles.stepIndicatorWrap, { top: insets.top + 14 }]} pointerEvents="none">
+        <OnboardingStepIndicator step={5} total={5} />
+      </View>
+
       <View style={[styles.content, { paddingTop: insets.top + 56, paddingBottom: insets.bottom + 24 }]}>
         <View style={styles.iconBubble}>
           <LinearGradient
@@ -216,6 +221,13 @@ export default function ShareInviteScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#05060F' },
+  stepIndicatorWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 5,
+  },
   content: { flex: 1, paddingHorizontal: 24, alignItems: 'center' },
   iconBubble: {
     width: 88, height: 88, borderRadius: 24,

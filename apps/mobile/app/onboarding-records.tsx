@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRecordsContext } from './_layout'
 import { AuroraBackground, FloatingGlyphs } from '../src/components/auth/AuthAtoms'
+import { OnboardingStepIndicator } from '../src/components/OnboardingStepIndicator'
 
 const ACCENT = '#818CF8'
 
@@ -121,6 +122,13 @@ export default function OnboardingRecordsScreen() {
         <Ionicons name="chevron-back" size={28} color="white" />
       </Pressable>
 
+      <View
+        pointerEvents="none"
+        style={[styles.stepIndicatorWrap, { top: insets.top + 14 }]}
+      >
+        <OnboardingStepIndicator step={1} total={5} />
+      </View>
+
       <View style={[styles.content, { paddingTop: insets.top + 48, paddingBottom: insets.bottom + 16 }]}>
         <View style={styles.iconWrap}>
           <Animated.View style={[styles.pulseRing, pulseStyle]} />
@@ -195,6 +203,13 @@ const styles = StyleSheet.create({
     left: 12,
     zIndex: 10,
     padding: 8,
+  },
+  stepIndicatorWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 5,
   },
   content: {
     flex: 1,

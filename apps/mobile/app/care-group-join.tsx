@@ -41,6 +41,7 @@ import { apiClient } from '../src/services/api'
 import { useProfile } from '../src/context/ProfileContext'
 import { useCaregiverJoinedContext } from './_layout'
 import { AuroraBackground, FloatingGlyphs, useDeviceTilt } from '../src/components/auth/AuthAtoms'
+import { OnboardingStepIndicator } from '../src/components/OnboardingStepIndicator'
 
 const ACCENT = '#818CF8'
 const SAFE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ'
@@ -299,6 +300,10 @@ export default function CareGroupJoinScreen() {
         <Ionicons name="chevron-back" size={28} color="white" />
       </Pressable>
 
+      <View style={[styles.stepIndicatorWrap, { top: insets.top + 14 }]} pointerEvents="none">
+        <OnboardingStepIndicator step={1} total={2} />
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
@@ -500,6 +505,13 @@ function formatCodeDisplay(code: string): string {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#05060F' },
   backBtn: { position: 'absolute', left: 12, zIndex: 10, padding: 8 },
+  stepIndicatorWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 5,
+  },
   content: { flexGrow: 1, paddingHorizontal: 24, alignItems: 'center' },
   iconBubble: {
     width: 88, height: 88, borderRadius: 24,

@@ -2,8 +2,8 @@ import { Suspense } from 'react';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { users, careProfiles, messages, conversations } from '@/lib/db/schema';
-import { eq, asc, desc } from 'drizzle-orm';
+import { users, careProfiles, messages, conversations, treatmentCycles } from '@/lib/db/schema';
+import { eq, and, asc, desc } from 'drizzle-orm';
 import { ChatInterface } from '@/components/ChatInterface';
 
 async function ChatContent() {
@@ -21,7 +21,7 @@ async function ChatContent() {
 
   if (!profile) redirect('/setup');
 
-  const [dbMessages, recentConversations] = await Promise.all([
+  const [dbMessages, recentConversations, activeCycleRows] = await Promise.all([
     db.select()
       .from(messages)
       .where(eq(messages.userId, dbUser.id))
@@ -37,7 +37,27 @@ async function ChatContent() {
       .where(eq(conversations.userId, dbUser.id))
       .orderBy(desc(conversations.updatedAt))
       .limit(3),
+    db.select({
+        cycleNumber: treatmentCycles.cycleNumber,
+        startDate: treatmentCycles.startDate,
+        cycleLengthDays: treatmentCycles.cycleLengthDays,
+      })
+      .from(treatmentCycles)
+      .where(and(eq(treatmentCycles.careProfileId, profile.id), eq(treatmentCycles.isActive, true)))
+      .limit(1)
+      .catch(() => [] as { cycleNumber: number; startDate: string; cycleLengthDays: number }[]),
   ]);
+
+  let nadirCycle: { dayOfCycle: number; cycleNumber: number } | null = null;
+  const [activeCycle] = activeCycleRows;
+  if (activeCycle) {
+    const startMs = new Date(activeCycle.startDate + 'T00:00:00').getTime();
+    const todayMs = new Date(new Date().setHours(0, 0, 0, 0)).getTime();
+    const dayOfCycle = Math.floor((todayMs - startMs) / 86400000) + 1;
+    if (dayOfCycle >= 7 && dayOfCycle <= 14 && dayOfCycle <= activeCycle.cycleLengthDays) {
+      nadirCycle = { dayOfCycle, cycleNumber: activeCycle.cycleNumber };
+    }
+  }
 
   const initialMessages = dbMessages.map((msg) => ({
     id: msg.id,
@@ -51,6 +71,7 @@ async function ChatContent() {
       initialMessages={initialMessages}
       patientName={profile.patientName ?? undefined}
       recentConversations={recentConversations}
+      nadirCycle={nadirCycle}
     />
   );
 }

@@ -32,23 +32,8 @@ describe('hybridEnabledForUser', () => {
     expect(hybridEnabledForUser(U(1))).toBe(false);
   });
 
-  it("'10pct' → deterministic per userId", () => {
+  it("'10pct' legacy value → on for all users (promoted to 100% 2026-05-20)", () => {
     process.env.ENABLE_MEMORY_HYBRID = '10pct';
-    const id = U(42);
-    const a = hybridEnabledForUser(id);
-    const b = hybridEnabledForUser(id);
-    const c = hybridEnabledForUser(id);
-    expect(a).toBe(b);
-    expect(b).toBe(c);
-  });
-
-  it("'10pct' → ~10% of 1000 random ids enabled (8-12%)", () => {
-    process.env.ENABLE_MEMORY_HYBRID = '10pct';
-    let on = 0;
-    for (let i = 0; i < 1000; i++) {
-      if (hybridEnabledForUser(U(i))) on++;
-    }
-    expect(on).toBeGreaterThanOrEqual(70);
-    expect(on).toBeLessThanOrEqual(130);
+    for (let i = 0; i < 100; i++) expect(hybridEnabledForUser(U(i))).toBe(true);
   });
 });

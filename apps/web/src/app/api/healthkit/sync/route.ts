@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { medications, labResults, appointments, careProfiles } from '@/lib/db/schema'
+import { medications, labResults, appointments, careProfiles, conditions, allergies, procedures, immunizations } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import type { HealthKitRecord } from '@carecompanion/types'
 import { logAudit } from '@/lib/audit'
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
   let synced = 0
   let errors = 0
-  const counts = { medications: 0, labResults: 0, appointments: 0, skipped: 0 }
+  const counts = { medications: 0, labResults: 0, appointments: 0, conditions: 0, allergies: 0, procedures: 0, immunizations: 0, skipped: 0 }
 
   for (const record of records) {
     // Guard: skip records with no FHIR ID — NULL healthkitFhirId bypasses unique dedup
@@ -121,6 +121,110 @@ export async function POST(req: Request) {
       } catch (err) {
         errors++
         console.error('[healthkit/sync] insert failed for vitalSign record:', err instanceof Error ? err.message : err)
+      }
+    } else if (record.type === 'condition') {
+      try {
+        await db.insert(conditions)
+          .values({
+            careProfileId: careProfile.id,
+            code: record.code,
+            display: record.display,
+            clinicalStatus: record.clinicalStatus,
+            onsetDateTime: record.onsetDateTime ? new Date(record.onsetDateTime) : null,
+            healthkitFhirId: record.healthkitFhirId,
+          })
+          .onConflictDoUpdate({
+            target: conditions.healthkitFhirId,
+            set: {
+              code: record.code,
+              display: record.display,
+              clinicalStatus: record.clinicalStatus,
+              onsetDateTime: record.onsetDateTime ? new Date(record.onsetDateTime) : null,
+              deletedAt: null,
+            },
+          })
+        counts.conditions++
+        synced++
+      } catch (err) {
+        errors++
+        console.error('[healthkit/sync] insert failed for condition record:', err instanceof Error ? err.message : err)
+      }
+    } else if (record.type === 'allergy') {
+      try {
+        await db.insert(allergies)
+          .values({
+            careProfileId: careProfile.id,
+            code: record.code,
+            display: record.display,
+            reaction: record.reaction,
+            criticality: record.criticality,
+            healthkitFhirId: record.healthkitFhirId,
+          })
+          .onConflictDoUpdate({
+            target: allergies.healthkitFhirId,
+            set: {
+              code: record.code,
+              display: record.display,
+              reaction: record.reaction,
+              criticality: record.criticality,
+              deletedAt: null,
+            },
+          })
+        counts.allergies++
+        synced++
+      } catch (err) {
+        errors++
+        console.error('[healthkit/sync] insert failed for allergy record:', err instanceof Error ? err.message : err)
+      }
+    } else if (record.type === 'procedure') {
+      try {
+        await db.insert(procedures)
+          .values({
+            careProfileId: careProfile.id,
+            code: record.code,
+            display: record.display,
+            performedDateTime: record.performedDateTime ? new Date(record.performedDateTime) : null,
+            healthkitFhirId: record.healthkitFhirId,
+          })
+          .onConflictDoUpdate({
+            target: procedures.healthkitFhirId,
+            set: {
+              code: record.code,
+              display: record.display,
+              performedDateTime: record.performedDateTime ? new Date(record.performedDateTime) : null,
+              deletedAt: null,
+            },
+          })
+        counts.procedures++
+        synced++
+      } catch (err) {
+        errors++
+        console.error('[healthkit/sync] insert failed for procedure record:', err instanceof Error ? err.message : err)
+      }
+    } else if (record.type === 'immunization') {
+      try {
+        await db.insert(immunizations)
+          .values({
+            careProfileId: careProfile.id,
+            code: record.code,
+            display: record.display,
+            occurrenceDateTime: record.occurrenceDateTime ? new Date(record.occurrenceDateTime) : null,
+            healthkitFhirId: record.healthkitFhirId,
+          })
+          .onConflictDoUpdate({
+            target: immunizations.healthkitFhirId,
+            set: {
+              code: record.code,
+              display: record.display,
+              occurrenceDateTime: record.occurrenceDateTime ? new Date(record.occurrenceDateTime) : null,
+              deletedAt: null,
+            },
+          })
+        counts.immunizations++
+        synced++
+      } catch (err) {
+        errors++
+        console.error('[healthkit/sync] insert failed for immunization record:', err instanceof Error ? err.message : err)
       }
     }
   }

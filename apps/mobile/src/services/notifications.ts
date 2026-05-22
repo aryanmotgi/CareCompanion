@@ -59,6 +59,7 @@ type NotificationsModule = {
   cancelScheduledNotificationAsync: (id: string) => Promise<void>
   setNotificationCategoryAsync: (id: string, actions: unknown[], options?: unknown) => Promise<unknown>
   addNotificationResponseReceivedListener: (handler: (resp: unknown) => void) => { remove: () => void }
+  getLastNotificationResponseAsync?: () => Promise<unknown>
   AndroidImportance?: Record<string, number>
   setNotificationChannelAsync?: (channelId: string, config: unknown) => Promise<unknown>
 } | null
@@ -67,6 +68,13 @@ const DOSE_CATEGORY_ID = 'dose-reminder'
 const APPT_CATEGORY_ID = 'appointment-reminder'
 const CHECKIN_CATEGORY_ID = 'daily-checkin'
 const CHECKIN_NOTIF_ID_KEY = 'cc-checkin-notification-id'
+
+// Shared `data.kind` values for tap-routing. Schedulers (dose, appointment,
+// check-in) must set `content.data.kind` to one of these so the root listener
+// can deep-link to the right screen.
+export const DOSE_REMINDER_KIND = 'dose-reminder'
+export const APPOINTMENT_REMINDER_KIND = 'appointment-reminder'
+export const DAILY_CHECKIN_KIND = 'daily-checkin'
 
 export async function registerNotificationCategories(): Promise<void> {
   const Notifications = getModule()
@@ -181,6 +189,15 @@ interface NotificationResponse {
   userText: string | null
 }
 
+function normalizeResponse(raw: any): NotificationResponse {
+  return {
+    actionId: raw?.actionIdentifier ?? '',
+    notificationId: raw?.notification?.request?.identifier ?? null,
+    data: raw?.notification?.request?.content?.data ?? {},
+    userText: typeof raw?.userText === 'string' ? raw.userText : null,
+  }
+}
+
 export function onNotificationResponse(
   handler: (resp: NotificationResponse) => void,
 ): () => void {
@@ -188,16 +205,28 @@ export function onNotificationResponse(
   if (!Notifications) return () => {}
   try {
     const sub = Notifications.addNotificationResponseReceivedListener((raw: any) => {
-      handler({
-        actionId: raw?.actionIdentifier ?? '',
-        notificationId: raw?.notification?.request?.identifier ?? null,
-        data: raw?.notification?.request?.content?.data ?? {},
-        userText: typeof raw?.userText === 'string' ? raw.userText : null,
-      })
+      handler(normalizeResponse(raw))
     })
     return () => sub.remove()
   } catch {
     return () => {}
+  }
+}
+
+/**
+ * Cold-start tap retrieval. When the OS launches the app from a notification
+ * tap, the listener may register too late to catch the response. Call this
+ * once on mount to recover it.
+ */
+export async function getLastNotificationResponse(): Promise<NotificationResponse | null> {
+  const Notifications = getModule()
+  if (!Notifications?.getLastNotificationResponseAsync) return null
+  try {
+    const raw = await Notifications.getLastNotificationResponseAsync()
+    if (!raw) return null
+    return normalizeResponse(raw)
+  } catch {
+    return null
   }
 }
 

@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { users, medications, appointments, labResults, claims, reminderLogs, scannedDocuments, doctors } from '@/lib/db/schema';
+import { users, medications, appointments, labResults, claims, reminderLogs, scannedDocuments, doctors, treatmentCycles } from '@/lib/db/schema';
 import { eq, and, gte, lte, desc, asc, count, isNull } from 'drizzle-orm';
 import { DashboardView } from '@/components/DashboardView';
 import { SelfCareDashboardView } from '@/components/SelfCareDashboardView';
@@ -12,6 +12,7 @@ import { DashboardSkeleton } from '@/components/skeletons/DashboardSkeleton';
 import { MedicationReminders } from '@/components/MedicationReminders';
 import { DashboardInsights } from '@/components/DashboardInsights';
 import { OnboardingWelcomeBanner } from '@/components/OnboardingWelcomeBanner';
+import { NadirBanner } from '@/components/NadirBanner';
 import { ShareHealthCard } from '@/components/ShareHealthCard';
 import { TrialsDashboardCard } from '@/components/trials/TrialsDashboardCard';
 
@@ -46,6 +47,7 @@ async function DashboardContent() {
     reminderLogsData,
     scannedDocRows,
     doctorRows,
+    activeCycleRows,
   ] = await Promise.all([
     db.select().from(medications).where(and(eq(medications.careProfileId, profile.id), isNull(medications.deletedAt))).catch(() => [] as typeof medications.$inferSelect[]),
     db.select().from(appointments).where(and(eq(appointments.careProfileId, profile.id), isNull(appointments.deletedAt))).orderBy(asc(appointments.dateTime)).catch(() => [] as typeof appointments.$inferSelect[]),
@@ -60,10 +62,29 @@ async function DashboardContent() {
     ).orderBy(asc(reminderLogs.scheduledTime)).catch(() => [] as typeof reminderLogs.$inferSelect[]),
     db.select({ value: count() }).from(scannedDocuments).where(eq(scannedDocuments.userId, dbUser.id)).catch(() => [] as { value: number }[]),
     db.select({ value: count() }).from(doctors).where(eq(doctors.careProfileId, profile.id)).catch(() => [] as { value: number }[]),
+    db.select({
+      cycleId: treatmentCycles.id,
+      cycleNumber: treatmentCycles.cycleNumber,
+      startDate: treatmentCycles.startDate,
+      cycleLengthDays: treatmentCycles.cycleLengthDays,
+    }).from(treatmentCycles).where(and(eq(treatmentCycles.careProfileId, profile.id), eq(treatmentCycles.isActive, true))).limit(1).catch(() => [] as { cycleId: string; cycleNumber: number; startDate: string; cycleLengthDays: number }[]),
   ]);
 
   const [scannedDocCount] = scannedDocRows;
   const [doctorCount] = doctorRows;
+
+  // Compute current day of active treatment cycle for the nadir banner.
+  // Day 1 is the start date itself. Banner self-gates to days 7–14.
+  let nadirCycle: { dayOfCycle: number; cycleNumber: number; cycleId: string } | null = null;
+  const [activeCycle] = activeCycleRows;
+  if (activeCycle) {
+    const startMs = new Date(activeCycle.startDate + 'T00:00:00').getTime();
+    const todayMs = new Date(new Date().setHours(0, 0, 0, 0)).getTime();
+    const dayOfCycle = Math.floor((todayMs - startMs) / 86400000) + 1;
+    if (dayOfCycle >= 7 && dayOfCycle <= 14 && dayOfCycle <= activeCycle.cycleLengthDays) {
+      nadirCycle = { dayOfCycle, cycleNumber: activeCycle.cycleNumber, cycleId: activeCycle.cycleId };
+    }
+  }
 
   const hasEmergencyContact = !!(profile.emergencyContactName && profile.emergencyContactPhone);
   const hasDocumentsScanned = (scannedDocCount?.value ?? 0) > 0;
@@ -73,6 +94,7 @@ async function DashboardContent() {
   if (role === 'caregiver') {
     return (
       <>
+        {nadirCycle && <NadirBanner dayOfCycle={nadirCycle.dayOfCycle} cycleNumber={nadirCycle.cycleNumber} cycleId={nadirCycle.cycleId} />}
         <OnboardingWelcomeBanner />
         <CaregiverDashboardView
           patientName={patientName}
@@ -94,6 +116,7 @@ async function DashboardContent() {
   if (role === 'self') {
     return (
       <>
+        {nadirCycle && <NadirBanner dayOfCycle={nadirCycle.dayOfCycle} cycleNumber={nadirCycle.cycleNumber} cycleId={nadirCycle.cycleId} />}
         <OnboardingWelcomeBanner />
         {reminderLogsData.length > 0 && (
           <div className="px-4 sm:px-5 pt-5 sm:pt-6">
@@ -141,6 +164,7 @@ async function DashboardContent() {
 
   return (
     <>
+      {nadirCycle && <NadirBanner dayOfCycle={nadirCycle.dayOfCycle} cycleNumber={nadirCycle.cycleNumber} cycleId={nadirCycle.cycleId} />}
       <OnboardingWelcomeBanner />
       {reminderLogsData.length > 0 && (
         <div className="px-4 sm:px-5 pt-5 sm:pt-6">

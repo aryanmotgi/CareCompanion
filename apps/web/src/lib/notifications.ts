@@ -277,7 +277,7 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
           userId,
           type: 'cycle_nadir_warning',
           title,
-          message: `Cycle ${cycleNum}: tomorrow begins the nadir window (days 8-14) when blood counts are typically at their lowest. Watch for: fever over 100.4°F, chills, unusual fatigue. Keep a thermometer nearby and have the oncology after-hours number on hand.`,
+          message: `Cycle ${cycleNum}: tomorrow begins the nadir window (days 8-14) when blood counts are typically at their lowest. Any fever ≥100.4°F (38°C) during nadir = go to the ER immediately, do not wait for a callback. Also watch for chills, unusual fatigue, or signs of infection. Keep a thermometer nearby.`,
         });
       }
     }
@@ -290,7 +290,7 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
           userId,
           type: 'cycle_nadir_active',
           title,
-          message: `Cycle ${cycleNum}, day ${dayInCycle}: blood counts are likely at their lowest. Any fever over 100.4°F warrants a call to the oncology team — don't wait. Recovery phase begins around day 14-15.`,
+          message: `Cycle ${cycleNum}, day ${dayInCycle}: blood counts are likely at their lowest. Any fever ≥100.4°F (38°C) = go to the ER immediately. Do not wait for a callback from the oncology team. Recovery phase begins around day 14-15.`,
         });
       }
     }

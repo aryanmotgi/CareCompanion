@@ -70,7 +70,6 @@
         "@ai-sdk/anthropic": "^3.0.64",
         "@ai-sdk/google": "^3.0.74",
         "@ai-sdk/react": "^3.0.144",
-        "@aws-sdk/client-cognito-identity-provider": "^3.1030.0",
         "@aws-sdk/client-rds-data": "^3.1030.0",
         "@carecompanion/design-tokens": "workspace:*",
         "@carecompanion/types": "workspace:*",
@@ -201,8 +200,6 @@
     "@aws-crypto/supports-web-crypto": ["@aws-crypto/supports-web-crypto@5.2.0", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-iAvUotm021kM33eCdNfwIN//F77/IADDSs58i+MDaOqFrVjZo9bAal0NK7HurRuWLLpF1iLX7gbWrjHjeo+YFg=="],
 
     "@aws-crypto/util": ["@aws-crypto/util@5.2.0", "", { "dependencies": { "@aws-sdk/types": "^3.222.0", "@smithy/util-utf8": "^2.0.0", "tslib": "^2.6.2" } }, "sha512-4RkU9EsI6ZpBve5fseQlGNUWKMa1RLPQ1dnjnQoe07ldfIzcsGb5hC5W0Dm7u423KWzawlrpbjXBrXCEv9zazQ=="],
-
-    "@aws-sdk/client-cognito-identity-provider": ["@aws-sdk/client-cognito-identity-provider@3.1048.0", "", { "dependencies": { "@aws-crypto/sha256-browser": "5.2.0", "@aws-crypto/sha256-js": "5.2.0", "@aws-sdk/core": "^3.974.11", "@aws-sdk/credential-provider-node": "^3.972.42", "@aws-sdk/types": "^3.973.8", "@smithy/core": "^3.24.2", "@smithy/fetch-http-handler": "^5.4.2", "@smithy/node-http-handler": "^4.7.2", "@smithy/types": "^4.14.1", "tslib": "^2.6.2" } }, "sha512-WOc6K5/tgezZP7uL1tnSQfINLqeIhncfBYZle5SNi+vv/zsqelsaziByZna6Bo3XhDapoD4xUts0IN3RBwf3yg=="],
 
     "@aws-sdk/client-rds-data": ["@aws-sdk/client-rds-data@3.1048.0", "", { "dependencies": { "@aws-crypto/sha256-browser": "5.2.0", "@aws-crypto/sha256-js": "5.2.0", "@aws-sdk/core": "^3.974.11", "@aws-sdk/credential-provider-node": "^3.972.42", "@aws-sdk/types": "^3.973.8", "@smithy/core": "^3.24.2", "@smithy/fetch-http-handler": "^5.4.2", "@smithy/node-http-handler": "^4.7.2", "@smithy/types": "^4.14.1", "tslib": "^2.6.2" } }, "sha512-iIfJfVWv6mHSPY7O6pvXyMmvqyRZJ9Fa5AdiMcgFcrzvSwzNUP7RPkQJCuedzz1cA5C0GI5WTs6uO880VZu/zA=="],
 

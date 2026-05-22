@@ -11,15 +11,14 @@ const { auth } = NextAuth(authConfig)
 // Everything NOT in this list requires authentication.
 // Add new public routes here — never forget to protect something new.
 const PUBLIC_PATHS = [
-  '/',               // Landing page (signOut returns here after Cognito logout)
+  '/',               // Landing page (signOut returns here)
   '/login',
   '/signup',         // Registration page — must be public or new users loop into login
   '/chat/guest',
-  '/api/auth',       // Auth.js callback routes — prefix covers /api/auth/callback/cognito etc.
+  '/api/auth',       // Auth.js callback routes — prefix covers /api/auth/callback/* (Apple, Google, credentials)
   '/api/chat/guest', // Guest chat API
   '/api/e2e',        // E2E production monitor auth (gated by E2E_AUTH_SECRET, not session)
   '/api/health',     // Health check — no session required; route gates detail behind CRON_SECRET
-  '/demo-walkthrough',
   '/about',
   '/privacy',
   '/terms',
