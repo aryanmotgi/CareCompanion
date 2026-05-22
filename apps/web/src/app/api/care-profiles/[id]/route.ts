@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { careProfiles, users } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { triggerMatchingRun } from '@/lib/trials/matchingQueue'
+import { invalidateChatCache } from '@/lib/cache'
 
 // GET — fetch a specific care profile (must belong to the current user)
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -80,6 +81,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .returning({ id: careProfiles.id })
 
   void triggerMatchingRun(updated.id, 'profile_update')
+  void invalidateChatCache(dbUser.id, updated.id)
 
   return NextResponse.json({ id: updated.id })
 }

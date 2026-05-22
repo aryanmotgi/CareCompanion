@@ -1,7 +1,7 @@
 import { getAuthenticatedUser } from '@/lib/api-helpers'
 import { db } from '@/lib/db'
-import { conversations, messages } from '@/lib/db/schema'
-import { eq, desc, sql } from 'drizzle-orm'
+import { conversations } from '@/lib/db/schema'
+import { eq, desc } from 'drizzle-orm'
 import { apiSuccess } from '@/lib/api-response'
 import { NextResponse } from 'next/server'
 
@@ -18,12 +18,10 @@ export async function GET() {
       lastMessagePreview: conversations.lastMessagePreview,
       createdAt: conversations.createdAt,
       updatedAt: conversations.updatedAt,
-      messageCount: sql<number>`count(${messages.id})::int`,
+      messageCount: conversations.messageCount,
     })
     .from(conversations)
-    .leftJoin(messages, eq(messages.conversationId, conversations.id))
     .where(eq(conversations.userId, user!.id))
-    .groupBy(conversations.id)
     .orderBy(desc(conversations.updatedAt))
     .limit(50)
 

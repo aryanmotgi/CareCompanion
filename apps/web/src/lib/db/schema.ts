@@ -119,9 +119,12 @@ export const conversations = pgTable('conversations', {
   title: text('title'),
   tags: text('tags').array().default(sql`'{}'`),
   lastMessagePreview: text('last_message_preview'),
+  messageCount: integer('message_count').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-})
+}, (t) => ({
+  userUpdatedIdx: index('conversations_user_updated_idx').on(t.userId, t.updatedAt),
+}))
 
 // ── Messages ──────────────────────────────────────────────────────────────────
 export const messages = pgTable('messages', {
@@ -133,6 +136,7 @@ export const messages = pgTable('messages', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 }, (t) => ({
   userCreatedIdx: index('messages_user_created_idx').on(t.userId, t.createdAt),
+  conversationUserIdx: index('messages_conversation_user_idx').on(t.conversationId, t.userId),
 }))
 
 // ── Medications ───────────────────────────────────────────────────────────────
