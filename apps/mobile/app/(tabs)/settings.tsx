@@ -310,7 +310,7 @@ export default function SettingsScreen() {
               const token = await SecureStore.getItemAsync('cc-session-token')
               if (!token) return
               const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
-              const res = await fetch(`${baseUrl}/api/auth/delete-account`, {
+              const res = await fetch(`${baseUrl}/api/account/delete`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
               })
