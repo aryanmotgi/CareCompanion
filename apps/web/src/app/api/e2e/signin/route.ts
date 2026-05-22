@@ -32,6 +32,9 @@ const limiter = rateLimit({ interval: 60_000, maxRequests: 60 })
 // Requires the same E2E_AUTH_SECRET header to avoid confirming the endpoint
 // exists in production to unauthenticated callers.
 export async function GET(req: Request) {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
   const e2eSecret = process.env.E2E_AUTH_SECRET
 
   // Path 1: x-e2e-secret header → liveness probe (used by Check 1 and Check 3 curl)
@@ -43,7 +46,7 @@ export async function GET(req: Request) {
   // Check 2 mints a session cookie; Check 3 sends it here to confirm it decodes.
   const authSecret = process.env.AUTH_SECRET
   if (authSecret) {
-    const isProd = process.env.NODE_ENV === 'production'
+    const isProd = (process.env.NODE_ENV as string) === 'production'
     const cookieName = isProd ? '__Secure-authjs.session-token' : 'authjs.session-token'
     const cookieHeader = req.headers.get('cookie') ?? ''
     const rawToken = cookieHeader
@@ -67,6 +70,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
   // Gate: require E2E_AUTH_SECRET header to prevent unauthorized session minting.
   // Without this, anyone who knows an email in the DB could mint a valid session.
   const e2eSecret = process.env.E2E_AUTH_SECRET
@@ -191,7 +197,9 @@ export async function POST(req: Request) {
 
   // NextAuth v5 derives the encryption key from (AUTH_SECRET + salt) where
   // salt === the cookie name. HTTPS (production) uses the __Secure- prefix.
-  const isProd = process.env.NODE_ENV === 'production'
+  // Cast to string — TS narrows NODE_ENV away from 'production' after the guard above,
+  // but the cookie name still needs to match prod conventions if ever called in staging.
+  const isProd = (process.env.NODE_ENV as string) === 'production'
   const cookieName = isProd
     ? '__Secure-authjs.session-token'
     : 'authjs.session-token'
