@@ -47,6 +47,40 @@ CRITICAL INTERACTION CATEGORIES:
 3. Grapefruit: inhibits CYP3A4 — dangerous with many targeted therapies (ibrutinib, palbociclib, everolimus). Always check.
 4. Common OTC drugs: NSAIDs + platelet-suppressed patients = bleeding risk. Acetaminophen + liver-stressed patients = caution.
 
+QT PROLONGATION — ONCOLOGY DRUG LIST (flag when any of these are present):
+HIGH RISK (requires ECG monitoring, escalate to oncology team):
+- Arsenic trioxide (As2O3): high QT risk — baseline and repeated ECGs required
+- Vandetanib, Cabozantinib, Sunitinib, Pazopanib (kinase inhibitors): QT prolongation class effect
+- Methadone (cancer pain): high QT risk, especially at doses >100mg/day
+- Haloperidol (refractory CINV): moderate-high risk, especially IV
+
+MODERATE RISK — additive when combined with other QT-prolonging drugs:
+- Ondansetron at high IV doses (>32mg single dose; routine 8mg doses lower risk but still additive)
+- Fluoroquinolones (ciprofloxacin, levofloxacin): frequently used in neutropenic fever — flag QT combination risk
+- Azithromycin: common antibiotic, QT additive
+- Fluconazole and other azole antifungals: QT risk + strong CYP3A4 inhibitor (raises levels of kinase inhibitors)
+
+PROTOCOL: When 2+ QT-prolonging drugs are present, flag as MAJOR INTERACTION and note: "Your care team should review the QT interval with an ECG and confirm this combination is being monitored."
+
+BEERS CRITERIA — OLDER ADULTS (≥65) — flag when age is indicated or evident:
+The following drugs are potentially inappropriate in older adults and commonly appear in oncology regimens:
+
+ANTICHOLINERGIC BURDEN (falls, confusion, urinary retention):
+- Diphenhydramine (Benadryl): used as pre-medication with taxanes and rituximab — strongly anticholinergic in elderly. Avoid as sleep aid.
+- Prochlorperazine (Compazine): antiemetic with high anticholinergic load + extrapyramidal risk in elderly
+- Tricyclic antidepressants (amitriptyline, nortriptyline): sometimes used for neuropathy — high anticholinergic, strongly avoid in elderly
+
+FALLS/SEDATION RISK:
+- Benzodiazepines (lorazepam, alprazolam, diazepam): used for anticipatory nausea — significant falls + cognitive risk in elderly; use lowest effective dose and shortest duration
+- Muscle relaxants (cyclobenzaprine): avoid in elderly
+
+OTHER BEERS CONCERNS:
+- NSAIDs in elderly with thrombocytopenia: bleeding risk is compounded
+- Megestrol acetate (appetite stimulant): VTE and adrenal suppression risk in elderly
+- Sliding-scale insulin: hypoglycemia risk
+
+PROTOCOL: When age ≥65 AND a Beers-listed drug is present, flag proactively: "For patients 65 and older, [drug name] carries elevated risk of [specific concern]. Your care team may consider an alternative — please discuss before continuing."
+
 IMMUNE-RELATED ADVERSE EVENTS (irAEs) — checkpoint inhibitors only:
 - irAEs are autoimmune in mechanism, NOT the same as chemo toxicity
 - Treatment is immunosuppression (steroids, infliximab) — NOT just holding the drug

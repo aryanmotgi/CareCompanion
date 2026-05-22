@@ -2,7 +2,7 @@
  * Tests for POST/GET /api/care-group/code (generate / read current).
  *
  * Pattern: mock @/lib/db, @/lib/auth, @/lib/csrf, @/lib/care-group's
- * isGroupPatient, and @/lib/feature-flags. Then exercise the route handler.
+ * isGroupMember, and @/lib/feature-flags. Then exercise the route handler.
  * Existing care-group tests follow the same shape — see
  * apps/web/src/app/api/care-group/__tests__/route.test.ts.
  */
@@ -21,7 +21,7 @@ vi.mock('@/lib/care-group', async () => {
   const actual = await vi.importActual<typeof import('@/lib/care-group')>('@/lib/care-group')
   return {
     ...actual,
-    isGroupPatient: vi.fn().mockResolvedValue(true),
+    isGroupMember: vi.fn().mockResolvedValue(true),
   }
 })
 
@@ -42,7 +42,7 @@ const dbInsertReturning = dbMocks.insertReturning
 
 import { POST, GET } from '../route'
 import { isCaregiverCodeFlowEnabled } from '@/lib/feature-flags'
-import { isGroupPatient } from '@/lib/care-group'
+import { isGroupMember } from '@/lib/care-group'
 
 function makeReq(body: unknown): Request {
   return new Request('https://test/api/care-group/code', {
@@ -57,7 +57,7 @@ describe('POST /api/care-group/code', () => {
     dbQueryFindFirst.mockReset()
     dbInsertReturning.mockReset()
     vi.mocked(isCaregiverCodeFlowEnabled).mockReturnValue(true)
-    vi.mocked(isGroupPatient).mockResolvedValue(true)
+    vi.mocked(isGroupMember).mockResolvedValue(true)
   })
 
   it('rejects when the feature flag is off (503)', async () => {
@@ -66,8 +66,8 @@ describe('POST /api/care-group/code', () => {
     expect(res.status).toBe(503)
   })
 
-  it('rejects when the caller is not the patient (403)', async () => {
-    vi.mocked(isGroupPatient).mockResolvedValueOnce(false)
+  it('rejects when the caller is not a group member (403)', async () => {
+    vi.mocked(isGroupMember).mockResolvedValueOnce(false)
     const res = await POST(makeReq({ careGroupId: 'g1' }))
     expect(res.status).toBe(403)
   })
@@ -97,7 +97,7 @@ describe('GET /api/care-group/code', () => {
   beforeEach(() => {
     dbQueryFindFirst.mockReset()
     vi.mocked(isCaregiverCodeFlowEnabled).mockReturnValue(true)
-    vi.mocked(isGroupPatient).mockResolvedValue(true)
+    vi.mocked(isGroupMember).mockResolvedValue(true)
   })
 
   it('returns null when no active code exists', async () => {

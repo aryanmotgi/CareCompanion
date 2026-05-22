@@ -159,3 +159,13 @@ export async function isGroupPatient(userId: string, careGroupId: string): Promi
   })
   return Boolean(m && m.userType === 'patient')
 }
+
+export async function isGroupMember(userId: string, careGroupId: string): Promise<boolean> {
+  const m = await db.query.careGroupMembers.findFirst({
+    where: and(
+      eq(careGroupMembers.careGroupId, careGroupId),
+      eq(careGroupMembers.userId, userId),
+    ),
+  })
+  return Boolean(m)
+}
