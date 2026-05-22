@@ -9,45 +9,17 @@ import type {
   HealthKitMedicationRecord,
   HealthKitLabRecord,
   HealthKitVitalSignRecord,
+  HealthKitConditionRecord,
+  HealthKitAllergyRecord,
+  HealthKitProcedureRecord,
+  HealthKitImmunizationRecord,
 } from '@carecompanion/types'
 
-// ---------------------------------------------------------------------------
-// Mobile-local extended record types not yet promoted to @carecompanion/types.
-// When the shared union grows to include these, import and drop the local copy.
-// ---------------------------------------------------------------------------
-
-export type HealthKitConditionRecord = {
-  type: 'condition'
-  healthkitFhirId: string
-  code: string | null
-  display: string
-  clinicalStatus: string | null
-  onsetDateTime: string | null
-}
-
-export type HealthKitAllergyRecord = {
-  type: 'allergy'
-  healthkitFhirId: string
-  code: string | null
-  display: string
-  reaction: string | null
-  criticality: string | null
-}
-
-export type HealthKitProcedureRecord = {
-  type: 'procedure'
-  healthkitFhirId: string
-  code: string | null
-  display: string
-  performedDateTime: string | null
-}
-
-export type HealthKitImmunizationRecord = {
-  type: 'immunization'
-  healthkitFhirId: string
-  code: string | null
-  display: string
-  occurrenceDateTime: string | null
+export type {
+  HealthKitConditionRecord,
+  HealthKitAllergyRecord,
+  HealthKitProcedureRecord,
+  HealthKitImmunizationRecord,
 }
 
 export type ExtendedHealthKitRecord =

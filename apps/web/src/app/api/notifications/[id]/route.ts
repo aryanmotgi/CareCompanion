@@ -5,6 +5,29 @@ import { db } from '@/lib/db';
 import { notifications } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
 
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { user, error: authError } = await getAuthenticatedUser();
+  if (authError) return authError;
+
+  const { id } = await params;
+  if (!id) return apiError('Missing notification id', 400);
+
+  try {
+    const [row] = await db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.id, id), eq(notifications.userId, user!.id)))
+      .limit(1);
+
+    if (!row) return apiError('Notification not found', 404);
+
+    return apiSuccess({ notification: row });
+  } catch (err) {
+    console.error('[notifications/get] error:', err);
+    return apiError('Internal server error', 500);
+  }
+}
+
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { valid, error: csrfError } = await validateCsrf(req);
   if (!valid) return csrfError!;

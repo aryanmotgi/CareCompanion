@@ -193,6 +193,13 @@ export function createApiClient(config: ApiClientConfig) {
           method: 'POST',
           body: JSON.stringify({ records, keepCareProfile: options?.keepCareProfile ?? false }),
         }) as Promise<{ synced: number; errors: number; deleted: { medications: number; appointments: number; labResults: number } }>,
+      records: () =>
+        apiFetch(config, '/api/healthkit/records') as Promise<{
+          conditions: Array<{ id: string; code: string | null; display: string; clinicalStatus: string | null; onsetDateTime: string | null }>
+          allergies: Array<{ id: string; code: string | null; display: string; reaction: string | null; criticality: string | null }>
+          procedures: Array<{ id: string; code: string | null; display: string; performedDateTime: string | null }>
+          immunizations: Array<{ id: string; code: string | null; display: string; occurrenceDateTime: string | null }>
+        }>,
     },
     auth: {
       register: (data: { email: string; password: string; displayName: string }) =>

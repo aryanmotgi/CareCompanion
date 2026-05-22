@@ -354,8 +354,8 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
 
   // Insert all new notifications
   if (toInsert.length > 0) {
-    await db.insert(notifications).values(toInsert);
-    generated = toInsert.length;
+    const inserted = await db.insert(notifications).values(toInsert).returning({ id: notifications.id, type: notifications.type });
+    generated = inserted.length;
 
     // Fire push notifications for each inserted notification (fire-and-forget)
     const subs = await db
@@ -365,7 +365,7 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
       .catch(() => []);
 
     if (subs.length > 0) {
-      for (const notification of toInsert) {
+      for (const notification of inserted) {
         const redacted = getRedactedPushPayload(notification.type);
         for (const sub of subs) {
           sendPushNotification(
@@ -375,8 +375,8 @@ export async function generateNotificationsForUser(userId: string): Promise<numb
               body: redacted.body,
               url: '/dashboard',
               // PHI-free metadata. The app fetches the full notification from
-              // /api/notifications after the user authenticates.
-              data: { type: notification.type },
+              // /api/notifications/[id] after the user authenticates.
+              data: { kind: notification.type, id: notification.id },
             },
           ).catch(async (err: unknown) => {
             // Remove invalid/expired subscriptions (HTTP 410 Gone)

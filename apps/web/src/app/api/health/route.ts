@@ -38,6 +38,9 @@ const REQUIRED_COLUMNS: { table: string; column: string }[] = [
   { table: 'procedures', column: 'healthkit_fhir_id' },
   { table: 'immunizations', column: 'id' },
   { table: 'immunizations', column: 'healthkit_fhir_id' },
+  // HealthKit objective wellness snapshots (migration 019)
+  { table: 'wellness_vitals', column: 'id' },
+  { table: 'wellness_vitals', column: 'captured_at' },
 ]
 
 /**
