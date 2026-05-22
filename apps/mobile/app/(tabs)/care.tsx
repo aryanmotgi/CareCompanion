@@ -444,6 +444,20 @@ function InviteFamilyBanner({ onPress }: { onPress: () => void }) {
   )
 }
 
+function HealthRecordsBanner({ onPress }: { onPress: () => void }) {
+  const theme = useTheme()
+  return (
+    <Pressable
+      style={[styles.inviteBanner, { backgroundColor: 'rgba(99,102,241,0.07)', borderColor: 'rgba(99,102,241,0.18)' }]}
+      onPress={onPress}
+    >
+      <Ionicons name="document-text-outline" size={14} color="#818CF8" />
+      <Text style={[styles.inviteText, { color: theme.textMuted }]}>Health records — conditions, allergies, procedures, immunizations</Text>
+      <Ionicons name="chevron-forward" size={12} color={theme.textMuted} style={{ marginLeft: 'auto' }} />
+    </Pressable>
+  )
+}
+
 // ─── CareGroupSection ─────────────────────────────────────────────────────────
 
 function CareGroupSection({ apiClient, csrfToken }: { apiClient: any; csrfToken: string }) {
@@ -748,6 +762,8 @@ export default function CareScreen() {
                   appointments={appointments}
                   onPrep={() => router.push('/visit-prep')}
                 />
+
+                <HealthRecordsBanner onPress={() => router.push('/health-records' as never)} />
 
                 <InviteFamilyBanner onPress={() => {
                   setInviteError(null)

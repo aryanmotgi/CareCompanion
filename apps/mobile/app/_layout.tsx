@@ -540,18 +540,61 @@ export default function RootLayout() {
   const currentScreen = segments.join('/')
 
   // Deep-link a notification response to the right screen based on
-  // `data.kind`. Body taps and action buttons that open the app both
+  // `data.kind`. Two kind vocabularies share this dispatcher:
+  //   - mobile-scheduled local kinds: DOSE_REMINDER_KIND, APPOINTMENT_REMINDER_KIND,
+  //     DAILY_CHECKIN_KIND (see services/notifications.ts)
+  //   - backend-generated push types from apps/web/src/lib/notifications.ts
+  //     (refill_*, appointment_*, abnormal_lab, cycle_*, prior_auth_expiring,
+  //     low_balance)
+  // Unknown kinds fall back to the /notifications list so the user still lands
+  // on something useful. Body taps and action buttons that open the app both
   // route through here; foreground-only actions (TAKEN/SNOOZE/SKIP/CONFIRM)
   // are filtered upstream.
   const routeForKind = useCallback(
     (data: Record<string, unknown>) => {
       const kind = typeof data?.kind === 'string' ? data.kind : null
+      if (!kind) return
+
+      // Mobile-scheduled local notifications.
       if (kind === DOSE_REMINDER_KIND) {
         router.push('/(tabs)/care' as never)
-      } else if (kind === APPOINTMENT_REMINDER_KIND) {
+        return
+      }
+      if (kind === APPOINTMENT_REMINDER_KIND) {
         router.push('/appointments' as never)
-      } else if (kind === DAILY_CHECKIN_KIND) {
+        return
+      }
+      if (kind === DAILY_CHECKIN_KIND) {
         router.push('/(tabs)' as never)
+        return
+      }
+
+      // Backend push types (apps/web/src/lib/notifications.ts).
+      switch (kind) {
+        case 'refill_overdue':
+        case 'refill_soon':
+        case 'low_balance':
+        case 'cycle_pre_infusion':
+          router.push('/(tabs)/care' as never)
+          return
+        case 'appointment_prep':
+        case 'appointment_today':
+          router.push('/appointments' as never)
+          return
+        case 'abnormal_lab':
+          router.push('/(tabs)/labs' as never)
+          return
+        case 'prior_auth_expiring':
+          router.push('/insurance' as never)
+          return
+        case 'cycle_nadir_warning':
+        case 'cycle_nadir_active':
+        case 'cycle_recovery':
+          router.push('/(tabs)' as never)
+          return
+        default:
+          router.push('/notifications' as never)
+          return
       }
     },
     [router],
