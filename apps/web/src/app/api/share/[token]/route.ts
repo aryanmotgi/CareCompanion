@@ -1,8 +1,9 @@
 import { db } from '@/lib/db';
-import { sharedLinks } from '@/lib/db/schema';
+import { sharedLinks, auditLogs } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { apiError, apiSuccess } from '@/lib/api-response';
 import { rateLimit } from '@/lib/rate-limit';
+import { createHash } from 'crypto';
 
 const shareLimiter = rateLimit({
   interval: 60 * 1000, // 1 minute
@@ -47,6 +48,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
     .where(eq(sharedLinks.token, token))
     .execute()
     .catch(() => {});
+
+  // HIPAA audit: log every PHI access on share links (no auth required = extra audit importance)
+  const hashedIp = createHash('sha256').update(ip).digest('hex').slice(0, 16);
+  db.insert(auditLogs).values({
+    action: 'share_link_accessed',
+    resource: 'shared_link',
+    resourceId: token,
+    ipAddress: hashedIp,
+    method: 'GET',
+    path: `/api/share/${token}`,
+    statusCode: 200,
+    durationMs: 0,
+    metadata: { linkType: link.type, title: link.title ?? null },
+  }).execute().catch(() => {});
 
   return apiSuccess({
     title: link.title,

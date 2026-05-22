@@ -81,7 +81,15 @@ export function rateLimit({
     !!process.env.KV_REST_API_TOKEN
 
   if (!hasRedis && typeof process !== 'undefined' && process.env.NODE_ENV === 'production') {
-    console.warn('[rate-limit] KV_REST_API_URL / KV_REST_API_TOKEN not set — falling back to in-memory limiter. Rate limits are NOT enforced globally across serverless instances.')
+    // Fail closed in production: in-memory Map is per-instance and bypassed on
+    // Vercel cold starts. Return a limiter that denies all requests so the
+    // misconfiguration is visible rather than silently bypassed.
+    console.error('[rate-limit] KV_REST_API_URL / KV_REST_API_TOKEN not set in production — rate limiter is DENYING ALL REQUESTS. Set these env vars in Vercel to fix.')
+    return {
+      async check(_key: string): Promise<{ success: boolean; remaining: number }> { // eslint-disable-line @typescript-eslint/no-unused-vars
+        return { success: false, remaining: 0 }
+      },
+    }
   }
 
   const windowSecs = Math.max(1, Math.ceil(interval / 1000))
