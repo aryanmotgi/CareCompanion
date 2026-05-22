@@ -189,7 +189,7 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
             </div>
             <div className="flex gap-2">
               {med.pharmacyPhone && (
-                <a href={`tel:${med.pharmacyPhone}`} className="flex-1 text-center py-2 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-xs font-semibold animate-press">
+                <a href={`tel:${med.pharmacyPhone}`} aria-label={`Call pharmacy at ${med.pharmacyPhone}`} className="flex-1 text-center py-2 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#A78BFA] text-white text-xs font-semibold animate-press">
                   Call Pharmacy
                 </a>
               )}
@@ -250,12 +250,12 @@ export function CareView({ profileId, medications: initialMeds, appointments: in
             />
             <div className="flex gap-2 mt-2">
               {doctorPhone && (
-                <a href={`tel:${doctorPhone}`} className="flex-1 text-center py-2 rounded-lg bg-white/[0.06] border border-white/[0.1] text-[#e2e8f0] text-xs font-semibold animate-press">
+                <a href={`tel:${doctorPhone}`} aria-label={`Call doctor's office at ${doctorPhone}`} className="flex-1 text-center py-2 rounded-lg bg-white/[0.06] border border-white/[0.1] text-[#e2e8f0] text-xs font-semibold animate-press">
                   Call Office
                 </a>
               )}
               {appt.location && (
-                <a href={`https://maps.google.com/?q=${encodeURIComponent(appt.location)}`} target="_blank" rel="noopener noreferrer" className="flex-1 text-center py-2 rounded-lg bg-white/[0.06] border border-white/[0.1] text-[#e2e8f0] text-xs font-semibold animate-press">
+                <a href={`https://maps.google.com/?q=${encodeURIComponent(appt.location)}`} target="_blank" rel="noopener noreferrer" aria-label={`Get directions to ${appt.location} (opens in Maps)`} className="flex-1 text-center py-2 rounded-lg bg-white/[0.06] border border-white/[0.1] text-[#e2e8f0] text-xs font-semibold animate-press">
                   Directions
                 </a>
               )}

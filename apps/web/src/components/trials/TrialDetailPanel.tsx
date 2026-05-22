@@ -82,12 +82,12 @@ function ContactBlock({ contact, trialUrl }: { contact: Contact | null; trialUrl
     <div className="space-y-0.5">
       {contact.name  && <p className="text-sm text-[var(--text)]">{contact.name}</p>}
       {contact.email && (
-        <a href={`mailto:${contact.email}`} className="text-sm text-[#A78BFA] hover:underline block">
+        <a href={`mailto:${contact.email}`} aria-label={`Email ${contact.email}`} className="text-sm text-[#A78BFA] hover:underline block">
           {contact.email}
         </a>
       )}
       {contact.phone && (
-        <a href={`tel:${contact.phone}`} className="text-sm text-[#A78BFA] hover:underline block">
+        <a href={`tel:${contact.phone}`} aria-label={`Call ${contact.phone}`} className="text-sm text-[#A78BFA] hover:underline block">
           {contact.phone}
         </a>
       )}

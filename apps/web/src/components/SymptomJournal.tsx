@@ -208,10 +208,11 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
         <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-4 mb-6 space-y-5 animate-card-in">
           {/* Pain level */}
           <div>
-            <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Pain Level</label>
+            <label htmlFor="sj-pain" className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Pain Level</label>
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs text-[var(--text-muted)] w-6">0</span>
               <input
+                id="sj-pain"
                 type="range" min="0" max="10" value={painLevel}
                 onChange={(e) => setPainLevel(parseInt(e.target.value))}
                 className="flex-1 accent-blue-500"
@@ -224,10 +225,11 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
 
           {/* Nausea level */}
           <div>
-            <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Nausea Level</label>
+            <label htmlFor="sj-nausea" className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Nausea Level</label>
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs text-[var(--text-muted)] w-6">0</span>
               <input
+                id="sj-nausea"
                 type="range" min="0" max="10" value={nauseaLevel}
                 onChange={(e) => setNauseaLevel(parseInt(e.target.value))}
                 className="flex-1 accent-purple-500"
@@ -240,10 +242,11 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
 
           {/* Fatigue level */}
           <div>
-            <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Fatigue Level</label>
+            <label htmlFor="sj-fatigue" className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Fatigue Level</label>
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs text-[var(--text-muted)] w-6">0</span>
               <input
+                id="sj-fatigue"
                 type="range" min="0" max="10" value={fatigueLevel}
                 onChange={(e) => setFatigueLevel(parseInt(e.target.value))}
                 className="flex-1 accent-indigo-500"
@@ -259,7 +262,8 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
             <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Mood</label>
             <div className="flex gap-2 mt-2">
               {Object.entries(MOOD_LABELS).map(([key, label]) => (
-                <button key={key} onClick={() => setMood(key)}
+                <button key={key} type="button" onClick={() => setMood(key)}
+                  aria-pressed={mood === key}
                   className={`flex-1 py-2 rounded-lg text-center text-xs font-medium transition-colors ${mood === key ? 'border' : 'bg-white/[0.04] border border-white/[0.06] text-[var(--text-muted)]'}`}
                   style={mood === key ? { background: MOOD_COLORS[key] + '20', borderColor: MOOD_COLORS[key] + '60', color: MOOD_COLORS[key] } : {}}
                   title={key}>{label}</button>
@@ -273,7 +277,8 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
               <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Sleep Quality</label>
               <div className="flex gap-1 mt-2">
                 {Object.entries(SLEEP_LABELS).map(([key, label]) => (
-                  <button key={key} onClick={() => setSleepQuality(key)}
+                  <button key={key} type="button" onClick={() => setSleepQuality(key)}
+                    aria-pressed={sleepQuality === key}
                     className={`flex-1 py-1.5 rounded text-center text-xs transition-colors ${sleepQuality === key ? 'bg-blue-500/20 border border-blue-500/40 text-blue-300' : 'bg-white/[0.04] border border-white/[0.06] text-[var(--text-muted)]'}`}
                     title={key}>{label}</button>
                 ))}
@@ -320,7 +325,8 @@ export function SymptomJournal({ patientName, initialEntries }: SymptomJournalPr
             <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Treatment Side Effects</label>
             <div className="flex flex-wrap gap-2 mt-2">
               {COMMON_SYMPTOMS.map((s) => (
-                <button key={s} onClick={() => toggleSymptom(s)}
+                <button key={s} type="button" onClick={() => toggleSymptom(s)}
+                  aria-pressed={symptoms.includes(s)}
                   className={`px-3 py-1 rounded-full text-xs transition-colors ${symptoms.includes(s) ? 'bg-red-500/20 border border-red-500/40 text-red-400' : 'bg-white/[0.04] border border-white/[0.06] text-[var(--text-secondary)]'}`}>
                   {s}
                 </button>

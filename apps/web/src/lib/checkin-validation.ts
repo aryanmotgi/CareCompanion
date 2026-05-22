@@ -8,7 +8,7 @@ const checkinSchema = z.object({
   notes: z.string().max(500).optional(),
 });
 
-export function validateCheckin(data: unknown) {
+export function validateCheckin(data: unknown): ReturnType<typeof checkinSchema.safeParse> {
   return checkinSchema.safeParse(data);
 }
 
