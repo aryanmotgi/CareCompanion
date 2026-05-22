@@ -9,6 +9,7 @@ import { MessageBubble } from '@/components/MessageBubble';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { DocumentScanner } from '@/components/DocumentScanner';
 import { ChatSearch } from '@/components/ChatSearch';
+import { ChatHistoryPanel } from '@/components/ChatHistoryPanel';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 
 interface RecentConversation {
@@ -56,6 +57,7 @@ export function ChatInterface({ initialMessages, patientName, recentConversation
   const [input, setInput] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [promptSent, setPromptSent] = useState(false);
   const [, setIsNewChat] = useState(false);
@@ -243,6 +245,17 @@ export function ChatInterface({ initialMessages, patientName, recentConversation
           Search
         </button>
         <button
+          onClick={() => setShowHistory(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[var(--text-secondary)] text-xs hover:bg-white/[0.08] hover:text-[var(--text)] transition-colors"
+          title="Chat history"
+          aria-label="Open chat history"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+          </svg>
+          History
+        </button>
+        <button
           onClick={handleNewChat}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-colors ${
             confirmingNewChat
@@ -265,6 +278,8 @@ export function ChatInterface({ initialMessages, patientName, recentConversation
         onClose={() => setShowSearch(false)}
         onScrollToMessage={handleScrollToMessage}
       />
+      {/* Chat history panel */}
+      <ChatHistoryPanel isOpen={showHistory} onClose={() => setShowHistory(false)} />
       {/* Nadir context card — gated to days 7-14 server-side */}
       {nadirCycle && (
         <div
