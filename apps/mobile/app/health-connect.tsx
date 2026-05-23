@@ -413,11 +413,13 @@ export default function HealthConnectScreen() {
 
   const isLastStep = activeIndex === TUTORIAL_STEPS.length - 1
 
+  const STEP_WIDTH = CARD_WIDTH + 16 // card + gap between items
+
   const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = e.nativeEvent.contentOffset.x
     const index = Math.round(offsetX / SCREEN_WIDTH)
     setActiveIndex(Math.max(0, Math.min(index, TUTORIAL_STEPS.length - 1)))
-  }, [])
+  }, [STEP_WIDTH])
 
   function goToStep(index: number) {
     scrollRef.current?.scrollTo({ x: SCREEN_WIDTH * index, animated: true })
@@ -476,18 +478,18 @@ export default function HealthConnectScreen() {
 
       await markHealthKitConnected()
 
-      try {
-        await withTimeout(replaceHealthKitData(), 4000, 'replaceHealthKitData')
-      } catch (err) {
-        console.warn('[HealthKit] replace timed out / failed')
-      }
-
-      void refetch().catch(() => {})
-      void syncCalendar()
-
+      // Show success immediately after auth — don't block on sync.
+      // replaceHealthKitData() can hang indefinitely (fetchClinicalRecords has
+      // no timeout; apiClient.healthkit.replace uses bare fetch with no timeout).
+      // Auth is the important user action; sync catches up in the background.
       clearTimeout(hardTimeout)
       setPermissionGranted(true)
       successScale.value = withSpring(1, { damping: 10, stiffness: 150 })
+
+      // Background sync — non-blocking, all errors handled internally.
+      void replaceHealthKitData().then(() => refetch()).catch(() => {})
+      void syncCalendar()
+
       setTimeout(() => {
         if (isReconnect) {
           router.back()
@@ -642,7 +644,6 @@ export default function HealthConnectScreen() {
         <ScrollView
           ref={scrollRef}
           horizontal
-          pagingEnabled
           showsHorizontalScrollIndicator={false}
           onScroll={onScroll}
           scrollEventThrottle={16}
