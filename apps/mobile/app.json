@@ -26,10 +26,12 @@
         "NSCameraUsageDescription": "CareCompanion uses the camera to scan prescription bottles and medical documents so we can add medications, lab results, and appointments to your care record.",
         "NSPhotoLibraryUsageDescription": "CareCompanion accesses your photo library so you can upload prescription labels and medical documents to your care record.",
         "NSMotionUsageDescription": "CareCompanion uses device motion to add subtle parallax effects on the home screen. No motion data is stored or sent off device.",
+        "NSHealthUpdateUsageDescription": "CareCompanion writes wellness data including steps, heart rate, and sleep to Apple Health to keep your health records in sync.",
         "ITSAppUsesNonExemptEncryption": false,
         "NSSupportsLiveActivities": true,
         "NSSupportsLiveActivitiesFrequentUpdates": true,
-        "UIBackgroundModes": ["fetch", "remote-notification"]
+        "UIBackgroundModes": ["fetch", "processing", "remote-notification"],
+        "BGTaskSchedulerPermittedIdentifiers": ["cc-background-sync", "cc-wellness-sync"]
       },
       "entitlements": {
         "com.apple.developer.healthkit": true,
