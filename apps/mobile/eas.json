@@ -59,6 +59,11 @@
       "ios": {
         "ascAppId": "6766130404"
       }
+    },
+    "testflight": {
+      "ios": {
+        "ascAppId": "6766130404"
+      }
     }
   }
 }
