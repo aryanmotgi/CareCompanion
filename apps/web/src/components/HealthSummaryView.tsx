@@ -271,6 +271,10 @@ export function HealthSummaryView({ patientName }: HealthSummaryViewProps) {
           {/* Summary content */}
           <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl p-5">
             {renderMarkdown(summary)}
+            <p className="text-[11px] text-[var(--text-muted)] mt-4 pt-3 border-t border-[var(--border)] text-center leading-relaxed">
+              For informational purposes only — not for medical decisions.
+              Always verify with your healthcare provider.
+            </p>
           </div>
         </>
       )}

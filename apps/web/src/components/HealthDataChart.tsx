@@ -468,6 +468,11 @@ export function HealthDataChart() {
         </div>
       )}
 
+      {/* ── Disclaimer ── */}
+      <p className="text-[10px] text-center leading-relaxed" style={{ color: TEXT_MUTED }}>
+        Not for medical decisions — consult your care team.
+      </p>
+
       {/* ── Recent Results ── */}
       {recentResults.length > 0 && (
         <div>

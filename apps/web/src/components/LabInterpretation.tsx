@@ -564,6 +564,13 @@ export function LabInterpretation({ labResult }: { labResult: LabResult }) {
             </div>
           )}
 
+          {/* Inline disclaimer + source attribution */}
+          <p className="text-[10px] text-[var(--text-muted)] text-center leading-relaxed border-t border-white/[0.06] pt-3">
+            For informational purposes only — not for medical decisions.{' '}
+            Always consult your care team.{' '}
+            <span className="opacity-60">General oncology reference · CareCompanion AI</span>
+          </p>
+
           {/* Discuss with AI button */}
           <Link
             href={`/chat?prompt=${chatPrompt}`}

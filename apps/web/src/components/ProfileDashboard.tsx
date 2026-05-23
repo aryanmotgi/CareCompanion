@@ -74,6 +74,9 @@ export function ProfileDashboard({ profile, doctors, labResults }: ProfileDashbo
               )
             })}
           </div>
+          <p className="text-[10px] text-[#64748b] mt-2 text-center leading-relaxed">
+            Not for medical decisions — consult your care team.
+          </p>
         </div>
       )}
 
