@@ -2,6 +2,18 @@
 
 All notable changes to CareCompanion will be documented in this file.
 
+## [0.5.1.1] - 2026-05-23
+
+HealthKit carousel precision fix and non-blocking sync after authorization.
+
+### Fixed
+- **HealthKit carousel scroll** — carousel now uses `STEP_WIDTH` (card + gap) with `scrollToOffset` instead of `scrollToIndex`; eliminates off-by-one when `getItemLayout` doesn't account for `contentContainerStyle` padding
+- **Non-blocking HealthKit sync** — `replaceHealthKitData()` now runs in the background after auth success; success state shown immediately instead of waiting for a bare `fetch` with no timeout that could hang indefinitely
+- **iOS Simulator auth timeout** — `requestHealthKitPermissions()` now races against a 5 s timeout in DEV (30 s in prod) so the Simulator flow doesn't hang waiting for an auth dialog that never appears
+
+### Changed
+- Removed conflicting `pagingEnabled` + `snapToInterval` pair from the HealthKit tutorial `FlatList`; `snapToInterval` with `STEP_WIDTH` handles paging cleanly on its own
+
 ## [0.5.1.0] - 2026-05-16
 
 Mobile HealthKit reliability fixes, care profile auto-creation, and home/care/labs UI consolidation.
