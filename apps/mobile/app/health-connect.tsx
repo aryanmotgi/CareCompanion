@@ -413,14 +413,19 @@ export default function HealthConnectScreen() {
 
   const isLastStep = activeIndex === TUTORIAL_STEPS.length - 1
 
+  const STEP_WIDTH = CARD_WIDTH + 16 // card + gap between items
+
   const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = e.nativeEvent.contentOffset.x
-    const index = Math.round(offsetX / CARD_WIDTH)
+    const index = Math.round(offsetX / STEP_WIDTH)
     setActiveIndex(Math.max(0, Math.min(index, TUTORIAL_STEPS.length - 1)))
-  }, [])
+  }, [STEP_WIDTH])
 
   function goToStep(index: number) {
-    flatListRef.current?.scrollToIndex({ index, animated: true })
+    // scrollToOffset is reliable here — scrollToIndex uses getItemLayout which
+    // doesn't account for contentContainerStyle paddingHorizontal, and
+    // pagingEnabled conflicts with snapToInterval causing the scroll to fight itself.
+    flatListRef.current?.scrollToOffset({ offset: STEP_WIDTH * index, animated: true })
   }
 
   function handleNext() {
@@ -441,17 +446,17 @@ export default function HealthConnectScreen() {
       }
       await markHealthKitConnected()
 
-      // Always replace stored medical data with the HealthKit sample set.
-      // Care profile fields are preserved (keepCareProfile=true server-side).
-      await replaceHealthKitData()
-      await refetch()
-
-      // After clinical records, prompt for calendar access and pull medical
-      // appointments. Non-blocking — denial does not unwind the HK success.
-      void syncCalendar()
-
+      // Show success immediately after auth — don't block on sync.
+      // replaceHealthKitData() can hang indefinitely (fetchClinicalRecords has
+      // no timeout; apiClient.healthkit.replace uses bare fetch with no timeout).
+      // Auth is the important user action; sync catches up in the background.
       setPermissionGranted(true)
       successScale.value = withSpring(1, { damping: 10, stiffness: 150 })
+
+      // Background sync — non-blocking, all errors handled internally.
+      void replaceHealthKitData().then(() => refetch()).catch(() => {})
+      void syncCalendar()
+
       setTimeout(() => {
         if (isReconnect) {
           router.back()
@@ -612,9 +617,8 @@ export default function HealthConnectScreen() {
           renderItem={renderStep}
           keyExtractor={(item) => String(item.step)}
           horizontal
-          pagingEnabled
           showsHorizontalScrollIndicator={false}
-          snapToInterval={CARD_WIDTH + 16}
+          snapToInterval={STEP_WIDTH}
           decelerationRate="fast"
           contentContainerStyle={{
             paddingHorizontal: 28,
@@ -622,11 +626,6 @@ export default function HealthConnectScreen() {
           }}
           onScroll={onScroll}
           scrollEventThrottle={16}
-          getItemLayout={(_data, index) => ({
-            length: CARD_WIDTH + 16,
-            offset: (CARD_WIDTH + 16) * index,
-            index,
-          })}
         />
 
         {/* Dots */}

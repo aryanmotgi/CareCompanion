@@ -385,8 +385,13 @@ const DEV_MOCK_RECORDS: RawClinicalRecord[] = [
 export async function requestHealthKitPermissions(): Promise<boolean> {
   if (!Bridge) return false
   try {
-    await Bridge.requestAuthorization()
-    return true
+    // The iOS Simulator never shows the clinical-records auth dialog, so
+    // Bridge.requestAuthorization() can hang indefinitely. Race against a
+    // timeout and treat expiry as success in __DEV__ (sim always grants).
+    const timeout = new Promise<boolean>((resolve) =>
+      setTimeout(() => resolve(__DEV__), __DEV__ ? 5000 : 30000)
+    )
+    return await Promise.race([Bridge.requestAuthorization().then(() => true), timeout])
   } catch {
     return false
   }
