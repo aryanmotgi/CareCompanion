@@ -7,13 +7,12 @@ on:
     branches: [main, feat/mobile-first-redesign]
 
 jobs:
-  validate:
+  install:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    defaults:
-      run:
-        working-directory: apps/web
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.value }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
@@ -21,34 +20,164 @@ jobs:
         with:
           bun-version: latest
 
+      - id: cache-key
+        run: echo "value=bun-${{ runner.os }}-${{ hashFiles('bun.lock', '**/package.json') }}" >> $GITHUB_OUTPUT
+
+      - name: Cache bun deps + node_modules
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ steps.cache-key.outputs.value }}
+
       - name: Install dependencies
-        run: bun install
-        working-directory: .
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: bun install --frozen-lockfile
 
-      - name: Lint
-        run: bun run lint
+  lint:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ needs.install.outputs.cache-key }}
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+        working-directory: apps/web
 
-      - name: Typecheck
-        run: bun run typecheck
+  typecheck:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ needs.install.outputs.cache-key }}
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+        working-directory: apps/web
 
-      - name: Test
-        run: bun run test:run
+  test:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ needs.install.outputs.cache-key }}
+      - run: bun install --frozen-lockfile
+      - run: bun run test:run
+        working-directory: apps/web
 
-      - name: Build
-        run: bun run build
+  build:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ needs.install.outputs.cache-key }}
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+        working-directory: apps/web
 
-      - name: Deadcode (knip)
-        working-directory: .
-        run: bun run deadcode
+  deadcode:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ needs.install.outputs.cache-key }}
+      - run: bun install --frozen-lockfile
+      - run: bun run deadcode
 
-      - name: Mobile bundle-check (Hermes JS compile)
+  bundle-check:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ needs.install.outputs.cache-key }}
+      - run: bun install --frozen-lockfile
+      - run: bun run bundle-check
         working-directory: apps/mobile
-        run: bun run bundle-check
 
+  e2e:
+    needs: [lint, typecheck, test, build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ needs.install.outputs.cache-key }}
+      - run: bun install --frozen-lockfile
       - name: Install Playwright browsers
         working-directory: apps/web
         run: npx playwright install --with-deps chromium
-
       - name: Run E2E tests
         working-directory: apps/web
         timeout-minutes: 10
@@ -58,3 +187,18 @@ jobs:
           PLAYWRIGHT_BASE_URL: https://carecompanionai.org
           E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
           E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+
+  # Aggregator: keep "validate" as the required status check name so branch
+  # protection rules don't need to be updated. Fails if any parallel job failed.
+  validate:
+    needs: [lint, typecheck, test, build, deadcode, bundle-check]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" = "true" ]; then
+            echo "::error::One or more validation jobs failed"
+            exit 1
+          fi
+          echo "All validation jobs passed"
