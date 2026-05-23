@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
+import { useRouter, Redirect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from '../src/theme'
@@ -26,7 +26,12 @@ interface ExtractedCheckin {
   notes: string | null
 }
 
+const VOICE_CHECKIN_ENABLED = process.env.EXPO_PUBLIC_VOICE_CHECKIN_ENABLED === 'true'
+
 export default function VoiceCheckinScreen() {
+  if (!VOICE_CHECKIN_ENABLED) {
+    return <Redirect href="/" />
+  }
   const theme = useTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
