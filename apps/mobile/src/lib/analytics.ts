@@ -1,31 +1,42 @@
-let PostHog: any = null
-try {
-  PostHog = require('posthog-react-native').default
-} catch {
-  // Native module not available in this build
+// Internal analytics — POST to /api/analytics. Replaces PostHog.
+// All data lands in Aurora `analytics_events` table (HIPAA-covered).
+// Fire-and-forget: never blocks UI, never throws.
+
+import * as SecureStore from 'expo-secure-store'
+
+const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://carecompanionai.org'
+
+async function postEvent(eventName: string, properties?: Record<string, string | number | boolean>): Promise<void> {
+  try {
+    const token = await SecureStore.getItemAsync('cc-session-token').catch(() => null)
+    if (!token) return  // anonymous events not recorded — keeps user_id_hash population guaranteed
+    const isSecure = API_BASE.startsWith('https://')
+    const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
+    await fetch(`${API_BASE}/api/analytics`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        Cookie: `${cookieName}=${token}`,
+      },
+      body: JSON.stringify({ eventName, properties: properties ?? {} }),
+    }).catch(() => {})
+  } catch {
+    /* never throw */
+  }
 }
 
-const POSTHOG_KEY = process.env.EXPO_PUBLIC_POSTHOG_KEY || ''
-const POSTHOG_HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com'
-
-let client: any = null
-
-export async function initAnalytics() {
-  if (!POSTHOG_KEY || !PostHog) return
-  client = new PostHog(POSTHOG_KEY, {
-    host: POSTHOG_HOST,
-  })
+export async function initAnalytics(): Promise<void> {
+  // no-op — fully stateless, every event opens its own fetch
 }
 
-function trackEvent(event: string, properties?: Record<string, string | number | boolean>) {
-  client?.capture(event, properties)
+// Internal — re-export when first caller appears.
+const _events = {
+  onboardingCompleted: () => postEvent('onboarding_completed'),
+  medicationAdded: () => postEvent('medication_added'),
+  labViewed: () => postEvent('lab_viewed'),
+  chatMessageSent: () => postEvent('chat_message_sent'),
+  settingsChanged: (setting: string) => postEvent('settings_changed', { setting }),
+  bugReportSubmitted: () => postEvent('bug_report_submitted'),
 }
-
-const events = {
-  onboardingCompleted: () => trackEvent('onboarding_completed'),
-  medicationAdded: () => trackEvent('medication_added'),
-  labViewed: () => trackEvent('lab_viewed'),
-  chatMessageSent: () => trackEvent('chat_message_sent'),
-  settingsChanged: (setting: string) => trackEvent('settings_changed', { setting }),
-  bugReportSubmitted: () => trackEvent('bug_report_submitted'),
-}
+void _events

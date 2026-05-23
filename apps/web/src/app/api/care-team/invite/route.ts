@@ -3,7 +3,7 @@ import { apiError, apiSuccess, ApiErrors } from '@/lib/api-response';
 import { db } from '@/lib/db';
 import { careTeamMembers, careTeamInvites, careTeamActivity, careProfiles, users } from '@/lib/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
-import { sendEmail, careTeamInviteEmail } from '@/lib/email';
+import { sendPhiEmail, careTeamInviteEmail } from '@/lib/email';
 import { rateLimit } from '@/lib/rate-limit';
 import { validateCsrf } from '@/lib/csrf';
 import { z } from 'zod';
@@ -145,7 +145,7 @@ export async function POST(req: Request) {
       acceptUrl,
     });
 
-    const emailResult = await sendEmail({
+    const emailResult = await sendPhiEmail({
       to: email.toLowerCase(),
       subject: `${displayName} invited you to a care team on CareCompanion`,
       html,

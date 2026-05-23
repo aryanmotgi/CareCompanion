@@ -1,8 +1,7 @@
-// Onboarding funnel events. Emits to PostHog + Vercel Analytics.
-// No PII: names reduced to booleans, IDs hashed if surfaced.
-
+// Onboarding funnel events → internal analytics_events table (Aurora) +
+// Vercel Analytics for traffic counts. No third-party processor sees PHI.
 import { track } from '@vercel/analytics';
-import posthog from 'posthog-js';
+import { trackClientEvent } from '@/lib/analytics-client';
 
 type Role = 'patient' | 'caregiver' | 'self' | 'unknown';
 
@@ -12,11 +11,7 @@ function emit(name: string, props: Record<string, string | number | boolean>) {
   } catch {
     /* analytics never blocks user flow */
   }
-  try {
-    if (typeof window !== 'undefined') posthog.capture(name, props);
-  } catch {
-    /* same */
-  }
+  trackClientEvent({ eventName: name, properties: props });
 }
 
 export const onboardingAnalytics = {

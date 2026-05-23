@@ -4,7 +4,7 @@ import { validateCsrf } from '@/lib/csrf'
 import { db } from '@/lib/db'
 import { careProfiles, users, careGroupMembers, careGroups } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
-import { sendEmail, onboardingRecapEmailHtml } from '@/lib/email'
+import { sendPhiEmail, onboardingRecapEmailHtml } from '@/lib/email'
 
 export async function POST(req: Request) {
   const { valid: csrfValid, error: csrfError } = await validateCsrf(req)
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
 
     if (user?.email && profile) {
       const dashboardUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://carecompanionai.org'}/dashboard`
-      await sendEmail({
+      await sendPhiEmail({
         to: user.email,
         subject: "You're all set with CareCompanion ✓",
         html: onboardingRecapEmailHtml({

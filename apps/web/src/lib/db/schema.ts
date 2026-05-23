@@ -877,6 +877,19 @@ export const appVersionConfig = pgTable('app_version_config', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
+// ── Analytics Events (migration 023) ───────────────────────────────────────
+// Internal product analytics — replaces PostHog. user_id_hash is irreversible
+// (SHA-256 of UUID + salt). properties JSONB must not contain PHI; server
+// enforces a blocklist before insert.
+export const analyticsEvents = pgTable('analytics_events', {
+  id:          integer('id').primaryKey(),
+  eventName:   text('event_name').notNull(),
+  userIdHash:  text('user_id_hash'),
+  sessionId:   text('session_id'),
+  properties:  jsonb('properties').notNull().default(sql`'{}'::jsonb`),
+  createdAt:   timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 // ── Medication Observations (migration 016) ────────────────────────────────────
 // Caregiver-reported dose events. Neither source overwrites the other — both
 // the EHR prescription (medications.dose) and the caregiver report persist.

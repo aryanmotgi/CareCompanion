@@ -4,12 +4,9 @@
  */
 import { RDSDataClient, ExecuteStatementCommand } from '@aws-sdk/client-rds-data'
 
+// SDK default credential chain (env vars / SSO / shared profile / IAM role).
 const client = new RDSDataClient({
   region: process.env.AWS_REGION ?? 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
 })
 
 const COMMON = {

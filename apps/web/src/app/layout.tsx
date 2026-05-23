@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Figtree, Noto_Sans } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
-import { PostHogInit } from '@/components/PostHogProvider';
 import './globals.css';
 
 const figtree = Figtree({
@@ -129,7 +128,6 @@ export default function RootLayout({
         />
         {children}
         <Analytics />
-        <PostHogInit />
       </body>
     </html>
   );

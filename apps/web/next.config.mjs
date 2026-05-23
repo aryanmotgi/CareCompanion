@@ -22,8 +22,8 @@ const nextConfig = {
       ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://vercel.live`
       : `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://vercel.live`
     const connectSrc = isDev
-      ? `connect-src 'self' ws://localhost:3000 http://localhost:3000 https://*.anthropic.com https://*.vercel-analytics.com https://*.vercel-insights.com https://vercel.live https://accounts.google.com https://*.posthog.com https://us.i.posthog.com`
-      : `connect-src 'self' https://*.anthropic.com https://*.vercel-analytics.com https://*.vercel-insights.com https://vercel.live https://accounts.google.com https://*.posthog.com https://us.i.posthog.com`
+      ? `connect-src 'self' ws://localhost:3000 http://localhost:3000 https://*.anthropic.com https://*.vercel-analytics.com https://*.vercel-insights.com https://vercel.live https://accounts.google.com`
+      : `connect-src 'self' https://*.anthropic.com https://*.vercel-analytics.com https://*.vercel-insights.com https://vercel.live https://accounts.google.com`
     return [
       {
         source: '/(.*)',

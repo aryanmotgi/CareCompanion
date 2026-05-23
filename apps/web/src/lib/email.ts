@@ -1,9 +1,16 @@
 /**
- * Email sending via Resend SDK.
- * Falls back to logging when RESEND_API_KEY is not set (dev-friendly).
+ * Email sending. Two backends:
+ *   • Resend      — non-PHI templates only (password reset, welcome)
+ *   • AWS SES v2  — PHI templates (care-team invite, onboarding recap);
+ *                   SES is covered under our existing AWS BAA.
+ *
+ * Resend has no BAA on any current public tier — never route PHI through it.
+ * Use `sendPhiEmail` for any template that includes patient names,
+ * diagnoses, medications, lab values, or care-group identifiers.
  */
 
 import { Resend } from 'resend';
+import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
 import { logger } from '@/lib/logger';
 
 let resendClient: Resend | null = null;
@@ -14,6 +21,54 @@ function getResend(): Resend | null {
     resendClient = new Resend(process.env.RESEND_API_KEY);
   }
   return resendClient;
+}
+
+// SES client uses SDK default credential chain (env → SSO → IAM role).
+// In Vercel prod the AWS_* env vars already used by RDS are reused.
+let sesClient: SESv2Client | null = null;
+function getSes(): SESv2Client {
+  if (!sesClient) {
+    sesClient = new SESv2Client({ region: process.env.AWS_REGION ?? 'us-east-1' });
+  }
+  return sesClient;
+}
+
+/**
+ * Send an email that contains PHI. Routes through AWS SES (BAA-covered).
+ * Falls back to logging when SES credentials are missing.
+ */
+export async function sendPhiEmail({
+  to,
+  subject,
+  html,
+  from = 'CareCompanion <welcome@carecompanionai.org>',
+}: {
+  to: string;
+  subject: string;
+  html: string;
+  from?: string;
+}): Promise<{ success: boolean; reason?: string }> {
+  try {
+    const ses = getSes();
+    await ses.send(
+      new SendEmailCommand({
+        FromEmailAddress: from,
+        Destination: { ToAddresses: [to] },
+        Content: {
+          Simple: {
+            Subject: { Data: subject, Charset: 'UTF-8' },
+            Body: { Html: { Data: html, Charset: 'UTF-8' } },
+          },
+        },
+      }),
+    );
+    logger.info('[email-ses] sent');
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    logger.error('[email-ses] send failed', { route: 'sendPhiEmail' });
+    return { success: false, reason: message };
+  }
 }
 
 export async function sendEmail({

@@ -34,4 +34,3 @@ export async function migratePhiToSecureStore(): Promise<void> {
   )
 }
 
-export { SMALL_PHI_KEYS, LARGE_PHI_KEYS }

@@ -1,11 +1,13 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "ignore": [
-    "apps/web/scripts/**"
+    "apps/web/scripts/**",
+    "apps/web/src/lib/db/seed-demo.ts",
+    "apps/mobile/src/components/AIConsentModal.tsx"
   ],
   "ignoreDependencies": [
     "expo-web-browser",
-    "@babel/runtime"
+    "expo-device"
   ],
   "rules": {
     "exports": "warn",

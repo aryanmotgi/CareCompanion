@@ -9,9 +9,11 @@
  * Usage:
  *   DEMO_ACCOUNT_PASSWORD=<secret> npx tsx apps/web/src/lib/db/seed-demo.ts
  *
- * Required env vars (same as production):
- *   AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
- *   AWS_SECRET_ARN, AWS_RESOURCE_ARN, DEMO_ACCOUNT_PASSWORD
+ * Required env vars:
+ *   AWS_REGION, AWS_SECRET_ARN, AWS_RESOURCE_ARN, DEMO_ACCOUNT_PASSWORD
+ * AWS credentials resolved via SDK default chain (env vars OR `aws sso login`
+ * OR shared ~/.aws/credentials profile). Do NOT source .env.local — its
+ * stale AWS_ACCESS_KEY_ID will mask your active SSO session.
  *
  * Idempotent: deletes then re-creates all demo data on each run.
  * All data is obviously synthetic — no real PHI.
