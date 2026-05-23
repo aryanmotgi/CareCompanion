@@ -67,6 +67,8 @@
     <string>CareCompanion reads clinical records from your care team — medications, lab results, conditions, procedures, allergies, vital signs, and immunizations — so it can help you understand and manage your cancer treatment in one place.</string>
     <key>NSHealthShareUsageDescription</key>
     <string>CareCompanion reads your Apple Health data to support your cancer care: date of birth and sex at birth (to personalize lab reference ranges), and — when you opt in — daily steps, heart rate, and sleep so caregivers can see how you are doing.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>CareCompanion writes wellness data including steps, heart rate, and sleep to Apple Health to keep your health records in sync.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your microphone</string>
     <key>NSMotionUsageDescription</key>
