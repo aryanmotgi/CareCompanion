@@ -86,7 +86,13 @@
     <key>UIBackgroundModes</key>
     <array>
       <string>fetch</string>
+      <string>processing</string>
       <string>remote-notification</string>
+    </array>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+      <string>cc-background-sync</string>
+      <string>cc-wellness-sync</string>
     </array>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
