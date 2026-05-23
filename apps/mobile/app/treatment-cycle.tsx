@@ -81,7 +81,7 @@ export default function TreatmentCycleScreen() {
     async function fetchMeds() {
       try {
         const token = await SecureStore.getItemAsync('cc-session-token')
-        const res = await fetch(`${API_BASE}/api/medications`, {
+        const res = await fetch(`${API_BASE}/api/records/medications`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         })
         if (!res.ok) throw new Error('Failed to load medications')
