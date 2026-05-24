@@ -349,6 +349,8 @@ PODS:
   - hermes-engine (0.76.5):
     - hermes-engine/Pre-built (= 0.76.5)
   - hermes-engine/Pre-built (0.76.5)
+  - jail-monkey (3.0.0):
+    - React-Core
   - RCT-Folly (2024.01.01.00):
     - boost
     - DoubleConversion
@@ -1585,6 +1587,8 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - react-native-netinfo (12.0.1):
+    - React-Core
   - react-native-safe-area-context (4.12.0):
     - React-Core
   - react-native-shake (5.6.2):
@@ -1986,30 +1990,6 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - RNSentry (6.22.0):
-    - DoubleConversion
-    - glog
-    - hermes-engine
-    - RCT-Folly (= 2024.01.01.00)
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-hermes
-    - React-ImageManager
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - Sentry/HybridSDK (= 8.56.2)
-    - Yoga
-  - Sentry/HybridSDK (8.56.2)
   - SocketRocket (0.7.1)
   - UMAppLoader (5.0.1)
   - Yoga (0.0.0)
@@ -2064,6 +2044,7 @@ DEPENDENCIES:
   - "fmt (from `../../../node_modules/.bun/react-native@0.76.5+84df05f6f5023fd9/node_modules/react-native/third-party-podspecs/fmt.podspec`)"
   - "glog (from `../../../node_modules/.bun/react-native@0.76.5+84df05f6f5023fd9/node_modules/react-native/third-party-podspecs/glog.podspec`)"
   - "hermes-engine (from `../../../node_modules/.bun/react-native@0.76.5+84df05f6f5023fd9/node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)"
+  - jail-monkey (from `../node_modules/jail-monkey`)
   - "RCT-Folly (from `../../../node_modules/.bun/react-native@0.76.5+84df05f6f5023fd9/node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)"
   - "RCT-Folly/Fabric (from `../../../node_modules/.bun/react-native@0.76.5+84df05f6f5023fd9/node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)"
   - "RCTDeprecation (from `../../../node_modules/.bun/react-native@0.76.5+84df05f6f5023fd9/node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)"
@@ -2095,6 +2076,7 @@ DEPENDENCIES:
   - "React-logger (from `../../../node_modules/.bun/react-native@0.76.5+84df05f6f5023fd9/node_modules/react-native/ReactCommon/logger`)"
   - "React-Mapbuffer (from `../../../node_modules/.bun/react-native@0.76.5+84df05f6f5023fd9/node_modules/react-native/ReactCommon`)"
   - "React-microtasksnativemodule (from `../../../node_modules/.bun/react-native@0.76.5+84df05f6f5023fd9/node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)"
+  - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - react-native-shake (from `../node_modules/react-native-shake`)
   - "React-nativeconfig (from `../../../node_modules/.bun/react-native@0.76.5+84df05f6f5023fd9/node_modules/react-native/ReactCommon`)"
@@ -2127,14 +2109,12 @@ DEPENDENCIES:
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
-  - "RNSentry (from `../node_modules/@sentry/react-native`)"
   - "UMAppLoader (from `../../../node_modules/.bun/unimodules-app-loader@5.0.1/node_modules/unimodules-app-loader/ios`)"
   - "Yoga (from `../../../node_modules/.bun/react-native@0.76.5+84df05f6f5023fd9/node_modules/react-native/ReactCommon/yoga`)"
 
 SPEC REPOS:
   trunk:
     - ReachabilitySwift
-    - Sentry
     - SocketRocket
     - ZXingObjC
 
@@ -2228,6 +2208,8 @@ EXTERNAL SOURCES:
   hermes-engine:
     :podspec: "../../../node_modules/.bun/react-native@0.76.5+84df05f6f5023fd9/node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec"
     :tag: hermes-2024-11-12-RNv0.76.2-5b4aa20c719830dcf5684832b89a6edb95ac3d64
+  jail-monkey:
+    :path: "../node_modules/jail-monkey"
   RCT-Folly:
     :podspec: "../../../node_modules/.bun/react-native@0.76.5+84df05f6f5023fd9/node_modules/react-native/third-party-podspecs/RCT-Folly.podspec"
   RCTDeprecation:
@@ -2286,6 +2268,8 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/.bun/react-native@0.76.5+84df05f6f5023fd9/node_modules/react-native/ReactCommon"
   React-microtasksnativemodule:
     :path: "../../../node_modules/.bun/react-native@0.76.5+84df05f6f5023fd9/node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
+  react-native-netinfo:
+    :path: "../node_modules/@react-native-community/netinfo"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
   react-native-shake:
@@ -2350,8 +2334,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-reanimated"
   RNScreens:
     :path: "../node_modules/react-native-screens"
-  RNSentry:
-    :path: "../node_modules/@sentry/react-native"
   UMAppLoader:
     :path: "../../../node_modules/.bun/unimodules-app-loader@5.0.1/node_modules/unimodules-app-loader/ios"
   Yoga:
@@ -2402,6 +2384,7 @@ SPEC CHECKSUMS:
   fmt: 10c6e61f4be25dc963c36bd73fc7b1705fe975be
   glog: 08b301085f15bcbb6ff8632a8ebaf239aae04e6a
   hermes-engine: 06a9c6900587420b90accc394199527c64259db4
+  jail-monkey: 72772152bb108f72e6adcf6429e069fce091de65
   RCT-Folly: 84578c8756030547307e4572ab1947de1685c599
   RCTDeprecation: fb7d408617e25d7f537940000d766d60149c5fea
   RCTRequired: 9aaf0ffcc1f41f0c671af863970ef25c422a9920
@@ -2432,6 +2415,7 @@ SPEC CHECKSUMS:
   React-logger: ae95f0effa7e1791bd6f7283caddca323d4fbc1e
   React-Mapbuffer: 7eb5d69e1154e7743487ef0c8d7261e5b59afb32
   React-microtasksnativemodule: 16e31e4f503a5f46adafd035096130418c3bce70
+  react-native-netinfo: bed7e7b8f68e22e0862a77d7df28d31faa66375d
   react-native-safe-area-context: 8b8404e70b0cbf2a56428a17017c14c1dcc16448
   react-native-shake: 9803555ba8372067da11f3b031d444c3d8015d4c
   React-nativeconfig: f7ab6c152e780b99a8c17448f2d99cf5f69a2311
@@ -2464,8 +2448,6 @@ SPEC CHECKSUMS:
   RNCAsyncStorage: aa75595c1aefa18f868452091fa0c411a516ce11
   RNReanimated: 88b132fe461805857832c25171d28028934dd805
   RNScreens: dca75d1e90a03d2b0229462f3d5a75880e30885d
-  RNSentry: 7fffd7bf841c7174afdcafa6f3bcf2b9cd4eb2f2
-  Sentry: b53951377b78e21a734f5dc8318e333dbfc682d7
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   UMAppLoader: 7e7e0eaa7854ffd652c00a68c443afb28c3bedba
   Yoga: fcc198acd4a55599b3468cfb6ebc526baff5f06e
