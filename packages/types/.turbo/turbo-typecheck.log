@@ -1,1 +1,23 @@
 $ tsc --noEmit
+../../apps/web/src/lib/db/schema.ts(15,8): error TS2307: Cannot find module 'drizzle-orm/pg-core' or its corresponding type declarations.
+../../apps/web/src/lib/db/schema.ts(16,21): error TS2307: Cannot find module 'drizzle-orm' or its corresponding type declarations.
+../../apps/web/src/lib/db/schema.ts(70,5): error TS7006: Parameter 't' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(125,5): error TS7006: Parameter 't' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(137,5): error TS7006: Parameter 't' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(243,5): error TS7006: Parameter 't' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(302,5): error TS7006: Parameter 'table' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(467,5): error TS7006: Parameter 't' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(520,5): error TS7006: Parameter 't' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(539,5): error TS7006: Parameter 't' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(557,5): error TS7006: Parameter 't' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(574,5): error TS7006: Parameter 'table' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(664,5): error TS7006: Parameter 't' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(681,5): error TS7006: Parameter 't' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(698,5): error TS7006: Parameter 't' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(742,5): error TS7006: Parameter 't' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(796,5): error TS7006: Parameter 'table' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(820,5): error TS7006: Parameter 'table' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(840,5): error TS7006: Parameter 'table' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(857,5): error TS7006: Parameter 'table' implicitly has an 'any' type.
+../../apps/web/src/lib/db/schema.ts(918,5): error TS7006: Parameter 't' implicitly has an 'any' type.
+src/index.ts(5,39): error TS2307: Cannot find module 'drizzle-orm' or its corresponding type declarations.
