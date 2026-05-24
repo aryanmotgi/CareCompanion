@@ -1,5 +1,4 @@
 // apps/mobile/app/_layout.tsx
-import { initSentry } from '../src/lib/sentry'
 import { initAnalytics } from '../src/lib/analytics'
 import { useEffect, useState, useCallback, useRef, createContext, useContext } from 'react'
 import { PHIPrivacyGuard } from '../src/components/PHIPrivacyGuard'
@@ -10,7 +9,6 @@ import { useVersionCheck } from '../src/hooks/useVersionCheck'
 import { UpdateScreen } from '../src/components/UpdateScreen'
 import { MaintenanceScreen } from '../src/components/MaintenanceScreen'
 
-initSentry()
 import { Stack, Redirect, useSegments, useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import AsyncStorage from '@react-native-async-storage/async-storage'
