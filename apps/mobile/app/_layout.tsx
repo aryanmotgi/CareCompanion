@@ -1,6 +1,7 @@
 // apps/mobile/app/_layout.tsx
 import { initAnalytics } from '../src/lib/analytics'
 import { useEffect, useState, useCallback, useRef, createContext, useContext } from 'react'
+import { ErrorBoundary } from '../src/components/ErrorBoundary'
 import { PHIPrivacyGuard } from '../src/components/PHIPrivacyGuard'
 import { JailbreakWarning } from '../src/components/JailbreakWarning'
 import { OfflineBanner } from '../src/components/OfflineBanner'
@@ -718,6 +719,7 @@ export default function RootLayout() {
   const theme = useTheme()
 
   return (
+    <ErrorBoundary>
     <SafeAreaProvider style={{ backgroundColor: theme.bg }}>
       <PHIPrivacyGuard>
         <ThemedStatusBar />
@@ -769,5 +771,6 @@ export default function RootLayout() {
         />
       </PHIPrivacyGuard>
     </SafeAreaProvider>
+    </ErrorBoundary>
   )
 }
