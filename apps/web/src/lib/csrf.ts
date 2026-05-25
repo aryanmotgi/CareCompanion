@@ -26,7 +26,9 @@ export async function ensureCsrfToken(): Promise<string> {
   return token
 }
 
-export async function validateCsrf(req: Request): Promise<{ valid: boolean; error?: NextResponse }> {
+export type CsrfResult = { valid: true; error?: undefined } | { valid: false; error: NextResponse }
+
+export async function validateCsrf(req: Request): Promise<CsrfResult> {
   const cookieStore = await cookies()
   let cookieToken = cookieStore.get(CSRF_COOKIE)?.value
   const headerToken = req.headers.get(CSRF_HEADER)
