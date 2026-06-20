@@ -1,8 +1,10 @@
 name: API Health Ping
 
 on:
-  schedule:
-    - cron: '*/30 * * * *'
+  # Scheduled runs disabled to stop automated failure-notification emails.
+  # Re-enable by uncommenting the schedule block below.
+  # schedule:
+  #   - cron: '*/30 * * * *'
   workflow_dispatch:
 
 jobs:
