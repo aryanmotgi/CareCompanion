@@ -79,28 +79,6 @@ jobs:
           path: apps/web/playwright-report/
           retention-days: 7
 
-      - name: Send failure email alert
-        if: steps.e2e.outcome == 'failure'
-        uses: dawidd6/action-send-mail@611879133a9569642c41be66f4a323286e9b8a3b # v4
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.ALERT_EMAIL_USERNAME }}
-          password: ${{ secrets.ALERT_EMAIL_PASSWORD }}
-          subject: "🚨 CareCompanion Production Monitor Failed"
-          to: ${{ secrets.ALERT_EMAIL_TO }}
-          from: CareCompanion Alerts <${{ secrets.ALERT_EMAIL_USERNAME }}>
-          body: |
-            The CareCompanion production monitor detected a failure on carecompanionai.org.
-
-            A critical user-facing feature may be broken. Please investigate immediately.
-
-            Workflow run details:
-            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-            This alert was triggered automatically by the scheduled Playwright smoke test.
-
       - name: Create tracking issue
         if: steps.e2e.outcome == 'failure'
         id: issue
@@ -188,37 +166,6 @@ jobs:
             - Known pitfall: middleware redirects users with no `role` to `/set-role` — the JWT must include `role`
 
             Tracking issue: #${{ steps.issue.outputs.issue_number }}
-
-      - name: Send success email alert
-        if: steps.e2e.outcome == 'success'
-        uses: dawidd6/action-send-mail@611879133a9569642c41be66f4a323286e9b8a3b # v4
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.ALERT_EMAIL_USERNAME }}
-          password: ${{ secrets.ALERT_EMAIL_PASSWORD }}
-          subject: "✅ CareCompanion Production Monitor — All Clear"
-          to: ${{ secrets.ALERT_EMAIL_TO }}
-          from: CareCompanion Alerts <${{ secrets.ALERT_EMAIL_USERNAME }}>
-          body: |
-            The CareCompanion production monitor ran successfully against carecompanionai.org.
-
-            All checks passed:
-            - /api/health endpoint (Claude-free schema + DB + env)
-            - Dashboard renders and shows navigation
-            - Care page loads without errors
-            - 1upHealth connect page renders
-            - AI chat interface renders
-            - Medications data renders on care page
-            - Page load performance within budgets
-            - No unexpected console errors
-            - Notifications exist (cron health)
-
-            Workflow run details:
-            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-            This alert was triggered automatically by the scheduled Playwright smoke test.
 
       - name: Fail job if tests failed
         if: steps.e2e.outcome == 'failure'
