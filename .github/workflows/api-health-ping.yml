@@ -28,26 +28,6 @@ jobs:
             echo "failed=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Send failure alert
-        if: steps.health.outputs.failed == 'true'
-        uses: dawidd6/action-send-mail@611879133a9569642c41be66f4a323286e9b8a3b # v4
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.ALERT_EMAIL_USERNAME }}
-          password: ${{ secrets.ALERT_EMAIL_PASSWORD }}
-          subject: "🚨 CareCompanion Health Ping Failed"
-          to: ${{ secrets.ALERT_EMAIL_TO }}
-          from: CareCompanion Alerts <${{ secrets.ALERT_EMAIL_USERNAME }}>
-          body: |
-            CareCompanion /api/health check failed.
-
-            HTTP ${{ steps.health.outputs.status }}
-            Body: ${{ steps.health.outputs.body }}
-
-            Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
       - name: Fail job if health check failed
         if: steps.health.outputs.failed == 'true'
         run: exit 1
