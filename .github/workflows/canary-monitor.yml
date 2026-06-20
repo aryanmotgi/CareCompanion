@@ -3,9 +3,11 @@
 name: Canary monitor
 
 on:
-  schedule:
-    # Every 6 hours
-    - cron: "0 */6 * * *"
+  # Scheduled runs disabled to stop automated promote/abort issue emails.
+  # Re-enable by uncommenting the schedule block below.
+  # schedule:
+  #   # Every 6 hours
+  #   - cron: "0 */6 * * *"
   workflow_dispatch: {}
 
 permissions:
