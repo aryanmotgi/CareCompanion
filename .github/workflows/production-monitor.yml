@@ -1,9 +1,11 @@
 name: Production 24/7 Monitor
 
 on:
-  schedule:
-    # Run every 4 hours
-    - cron: '0 */4 * * *'
+  # Scheduled runs disabled to stop automated failure / tracking-issue emails.
+  # Re-enable by uncommenting the schedule block below.
+  # schedule:
+  #   # Run every 4 hours
+  #   - cron: '0 */4 * * *'
   workflow_dispatch: # Allow manual triggers
 
 jobs:
