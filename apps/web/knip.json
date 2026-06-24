@@ -1,3 +1,7 @@
 {
-  "ignoreDependencies": ["postcss-load-config"]
+  "ignore": [
+    "scripts/apply-022.ts",
+    "scripts/seed_demo.ts",
+    "src/lib/db/seed-demo.ts"
+  ]
 }
